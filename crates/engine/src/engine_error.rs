@@ -1,0 +1,7 @@
+/// Errors produced by the detection engine (device access and replay I/O).
+#[derive(Debug, thiserror::Error)]
+pub enum EngineError {
+    /// An I/O error while opening or reading a device or replay file.
+    #[error("engine I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}

@@ -1,0 +1,163 @@
+use std::collections::HashMap;
+
+use tangible_objects_model::ABS_MT_POSITION_X;
+use tangible_objects_model::ABS_MT_POSITION_Y;
+use tangible_objects_model::ABS_MT_SLOT;
+use tangible_objects_model::ABS_MT_TRACKING_ID;
+use tangible_objects_model::Calibration;
+use tangible_objects_model::EventType;
+use tangible_objects_model::RawEvent;
+use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchPointSlot;
+use tangible_objects_model::Vec2;
+
+/// Multitouch slot state machine for the Linux type B protocol.
+///
+/// Tracks every contact via `ABS_MT_SLOT` / `ABS_MT_TRACKING_ID` and updates
+/// positions on `ABS_MT_POSITION_X/Y`. When a [`Calibration`] is set, raw
+/// device units are converted to millimeters on the fly.
+pub struct TouchState {
+    slots: HashMap<TouchPointSlot, TouchPoint>,
+    current_slot: TouchPointSlot,
+    calibration: Option<Calibration>,
+}
+
+impl TouchState {
+    /// Creates an empty touch state without calibration.
+    pub fn new() -> Self {
+        Self {
+            slots: HashMap::new(),
+            current_slot: TouchPointSlot::new(0),
+            calibration: None,
+        }
+    }
+
+    /// Sets the device calibration used for raw-to-mm conversion.
+    pub fn set_calibration(&mut self, calibration: Calibration) {
+        self.calibration = Some(calibration);
+    }
+
+    /// Feeds a single raw event into the state machine.
+    pub fn process(&mut self, event: &RawEvent) {
+        if event.event_type == EventType::Abs {
+            match event.code {
+                ABS_MT_SLOT => self.current_slot = TouchPointSlot::new(event.value.max(0) as u32),
+                ABS_MT_TRACKING_ID => {
+                    if event.value == -1 {
+                        self.slots.remove(&self.current_slot);
+                    } else {
+                        let entry =
+                            self.slots
+                                .entry(self.current_slot)
+                                .or_insert_with(|| TouchPoint {
+                                    slot: self.current_slot,
+                                    tracking_id: event.value,
+                                    pos: Vec2::new(0.0, 0.0),
+                                });
+                        entry.tracking_id = event.value;
+                    }
+                }
+                ABS_MT_POSITION_X => {
+                    if let Some(touch_point) = self.slots.get_mut(&self.current_slot) {
+                        touch_point.pos.x = event.value as f64;
+                        if let Some(calibration) = self.calibration {
+                            touch_point.pos.x /= calibration.x_res.as_f64();
+                        }
+                    }
+                }
+                ABS_MT_POSITION_Y => {
+                    if let Some(touch_point) = self.slots.get_mut(&self.current_slot) {
+                        touch_point.pos.y = event.value as f64;
+                        if let Some(calibration) = self.calibration {
+                            touch_point.pos.y /= calibration.y_res.as_f64();
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// All currently active touch points.
+    pub fn active_touches(&self) -> Vec<TouchPoint> {
+        self.slots.values().cloned().collect()
+    }
+
+    /// Number of currently active touch points.
+    pub fn active_count(&self) -> usize {
+        self.slots.len()
+    }
+}
+
+impl Default for TouchState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TouchState;
+    use tangible_objects_model::ABS_MT_POSITION_X;
+    use tangible_objects_model::ABS_MT_POSITION_Y;
+    use tangible_objects_model::ABS_MT_SLOT;
+    use tangible_objects_model::ABS_MT_TRACKING_ID;
+    use tangible_objects_model::Calibration;
+    use tangible_objects_model::EventType;
+    use tangible_objects_model::RawEvent;
+    use tangible_objects_model::TouchPointSlot;
+
+    fn slot(slot: i32) -> RawEvent {
+        RawEvent::new(EventType::Abs, ABS_MT_SLOT, slot)
+    }
+
+    fn tracking_id(id: i32) -> RawEvent {
+        RawEvent::new(EventType::Abs, ABS_MT_TRACKING_ID, id)
+    }
+
+    #[test]
+    fn contact_is_added_updated_and_removed() {
+        let mut state = TouchState::new();
+        state.process(&slot(0));
+        state.process(&tracking_id(100));
+        state.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_X, 10));
+        state.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_Y, 20));
+
+        assert_eq!(state.active_count(), 1);
+        let touches = state.active_touches();
+        assert_eq!(touches[0].tracking_id, 100);
+
+        state.process(&tracking_id(-1));
+        assert_eq!(state.active_count(), 0);
+    }
+
+    #[test]
+    fn calibration_converts_positions_to_mm() {
+        let mut state = TouchState::new();
+        state.set_calibration(Calibration::new(2.0, 4.0));
+        state.process(&slot(0));
+        state.process(&tracking_id(1));
+        state.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_X, 40));
+        state.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_Y, 80));
+
+        let touches = state.active_touches();
+        assert!((touches[0].pos.x - 20.0).abs() < 1e-9);
+        assert!((touches[0].pos.y - 20.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn multiple_slots_are_tracked_independently() {
+        let mut state = TouchState::new();
+        state.process(&slot(0));
+        state.process(&tracking_id(1));
+        state.process(&slot(1));
+        state.process(&tracking_id(2));
+        assert_eq!(state.active_count(), 2);
+
+        // Removing slot 0 keeps slot 1.
+        state.process(&slot(0));
+        state.process(&tracking_id(-1));
+        assert_eq!(state.active_count(), 1);
+        assert_eq!(state.active_touches()[0].slot, TouchPointSlot::new(1));
+    }
+}
