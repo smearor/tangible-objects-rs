@@ -7,20 +7,15 @@
 
 mod device;
 mod engine;
-mod engine_error;
-mod engine_frame;
-mod matching;
 mod replay;
-mod touch_state;
-mod tracker;
 
 pub use device::DeviceEntry;
 pub use device::TouchDevice;
 pub use engine::Engine;
-pub use engine_error::EngineError;
-pub use engine_frame::EngineFrame;
+pub use engine::EngineError;
+pub use engine::EngineFrame;
+pub use engine::TouchState;
+pub use engine::Tracker;
 pub use replay::EvtestReplay;
-pub use touch_state::TouchState;
-pub use tracker::Tracker;
 
 pub use tangible_objects_model as model;
