@@ -40,5 +40,6 @@ pub use rotation_rad::RotationRad;
 pub use tangible::TrackedTangible;
 pub use touch_point::TouchPoint;
 pub use touch_point::TouchPointSlot;
+pub use touch_point::TrackingId;
 pub use units_per_mm::UnitsPerMm;
 pub use vec2::Vec2;

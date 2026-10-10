@@ -18,10 +18,10 @@ pub struct TangiblePattern {
     /// Number of contact pins the figure must have.
     pub num_points: usize,
     /// Sorted pairwise distances of the reference point set (the fingerprint).
-    pub sorted_distances: Vec<f64>,
-    /// Maximum allowed deviation per distance during matching, in mm.
+    pub sorted_distances: Vec<Millimeters>,
+    /// Maximum allowed deviation per distance during matching.
     pub tolerance: PatternTolerance,
-    /// Original reference point positions in mm, if stored in the profile.
+    /// Original reference point positions, if stored in the profile.
     /// Required for partial matching when one contact pin is missing.
     pub ref_points: Option<Vec<Vec2<Millimeters>>>,
 }
@@ -54,16 +54,16 @@ impl TangiblePattern {
             && measured
                 .iter()
                 .zip(self.sorted_distances.iter())
-                .all(|(m, t)| (m - t).abs() <= self.tolerance.0)
+                .all(|(m, t)| (*m - *t).abs() <= self.tolerance.0)
     }
 
     /// Total absolute deviation across all distances (lower is better).
-    pub fn match_error(&self, points: &[Vec2<Millimeters>]) -> f64 {
+    pub fn match_error(&self, points: &[Vec2<Millimeters>]) -> Millimeters {
         let measured = sorted_pairwise_distances(points);
         measured
             .iter()
             .zip(self.sorted_distances.iter())
-            .map(|(m, t)| (m - t).abs())
+            .map(|(m, t)| (*m - *t).abs())
             .sum()
     }
 
@@ -73,14 +73,17 @@ impl TangiblePattern {
     /// The tolerance is raised by 50% to account for the higher uncertainty.
     ///
     /// Returns the matched reference indices and the total error.
-    pub fn matches_partial(&self, points: &[Vec2<Millimeters>]) -> Option<(Vec<usize>, f64)> {
+    pub fn matches_partial(
+        &self,
+        points: &[Vec2<Millimeters>],
+    ) -> Option<(Vec<usize>, Millimeters)> {
         let ref_pts = self.ref_points.as_ref()?;
         if points.len() != self.num_points - 1 || ref_pts.len() != self.num_points {
             return None;
         }
         let partial_tolerance = self.tolerance.0 * 1.5;
         let measured = sorted_pairwise_distances(points);
-        let mut best: Option<(Vec<usize>, f64)> = None;
+        let mut best: Option<(Vec<usize>, Millimeters)> = None;
 
         for skip in 0..self.num_points {
             let subset: Vec<&Vec2<Millimeters>> = ref_pts
@@ -96,18 +99,18 @@ impl TangiblePattern {
                     ref_dists.push(subset[i].distance(subset[j]));
                 }
             }
-            ref_dists.sort_by(f64::total_cmp);
+            ref_dists.sort_by(Millimeters::total_cmp);
 
             if measured.len() == ref_dists.len()
                 && measured
                     .iter()
                     .zip(ref_dists.iter())
-                    .all(|(m, t)| (m - t).abs() <= partial_tolerance)
+                    .all(|(m, t)| (*m - *t).abs() <= partial_tolerance)
             {
-                let error: f64 = measured
+                let error: Millimeters = measured
                     .iter()
                     .zip(ref_dists.iter())
-                    .map(|(m, t)| (m - t).abs())
+                    .map(|(m, t)| (*m - *t).abs())
                     .sum();
                 let all_indices: Vec<usize> = (0..self.num_points).filter(|i| *i != skip).collect();
                 match &best {
@@ -122,14 +125,14 @@ impl TangiblePattern {
 }
 
 /// Computes all pairwise distances of a point set, sorted ascending.
-fn sorted_pairwise_distances(points: &[Vec2<Millimeters>]) -> Vec<f64> {
+fn sorted_pairwise_distances(points: &[Vec2<Millimeters>]) -> Vec<Millimeters> {
     let mut distances = Vec::new();
     for i in 0..points.len() {
         for j in (i + 1)..points.len() {
             distances.push(points[i].distance(&points[j]));
         }
     }
-    distances.sort_by(f64::total_cmp);
+    distances.sort_by(Millimeters::total_cmp);
     distances
 }
 

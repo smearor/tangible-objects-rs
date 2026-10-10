@@ -10,7 +10,7 @@ pub struct PatternMatch {
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
     pub pattern_name: String,
-    /// Centroid of the matched touch points in mm.
+    /// Centroid of the matched touch points.
     pub center: Vec2<Millimeters>,
     /// Estimated figure orientation in radians.
     pub rotation_rad: RotationRad,

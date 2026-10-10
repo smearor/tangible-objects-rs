@@ -12,6 +12,7 @@ mod gtk_app;
 use std::path::Path;
 
 use miette::Result;
+use tangible_objects_model::Millimeters;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -91,7 +92,7 @@ fn main() -> Result<()> {
             let fig_name = name.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --train --device ... --name <name>")
             })?;
-            let tol = tolerance.unwrap_or(30.0);
+            let tol = Millimeters::new(tolerance.unwrap_or(30.0));
             modes::run_train(Path::new(&dev), &fig_name, tol, profiles_dir.as_deref())
         }
         "--list" => {
@@ -133,7 +134,7 @@ fn print_help() {
     eprintln!();
     eprintln!("Optionen:");
     eprintln!("  --profiles <dir>   Profil-Verzeichnis (Standard: profiles/)");
-    eprintln!("  --tolerance <px>   Toleranz für Musterabgleich (Standard: 30.0)");
+    eprintln!("  --tolerance <mm>   Toleranz für Musterabgleich (Standard: 30.0)");
     eprintln!("  --name <name>      Figurenname (für --train)");
     eprintln!();
     eprintln!("Beispiel:");

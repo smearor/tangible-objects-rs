@@ -1,4 +1,5 @@
 use tangible_objects_model::Calibration;
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::TangiblePattern;
@@ -13,8 +14,8 @@ use crate::matching;
 /// Default EMA smoothing factor for tracked poses.
 pub const DEFAULT_EMA_ALPHA: f64 = 0.4;
 
-/// Default association radius between a match and a tracked tangible, in mm.
-pub const DEFAULT_MAX_CENTER_DISTANCE: f64 = 200.0;
+/// Default association radius between a match and a tracked tangible.
+pub const DEFAULT_MAX_CENTER_DISTANCE: Millimeters = Millimeters::new(200.0);
 
 /// Default number of frames a tangible survives without a match.
 pub const DEFAULT_MAX_FRAMES_WITHOUT_MATCH: u32 = 30;

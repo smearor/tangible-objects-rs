@@ -26,8 +26,11 @@ impl<U> Vec2<U> {
     }
 
     /// Euclidean distance to another point in the same unit.
-    pub fn distance(&self, other: &Vec2<U>) -> f64 {
-        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
+    pub fn distance(&self, other: &Vec2<U>) -> U
+    where
+        U: From<f64>,
+    {
+        U::from(((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt())
     }
 
     /// Geometric centroid of a non-empty point set.
@@ -54,7 +57,7 @@ mod tests {
     fn distance_of_axis_aligned_points() {
         let a = Vec2::<Millimeters>::new(0.0, 0.0);
         let b = Vec2::<Millimeters>::new(3.0, 4.0);
-        assert!((a.distance(&b) - 5.0).abs() < 1e-9);
+        assert!((a.distance(&b).as_f64() - 5.0).abs() < 1e-9);
     }
 
     #[test]

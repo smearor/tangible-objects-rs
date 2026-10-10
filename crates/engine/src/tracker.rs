@@ -1,3 +1,4 @@
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RotationRad;
 use tangible_objects_model::TrackedTangible;
@@ -13,7 +14,7 @@ use tangible_objects_model::Vec2;
 pub struct Tracker {
     tracked: Vec<TrackedTangible>,
     ema_alpha: f64,
-    max_center_distance: f64,
+    max_center_distance: Millimeters,
     max_frames_without_match: u32,
 }
 
@@ -21,13 +22,17 @@ impl Tracker {
     /// Creates a tracker.
     ///
     /// `ema_alpha` is the smoothing factor (0..1), `max_center_distance` the
-    /// association radius in mm, `max_frames_without_match` the expiry
-    /// hysteresis in frames.
-    pub fn new(ema_alpha: f64, max_center_distance: f64, max_frames_without_match: u32) -> Self {
+    /// association radius, `max_frames_without_match` the expiry hysteresis in
+    /// frames.
+    pub fn new(
+        ema_alpha: f64,
+        max_center_distance: impl Into<Millimeters>,
+        max_frames_without_match: u32,
+    ) -> Self {
         Self {
             tracked: Vec::new(),
             ema_alpha,
-            max_center_distance,
+            max_center_distance: max_center_distance.into(),
             max_frames_without_match,
         }
     }

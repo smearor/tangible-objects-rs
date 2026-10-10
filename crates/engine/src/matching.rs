@@ -38,7 +38,7 @@ pub(crate) fn find_matches(
             continue;
         }
 
-        let mut best: Option<(PatternMatch, f64)> = None;
+        let mut best: Option<(PatternMatch, Millimeters)> = None;
 
         for combo in combinations(&available, pattern.num_points) {
             let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
@@ -103,7 +103,11 @@ fn build_match(
 }
 
 /// Keeps the better of two candidates (lowest total error wins).
-fn consider(best: &mut Option<(PatternMatch, f64)>, candidate: PatternMatch, error: f64) {
+fn consider(
+    best: &mut Option<(PatternMatch, Millimeters)>,
+    candidate: PatternMatch,
+    error: Millimeters,
+) {
     match best {
         None => *best = Some((candidate, error)),
         Some((_, best_err)) if error < *best_err => *best = Some((candidate, error)),
@@ -140,12 +144,13 @@ mod tests {
     use tangible_objects_model::TangiblePattern;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
+    use tangible_objects_model::TrackingId;
     use tangible_objects_model::Vec2;
 
     fn touch_point(slot: u32, x: f64, y: f64) -> TouchPoint {
         TouchPoint {
             slot: TouchPointSlot::new(slot),
-            tracking_id: slot as i32,
+            tracking_id: TrackingId::new(slot as i32),
             pos: Vec2::new(x, y),
         }
     }

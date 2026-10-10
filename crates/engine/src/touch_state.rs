@@ -9,6 +9,7 @@ use tangible_objects_model::EventType;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
+use tangible_objects_model::TrackingId;
 use tangible_objects_model::Vec2;
 
 /// Multitouch slot state machine for the Linux type B protocol.
@@ -43,7 +44,8 @@ impl TouchState {
             match event.code {
                 ABS_MT_SLOT => self.current_slot = TouchPointSlot::new(event.value.max(0) as u32),
                 ABS_MT_TRACKING_ID => {
-                    if event.value == -1 {
+                    let tracking_id = TrackingId::new(event.value);
+                    if tracking_id.is_lift_off() {
                         self.slots.remove(&self.current_slot);
                     } else {
                         let entry =
@@ -51,10 +53,10 @@ impl TouchState {
                                 .entry(self.current_slot)
                                 .or_insert_with(|| TouchPoint {
                                     slot: self.current_slot,
-                                    tracking_id: event.value,
+                                    tracking_id,
                                     pos: Vec2::new(0.0, 0.0),
                                 });
-                        entry.tracking_id = event.value;
+                        entry.tracking_id = tracking_id;
                     }
                 }
                 ABS_MT_POSITION_X => {
@@ -106,6 +108,7 @@ mod tests {
     use tangible_objects_model::EventType;
     use tangible_objects_model::RawEvent;
     use tangible_objects_model::TouchPointSlot;
+    use tangible_objects_model::TrackingId;
 
     fn slot(slot: i32) -> RawEvent {
         RawEvent::new(EventType::Abs, ABS_MT_SLOT, slot)
@@ -125,7 +128,7 @@ mod tests {
 
         assert_eq!(state.active_count(), 1);
         let touches = state.active_touches();
-        assert_eq!(touches[0].tracking_id, 100);
+        assert_eq!(touches[0].tracking_id, TrackingId::new(100));
 
         state.process(&tracking_id(-1));
         assert_eq!(state.active_count(), 0);

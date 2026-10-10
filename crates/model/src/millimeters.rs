@@ -1,11 +1,20 @@
+use serde::Deserialize;
+use serde::Serialize;
+use std::cmp::Ordering;
 use std::fmt::Display;
+use std::iter::Sum;
+use std::ops::Add;
+use std::ops::Mul;
+use std::ops::Sub;
 
 /// A length or coordinate in millimeters on the touch surface.
 ///
 /// Wraps the plain `f64` so millimeter values cannot be confused with raw
 /// device units or screen pixels. Also serves as the unit marker for
-/// `Vec2<Millimeters>`.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+/// `Vec2<Millimeters>`. Serializes as a bare number so profile files stay
+/// compatible.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Millimeters(pub f64);
 
 impl Millimeters {
@@ -17,6 +26,46 @@ impl Millimeters {
     /// The numeric value in millimeters.
     pub const fn as_f64(self) -> f64 {
         self.0
+    }
+
+    /// Absolute value.
+    pub fn abs(self) -> Self {
+        Self(self.0.abs())
+    }
+
+    /// Total ordering comparison (no NaN pitfalls when sorting).
+    pub fn total_cmp(&self, other: &Self) -> Ordering {
+        self.0.total_cmp(&other.0)
+    }
+}
+
+impl Add for Millimeters {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl Sub for Millimeters {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Self(self.0 - rhs.0)
+    }
+}
+
+impl Mul<f64> for Millimeters {
+    type Output = Self;
+
+    fn mul(self, factor: f64) -> Self {
+        Self(self.0 * factor)
+    }
+}
+
+impl Sum for Millimeters {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self(0.0), Add::add)
     }
 }
 

@@ -164,9 +164,10 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
 pub fn run_train(
     path: &Path,
     name: &str,
-    tolerance: f64,
+    tolerance: impl Into<Millimeters>,
     profiles_dir: Option<&str>,
 ) -> Result<()> {
+    let tolerance = tolerance.into();
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
     println!("Trainingsmodus: {} — Figur \"{}\"", path.display(), name);
@@ -312,7 +313,11 @@ pub fn run_train(
         println!(
             "  Abstände ({}): {:?}",
             profile.sorted_sides.len(),
-            profile.sorted_sides
+            profile
+                .sorted_sides
+                .iter()
+                .map(|d| d.as_f64())
+                .collect::<Vec<_>>()
         );
         println!("  Toleranz: {}", profile.tolerance);
 

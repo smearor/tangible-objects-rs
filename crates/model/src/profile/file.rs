@@ -23,11 +23,11 @@ pub struct ProfileFile {
     pub name: String,
     /// Number of contact pins.
     pub num_points: usize,
-    /// Matching tolerance in mm.
+    /// Matching tolerance for the distance fingerprint.
     pub tolerance: PatternTolerance,
     /// Sorted pairwise distances of the reference geometry (the fingerprint).
-    pub sorted_sides: Vec<f64>,
-    /// Original contact positions in mm, flattened as `[x0, y0, x1, y1, ...]`.
+    pub sorted_sides: Vec<Millimeters>,
+    /// Original contact positions, flattened as `[x0, y0, x1, y1, ...]`.
     /// Enables partial matching when one contact pin is missing.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub points: Vec<f64>,
@@ -49,7 +49,7 @@ impl ProfileFile {
                 distances.push(points[i].distance(&points[j]));
             }
         }
-        distances.sort_by(f64::total_cmp);
+        distances.sort_by(Millimeters::total_cmp);
         let pts: Vec<f64> = points.iter().flat_map(|p| [p.x, p.y]).collect();
         Self {
             name: name.to_string(),

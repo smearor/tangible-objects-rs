@@ -13,7 +13,7 @@ pub struct TrackedTangible {
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
     pub pattern_name: String,
-    /// Smoothed centroid position in mm.
+    /// Smoothed centroid position.
     pub center: Vec2<Millimeters>,
     /// Smoothed orientation in radians.
     pub rotation_rad: RotationRad,
