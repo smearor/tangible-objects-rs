@@ -341,11 +341,6 @@ pub fn list_devices() {
         return;
     }
     for entry in entries {
-        let marker = if entry.is_multitouch {
-            " [Multitouch]"
-        } else {
-            ""
-        };
-        println!("{}: {}{}", entry.path.display(), entry.name, marker);
+        println!("{entry}");
     }
 }

@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::path::PathBuf;
 
 /// An enumerated `/dev/input/eventX` entry.
@@ -10,4 +11,16 @@ pub struct DeviceEntry {
     /// Whether the device supports multitouch protocol type B
     /// (has the `ABS_MT_SLOT` axis).
     pub is_multitouch: bool,
+}
+
+impl Display for DeviceEntry {
+    /// Renders as `<path>: <name>` plus a ` [Multitouch]` marker when the
+    /// device speaks protocol type B.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.path.display(), self.name)?;
+        if self.is_multitouch {
+            write!(f, " [Multitouch]")?;
+        }
+        Ok(())
+    }
 }
