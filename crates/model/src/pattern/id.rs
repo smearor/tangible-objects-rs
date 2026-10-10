@@ -1,3 +1,5 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Display;
 
 /// Runtime identifier of a figure pattern.
@@ -5,7 +7,8 @@ use std::fmt::Display;
 /// Assigned sequentially when a profile directory is loaded; used to
 /// associate [`crate::PatternMatch`]es with [`crate::TrackedTangible`]s and
 /// to pick UI colors.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct PatternId(pub u32);
 
 impl PatternId {

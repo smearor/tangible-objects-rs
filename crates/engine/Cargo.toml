@@ -13,3 +13,4 @@ description = "Headless detection engine for tangible objects on multitouch surf
 evdev.workspace = true
 tangible-objects-model.workspace = true
 thiserror.workspace = true
+tracing.workspace = true

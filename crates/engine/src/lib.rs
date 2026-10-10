@@ -13,6 +13,7 @@ pub use device::DeviceEntry;
 pub use device::TouchDevice;
 pub use engine::Engine;
 pub use engine::EngineError;
+pub use engine::EngineEvent;
 pub use engine::EngineFrame;
 pub use engine::TouchState;
 pub use engine::Tracker;

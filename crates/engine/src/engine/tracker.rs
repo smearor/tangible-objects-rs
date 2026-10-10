@@ -1,8 +1,12 @@
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RotationRad;
+use tangible_objects_model::TangibleId;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
+use tracing::debug;
+
+use super::EngineEvent;
 
 /// Frame-to-frame tracker using nearest-neighbor association and EMA
 /// smoothing.
@@ -16,6 +20,7 @@ pub struct Tracker {
     ema_alpha: f64,
     max_center_distance: Millimeters,
     max_frames_without_match: u32,
+    next_tangible_id: u32,
 }
 
 impl Tracker {
@@ -34,12 +39,15 @@ impl Tracker {
             ema_alpha,
             max_center_distance: max_center_distance.into(),
             max_frames_without_match,
+            next_tangible_id: 0,
         }
     }
 
     /// Processes the matches of a new frame: associate, update, create,
-    /// expire.
-    pub fn update(&mut self, matches: &[PatternMatch]) {
+    /// expire. Returns the domain events produced by this update
+    /// (`TangibleMoved`/`TangibleAdded`/`TangibleRemoved`).
+    pub fn update(&mut self, matches: &[PatternMatch]) -> Vec<EngineEvent> {
+        let mut events = Vec::new();
         for tangible in &mut self.tracked {
             tangible.frames_since_match += 1;
         }
@@ -77,25 +85,39 @@ impl Tracker {
                     self.ema_alpha,
                 ));
                 tangible.frames_since_match = 0;
+                events.push(EngineEvent::TangibleMoved(tangible.clone()));
             }
         }
 
         // Create new tracked tangibles for unmatched matches.
         for (match_index, pattern_match) in matches.iter().enumerate() {
             if !used_matches[match_index] {
-                self.tracked.push(TrackedTangible {
+                let tangible = TrackedTangible {
+                    id: TangibleId::new(self.next_tangible_id),
                     pattern_id: pattern_match.pattern_id,
                     pattern_name: pattern_match.pattern_name.clone(),
                     center: pattern_match.center,
                     rotation_rad: pattern_match.rotation_rad,
                     frames_since_match: 0,
-                });
+                };
+                self.next_tangible_id += 1;
+                debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
+                self.tracked.push(tangible.clone());
+                events.push(EngineEvent::TangibleAdded(tangible));
             }
         }
 
         // Remove stale tracked tangibles.
-        self.tracked
-            .retain(|t| t.frames_since_match <= self.max_frames_without_match);
+        let (kept, removed): (Vec<_>, Vec<_>) = self
+            .tracked
+            .drain(..)
+            .partition(|t| t.frames_since_match <= self.max_frames_without_match);
+        self.tracked = kept;
+        for tangible in removed {
+            debug!(pattern = %tangible.pattern_name, "tangible removed");
+            events.push(EngineEvent::TangibleRemoved(tangible));
+        }
+        events
     }
 
     /// All currently tracked tangibles.
@@ -125,6 +147,7 @@ fn ema_angle(old: f64, new: f64, alpha: f64) -> f64 {
 mod tests {
     use super::Tracker;
     use super::ema_angle;
+    use crate::EngineEvent;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
     use tangible_objects_model::RotationRad;
@@ -143,9 +166,10 @@ mod tests {
     #[test]
     fn new_match_creates_tracked_tangible() {
         let mut tracker = Tracker::new(0.4, 200.0, 30);
-        tracker.update(&[pattern_match(1, 10.0, 20.0)]);
+        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)]);
         assert_eq!(tracker.active().len(), 1);
         assert_eq!(tracker.active()[0].pattern_id, PatternId::new(1));
+        assert!(matches!(events.as_slice(), [EngineEvent::TangibleAdded(_)]));
     }
 
     #[test]
@@ -171,8 +195,12 @@ mod tests {
         tracker.update(&[pattern_match(1, 10.0, 20.0)]);
         tracker.update(&[]);
         tracker.update(&[]);
-        tracker.update(&[]);
+        let events = tracker.update(&[]);
         assert!(tracker.active().is_empty());
+        assert!(matches!(
+            events.as_slice(),
+            [EngineEvent::TangibleRemoved(_)]
+        ));
     }
 
     #[test]

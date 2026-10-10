@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_engine::Engine;
+use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EvtestReplay;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_model::Millimeters;
@@ -61,42 +62,48 @@ pub fn run_replay(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
         );
     }
 
-    let mut frame: u64 = 0;
+    let mut frame_no: u64 = 0;
     let mut detected_frames: u64 = 0;
-    let mut prev_count = 0usize;
 
     while let Some(event) = replay.next_event() {
-        if engine.process(&event).is_some() {
-            let active = engine.tracked();
-            let count = active.len();
-
-            if count != prev_count {
-                if count > prev_count {
-                    println!("[Frame {frame}] Figur erkannt ({count} aktiv)");
-                } else if count == 0 {
-                    println!("[Frame {frame}] Figur verloren");
+        let Some(frame) = engine.process(&event) else {
+            continue;
+        };
+        let added = frame
+            .events
+            .iter()
+            .any(|e| matches!(e, EngineEvent::TangibleAdded(_)));
+        for engine_event in &frame.events {
+            match engine_event {
+                EngineEvent::TangibleAdded(_) => println!(
+                    "[Frame {frame_no}] Figur erkannt ({} aktiv)",
+                    engine.tracked().len()
+                ),
+                EngineEvent::TangibleRemoved(_) if engine.tracked().is_empty() => {
+                    println!("[Frame {frame_no}] Figur verloren");
                 }
+                _ => {}
             }
-
-            if count > 0 {
-                detected_frames += 1;
-                if detected_frames.is_multiple_of(50) || count != prev_count {
-                    for t in active {
-                        let deg = t.rotation_rad.to_degrees();
-                        println!(
-                            "  {} (id={}): center=({:.0}, {:.0}) rotation={:.1}°",
-                            t.pattern_name, t.pattern_id, t.center.x, t.center.y, deg
-                        );
-                    }
-                }
-            }
-            prev_count = count;
-            frame += 1;
         }
+
+        let active = engine.tracked();
+        if !active.is_empty() {
+            detected_frames += 1;
+            if detected_frames.is_multiple_of(50) || added {
+                for t in active {
+                    let deg = t.rotation_rad.to_degrees();
+                    println!(
+                        "  {} (id={}): center=({:.0}, {:.0}) rotation={:.1}°",
+                        t.pattern_name, t.pattern_id, t.center.x, t.center.y, deg
+                    );
+                }
+            }
+        }
+        frame_no += 1;
     }
 
     println!("\n--- Zusammenfassung ---");
-    println!("Frames gesamt: {frame}");
+    println!("Frames gesamt: {frame_no}");
     println!("Frames mit Erkennung: {detected_frames}");
     Ok(())
 }

@@ -1,3 +1,4 @@
+use super::TangibleId;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::RotationRad;
@@ -7,8 +8,11 @@ use crate::Vec2;
 ///
 /// Produced by the engine's `Tracker`; position and rotation are
 /// exponentially smoothed over consecutive frames.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TrackedTangible {
+    /// Stable ID of this tangible, assigned by the `Tracker` on creation.
+    /// Distinguishes tangibles matching the same pattern.
+    pub id: TangibleId,
     /// ID of the matched pattern.
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.

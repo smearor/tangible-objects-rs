@@ -204,4 +204,47 @@ mod tests {
         assert!(parse_evtest_line("Input device name: \"Touchscreen\"").is_none());
         assert!(parse_evtest_line("").is_none());
     }
+
+    /// Regression: replaying the recorded fixtures must produce the same
+    /// frame and detection counts as the reference implementation.
+    #[test]
+    fn fixture_replays_produce_stable_detections() {
+        use std::path::PathBuf;
+
+        use super::EvtestReplay;
+        use crate::Engine;
+        use tangible_objects_model::ProfileFile;
+
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let patterns = ProfileFile::load_dir(&root.join("profiles")).into_patterns();
+        assert!(!patterns.is_empty(), "regression profiles missing");
+
+        // (fixture, expected total frames, expected frames with tracked tangibles)
+        let cases: [(&str, u64, u64); 5] = [
+            ("figure-tracking.txt", 0, 0),
+            ("figure-tracking-2.txt", 0, 0),
+            ("figure-tracking-3.txt", 692, 0),
+            ("figure-tracking-4.txt", 595, 583),
+            ("figure-tracking-5.txt", 572, 524),
+        ];
+        for (name, want_frames, want_detected) in cases {
+            let mut replay = EvtestReplay::open(&root.join("research").join(name))
+                .unwrap_or_else(|e| panic!("open {name}: {e}"));
+            let mut engine = Engine::new(patterns.clone());
+            if let Some(calibration) = replay.calibration() {
+                engine.set_calibration(calibration);
+            }
+            let mut frames = 0u64;
+            let mut detected = 0u64;
+            while let Some(event) = replay.next_event() {
+                if engine.process(&event).is_some() {
+                    frames += 1;
+                    if !engine.tracked().is_empty() {
+                        detected += 1;
+                    }
+                }
+            }
+            assert_eq!((frames, detected), (want_frames, want_detected), "{name}");
+        }
+    }
 }

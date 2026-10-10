@@ -4,7 +4,7 @@ use crate::Millimeters;
 use crate::Vec2;
 
 /// A single active multitouch contact tracked by its slot.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TouchPoint {
     /// Multitouch slot number the contact is assigned to.
     pub slot: TouchPointSlot,

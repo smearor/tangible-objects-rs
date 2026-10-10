@@ -5,7 +5,9 @@ use tangible_objects_model::RawEvent;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
+use tracing::debug;
 
+use super::EngineEvent;
 use super::EngineFrame;
 use super::TouchState;
 use super::Tracker;
@@ -24,12 +26,14 @@ pub const DEFAULT_MAX_FRAMES_WITHOUT_MATCH: u32 = 30;
 /// frame-to-frame tracking.
 ///
 /// Feed [`RawEvent`]s via [`Engine::process`]; every `SYN_REPORT` produces an
-/// [`EngineFrame`] with the frame's matches and updates the tracker.
+/// [`EngineFrame`] with the frame's matches, touches and domain events, and
+/// updates the tracker.
 pub struct Engine {
     touch_state: TouchState,
     patterns: Vec<TangiblePattern>,
     tracker: Tracker,
     calibration: Option<Calibration>,
+    prev_touches: Vec<TouchPoint>,
 }
 
 impl Engine {
@@ -45,6 +49,7 @@ impl Engine {
                 DEFAULT_MAX_FRAMES_WITHOUT_MATCH,
             ),
             calibration: None,
+            prev_touches: Vec::new(),
         }
     }
 
@@ -92,24 +97,38 @@ impl Engine {
 
     /// Feeds one raw event into the engine.
     ///
-    /// Returns `Some` with the frame's matches on each `SYN_REPORT`,
-    /// `None` for all other events.
+    /// Returns `Some` with the frame's matches, touches and domain events on
+    /// each `SYN_REPORT`, `None` for all other events.
     pub fn process(&mut self, event: &RawEvent) -> Option<EngineFrame> {
         self.touch_state.process(event);
-        if event.is_syn_report() {
-            let touches = self.touch_state.active_touches();
-            let matches = matching::find_matches(&touches, &self.patterns);
-            self.tracker.update(&matches);
-            Some(EngineFrame { matches })
-        } else {
-            None
+        if !event.is_syn_report() {
+            return None;
         }
+        let mut touches = self.touch_state.active_touches();
+        touches.sort_by_key(|touch| touch.slot);
+        let matches = matching::find_matches(&touches, &self.patterns);
+        let mut events = self.tracker.update(&matches);
+        if touches != self.prev_touches {
+            self.prev_touches.clone_from(&touches);
+            events.push(EngineEvent::TouchPointsUpdated);
+        }
+        debug!(
+            matches = matches.len(),
+            tracked = self.tracker.active().len(),
+            "frame processed"
+        );
+        Some(EngineFrame {
+            matches,
+            touches,
+            events,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Engine;
+    use crate::EngineEvent;
     use tangible_objects_model::ABS_MT_POSITION_X;
     use tangible_objects_model::ABS_MT_POSITION_Y;
     use tangible_objects_model::ABS_MT_SLOT;
@@ -159,9 +178,21 @@ mod tests {
         contact(&mut engine, 2, 3, 0, 50);
         let frame = engine.process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0));
 
-        let matches = frame.map(|f| f.matches).unwrap_or_default();
-        assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0].pattern_name, "triangle");
+        let frame = frame.expect("frame expected on SYN_REPORT");
+        assert_eq!(frame.matches.len(), 1);
+        assert_eq!(frame.matches[0].pattern_name, "triangle");
+        assert!(
+            frame
+                .events
+                .iter()
+                .any(|e| matches!(e, EngineEvent::TangibleAdded(_)))
+        );
+        assert!(
+            frame
+                .events
+                .iter()
+                .any(|e| matches!(e, EngineEvent::TouchPointsUpdated))
+        );
         assert_eq!(engine.tracked().len(), 1);
     }
 }
