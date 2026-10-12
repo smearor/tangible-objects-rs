@@ -1,0 +1,21 @@
+[package]
+name = "tangible-objects-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "MCP server exposing tangible detection state as tools and resources."
+
+[dependencies]
+axum.workspace = true
+rmcp.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tangible-objects-model.workspace = true
+tangible-objects-runtime.workspace = true
+tokio.workspace = true
+tracing.workspace = true

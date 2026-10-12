@@ -1,0 +1,25 @@
+[package]
+name = "tangible-objects-graphql"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "GraphQL interface for tangible object detection state and events."
+
+[dependencies]
+async-graphql.workspace = true
+async-graphql-axum.workspace = true
+axum.workspace = true
+futures-core.workspace = true
+tangible-objects-engine.workspace = true
+tangible-objects-model.workspace = true
+tangible-objects-runtime.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

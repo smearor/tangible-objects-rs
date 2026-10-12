@@ -9,12 +9,21 @@ mod modes;
 #[cfg(feature = "gui")]
 mod gtk_app;
 
+use std::net::SocketAddr;
 use std::path::Path;
 
+use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_model::Millimeters;
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
+        )
+        .init();
+
     let args: Vec<String> = std::env::args().skip(1).collect();
 
     let mut mode: Option<&str> = None;
@@ -23,6 +32,9 @@ fn main() -> Result<()> {
     let mut profiles_dir: Option<String> = None;
     let mut name: Option<String> = None;
     let mut tolerance: Option<f64> = None;
+    let mut graphql_listen: Option<String> = None;
+    let mut mcp_listen: Option<String> = None;
+    let mut dbus = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -56,6 +68,17 @@ fn main() -> Result<()> {
                 tolerance = args.get(i + 1).and_then(|s| s.parse().ok());
                 i += 1;
             }
+            "--graphql-listen" => {
+                graphql_listen = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--mcp-listen" => {
+                mcp_listen = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--dbus" => {
+                dbus = true;
+            }
             "--help" | "-h" => {
                 mode = Some("--help");
             }
@@ -81,7 +104,20 @@ fn main() -> Result<()> {
                 miette::miette!("Usage: tangible-objects --live --device /dev/input/eventX")
             })?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
-            modes::run_live(Path::new(&path), &patterns)
+            let graphql_addr = graphql_listen
+                .map(|a| a.parse::<SocketAddr>())
+                .transpose()
+                .into_diagnostic()?;
+            let mcp_addr = mcp_listen
+                .map(|a| a.parse::<SocketAddr>())
+                .transpose()
+                .into_diagnostic()?;
+            let interfaces = modes::Interfaces {
+                graphql_addr,
+                dbus,
+                mcp_addr,
+            };
+            modes::run_live(Path::new(&path), &patterns, interfaces)
         }
         "--train" => {
             let dev = device.ok_or_else(|| {
@@ -136,6 +172,9 @@ fn print_help() {
     eprintln!("  --profiles <dir>   Profil-Verzeichnis (Standard: profiles/)");
     eprintln!("  --tolerance <mm>   Toleranz für Musterabgleich (Standard: 30.0)");
     eprintln!("  --name <name>      Figurenname (für --train)");
+    eprintln!("  --graphql-listen <addr>  GraphQL-Endpunkt im --live Modus (z.B. 127.0.0.1:8080)");
+    eprintln!("  --mcp-listen <addr>      MCP-HTTP-Endpunkt im --live Modus (z.B. 127.0.0.1:8090)");
+    eprintln!("  --dbus               D-Bus-Interface im --live Modus (Session-Bus)");
     eprintln!();
     eprintln!("Beispiel:");
     eprintln!("  tangible-objects --replay --file research/figure-tracking-4.txt");

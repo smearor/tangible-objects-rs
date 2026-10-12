@@ -42,6 +42,7 @@ pub use set::SetAction;
 pub use set::SetTracker;
 pub use set::TangibleSet;
 pub use set::TangibleSetId;
+pub use set::TangibleSetState;
 pub use tangible::TangibleId;
 pub use tangible::TrackedTangible;
 pub use touch_point::TouchPoint;

@@ -1,3 +1,5 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Display;
 
 /// Stable identifier of a tangible instance.
@@ -5,7 +7,8 @@ use std::fmt::Display;
 /// Assigned by the engine's `Tracker` when a tangible is created
 /// (`TangibleAdded`); distinguishes tangibles matching the same pattern and
 /// survives across frames as long as the tangible is associated.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct TangibleId(pub u32);
 
 impl TangibleId {

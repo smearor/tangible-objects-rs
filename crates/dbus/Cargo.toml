@@ -1,0 +1,20 @@
+[package]
+name = "tangible-objects-dbus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "D-Bus interface for tangible object detection state and signals."
+
+[dependencies]
+serde.workspace = true
+tangible-objects-engine.workspace = true
+tangible-objects-model.workspace = true
+tangible-objects-runtime.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+zbus.workspace = true
+zvariant.workspace = true

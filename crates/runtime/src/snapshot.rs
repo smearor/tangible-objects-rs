@@ -1,0 +1,18 @@
+use tangible_objects_model::TangibleSetId;
+use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TrackedTangible;
+
+/// Point-in-time snapshot of the detection state.
+///
+/// Distributed via a `watch` channel: interfaces read the latest snapshot
+/// for query-style requests (`list_tangibles`) without replaying the event
+/// stream.
+#[derive(Debug, Clone, Default)]
+pub struct EngineSnapshot {
+    /// Currently tracked tangibles (EMA-smoothed poses).
+    pub tracked: Vec<TrackedTangible>,
+    /// Active touch points of the last processed frame.
+    pub touches: Vec<TouchPoint>,
+    /// IDs of the currently active Tangible Object Sets.
+    pub active_sets: Vec<TangibleSetId>,
+}

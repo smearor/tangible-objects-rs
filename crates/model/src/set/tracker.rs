@@ -44,6 +44,15 @@ impl SetTracker {
         Self { sets, states }
     }
 
+    /// IDs of all currently active sets.
+    pub fn active_set_ids(&self) -> Vec<TangibleSetId> {
+        self.states
+            .iter()
+            .filter(|(_, state)| state.active)
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
     /// Feeds the current set of tracked tangibles and returns the set
     /// actions that occurred since the previous update.
     ///

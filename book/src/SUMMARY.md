@@ -1,2 +1,3 @@
 # Summary
 
+- [Architecture](architecture.md)

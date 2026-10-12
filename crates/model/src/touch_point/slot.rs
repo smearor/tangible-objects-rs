@@ -1,10 +1,13 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Display;
 
 /// Multitouch slot number (protocol type B).
 ///
 /// The kernel assigns each active contact a slot; the slot index identifies
 /// the contact across subsequent `ABS_MT` events until it is released.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct TouchPointSlot(pub u32);
 
 impl TouchPointSlot {

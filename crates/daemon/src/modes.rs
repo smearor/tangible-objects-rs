@@ -1,6 +1,7 @@
 //! Daemon modes: replay, live detection, training and device listing.
 
 use std::io::Write;
+use std::net::SocketAddr;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::path::PathBuf;
@@ -15,6 +16,10 @@ use tangible_objects_model::Millimeters;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::Vec2;
+use tangible_objects_runtime::ControlCommand;
+use tangible_objects_runtime::EngineRuntime;
+use tangible_objects_runtime::ProfileInfo;
+use tracing::warn;
 
 /// Loads figure patterns from a profile directory (default: `profiles/`).
 pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
@@ -108,8 +113,22 @@ pub fn run_replay(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
     Ok(())
 }
 
+/// Optional interface endpoints for the live mode.
+#[derive(Debug, Default)]
+pub struct Interfaces {
+    /// GraphQL listen address, if the HTTP/WebSocket API is enabled.
+    pub graphql_addr: Option<SocketAddr>,
+    /// Whether to serve the D-Bus session-bus interface.
+    pub dbus: bool,
+    /// MCP streamable-HTTP listen address, if enabled.
+    pub mcp_addr: Option<SocketAddr>,
+}
+
 /// Live detection loop on a real evdev device.
-pub fn run_live(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
+///
+/// `interfaces` selects which Phase-2 interfaces are served on dedicated
+/// threads (GraphQL HTTP/WebSocket, D-Bus session bus).
+pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interfaces) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
     println!("Live-Modus: {}", path.display());
@@ -131,6 +150,27 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
     }
     println!("Ctrl+C zum Beenden\n");
 
+    // Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
+    // No set definitions are loaded yet — the set tracker idles.
+    let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
+    let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    if let Some(addr) = interfaces.graphql_addr {
+        tangible_objects_graphql::spawn(handle.clone(), addr);
+        println!("GraphQL: http://{addr}/ (Endpoint: /graphql)");
+    }
+    if interfaces.dbus {
+        tangible_objects_dbus::spawn(handle.clone());
+        println!(
+            "D-Bus: {} ({})",
+            tangible_objects_dbus::BUS_NAME,
+            tangible_objects_dbus::OBJECT_PATH
+        );
+    }
+    if let Some(addr) = interfaces.mcp_addr {
+        tangible_objects_mcp::spawn_http(handle.clone(), addr);
+        println!("MCP: http://{addr}/mcp");
+    }
+
     let mut frame: u64 = 0;
 
     loop {
@@ -143,7 +183,19 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
         };
 
         for raw in events {
-            if engine.process(&raw).is_some() {
+            if let Some(engine_frame) = engine.process(&raw) {
+                runtime.publish(&engine_frame, engine.tracked());
+                while let Ok(command) = runtime.try_recv_command() {
+                    match command {
+                        ControlCommand::SetFilterMode(enabled) => {
+                            warn!(enabled, "filter mode command — implemented in Phase 4");
+                        }
+                        ControlCommand::TrainProfile(name) => {
+                            warn!(name, "remote training command — not yet wired");
+                        }
+                    }
+                }
+
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
                 println!(

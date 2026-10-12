@@ -1,3 +1,5 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::marker::PhantomData;
 
 /// A 2D point or vector tagged with its coordinate unit `U`.
@@ -6,12 +8,15 @@ use std::marker::PhantomData;
 /// (`Vec2<Millimeters>`), raw device units (`Vec2<RawAxisValue>`) and screen
 /// pixels (`Vec2<Pixels>`) so they cannot be mixed up. Components stay plain
 /// `f64`; the unit only labels which coordinate space the point lives in.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// Serializes as a flat `{"x": .., "y": ..}` map; the unit marker is skipped.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Vec2<U> {
     /// X coordinate in the unit `U`.
     pub x: f64,
     /// Y coordinate in the unit `U`.
     pub y: f64,
+    /// Phantom marker tagging the coordinate unit; not serialized.
+    #[serde(skip)]
     unit: PhantomData<U>,
 }
 

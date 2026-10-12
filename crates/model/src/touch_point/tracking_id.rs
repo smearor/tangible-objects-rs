@@ -1,10 +1,13 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Display;
 
 /// Kernel-assigned identifier of a touch contact's lifetime.
 ///
 /// Reported via `ABS_MT_TRACKING_ID`; the sentinel [`TrackingId::LIFT_OFF`]
 /// marks the release of a contact and frees its slot.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct TrackingId(pub i32);
 
 impl TrackingId {

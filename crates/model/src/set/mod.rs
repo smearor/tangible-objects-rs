@@ -9,9 +9,11 @@
 mod action;
 mod definition;
 mod id;
+mod state;
 mod tracker;
 
 pub use action::SetAction;
 pub use definition::TangibleSet;
 pub use id::TangibleSetId;
+pub use state::TangibleSetState;
 pub use tracker::SetTracker;
