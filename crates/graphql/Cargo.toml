@@ -15,8 +15,8 @@ async-graphql-axum.workspace = true
 axum.workspace = true
 futures-core.workspace = true
 tangible-objects-engine.workspace = true
-tangible-objects-model.workspace = true
-tangible-objects-runtime.workspace = true
+tangible-objects-model = { workspace = true, features = ["async-graphql"] }
+tangible-objects-runtime = { workspace = true, features = ["async-graphql"] }
 tokio.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true

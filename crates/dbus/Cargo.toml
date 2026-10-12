@@ -10,11 +10,9 @@ homepage.workspace = true
 description = "D-Bus interface for tangible object detection state and signals."
 
 [dependencies]
-serde.workspace = true
 tangible-objects-engine.workspace = true
-tangible-objects-model.workspace = true
-tangible-objects-runtime.workspace = true
+tangible-objects-model = { workspace = true, features = ["zbus"] }
+tangible-objects-runtime = { workspace = true, features = ["zbus"] }
 tokio.workspace = true
 tracing.workspace = true
 zbus.workspace = true
-zvariant.workspace = true

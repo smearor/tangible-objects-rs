@@ -9,7 +9,13 @@ repository.workspace = true
 homepage.workspace = true
 description = "Domain model for the tangible-objects platform: touch points, patterns, profiles."
 
+[features]
+async-graphql = ["dep:async-graphql"]
+zbus = ["dep:zvariant"]
+
 [dependencies]
+async-graphql = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
 toml.workspace = true
+zvariant = { workspace = true, optional = true }

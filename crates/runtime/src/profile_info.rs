@@ -8,6 +8,7 @@ use tangible_objects_model::TangiblePattern;
 /// Carried by [`crate::EngineHandle`]; profiles are static for a session and
 /// therefore live on the handle rather than in the per-frame snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 pub struct ProfileInfo {
     /// Runtime pattern ID assigned when the profile was loaded.
     pub pattern_id: PatternId,
@@ -15,6 +16,11 @@ pub struct ProfileInfo {
     pub name: String,
     /// Number of contact pins the figure must have.
     pub num_points: u32,
+}
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for ProfileInfo {
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(usu)");
 }
 
 impl From<&TangiblePattern> for ProfileInfo {

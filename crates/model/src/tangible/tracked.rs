@@ -15,6 +15,8 @@ use serde::ser::SerializeStruct;
 /// center_y, rotation_deg}` — millimeters and degrees, without the internal
 /// `frames_since_match` hysteresis counter.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "async-graphql", graphql(complex))]
 pub struct TrackedTangible {
     /// Stable ID of this tangible, assigned by the `Tracker` on creation.
     /// Distinguishes tangibles matching the same pattern.
@@ -28,7 +30,9 @@ pub struct TrackedTangible {
     /// Smoothed orientation in radians.
     pub rotation_rad: RotationRad,
     /// Number of consecutive frames without a match for this tangible.
-    /// Used for expiry hysteresis.
+    /// Used for expiry hysteresis; internal bookkeeping, not exposed on
+    /// interfaces.
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub frames_since_match: u32,
 }
 
@@ -43,4 +47,18 @@ impl Serialize for TrackedTangible {
         state.serialize_field("rotation_deg", &self.rotation_rad.to_degrees())?;
         state.end()
     }
+}
+
+#[cfg(feature = "async-graphql")]
+#[async_graphql::ComplexObject]
+impl TrackedTangible {
+    /// Smoothed orientation in degrees.
+    async fn rotation_deg(&self) -> f64 {
+        self.rotation_rad.to_degrees()
+    }
+}
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for TrackedTangible {
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(uusddd)");
 }

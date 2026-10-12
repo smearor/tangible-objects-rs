@@ -9,7 +9,14 @@ use std::marker::PhantomData;
 /// pixels (`Vec2<Pixels>`) so they cannot be mixed up. Components stay plain
 /// `f64`; the unit only labels which coordinate space the point lives in.
 /// Serializes as a flat `{"x": .., "y": ..}` map; the unit marker is skipped.
+/// With the `async-graphql` feature, `Vec2<Millimeters>` is exposed as the
+/// GraphQL object type `Point`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(
+    feature = "async-graphql",
+    graphql(concrete(name = "Point", params(crate::Millimeters)))
+)]
 pub struct Vec2<U> {
     /// X coordinate in the unit `U`.
     pub x: f64,
@@ -17,6 +24,7 @@ pub struct Vec2<U> {
     pub y: f64,
     /// Phantom marker tagging the coordinate unit; not serialized.
     #[serde(skip)]
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
     unit: PhantomData<U>,
 }
 

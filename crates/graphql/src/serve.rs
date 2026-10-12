@@ -113,7 +113,7 @@ mod tests {
         assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
         let data = result.data.into_json().expect("data as json");
-        assert_eq!(data["tangibles"][0]["id"], "7");
+        assert_eq!(data["tangibles"][0]["id"], 7);
         assert_eq!(data["tangibles"][0]["patternName"], "triangle");
         assert_eq!(data["profiles"][0]["name"], "triangle");
         assert_eq!(data["profiles"][0]["numPoints"], 3);

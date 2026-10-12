@@ -34,6 +34,14 @@ impl From<TouchPointSlot> for u32 {
     }
 }
 
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(TouchPointSlot);
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for TouchPointSlot {
+    const SIGNATURE: &'static zvariant::Signature = <u32 as zvariant::Type>::SIGNATURE;
+}
+
 impl Display for TouchPointSlot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

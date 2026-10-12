@@ -1,8 +1,12 @@
+use serde::Deserialize;
+use serde::Serialize;
+
 /// A rotation angle in radians.
 ///
 /// Wraps the plain `f64` so angles cannot be confused with distances or
 /// other scalar values flowing through the pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct RotationRad(pub f64);
 
 impl RotationRad {
@@ -33,3 +37,6 @@ impl From<RotationRad> for f64 {
         rotation.0
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(RotationRad);

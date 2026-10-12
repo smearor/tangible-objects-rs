@@ -15,12 +15,7 @@ mod schema;
 mod serve;
 
 pub use api::EventKind;
-pub use api::Point;
-pub use api::Profile;
-pub use api::SetInfo;
-pub use api::Tangible;
 pub use api::TangibleEvent;
-pub use api::TouchPoint;
 pub use schema::EngineSchema;
 pub use schema::MutationRoot;
 pub use schema::QueryRoot;

@@ -40,3 +40,11 @@ impl Display for TangibleSetId {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(TangibleSetId);
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for TangibleSetId {
+    const SIGNATURE: &'static zvariant::Signature = <u32 as zvariant::Type>::SIGNATURE;
+}

@@ -9,9 +9,15 @@ repository.workspace = true
 homepage.workspace = true
 description = "Shared runtime: event distribution, snapshots and control channel for the interface crates."
 
+[features]
+async-graphql = ["dep:async-graphql", "tangible-objects-model/async-graphql"]
+zbus = ["dep:zvariant", "tangible-objects-model/zbus"]
+
 [dependencies]
+async-graphql = { workspace = true, optional = true }
 serde.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+zvariant = { workspace = true, optional = true }

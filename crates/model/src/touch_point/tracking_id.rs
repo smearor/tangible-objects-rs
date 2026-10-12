@@ -42,6 +42,14 @@ impl From<TrackingId> for i32 {
     }
 }
 
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(TrackingId);
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for TrackingId {
+    const SIGNATURE: &'static zvariant::Signature = <i32 as zvariant::Type>::SIGNATURE;
+}
+
 impl Display for TrackingId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

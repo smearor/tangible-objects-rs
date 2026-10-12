@@ -11,6 +11,7 @@ use crate::PatternId;
 /// member remains (activation hysteresis, see `TANGIBLE_OBJECT_SET.md`).
 /// `additional` members belong to the set but never affect activation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 pub struct TangibleSet {
     /// Unique identifier of the set.
     pub id: TangibleSetId,

@@ -10,6 +10,7 @@ use serde::Serialize;
 /// Serializes flat as `{slot, tracking_id, x, y}` via `#[serde(flatten)]` on
 /// the position.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 pub struct TouchPoint {
     /// Multitouch slot number the contact is assigned to.
     pub slot: TouchPointSlot,

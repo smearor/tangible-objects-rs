@@ -1,11 +1,11 @@
+use tangible_objects_model::TangibleSetId;
+use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
+use tangible_objects_runtime::ProfileInfo;
 use zbus::fdo;
 use zbus::interface;
 use zbus::object_server::SignalEmitter;
-
-use super::Profile;
-use super::Tangible;
 
 /// D-Bus service object served at `/org/tangibleobjects/Engine`.
 ///
@@ -26,18 +26,13 @@ impl EngineService {
 #[interface(name = "org.tangibleobjects.Engine1")]
 impl EngineService {
     /// All currently tracked tangibles.
-    async fn list_tangibles(&self) -> Vec<Tangible> {
-        self.handle
-            .snapshot()
-            .tracked
-            .iter()
-            .map(Tangible::from)
-            .collect()
+    async fn list_tangibles(&self) -> Vec<TrackedTangible> {
+        self.handle.snapshot().tracked
     }
 
     /// Loaded figure profiles.
-    async fn list_profiles(&self) -> Vec<Profile> {
-        self.handle.profiles().iter().map(Profile::from).collect()
+    async fn list_profiles(&self) -> Vec<ProfileInfo> {
+        self.handle.profiles().to_vec()
     }
 
     /// Enables or disables the tangible filter mode.
@@ -60,21 +55,21 @@ impl EngineService {
     #[zbus(signal)]
     pub async fn tangible_added(
         emitter: &SignalEmitter<'_>,
-        tangible: Tangible,
+        tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 
     /// A tracked tangible's pose changed.
     #[zbus(signal)]
     pub async fn tangible_moved(
         emitter: &SignalEmitter<'_>,
-        tangible: Tangible,
+        tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 
     /// A tracked tangible expired.
     #[zbus(signal)]
     pub async fn tangible_removed(
         emitter: &SignalEmitter<'_>,
-        tangible: Tangible,
+        tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 
     /// The set of active touch points changed.
@@ -83,33 +78,36 @@ impl EngineService {
 
     /// All mandatory set members became present (TOS-ADD).
     #[zbus(signal)]
-    pub async fn set_added(emitter: &SignalEmitter<'_>, set_id: &str) -> zbus::Result<()>;
+    pub async fn set_added(emitter: &SignalEmitter<'_>, set_id: TangibleSetId) -> zbus::Result<()>;
 
     /// The last mandatory set member disappeared (TOS-REM).
     #[zbus(signal)]
-    pub async fn set_removed(emitter: &SignalEmitter<'_>, set_id: &str) -> zbus::Result<()>;
+    pub async fn set_removed(
+        emitter: &SignalEmitter<'_>,
+        set_id: TangibleSetId,
+    ) -> zbus::Result<()>;
 
     /// A member tangible appeared in an active set (TOS-OBJ-ADD).
     #[zbus(signal)]
     pub async fn object_added(
         emitter: &SignalEmitter<'_>,
-        set_id: &str,
-        tangible: Tangible,
+        set_id: TangibleSetId,
+        tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 
     /// A member tangible disappeared (TOS-OBJ-REM).
     #[zbus(signal)]
     pub async fn object_removed(
         emitter: &SignalEmitter<'_>,
-        set_id: &str,
-        tangible: Tangible,
+        set_id: TangibleSetId,
+        tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 
     /// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
     #[zbus(signal)]
     pub async fn object_moved(
         emitter: &SignalEmitter<'_>,
-        set_id: &str,
-        tangible: Tangible,
+        set_id: TangibleSetId,
+        tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 }

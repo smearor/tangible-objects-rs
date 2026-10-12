@@ -40,3 +40,11 @@ impl Display for PatternId {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(PatternId);
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for PatternId {
+    const SIGNATURE: &'static zvariant::Signature = <u32 as zvariant::Type>::SIGNATURE;
+}

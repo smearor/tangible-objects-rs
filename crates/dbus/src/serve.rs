@@ -12,7 +12,6 @@ use zbus::connection;
 use zbus::object_server::SignalEmitter;
 
 use super::EngineService;
-use super::Tangible;
 
 /// Well-known bus name of the daemon's D-Bus service.
 pub const BUS_NAME: &str = "org.tangibleobjects.Engine";
@@ -75,13 +74,13 @@ async fn emit_signal(emitter: &SignalEmitter<'_>, event: &DomainEvent) {
             EngineService::touch_points_updated(emitter).await
         }
         DomainEvent::Engine(EngineEvent::TangibleAdded(tangible)) => {
-            EngineService::tangible_added(emitter, tangible.into()).await
+            EngineService::tangible_added(emitter, tangible).await
         }
         DomainEvent::Engine(EngineEvent::TangibleMoved(tangible)) => {
-            EngineService::tangible_moved(emitter, tangible.into()).await
+            EngineService::tangible_moved(emitter, tangible).await
         }
         DomainEvent::Engine(EngineEvent::TangibleRemoved(tangible)) => {
-            EngineService::tangible_removed(emitter, tangible.into()).await
+            EngineService::tangible_removed(emitter, tangible).await
         }
         DomainEvent::Set(action) => emit_set_action(emitter, action).await,
     };
@@ -93,21 +92,16 @@ async fn emit_signal(emitter: &SignalEmitter<'_>, event: &DomainEvent) {
 /// Emits the signal for a Tangible Object Set action.
 async fn emit_set_action(emitter: &SignalEmitter<'_>, action: &SetAction) -> zbus::Result<()> {
     match action {
-        SetAction::SetAdded(set_id) => EngineService::set_added(emitter, &set_id.to_string()).await,
-        SetAction::SetRemoved(set_id) => {
-            EngineService::set_removed(emitter, &set_id.to_string()).await
-        }
+        SetAction::SetAdded(set_id) => EngineService::set_added(emitter, *set_id).await,
+        SetAction::SetRemoved(set_id) => EngineService::set_removed(emitter, *set_id).await,
         SetAction::ObjectAdded(set_id, tangible) => {
-            EngineService::object_added(emitter, &set_id.to_string(), Tangible::from(tangible))
-                .await
+            EngineService::object_added(emitter, *set_id, tangible).await
         }
         SetAction::ObjectRemoved(set_id, tangible) => {
-            EngineService::object_removed(emitter, &set_id.to_string(), Tangible::from(tangible))
-                .await
+            EngineService::object_removed(emitter, *set_id, tangible).await
         }
         SetAction::ObjectMoved(set_id, tangible) => {
-            EngineService::object_moved(emitter, &set_id.to_string(), Tangible::from(tangible))
-                .await
+            EngineService::object_moved(emitter, *set_id, tangible).await
         }
     }
 }

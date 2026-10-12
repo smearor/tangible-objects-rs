@@ -9,6 +9,7 @@ use serde::Serialize;
 /// interface-facing queries. Serializes flat as `{id, name, mandatory,
 /// additional, active}`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 pub struct TangibleSetState {
     /// The set definition; serialized inline via `#[serde(flatten)]`.
     #[serde(flatten)]
