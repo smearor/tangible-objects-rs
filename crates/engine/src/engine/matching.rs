@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use tangible_objects_model::CandidateReport;
+use tangible_objects_model::MatchScore;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TangiblePattern;
@@ -63,7 +64,7 @@ fn find_matches_inner(
             continue;
         }
 
-        let mut best: Option<(PatternMatch, Millimeters)> = None;
+        let mut best: Option<(PatternMatch, f64)> = None;
 
         for combo in combinations(&available, pattern.num_points) {
             let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
@@ -71,9 +72,12 @@ fn find_matches_inner(
             let matched = pattern.matches(&points);
             diagnostics.report(|| exact_report(pattern, &points, &combo, matched));
             if matched {
-                let error = pattern.match_error(&points);
+                // Score-based ranking (TRAINING.md 3.2): the normalized
+                // max-deviation score — equivalent to total error under a
+                // scalar tolerance, decisive under per-index tolerances.
+                let score = pattern.match_score(&points);
                 let candidate = build_match(pattern, &points, &combo, false);
-                consider(&mut best, candidate, error);
+                consider(&mut best, candidate, score);
             }
         }
 
@@ -92,8 +96,11 @@ fn find_matches_inner(
                 let result = pattern.matches_partial(&points);
                 diagnostics.report(|| partial_report(pattern, &points, &combo, result.is_some()));
                 if let Some((_ref_indices, error)) = result {
+                    // Partial candidates share the same (scalar × 1.5) scale —
+                    // ranking by error is ranking by normalized score here.
+                    let score = error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
                     let candidate = build_match(pattern, &points, &combo, true);
-                    consider(&mut best, candidate, error);
+                    consider(&mut best, candidate, score);
                 }
             }
         }
@@ -125,6 +132,12 @@ fn exact_report(
         matched,
         partial: false,
         match_error: deviations.iter().copied().sum(),
+        score: Some(MatchScore::new(pattern.score_of(&deviations))),
+        tolerances: pattern
+            .tolerances
+            .iter()
+            .map(|tol| tol.as_millimeters())
+            .collect(),
         measured_distances,
         deviations,
         tolerance: pattern.tolerance,
@@ -152,6 +165,13 @@ fn partial_report(
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .unwrap_or_else(|| (Vec::new(), Millimeters::new(0.0)));
 
+    let partial_tolerance = pattern.tolerance.as_f64() * 1.5;
+    let score = deviations
+        .iter()
+        .map(|dev| dev.as_f64() / partial_tolerance)
+        .reduce(f64::max)
+        .unwrap_or(0.0);
+
     CandidateReport {
         pattern_id: pattern.id,
         pattern_name: pattern.name.clone(),
@@ -161,6 +181,8 @@ fn partial_report(
         measured_distances,
         deviations,
         tolerance: pattern.tolerance,
+        tolerances: Vec::new(),
+        score: Some(MatchScore::new(score)),
         match_error,
     }
 }
@@ -187,15 +209,12 @@ fn build_match(
     }
 }
 
-/// Keeps the better of two candidates (lowest total error wins).
-fn consider(
-    best: &mut Option<(PatternMatch, Millimeters)>,
-    candidate: PatternMatch,
-    error: Millimeters,
-) {
+/// Keeps the better of two candidates — lowest normalized score wins
+/// (TRAINING.md 3.2 score-based ranking).
+fn consider(best: &mut Option<(PatternMatch, f64)>, candidate: PatternMatch, score: f64) {
     match best {
-        None => *best = Some((candidate, error)),
-        Some((_, best_err)) if error < *best_err => *best = Some((candidate, error)),
+        None => *best = Some((candidate, score)),
+        Some((_, best_score)) if score < *best_score => *best = Some((candidate, score)),
         _ => {}
     }
 }
@@ -314,6 +333,16 @@ mod tests {
         let matched = reports.iter().find(|report| report.matched).expect("match");
         assert_eq!(matched.touch_indices, vec![0, 1, 2]);
         assert!(matched.deviations.iter().all(|d| d.as_f64() <= 5.0));
+        // Score-based matching: every report carries its normalized score;
+        // matched candidates score <= 1.0, rejected ones above.
+        assert!(reports.iter().all(|report| report.score.is_some()));
+        assert!(matched.score.is_some_and(|s| s.as_f64() <= 1.0));
+        assert!(
+            reports
+                .iter()
+                .filter(|report| !report.matched)
+                .all(|report| report.score.is_some_and(|s| s.as_f64() > 1.0))
+        );
     }
 
     #[test]

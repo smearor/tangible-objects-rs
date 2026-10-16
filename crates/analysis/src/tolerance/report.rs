@@ -75,7 +75,7 @@ impl ToleranceReport {
             .filter_map(|(pattern_id, per_index)| {
                 let suggested_tolerances: Vec<PatternTolerance> = per_index
                     .iter()
-                    .filter_map(|samples| Percentiles::of(samples.iter().map(|m| m.as_f64())))
+                    .filter_map(|samples| Percentiles::of(samples.iter().copied()))
                     .map(|stats| PatternTolerance::new((stats.p99 * safety_factor).max(0.1)))
                     .collect();
                 if suggested_tolerances.is_empty() {

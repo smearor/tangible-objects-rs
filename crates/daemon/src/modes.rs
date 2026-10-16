@@ -703,6 +703,28 @@ pub fn run_train(
     Ok(())
 }
 
+/// Labeled dataset export of a `.jsonl` recording (TRAINING.md 3.3).
+///
+/// Writes `<stem>.dataset.csv` next to the recording — one CSV row per
+/// candidate of every labeled frame (normalized deviation features +
+/// ground-truth target) for external ML tooling.
+pub fn run_export_dataset(path: &Path) -> Result<()> {
+    let recording = tangible_objects_analysis::Recording::load(path).into_diagnostic()?;
+    let out = path.with_extension("dataset.jsonl");
+    let dataset = tangible_objects_analysis::Dataset::of(&recording);
+    dataset.write_jsonl(&out).into_diagnostic()?;
+    println!(
+        "Dataset: {} ({} rows, {} features)",
+        out.display(),
+        dataset.rows.len(),
+        dataset.feature_width
+    );
+    if dataset.rows.is_empty() {
+        println!("  (keine gelabelten Frames — mit --record-label aufzeichnen)");
+    }
+    Ok(())
+}
+
 /// Offline analysis of a `.jsonl` recording (TRAINING.md phase 2).
 ///
 /// Prints utilization, tolerance suggestions, flappy-contact metrics and the
@@ -715,11 +737,13 @@ pub fn run_analyze(path: &Path) -> Result<()> {
         recording.frames().len()
     );
     print!(
-        "{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}",
         tangible_objects_analysis::UtilizationReport::analyze(&recording),
         tangible_objects_analysis::ToleranceReport::analyze(&recording),
         tangible_objects_analysis::FlappyReport::analyze(&recording),
         tangible_objects_analysis::CollisionReport::analyze(&recording),
+        tangible_objects_analysis::ScoringReport::analyze(&recording),
+        tangible_objects_analysis::MlReport::analyze(&recording),
     );
     Ok(())
 }

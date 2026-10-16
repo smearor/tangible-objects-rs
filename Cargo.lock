@@ -1920,6 +1920,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-jsonlines"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "013e069239d98648ea43a9c01845b381445e88de08b5a895ef9302e3bffde03d"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2208,6 +2218,8 @@ dependencies = [
 name = "tangible-objects-analysis"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde-jsonlines",
  "serde_json",
  "tangible-objects-model",
  "thiserror 2.0.21",

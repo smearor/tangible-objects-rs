@@ -23,11 +23,12 @@ pub struct Percentiles {
 impl Percentiles {
     /// Computes percentiles over `samples`; `None` for an empty sample.
     ///
-    /// Takes an iterator so callers can feed newtyped measurements directly —
-    /// e.g. `samples.iter().map(|m| m.as_f64())` — without an intermediate
-    /// collection.
-    pub fn of(samples: impl Iterator<Item = f64>) -> Option<Self> {
-        let mut sorted: Vec<f64> = samples.collect();
+    /// Accepts any `Into<f64>` item — newtyped measurements (`Millimeters`,
+    /// `MatchScore`) feed directly (`samples.iter().copied()`), the unit
+    /// crosses only at this computation boundary where stats are
+    /// dimensionless.
+    pub fn of<T: Into<f64>>(samples: impl Iterator<Item = T>) -> Option<Self> {
+        let mut sorted: Vec<f64> = samples.map(Into::into).collect();
         if sorted.is_empty() {
             return None;
         }
@@ -51,7 +52,7 @@ mod tests {
 
     #[test]
     fn empty_sample_is_none() {
-        assert!(Percentiles::of(std::iter::empty()).is_none());
+        assert!(Percentiles::of(std::iter::empty::<f64>()).is_none());
     }
 
     #[test]

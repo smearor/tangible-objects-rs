@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
+use std::ops::Add;
 use std::ops::AddAssign;
 
 /// A count of frames — a cardinality, not an ordinal.
@@ -39,6 +40,15 @@ impl From<usize> for FrameCount {
 impl From<FrameCount> for u64 {
     fn from(count: FrameCount) -> Self {
         count.0
+    }
+}
+
+impl Add<FrameCount> for FrameCount {
+    type Output = FrameCount;
+
+    /// The sum of two counts is a count.
+    fn add(self, rhs: FrameCount) -> FrameCount {
+        FrameCount(self.0 + rhs.0)
     }
 }
 

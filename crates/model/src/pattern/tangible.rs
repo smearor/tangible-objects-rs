@@ -21,6 +21,11 @@ pub struct TangiblePattern {
     pub sorted_distances: Vec<Millimeters>,
     /// Maximum allowed deviation per distance during matching.
     pub tolerance: PatternTolerance,
+    /// Optional per-distance tolerances, parallel to `sorted_distances`.
+    /// When empty (or length-mismatched), the scalar `tolerance` applies to
+    /// every index — the recorded `p99` suggestions from the analysis crate
+    /// are written here.
+    pub tolerances: Vec<PatternTolerance>,
     /// Original reference point positions, if stored in the profile.
     /// Required for partial matching when one contact pin is missing.
     pub ref_points: Option<Vec<Vec2<Millimeters>>>,
@@ -40,11 +45,25 @@ impl TangiblePattern {
             num_points: points.len(),
             sorted_distances: sorted_pairwise_distances(points),
             tolerance: tolerance.into(),
+            tolerances: Vec::new(),
             ref_points: Some(points.to_vec()),
         }
     }
 
+    /// The effective tolerance for distance index `i`: the per-index value
+    /// when `tolerances` is configured, else the scalar `tolerance`.
+    pub fn tolerance_at(&self, index: usize) -> PatternTolerance {
+        self.tolerances
+            .get(index)
+            .copied()
+            .unwrap_or(self.tolerance)
+    }
+
     /// Checks whether a set of measured points matches this pattern exactly.
+    ///
+    /// Each deviation is compared against its per-index tolerance
+    /// ([`Self::tolerance_at`]); the scalar `tolerance` is the fallback when
+    /// no `tolerances` vector is configured.
     pub fn matches(&self, points: &[Vec2<Millimeters>]) -> bool {
         if points.len() != self.num_points {
             return false;
@@ -54,7 +73,33 @@ impl TangiblePattern {
             && measured
                 .iter()
                 .zip(self.sorted_distances.iter())
-                .all(|(m, t)| (*m - *t).abs() <= self.tolerance.0)
+                .enumerate()
+                .all(|(i, (m, t))| (*m - *t).abs() <= self.tolerance_at(i).as_millimeters())
+    }
+
+    /// Normalized deviation score of a measured fingerprint: the largest
+    /// deviation-to-tolerance ratio across all distance indices.
+    ///
+    /// `score <= 1.0` is equivalent to [`Self::matches`] on the same point
+    /// set — but the score additionally ranks candidates (lower is closer)
+    /// and quantifies near-misses, which the score-based matcher and the
+    /// offline analysis use.
+    pub fn match_score(&self, points: &[Vec2<Millimeters>]) -> f64 {
+        self.score_of(&Self::deviations(
+            &Self::distances_of(points),
+            &self.sorted_distances,
+        ))
+    }
+
+    /// Score of an already-computed deviation vector — `max_i dev[i] /
+    /// tolerance_at(i)`; 0.0 for empty or length-mismatched input.
+    pub fn score_of(&self, deviations: &[Millimeters]) -> f64 {
+        deviations
+            .iter()
+            .enumerate()
+            .map(|(i, dev)| dev.as_f64() / self.tolerance_at(i).as_f64())
+            .reduce(f64::max)
+            .unwrap_or(0.0)
     }
 
     /// Total absolute deviation across all distances (lower is better).
@@ -109,7 +154,9 @@ impl TangiblePattern {
     /// Partial match: tests whether `points` (`num_points - 1` contacts) fit a
     /// subset of the reference points with one pin missing (e.g. a tilting
     /// object). Every possibility of dropping one reference point is tried.
-    /// The tolerance is raised by 50% to account for the higher uncertainty.
+    /// The scalar tolerance is raised by 50% to account for the higher
+    /// uncertainty — per-index `tolerances` cannot apply here because
+    /// dropping a pin re-indexes the distance fingerprint.
     ///
     /// Returns the matched reference indices and the total error.
     pub fn matches_partial(
@@ -219,6 +266,65 @@ mod tests {
         ];
         let pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
         assert!(pattern.matches_partial(&square[..3]).is_some());
+    }
+
+    #[test]
+    fn per_index_tolerances_refine_scalar() {
+        // Fingerprint [50, 50, ~70.7]; indices 1–2 generous, index 0 strict.
+        let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
+        pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
+        // Stretched third contact: deviations [0, ~15, ~11] — the shortest
+        // edge is exact, the longer ones sit inside their 20 mm budget.
+        // Rejected under scalar 1.0, accepted per-index.
+        let stretched = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 65.0),
+        ];
+        let scalar_only = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
+        assert!(!scalar_only.matches(&stretched));
+        assert!(pattern.matches(&stretched));
+    }
+
+    #[test]
+    fn per_index_tolerances_still_reject_short_edges() {
+        let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
+        pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
+        // The shortest edge shrinks (45 vs 50): index 0 deviates by 5 mm and
+        // exceeds its strict 1 mm budget even though indices 1–2 would allow
+        // the deformation.
+        let warped = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(45.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        assert!(!pattern.matches(&warped));
+    }
+
+    #[test]
+    fn mismatched_tolerances_length_falls_back_to_scalar() {
+        let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
+        pattern.tolerances = vec![0.1.into()]; // too few — must not apply
+        let slightly_off = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(53.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        assert!(pattern.matches(&slightly_off)); // scalar 5.0 still applies
+    }
+
+    #[test]
+    fn match_score_marks_boundary_and_near_misses() {
+        let pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
+        assert_eq!(pattern.match_score(&triangle()), 0.0);
+        // A 2.5 mm deviation on one edge is score 0.5 with scalar 5.0.
+        let slightly_off = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(52.5, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let score = pattern.match_score(&slightly_off);
+        assert!(score > 0.4 && score < 0.6);
     }
 
     #[test]

@@ -169,6 +169,8 @@ mod tests {
                 measured_distances: vec![Millimeters::new(34.15)],
                 deviations: vec![Millimeters::new(0.83)],
                 tolerance: PatternTolerance::new(3.0),
+                tolerances: Vec::new(),
+                score: None,
                 match_error: Millimeters::new(5.69),
             }],
         };

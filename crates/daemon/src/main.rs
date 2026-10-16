@@ -81,6 +81,11 @@ fn main() -> Result<()> {
                 file = args.get(i + 1).cloned();
                 i += 1;
             }
+            "--export-dataset" => {
+                mode = Some("--export-dataset");
+                file = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--record-label" => {
                 record_label = args.get(i + 1).cloned();
                 i += 1;
@@ -166,6 +171,12 @@ fn main() -> Result<()> {
             })?;
             modes::run_analyze(Path::new(&path))
         }
+        "--export-dataset" => {
+            let path = file.ok_or_else(|| {
+                miette::miette!("Usage: tangible-objects --export-dataset <recording.jsonl>")
+            })?;
+            modes::run_export_dataset(Path::new(&path))
+        }
         "--list" => {
             modes::list_devices();
             Ok(())
@@ -224,7 +235,10 @@ fn print_help() {
         "  tangible-objects --replay --file <f> --record <base>             Replay deterministisch aufzeichnen"
     );
     eprintln!(
-        "  tangible-objects --analyze <recording.jsonl>                     Aufzeichnung analysieren (Phase 2)"
+        "  tangible-objects --analyze <recording.jsonl>                     Aufzeichnung analysieren (Phase 2+3)"
+    );
+    eprintln!(
+        "  tangible-objects --export-dataset <recording.jsonl>              Gelabeltes Dataset exportieren (Phase 3)"
     );
     eprintln!(
         "  tangible-objects --train --device /dev/input/eventX --name <name>  Profil aufnehmen und speichern"

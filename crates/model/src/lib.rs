@@ -46,6 +46,7 @@ pub use recording::CandidateReport;
 pub use recording::FrameCount;
 pub use recording::FrameNumber;
 pub use recording::FrameRecord;
+pub use recording::MatchScore;
 pub use recording::RECORD_SCHEMA_VERSION;
 pub use recording::RecordLabel;
 pub use recording::RemainingFrameCount;

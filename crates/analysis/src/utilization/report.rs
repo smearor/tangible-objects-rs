@@ -173,7 +173,7 @@ impl From<(Option<PatternId>, String, Accumulator)> for PatternUtilization {
             per_distance: entry
                 .deviations
                 .iter()
-                .filter_map(|samples| Percentiles::of(samples.iter().map(|m| m.as_f64())))
+                .filter_map(|samples| Percentiles::of(samples.iter().copied()))
                 .collect(),
             bands: entry.bands,
         }

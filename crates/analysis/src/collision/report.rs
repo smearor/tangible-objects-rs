@@ -52,7 +52,7 @@ impl CollisionReport {
                     pattern_name,
                     frames_tested: entry.frames_tested,
                     collided_frames: entry.collided_frames,
-                    required: Percentiles::of(entry.required.iter().map(|m| m.as_f64())),
+                    required: Percentiles::of(entry.required.iter().copied()),
                     tolerance: entry.tolerance,
                 })
                 .collect(),

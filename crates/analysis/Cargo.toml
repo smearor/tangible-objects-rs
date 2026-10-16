@@ -10,6 +10,8 @@ homepage.workspace = true
 description = "Offline analysis of tangible-object training recordings (TRAINING.md phase 2)."
 
 [dependencies]
+serde.workspace = true
+serde-jsonlines.workspace = true
 serde_json.workspace = true
 tangible-objects-model.workspace = true
 thiserror.workspace = true

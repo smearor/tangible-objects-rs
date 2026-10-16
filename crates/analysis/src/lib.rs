@@ -7,21 +7,30 @@
 //! loop.
 
 mod collision;
+mod dataset;
 mod error;
 mod flappy;
+mod ml;
 mod percentile;
 mod recording;
+mod scoring;
 mod tolerance;
 mod utilization;
 
 pub use collision::CollisionCell;
 pub use collision::CollisionReport;
+pub use dataset::Dataset;
+pub use dataset::DatasetRow;
 pub use error::AnalysisError;
 pub use flappy::FlappyReport;
 pub use flappy::LifetimeBucket;
 pub use flappy::PartialShare;
+pub use ml::LogisticBaseline;
+pub use ml::MlReport;
 pub use percentile::Percentiles;
 pub use recording::Recording;
+pub use scoring::ScoringReport;
+pub use scoring::ThresholdRow;
 pub use tolerance::DEFAULT_SAFETY_FACTOR;
 pub use tolerance::ToleranceReport;
 pub use tolerance::ToleranceSuggestion;

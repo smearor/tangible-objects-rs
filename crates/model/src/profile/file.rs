@@ -24,7 +24,15 @@ pub struct ProfileFile {
     /// Number of contact pins.
     pub num_points: usize,
     /// Matching tolerance for the distance fingerprint.
+    ///
+    /// Scalar fallback — always required; per-index `tolerances` below refine
+    /// it where configured.
     pub tolerance: PatternTolerance,
+    /// Optional per-distance tolerances, parallel to `sorted_sides`.
+    /// Omitted when empty; the analysis `--analyze` tolerance suggestions
+    /// render in exactly this format (`tolerances = [...]`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tolerances: Vec<PatternTolerance>,
     /// Sorted pairwise distances of the reference geometry (the fingerprint).
     pub sorted_sides: Vec<Millimeters>,
     /// Original contact positions, flattened as `[x0, y0, x1, y1, ...]`.
@@ -55,6 +63,7 @@ impl ProfileFile {
             name: name.to_string(),
             num_points: points.len(),
             tolerance,
+            tolerances: Vec::new(),
             sorted_sides: distances,
             points: pts,
         }
@@ -74,6 +83,7 @@ impl ProfileFile {
             num_points: self.num_points,
             sorted_distances: self.sorted_sides.clone(),
             tolerance: self.tolerance,
+            tolerances: self.tolerances.clone(),
             ref_points: if ref_points.len() == self.num_points {
                 Some(ref_points)
             } else {
@@ -158,6 +168,29 @@ mod tests {
         assert_eq!(loaded.tolerance.as_f64(), 5.0);
         assert_eq!(loaded.sorted_sides, profile.sorted_sides);
         assert_eq!(loaded.points.len(), 6);
+        // Empty tolerances stay absent — backward-compatible TOML.
+        assert!(!serialized.contains("tolerances"));
+        assert!(loaded.tolerances.is_empty());
+    }
+
+    #[test]
+    fn tolerances_round_trip_and_reach_the_pattern() {
+        let toml = r#"
+            name = "square"
+            num_points = 4
+            tolerance = 3.0
+            tolerances = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+            sorted_sides = [40.0, 40.0, 40.0, 40.0, 56.57, 56.57]
+        "#;
+        let profile: ProfileFile = match toml::from_str(toml) {
+            Ok(p) => p,
+            Err(_) => panic!("deserialization failed"),
+        };
+        assert_eq!(profile.tolerances.len(), 6);
+        let pattern = profile.to_pattern(PatternId::new(1));
+        assert_eq!(pattern.tolerances.len(), 6);
+        assert_eq!(pattern.tolerance_at(0).as_f64(), 1.0);
+        assert_eq!(pattern.tolerance_at(6).as_f64(), 3.0); // scalar fallback
     }
 
     #[test]

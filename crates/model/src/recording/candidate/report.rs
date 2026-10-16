@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::MatchScore;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternTolerance;
@@ -31,8 +32,20 @@ pub struct CandidateReport {
     /// Absolute deviation `|measured[i] - reference[i]|` per distance index,
     /// parallel to `measured_distances`.
     pub deviations: Vec<Millimeters>,
-    /// Tolerance applied during the test.
+    /// Scalar tolerance applied during the test (also the fallback for
+    /// partial candidates, whose re-indexed fingerprint cannot use
+    /// per-index tolerances).
     pub tolerance: PatternTolerance,
+    /// Per-index tolerances applied during the test — only present when the
+    /// pattern configured `tolerances`; absent means `tolerance` applied to
+    /// every index. `#[serde(default)]` keeps older recordings loadable.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tolerances: Vec<Millimeters>,
+    /// Normalized deviation score (`max_i dev[i] / tolerance[i]`), recorded
+    /// for matched and rejected candidates. `None` in older recordings — the
+    /// analysis recomputes it from `deviations` and `tolerances`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub score: Option<MatchScore>,
     /// Total absolute deviation across all distances (lower is better).
     /// Recorded for rejected candidates too — near-misses feed the
     /// collision analysis.
@@ -52,6 +65,34 @@ impl CandidateReport {
             .copied()
             .max_by(Millimeters::total_cmp)
             .unwrap_or(Millimeters::new(0.0))
+    }
+
+    /// Effective tolerance for distance index `i` — the recorded per-index
+    /// value when present, else the scalar `tolerance`.
+    pub fn tolerance_at(&self, index: usize) -> PatternTolerance {
+        self.tolerances
+            .get(index)
+            .copied()
+            .map(PatternTolerance::from)
+            .unwrap_or(self.tolerance)
+    }
+
+    /// Normalized deviation score, recomputed from `deviations` and the
+    /// effective tolerances. Falls back to the recorded `score` when
+    /// `deviations` is empty; used by the offline threshold sweep so old and
+    /// new recordings evaluate identically.
+    pub fn normalized_score(&self) -> MatchScore {
+        let computed = self
+            .deviations
+            .iter()
+            .enumerate()
+            .map(|(i, dev)| dev.as_f64() / self.tolerance_at(i).as_f64())
+            .reduce(f64::max);
+        match (self.score, computed) {
+            (_, Some(score)) => MatchScore::new(score),
+            (Some(recorded), None) => recorded,
+            (None, None) => MatchScore::new(0.0),
+        }
     }
 
     /// Whether a ground-truth label refers to this candidate's pattern.

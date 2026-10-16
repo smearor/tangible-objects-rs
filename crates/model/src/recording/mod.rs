@@ -14,6 +14,7 @@ mod tracked;
 
 pub use candidate::CandidateCount;
 pub use candidate::CandidateReport;
+pub use candidate::MatchScore;
 pub use frame::FrameCount;
 pub use frame::FrameNumber;
 pub use frame::FrameRecord;
