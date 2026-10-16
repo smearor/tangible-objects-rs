@@ -1,3 +1,6 @@
+use serde::Deserialize;
+use serde::Serialize;
+
 use crate::Millimeters;
 use crate::Pixels;
 use crate::RawAxisValue;
@@ -8,7 +11,7 @@ use crate::Vec2;
 ///
 /// `x_res`/`y_res` are the `resolution` fields of `ABS_MT_POSITION_X/Y`
 /// (units per millimeter) read from evdev `ABS_INFO` or an `evtest` header.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Calibration {
     /// Device units per millimeter on the X axis.
     pub x_res: UnitsPerMm,

@@ -1,10 +1,14 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Display;
 
 /// Device resolution: device units per millimeter on an axis.
 ///
 /// Wraps the `resolution` field of evdev `ABS_INFO` so resolutions cannot be
-/// confused with raw axis values or millimeter distances.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+/// confused with raw axis values or millimeter distances. Serializes as a
+/// bare number.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct UnitsPerMm(pub f64);
 
 impl UnitsPerMm {
