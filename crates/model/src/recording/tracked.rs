@@ -1,3 +1,5 @@
+use serde::Deserialize;
+use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
 use serde::ser::SerializeStruct;
@@ -55,6 +57,29 @@ impl Serialize for TrackedRecord {
         state.serialize_field("rotation_deg", &self.rotation_rad.to_degrees())?;
         state.serialize_field("frames_since_match", &self.frames_since_match)?;
         state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for TrackedRecord {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Helper {
+            id: TangibleId,
+            pattern_id: PatternId,
+            pattern_name: String,
+            center: Vec2<Millimeters>,
+            rotation_deg: f64,
+            frames_since_match: u32,
+        }
+        let helper = Helper::deserialize(deserializer)?;
+        Ok(Self {
+            id: helper.id,
+            pattern_id: helper.pattern_id,
+            pattern_name: helper.pattern_name,
+            center: helper.center,
+            rotation_rad: RotationRad::new(helper.rotation_deg.to_radians()),
+            frames_since_match: helper.frames_since_match,
+        })
     }
 }
 

@@ -15,6 +15,7 @@ homepage = "https://github.com/smearor/tangible-objects-rs"
 # workspace crates
 tangible-objects-model = { path = "crates/model" }
 tangible-objects-engine = { path = "crates/engine" }
+tangible-objects-analysis = { path = "crates/analysis" }
 tangible-objects-runtime = { path = "crates/runtime" }
 tangible-objects-graphql = { path = "crates/graphql" }
 tangible-objects-dbus = { path = "crates/dbus" }

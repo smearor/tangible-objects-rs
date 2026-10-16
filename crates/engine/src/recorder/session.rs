@@ -2,9 +2,12 @@ use std::io::Result;
 use std::path::PathBuf;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::FrameCount;
+use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::RemainingFrameCount;
 use tangible_objects_model::TrackedTangible;
 
 use super::FrameContext;
@@ -29,8 +32,18 @@ pub struct RecordingSession {
     raw_recorder: RawRecorder,
     calibration: Option<Calibration>,
     label: Option<RecordLabel>,
-    label_override: Option<(RecordLabel, u64)>,
-    recorded_frames: u64,
+    label_override: Option<LabelOverride>,
+    recorded_frames: FrameCount,
+}
+
+/// Active mark-label override: applies `label` for `remaining` more
+/// recorded frames.
+struct LabelOverride {
+    /// Temporary ground-truth label.
+    label: RecordLabel,
+    /// Remaining budget — decremented per recorded frame, saturates at zero
+    /// and expires the override.
+    remaining: RemainingFrameCount,
 }
 
 impl RecordingSession {
@@ -54,7 +67,7 @@ impl RecordingSession {
             calibration: calibration.copied(),
             label,
             label_override: None,
-            recorded_frames: 0,
+            recorded_frames: FrameCount::new(0),
         })
     }
 
@@ -72,7 +85,7 @@ impl RecordingSession {
     /// `SYN_REPORT` so numbering stays aligned.
     pub fn record_frame(
         &mut self,
-        frame_no: u64,
+        frame_no: FrameNumber,
         timestamp_ms: Milliseconds,
         frame: &EngineFrame,
         tracked: &[TrackedTangible],
@@ -99,10 +112,10 @@ impl RecordingSession {
     /// The label currently applied to recorded frames (override or session
     /// default).
     pub fn label(&self) -> Option<&RecordLabel> {
-        self.label_override
-            .as_ref()
-            .map(|(label, _)| label)
-            .or(self.label.as_ref())
+        match &self.label_override {
+            Some(over) if !over.remaining.is_expired() => Some(&over.label),
+            _ => self.label.as_ref(),
+        }
     }
 
     /// Changes the persistent session label (`ControlCommand::SetRecordLabel`
@@ -116,20 +129,24 @@ impl RecordingSession {
     /// the interactive keypress path; afterwards the session label applies
     /// again.
     pub fn mark_label(&mut self, label: RecordLabel, frames: u64) {
-        self.label_override = Some((label, frames));
+        self.label_override = Some(LabelOverride {
+            label,
+            remaining: RemainingFrameCount::new(frames),
+        });
     }
 
     /// Frames recorded so far (non-empty frames only).
-    pub fn recorded_frames(&self) -> u64 {
+    pub fn recorded_frames(&self) -> FrameCount {
         self.recorded_frames
     }
 
     /// Frames dropped because the frame sink's buffer was full.
-    pub fn dropped_frames(&self) -> u64 {
+    pub fn dropped_frames(&self) -> FrameCount {
         self.frame_recorder.dropped_count()
     }
 
-    /// Raw events dropped because the raw sink's buffer was full.
+    /// Raw events dropped because the raw sink's buffer was full
+    /// (raw `u64` — matches `FrameRecord::raw_dropped`).
     pub fn dropped_events(&self) -> u64 {
         self.raw_recorder.dropped_count()
     }
@@ -141,18 +158,17 @@ impl RecordingSession {
     }
 
     /// Resolves the effective label for the next recorded frame: the mark
-    /// override while frames remain, else the session label.
+    /// override while budget remains, else the session label.
     fn take_label(&mut self) -> Option<RecordLabel> {
-        match &mut self.label_override {
-            Some((label, remaining)) => {
-                let label = label.clone();
-                *remaining -= 1;
-                if *remaining == 0 {
-                    self.label_override = None;
-                }
-                Some(label)
+        if let Some(over) = &mut self.label_override {
+            if over.remaining.is_expired() {
+                self.label_override = None;
+            } else {
+                let label = over.label.clone();
+                over.remaining -= 1;
+                return Some(label);
             }
-            None => self.label.clone(),
         }
+        self.label.clone()
     }
 }

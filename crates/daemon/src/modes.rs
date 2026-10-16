@@ -15,6 +15,7 @@ use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EvtestReplay;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
+use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::ProfileFile;
@@ -145,7 +146,7 @@ pub fn run_replay(
         }
         if let Some(session) = &mut session {
             session.record_frame(
-                frame_no,
+                FrameNumber::new(frame_no),
                 Milliseconds::from(Duration::from_secs_f64(offset)),
                 &frame,
                 engine.tracked(),
@@ -287,7 +288,7 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
 
                 if let Some(session) = &mut recording {
                     session.record_frame(
-                        frame,
+                        FrameNumber::new(frame),
                         Milliseconds::from(session_start.elapsed()),
                         &engine_frame,
                         engine.tracked(),
@@ -492,7 +493,7 @@ pub fn run_record(
                 }
 
                 session.record_frame(
-                    frame_no,
+                    FrameNumber::new(frame_no),
                     Milliseconds::from(session_start.elapsed()),
                     &engine_frame,
                     engine.tracked(),
@@ -699,6 +700,27 @@ pub fn run_train(
     } else {
         eprintln!("\nTraining abgebrochen.");
     }
+    Ok(())
+}
+
+/// Offline analysis of a `.jsonl` recording (TRAINING.md phase 2).
+///
+/// Prints utilization, tolerance suggestions, flappy-contact metrics and the
+/// collision matrix for the loaded frames.
+pub fn run_analyze(path: &Path) -> Result<()> {
+    let recording = tangible_objects_analysis::Recording::load(path).into_diagnostic()?;
+    println!(
+        "Analyse: {} ({} Frames)\n",
+        path.display(),
+        recording.frames().len()
+    );
+    print!(
+        "{}\n{}\n{}\n{}",
+        tangible_objects_analysis::UtilizationReport::analyze(&recording),
+        tangible_objects_analysis::ToleranceReport::analyze(&recording),
+        tangible_objects_analysis::FlappyReport::analyze(&recording),
+        tangible_objects_analysis::CollisionReport::analyze(&recording),
+    );
     Ok(())
 }
 

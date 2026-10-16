@@ -2193,6 +2193,7 @@ dependencies = [
  "gtk4",
  "libc",
  "miette",
+ "tangible-objects-analysis",
  "tangible-objects-dbus",
  "tangible-objects-engine",
  "tangible-objects-graphql",
@@ -2201,6 +2202,15 @@ dependencies = [
  "tangible-objects-runtime",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tangible-objects-analysis"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tangible-objects-model",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

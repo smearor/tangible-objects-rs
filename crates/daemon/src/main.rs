@@ -76,6 +76,11 @@ fn main() -> Result<()> {
                 record_base = args.get(i + 1).cloned();
                 i += 1;
             }
+            "--analyze" => {
+                mode = Some("--analyze");
+                file = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--record-label" => {
                 record_label = args.get(i + 1).cloned();
                 i += 1;
@@ -155,6 +160,12 @@ fn main() -> Result<()> {
             let tol = Millimeters::new(tolerance.unwrap_or(30.0));
             modes::run_train(Path::new(&dev), &fig_name, tol, profiles_dir.as_deref())
         }
+        "--analyze" => {
+            let path = file.ok_or_else(|| {
+                miette::miette!("Usage: tangible-objects --analyze <recording.jsonl>")
+            })?;
+            modes::run_analyze(Path::new(&path))
+        }
         "--list" => {
             modes::list_devices();
             Ok(())
@@ -211,6 +222,9 @@ fn print_help() {
     );
     eprintln!(
         "  tangible-objects --replay --file <f> --record <base>             Replay deterministisch aufzeichnen"
+    );
+    eprintln!(
+        "  tangible-objects --analyze <recording.jsonl>                     Aufzeichnung analysieren (Phase 2)"
     );
     eprintln!(
         "  tangible-objects --train --device /dev/input/eventX --name <name>  Profil aufnehmen und speichern"

@@ -1,12 +1,15 @@
+use std::collections::BTreeMap;
+
+use serde::Deserialize;
 use serde::Serialize;
 
-use super::CandidateReport;
 use super::FrameNumber;
-use super::RecordLabel;
-use super::TrackedRecord;
 use crate::Calibration;
+use crate::CandidateReport;
 use crate::Milliseconds;
+use crate::RecordLabel;
 use crate::TouchPoint;
+use crate::TrackedRecord;
 
 /// Schema version of the JSONL recording format.
 ///
@@ -20,7 +23,7 @@ pub const RECORD_SCHEMA_VERSION: u16 = 1;
 /// touches and tracked tangibles. All spatial quantities are in
 /// [`Millimeters`](crate::Millimeters); when `calibration` is `null` the
 /// device was uncalibrated and positions are raw axis values.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FrameRecord {
     /// Schema version; serialized as `"v"` and always
     /// [`RECORD_SCHEMA_VERSION`] for newly written records.
@@ -44,6 +47,27 @@ pub struct FrameRecord {
     /// Running count of raw events dropped because the raw sink's write
     /// buffer was full. Non-zero breaks exact replay round-trip equality.
     pub raw_dropped: u64,
+}
+
+impl FrameRecord {
+    /// The best candidate per pattern in this frame — the candidate whose
+    /// [`required_tolerance`](CandidateReport::required_tolerance) is lowest.
+    ///
+    /// Used by the collision analysis: for each pattern this is the closest
+    /// it came to matching the frame's touch geometry.
+    pub fn best_candidates(&self) -> BTreeMap<&str, &CandidateReport> {
+        let mut best: BTreeMap<&str, &CandidateReport> = BTreeMap::new();
+        for candidate in &self.candidates {
+            let replace = match best.get(candidate.pattern_name.as_str()) {
+                Some(current) => candidate.required_tolerance() < current.required_tolerance(),
+                None => true,
+            };
+            if replace {
+                best.insert(&candidate.pattern_name, candidate);
+            }
+        }
+        best
+    }
 }
 
 #[cfg(test)]

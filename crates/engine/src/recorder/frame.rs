@@ -10,6 +10,7 @@ use std::sync::mpsc::TrySendError;
 use std::sync::mpsc::sync_channel;
 use std::thread::JoinHandle;
 
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::FrameRecord;
 use tangible_objects_model::Milliseconds;
@@ -61,13 +62,13 @@ impl FrameRecorder {
     /// Records one engine frame.
     ///
     /// `frame_no` counts every `SYN_REPORT` of the session — skipped empty
-    /// frames leave gaps, keeping the numbering aligned with the raw stream.
+    /// frames leave gaps, keeping [`FrameNumber`] aligned with the raw stream.
     /// `timestamp_ms` is caller-supplied (session clock live, evtest time on
     /// replay) so replayed recordings stay deterministic.
     /// Never blocks: a full channel drops the frame and counts it.
     pub fn record(
         &self,
-        frame_no: u64,
+        frame_no: FrameNumber,
         timestamp_ms: Milliseconds,
         frame: &EngineFrame,
         tracked: &[TrackedTangible],
@@ -75,7 +76,7 @@ impl FrameRecorder {
     ) {
         let record = FrameRecord {
             schema_version: RECORD_SCHEMA_VERSION,
-            frame: FrameNumber::new(frame_no),
+            frame: frame_no,
             timestamp_ms,
             label: context.label.cloned(),
             calibration: context.calibration.copied(),
@@ -102,8 +103,8 @@ impl FrameRecorder {
     }
 
     /// Running count of frames dropped because the writer buffer was full.
-    pub fn dropped_count(&self) -> u64 {
-        self.dropped.load(Ordering::Relaxed)
+    pub fn dropped_count(&self) -> FrameCount {
+        FrameCount::new(self.dropped.load(Ordering::Relaxed))
     }
 
     /// Closes the channel, drains the writer thread and flushes the file.
@@ -179,8 +180,8 @@ mod tests {
                 calibration: None,
                 raw_dropped: 0,
             };
-            recorder.record(7, Milliseconds::new(0), &frame, &[], &context);
-            recorder.record(8, Milliseconds::new(16), &frame, &[], &context);
+            recorder.record(7.into(), Milliseconds::new(0), &frame, &[], &context);
+            recorder.record(8.into(), Milliseconds::new(16), &frame, &[], &context);
             recorder.finish().expect("finish recorder");
         }
 
