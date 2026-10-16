@@ -8,14 +8,18 @@
 //! snapshot and control access — they never touch the engine directly.
 
 mod command;
+mod device_info;
 mod domain_event;
 mod profile_info;
+mod recording_status;
 mod runtime;
 mod snapshot;
 
 pub use command::ControlCommand;
+pub use device_info::DeviceInfo;
 pub use domain_event::DomainEvent;
 pub use profile_info::ProfileInfo;
+pub use recording_status::RecordingStatus;
 pub use runtime::COMMAND_CHANNEL_CAPACITY;
 pub use runtime::EVENT_CHANNEL_CAPACITY;
 pub use runtime::EngineHandle;

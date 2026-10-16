@@ -23,9 +23,11 @@ use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
+use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::ProfileInfo;
+use tangible_objects_runtime::RecordingStatus;
 use tracing::warn;
 
 /// Loads figure patterns from a profile directory (default: `profiles/`).
@@ -212,6 +214,7 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     spawn_interfaces(&handle, &interfaces);
+    runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
     let mut frame: u64 = 0;
     let session_start = Instant::now();
@@ -294,6 +297,7 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
                         engine.tracked(),
                     );
                 }
+                runtime.set_recording_status(recording.as_ref().map(status_of_session));
 
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
@@ -325,6 +329,17 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
 }
 
 /// Spawns the selected interface endpoints (GraphQL/D-Bus/MCP, Phase 2).
+/// Live snapshot of a recording session for the interface-facing status.
+fn status_of_session(session: &RecordingSession) -> RecordingStatus {
+    RecordingStatus {
+        active: true,
+        label: session.label().cloned(),
+        recorded_frames: session.recorded_frames(),
+        dropped_frames: session.dropped_frames(),
+        dropped_events: session.dropped_events(),
+    }
+}
+
 fn spawn_interfaces(handle: &EngineHandle, interfaces: &Interfaces) {
     if let Some(addr) = interfaces.graphql_addr {
         tangible_objects_graphql::spawn(handle.clone(), addr);
@@ -401,6 +416,7 @@ pub fn run_record(
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     spawn_interfaces(&handle, &interfaces);
+    runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
     let mut frame_no: u64 = 0;
     let session_start = Instant::now();
@@ -498,6 +514,7 @@ pub fn run_record(
                     &engine_frame,
                     engine.tracked(),
                 );
+                runtime.set_recording_status(Some(status_of_session(&session)));
 
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
@@ -519,6 +536,7 @@ pub fn run_record(
         }
     }
 
+    runtime.set_recording_status(None);
     let recorded = session.recorded_frames();
     let frame_drops = session.dropped_frames();
     let raw_drops = session.dropped_events();
@@ -700,6 +718,78 @@ pub fn run_train(
     } else {
         eprintln!("\nTraining abgebrochen.");
     }
+    Ok(())
+}
+
+/// Resolves the device argument: an explicit `--device` path wins;
+/// otherwise auto-detect via `vendor:product` against the device registry
+/// (builtin + `--device-profiles` dir) — succeeds only when exactly one
+/// known touchscreen is attached.
+pub fn resolve_device(device: Option<String>, profiles_dir: Option<&Path>) -> Result<PathBuf> {
+    if let Some(path) = device {
+        return Ok(PathBuf::from(path));
+    }
+    let mut registry = tangible_objects_model::DeviceRegistry::builtin();
+    if let Some(dir) = profiles_dir {
+        registry = registry.with_dir(dir);
+    }
+    let entry = tangible_objects_engine::TouchDevice::detect(&registry).into_diagnostic()?;
+    let profile = registry
+        .find_by_ids(entry.vendor, entry.product)
+        .expect("detected entry matches a profile");
+    println!(
+        "Gerät erkannt: {} ({}) → {}",
+        profile.name,
+        entry.name,
+        entry.path.display()
+    );
+    Ok(entry.path)
+}
+
+/// Converts a `.evtest` recording into the raw event stream of another
+/// touchscreen profile (TRAINING.md device conversion).
+///
+/// `target` resolves against the device registry (builtin + `--device-profiles`
+/// dir) or as a TOML file path; the output lands next to the input as
+/// `<stem>.to-<profile-name>.evtest`.
+pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path>) -> Result<()> {
+    let mut registry = tangible_objects_model::DeviceRegistry::builtin();
+    if let Some(dir) = profiles_dir {
+        registry = registry.with_dir(dir);
+    }
+    for (path, error) in &registry.errors {
+        eprintln!(
+            "Warnung: Geräteprofil {} konnte nicht geladen werden: {error}",
+            path.display()
+        );
+    }
+    let profile = registry.resolve(target).ok_or_else(|| {
+        miette::miette!(
+            "Geräteprofil '{target}' nicht gefunden (bekannt: {})",
+            registry
+                .profiles
+                .iter()
+                .map(|p| p.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    })?;
+
+    let out = input.with_extension(format!(
+        "to-{}.evtest",
+        profile.name.replace(' ', "-").to_lowercase()
+    ));
+    let converter = tangible_objects_engine::DeviceConverter::new(profile.clone());
+    let stats = converter.convert(input, &out).into_diagnostic()?;
+    println!(
+        "Konvertiert: {} → {} ({} Events: {} übernommen, {} gedroppt, {} geclampt)",
+        input.display(),
+        out.display(),
+        stats.events,
+        stats.kept,
+        stats.dropped,
+        stats.clamped
+    );
     Ok(())
 }
 

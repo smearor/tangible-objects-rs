@@ -6,12 +6,14 @@
 //! triple.
 
 mod code;
+mod count;
 mod input;
 mod named;
 mod raw;
 mod r#type;
 
 pub use code::EventCode;
+pub use count::EventCount;
 pub use input::ABS_MT_POSITION_X;
 pub use input::ABS_MT_POSITION_Y;
 pub use input::ABS_MT_SLOT;

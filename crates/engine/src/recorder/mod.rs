@@ -9,7 +9,7 @@
 
 mod context;
 mod frame;
-mod raw;
+pub(crate) mod raw;
 mod session;
 
 pub use context::FrameContext;

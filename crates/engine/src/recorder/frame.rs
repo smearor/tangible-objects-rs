@@ -180,7 +180,7 @@ mod tests {
             let context = FrameContext {
                 label: None,
                 calibration: None,
-                raw_dropped: 0,
+                raw_dropped: tangible_objects_model::EventCount::default(),
             };
             recorder.record(7.into(), Milliseconds::new(0), &frame, &[], &context);
             recorder.record(8.into(), Milliseconds::new(16), &frame, &[], &context);

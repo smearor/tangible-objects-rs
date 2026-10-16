@@ -2,6 +2,7 @@ use std::io::Result;
 use std::path::PathBuf;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::EventCount;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Milliseconds;
@@ -145,9 +146,8 @@ impl RecordingSession {
         self.frame_recorder.dropped_count()
     }
 
-    /// Raw events dropped because the raw sink's buffer was full
-    /// (raw `u64` — matches `FrameRecord::raw_dropped`).
-    pub fn dropped_events(&self) -> u64 {
+    /// Raw events dropped because the raw sink's buffer was full.
+    pub fn dropped_events(&self) -> EventCount {
         self.raw_recorder.dropped_count()
     }
 

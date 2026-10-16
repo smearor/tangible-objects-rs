@@ -38,6 +38,59 @@ impl EngineService {
         self.handle.profiles().to_vec()
     }
 
+    /// Attached input device as a flat key-value list
+    /// (`name`, `x_res`, `y_res`, `x_min`, `x_max`, `y_min`, `y_max`);
+    /// empty values when no device/calibration is known.
+    async fn device_info(&self) -> Vec<(String, String)> {
+        let info = self.handle.snapshot().device;
+        let Some(info) = info else {
+            return Vec::new();
+        };
+        [
+            ("name", info.name),
+            ("x_res", info.x_res.map(|v| v.to_string())),
+            ("y_res", info.y_res.map(|v| v.to_string())),
+            ("x_min", info.x_min.map(|v| v.to_string())),
+            ("x_max", info.x_max.map(|v| v.to_string())),
+            ("y_min", info.y_min.map(|v| v.to_string())),
+            ("y_max", info.y_max.map(|v| v.to_string())),
+        ]
+        .into_iter()
+        .filter_map(|(key, value)| value.map(|v| (key.to_string(), v)))
+        .collect()
+    }
+
+    /// Live recording status as a flat key-value list; empty while no
+    /// session is or was active.
+    async fn recording_status(&self) -> Vec<(String, String)> {
+        let status = self.handle.snapshot().recording;
+        let Some(status) = status else {
+            return Vec::new();
+        };
+        vec![
+            ("active".to_string(), status.active.to_string()),
+            (
+                "label".to_string(),
+                status
+                    .label
+                    .map(|label| label.to_string())
+                    .unwrap_or_default(),
+            ),
+            (
+                "recorded_frames".to_string(),
+                status.recorded_frames.to_string(),
+            ),
+            (
+                "dropped_frames".to_string(),
+                status.dropped_frames.to_string(),
+            ),
+            (
+                "dropped_events".to_string(),
+                status.dropped_events.to_string(),
+            ),
+        ]
+    }
+
     /// Enables or disables the tangible filter mode.
     async fn set_filter_mode(&self, enabled: bool) -> fdo::Result<()> {
         self.handle

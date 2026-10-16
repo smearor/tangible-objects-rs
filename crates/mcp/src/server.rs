@@ -23,6 +23,7 @@ use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::GetPoseArgs;
+use super::tool_args::RecordingArtifactArgs;
 use super::tool_args::SetFilterModeArgs;
 use super::tool_args::SetRecordLabelArgs;
 use super::tool_args::StartRecordingArgs;
@@ -84,6 +85,65 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(
             json_pretty(self.handle.profiles())?,
         )]))
+    }
+
+    /// Attached input device info (name + axis calibration).
+    #[tool(
+        description = "Get the attached touchscreen's name and axis calibration — needed to convert this host's raw recordings to another device."
+    )]
+    async fn device_info(&self) -> Result<CallToolResult, ErrorData> {
+        let snapshot = self.handle.snapshot();
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            json_pretty(&snapshot.device)?,
+        )]))
+    }
+
+    /// Live recording-session status.
+    #[tool(
+        description = "Get the recording status: active flag, label, recorded/dropped frame counters."
+    )]
+    async fn recording_status(&self) -> Result<CallToolResult, ErrorData> {
+        let snapshot = self.handle.snapshot();
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            json_pretty(&snapshot.recording)?,
+        )]))
+    }
+
+    /// Reads a recording artifact file from the daemon host.
+    #[tool(
+        description = "Download a recording artifact (*.jsonl, *.evtest, *.dataset.jsonl) produced by this daemon — remote recording pull."
+    )]
+    async fn recording_artifact(
+        &self,
+        Parameters(args): Parameters<RecordingArtifactArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let path = PathBuf::from(&args.path);
+        let valid_ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e == "jsonl" || e == "evtest")
+            .unwrap_or(false);
+        let valid_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.ends_with(".dataset.jsonl"))
+            .unwrap_or(false);
+        if path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+            || !(valid_ext || valid_name)
+        {
+            return Ok(CallToolResult::error(vec![ContentBlock::text(
+                "only recording artifacts (*.jsonl, *.evtest, *.dataset.jsonl) without '..' are readable",
+            )]));
+        }
+        match std::fs::read_to_string(&path) {
+            Ok(content) => Ok(CallToolResult::success(vec![ContentBlock::text(content)])),
+            Err(e) => Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                "cannot read {}: {e}",
+                path.display()
+            ))])),
+        }
     }
 
     /// Enables or disables the tangible filter mode.

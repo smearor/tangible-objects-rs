@@ -1,5 +1,8 @@
 # Event Data Model
 
+The raw text wire format these types replay and record is documented in
+[`EVTEST_FORMAT.md`](EVTEST_FORMAT.md).
+
 Linux input event types — the module `model/src/event`. `RawEvent` is the
 device-agnostic `(type, code, value)` triple mirroring the kernel's
 `input_event`; it can be produced from `evdev` events or parsed from `evtest`

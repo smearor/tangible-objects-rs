@@ -92,8 +92,8 @@ impl RawRecorder {
     ///
     /// Reported as `raw_dropped` in the frame stream; non-zero breaks exact
     /// replay round-trip equality.
-    pub fn dropped_count(&self) -> u64 {
-        self.dropped.load(Ordering::Relaxed)
+    pub fn dropped_count(&self) -> tangible_objects_model::EventCount {
+        tangible_objects_model::EventCount::new(self.dropped.load(Ordering::Relaxed))
     }
 
     /// Closes the channel, drains the writer thread and flushes the file.
@@ -121,7 +121,7 @@ impl Drop for RawRecorder {
 
 /// Formats one event as an `evtest` output line with the given
 /// session-relative timestamp in seconds.
-fn format_event(event: &RawEvent, timestamp_secs: f64) -> String {
+pub(crate) fn format_event(event: &RawEvent, timestamp_secs: f64) -> String {
     if event.is_syn_report() {
         return format!(
             "Event: time {timestamp_secs:.6}, -------------- SYN_REPORT ------------\n"
@@ -168,7 +168,7 @@ fn axis_block(
 /// Builds the `evtest` header carrying device name and position-axis
 /// calibration (`Value`/`Min`/`Max`/`Resolution` blocks parsed by
 /// `EvtestReplay`).
-fn header_text(device_name: Option<&str>, calibration: Option<&Calibration>) -> String {
+pub(crate) fn header_text(device_name: Option<&str>, calibration: Option<&Calibration>) -> String {
     let mut text = String::from("Input driver version is 1.0.1\n");
     text.push_str(&format!(
         "Input device name: \"{}\"\n",

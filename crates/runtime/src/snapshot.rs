@@ -2,6 +2,9 @@ use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
 
+use crate::DeviceInfo;
+use crate::RecordingStatus;
+
 /// Point-in-time snapshot of the detection state.
 ///
 /// Distributed via a `watch` channel: interfaces read the latest snapshot
@@ -15,4 +18,8 @@ pub struct EngineSnapshot {
     pub touches: Vec<TouchPoint>,
     /// IDs of the currently active Tangible Object Sets.
     pub active_sets: Vec<TangibleSetId>,
+    /// Attached input device — set once at session start.
+    pub device: Option<DeviceInfo>,
+    /// Recording session status, updated every frame while active.
+    pub recording: Option<RecordingStatus>,
 }

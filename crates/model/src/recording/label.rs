@@ -42,3 +42,6 @@ impl Display for RecordLabel {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(RecordLabel);

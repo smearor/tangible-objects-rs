@@ -37,3 +37,11 @@ pub struct SetRecordLabelArgs {
     /// Ground-truth label for subsequent frames; null clears it.
     pub label: Option<String>,
 }
+
+/// Arguments for the `recording_artifact` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RecordingArtifactArgs {
+    /// Path of the artifact on the daemon host (`*.jsonl`, `*.evtest`,
+    /// `*.dataset.jsonl`; no `..` components allowed).
+    pub path: String,
+}

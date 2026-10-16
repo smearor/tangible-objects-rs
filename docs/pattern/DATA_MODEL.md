@@ -26,7 +26,8 @@ ascending.
 | `name`             | `String`                           | Figure name from the profile |
 | `num_points`       | `usize`                            | Required pin count |
 | `sorted_distances` | `Vec<Millimeters>`                 | The fingerprint |
-| `tolerance`        | `PatternTolerance`                 | Max allowed deviation per distance (single scalar; per-pair `tolerances[]` is planned in TRAINING.md Phase 3) |
+| `tolerance`        | `PatternTolerance`                 | Scalar max deviation per distance — fallback for every index and for partial matching |
+| `tolerances`       | `Vec<PatternTolerance>`            | Optional per-distance tolerances parallel to `sorted_distances`; empty or length-mismatched → scalar fallback (TRAINING.md 3.1) |
 | `ref_points`       | `Option<Vec<Vec2<Millimeters>>>`   | Original pin positions; required for partial matching |
 
 ### Matching methods
@@ -34,7 +35,10 @@ ascending.
 | Method            | Signature                                              | Semantics |
 |-------------------|--------------------------------------------------------|-----------|
 | `from_points`     | `(id, name, points, tolerance) -> TangiblePattern`     | Builds the fingerprint from reference positions; stores them as `ref_points` |
-| `matches`         | `(&self, points) -> bool`                              | Exact match: `points.len() == num_points` and every measured distance deviates ≤ `tolerance` |
+| `tolerance_at`    | `(&self, index) -> PatternTolerance`                   | Effective tolerance for distance index `i` — per-index value or scalar fallback |
+| `matches`         | `(&self, points) -> bool`                              | Exact match: `points.len() == num_points` and every deviation ≤ `tolerance_at(i)` |
+| `match_score`     | `(&self, points) -> f64`                               | Normalized deviation score `max_i dev[i]/tol[i]`; `≤ 1.0` ⟺ `matches` — the score-based ranking metric |
+| `score_of`        | `(&self, deviations) -> f64`                           | Score of a precomputed deviation vector |
 | `match_error`     | `(&self, points) -> Millimeters`                       | Total absolute deviation across all distances (lower is better) |
 | `matches_partial` | `(&self, points) -> Option<(Vec<usize>, Millimeters)>` | Tests `num_points - 1` contacts against every one-pin-dropped subset; tolerance raised ×1.5; returns matched reference indices + error |
 
@@ -70,7 +74,9 @@ point farthest from the centroid. Returns `0.0` for empty sets.
 ## Design Rules
 
 - Fingerprint comparison is index-aligned: `measured[i]` vs.
-  `sorted_distances[i]` — per-pair tolerance extensions keep this indexing.
+  `sorted_distances[i]` — per-index `tolerances[i]` keeps this indexing.
+  Partial matching stays scalar by design: dropping a pin re-indexes the
+  fingerprint, so per-index tolerances cannot apply there.
 - `matches`/`match_error`/`matches_partial` are pure functions of the point
   set — no engine state, freely callable for diagnostics (`CandidateReport`).
 - `PatternMatch` derives `Debug, Clone` only — it is engine output; the

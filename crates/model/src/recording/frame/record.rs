@@ -6,6 +6,7 @@ use serde::Serialize;
 use super::FrameNumber;
 use crate::Calibration;
 use crate::CandidateReport;
+use crate::EventCount;
 use crate::Milliseconds;
 use crate::RecordLabel;
 use crate::TouchPoint;
@@ -46,7 +47,7 @@ pub struct FrameRecord {
     pub tracked: Vec<TrackedRecord>,
     /// Running count of raw events dropped because the raw sink's write
     /// buffer was full. Non-zero breaks exact replay round-trip equality.
-    pub raw_dropped: u64,
+    pub raw_dropped: EventCount,
 }
 
 impl FrameRecord {
@@ -74,6 +75,7 @@ impl FrameRecord {
 mod tests {
     use super::FrameRecord;
     use super::RECORD_SCHEMA_VERSION;
+    use crate::EventCount;
     use crate::Millimeters;
     use crate::Milliseconds;
     use crate::PatternId;
@@ -110,7 +112,7 @@ mod tests {
                 match_error: Millimeters::new(5.69),
             }],
             tracked: vec![],
-            raw_dropped: 0,
+            raw_dropped: EventCount::default(),
         }
     }
 

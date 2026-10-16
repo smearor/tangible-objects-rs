@@ -40,11 +40,43 @@ impl TouchDevice {
                 entries.push(DeviceEntry {
                     path,
                     name,
+                    vendor: device.input_id().vendor(),
+                    product: device.input_id().product(),
                     is_multitouch,
                 });
             }
         }
         entries
+    }
+
+    /// Auto-detects the touchscreen: enumerates devices and matches their
+    /// `vendor:product` pair against known [`DeviceProfile`]s. Succeeds
+    /// only when exactly one known device is attached — zero matches ask
+    /// for `--device`, several matches list the candidates.
+    pub fn detect(
+        registry: &tangible_objects_model::DeviceRegistry,
+    ) -> Result<DeviceEntry, EngineError> {
+        let mut matches: Vec<DeviceEntry> = Self::enumerate()
+            .into_iter()
+            .filter(|entry| registry.find_by_ids(entry.vendor, entry.product).is_some())
+            .collect();
+        match matches.len() {
+            0 => Err(EngineError::InvalidInput(
+                "no device with a known profile detected — pass --device /dev/input/eventX"
+                    .to_string(),
+            )),
+            1 => Ok(matches.swap_remove(0)),
+            _ => {
+                let list = matches
+                    .iter()
+                    .map(|e| format!("{} ({e})", e.path.display()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                Err(EngineError::InvalidInput(format!(
+                    "several known devices detected ({list}) — pass --device to disambiguate"
+                )))
+            }
+        }
     }
 
     /// Device name reported by the kernel, if any.

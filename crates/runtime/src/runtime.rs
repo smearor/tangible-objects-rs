@@ -34,6 +34,8 @@ pub struct EngineRuntime {
     events: broadcast::Sender<DomainEvent>,
     snapshot: watch::Sender<EngineSnapshot>,
     commands: mpsc::Receiver<ControlCommand>,
+    device: Option<crate::DeviceInfo>,
+    recording: Option<crate::RecordingStatus>,
 }
 
 /// Cloneable consumer-side handle for interface crates.
@@ -79,6 +81,8 @@ impl EngineRuntime {
             events: events.clone(),
             snapshot: snapshot_tx,
             commands,
+            device: None,
+            recording: None,
         };
         let handle = EngineHandle {
             events,
@@ -90,6 +94,19 @@ impl EngineRuntime {
         (runtime, handle)
     }
 
+    /// Sets the device info published in every subsequent snapshot.
+    ///
+    /// Call once at session start — the device does not change mid-session.
+    pub fn set_device_info(&mut self, info: crate::DeviceInfo) {
+        self.device = Some(info);
+    }
+
+    /// Updates the recording status published in every subsequent snapshot;
+    /// `None` clears it (no session).
+    pub fn set_recording_status(&mut self, status: Option<crate::RecordingStatus>) {
+        self.recording = status;
+    }
+
     /// Publishes a processed frame: runs the set tracker, updates the
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: &[TrackedTangible]) {
@@ -98,6 +115,8 @@ impl EngineRuntime {
             tracked: tracked.to_vec(),
             touches: frame.touches.clone(),
             active_sets: self.set_tracker.active_set_ids(),
+            device: self.device.clone(),
+            recording: self.recording.clone(),
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));

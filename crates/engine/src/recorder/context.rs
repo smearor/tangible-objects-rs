@@ -1,4 +1,5 @@
 use tangible_objects_model::Calibration;
+use tangible_objects_model::EventCount;
 use tangible_objects_model::RecordLabel;
 
 /// Per-frame recording context passed to [`super::FrameRecorder::record`].
@@ -14,5 +15,5 @@ pub struct FrameContext<'a> {
     pub calibration: Option<&'a Calibration>,
     /// Running count of raw events dropped because the raw sink's buffer was
     /// full.
-    pub raw_dropped: u64,
+    pub raw_dropped: EventCount,
 }

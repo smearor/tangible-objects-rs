@@ -23,7 +23,8 @@ tolerance, name and optional reference points.
 |----------------|---------------------|-----------------------|-------|
 | `name`         | `String`            | `"TestFigur-5P"`      | Human-readable figure name |
 | `num_points`   | `usize`             | `4`                   | Number of contact pins |
-| `tolerance`    | `PatternTolerance`  | `3.0`                 | Transparent newtype over `Millimeters` — bare number in TOML |
+| `tolerance`    | `PatternTolerance`  | `3.0`                 | Transparent newtype over `Millimeters` — bare number in TOML; scalar fallback, always required |
+| `tolerances`   | `Vec<PatternTolerance>` | `[2.2, 2.3, …]`   | Optional per-distance tolerances, parallel to `sorted_sides` — the `--analyze` tolerance suggestions render in exactly this format. `#[serde(default, skip_serializing_if = "Vec::is_empty")]` |
 | `sorted_sides` | `Vec<Millimeters>`  | `[34.1, 36.8, …]`     | Sorted pairwise distances — the fingerprint |
 | `points`       | `Vec<f64>`          | `[x0, y0, x1, y1, …]` | Optional reference positions, flattened; enables partial matching. `#[serde(default, skip_serializing_if = "Vec::is_empty")]` |
 
@@ -33,6 +34,8 @@ Example (`profiles/testfigur-5p.toml` shape):
 name = "TestFigur-5P"
 num_points = 4
 tolerance = 3.0
+# optional — per-index refinement (parallel to sorted_sides):
+# tolerances = [3.00, 2.26, 2.28, 2.33, 2.35, 2.35]
 sorted_sides = [33.32, 36.52, 35.11, 44.83, 53.5, 53.62]
 points = [0.0, 0.0, 35.11, 0.0, 0.0, 33.32, 35.11, 33.32]
 ```

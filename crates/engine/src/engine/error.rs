@@ -4,4 +4,7 @@ pub enum EngineError {
     /// An I/O error while opening or reading a device or replay file.
     #[error("engine I/O error: {0}")]
     Io(#[from] std::io::Error),
+    /// The input could not be converted or interpreted.
+    #[error("{0}")]
+    InvalidInput(String),
 }

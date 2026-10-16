@@ -157,12 +157,7 @@ fn evdev_thread(
     let mut stable_count: Option<usize> = None;
     let mut stable_frames: u32 = 0;
 
-    loop {
-        let events = match device.fetch_events() {
-            Ok(ev) => ev,
-            Err(_) => break,
-        };
-
+    while let Ok(events) = device.fetch_events() {
         for raw in events {
             touch_state.process(&raw);
 

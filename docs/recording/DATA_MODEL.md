@@ -3,7 +3,8 @@
 Data model for the frame recording pipeline described in
 [`concepts/planned/TRAINING.md`](../../concepts/planned/TRAINING.md). It defines
 the JSONL frame schema (`"v": 1`), the newtypes that carry it, and the control
-commands that steer a recording session.
+commands that steer a recording session. The raw wire format — field-by-field
+with JSON examples — lives in [`JSONL_FORMAT.md`](JSONL_FORMAT.md).
 
 A recording session produces **two artifacts**:
 
@@ -27,12 +28,25 @@ crates/model/src/
 ├── milliseconds.rs        → Milliseconds          (unit newtype)
 └── recording/
     ├── mod.rs             — module docs + re-exports
-    ├── frame.rs           → FrameRecord, RECORD_SCHEMA_VERSION
-    ├── frame_number.rs    → FrameNumber
     ├── label.rs           → RecordLabel
-    ├── candidate.rs       → CandidateReport
-    └── tracked.rs         → TrackedRecord
+    ├── tracked.rs         → TrackedRecord
+    ├── candidate/
+    │   ├── mod.rs         — re-exports
+    │   ├── report.rs      → CandidateReport
+    │   ├── count.rs       → CandidateCount
+    │   └── score.rs       → MatchScore
+    └── frame/
+        ├── mod.rs         — re-exports
+        ├── record.rs      → FrameRecord, RECORD_SCHEMA_VERSION
+        ├── number.rs      → FrameNumber            (ordinal)
+        ├── count.rs       → FrameCount             (grows only)
+        └── remaining_count.rs → RemainingFrameCount (depleting budget)
 ```
+
+Three distinct frame quantities are kept apart deliberately:
+`FrameNumber` is an ordinal ("frame 47"), `FrameCount` a cardinality that
+only grows ("47 frames"), `RemainingFrameCount` a budget that only shrinks
+("47 frames left", saturating `SubAssign`).
 
 ## FrameRecord
 
@@ -50,7 +64,7 @@ produces no output.
 | `touches`        | `Vec<TouchPoint>`        | `[{slot, tracking_id, x, y}]` | Flat shape via `#[serde(flatten)]` on `pos` |
 | `candidates`     | `Vec<CandidateReport>`   | `[{…}]`              | Every tested combination, matched *and* rejected |
 | `tracked`        | `Vec<TrackedRecord>`     | `[{…}]`              | Tracker view incl. `frames_since_match` |
-| `raw_dropped`    | `u64`                    | `0`                  | Running count of raw events dropped on a full sink buffer; non-zero breaks round-trip equality |
+| `raw_dropped`    | `EventCount`             | `0`                  | Running count of raw events dropped on a full sink buffer; non-zero breaks round-trip equality |
 
 `RECORD_SCHEMA_VERSION: u16 = 1` is written into every record — bump it when
 the shape changes; the stream is append-only within a session.
@@ -74,8 +88,15 @@ near-misses feed the collision analysis. Reports land in
 | `partial`            | `bool`              | `num_points - 1` attempt (one pin missing) — compares against a subset fingerprint |
 | `measured_distances` | `Vec<Millimeters>`  | Sorted pairwise distances; index `i` ↔ `sorted_distances[i]` |
 | `deviations`         | `Vec<Millimeters>`  | `\|measured[i] − reference[i]\|`, parallel to `measured_distances` — the raw basis for per-pair analysis |
-| `tolerance`          | `PatternTolerance`  | Applied tolerance (scalar; per-pair `tolerances[]` is Phase 3) |
+| `tolerance`          | `PatternTolerance`  | Scalar tolerance applied during the test (also the fallback for partial candidates — pin-drop re-indexes the fingerprint) |
+| `tolerances`         | `Vec<Millimeters>`  | Per-index tolerances when the pattern configures them; **absent** (not `null`) when scalar-only — `#[serde(default)]` keeps older recordings loadable |
+| `score`              | `Option<MatchScore>`| Normalized `max_i dev[i]/tol[i]` score; `None` in older recordings — `normalized_score()` recomputes it from `deviations`/`tolerances` |
 | `match_error`        | `Millimeters`       | Total absolute deviation; recorded for rejected candidates too |
+
+Derived helpers on `CandidateReport`: `required_tolerance()`
+(`max(deviations)` — tolerance at which the candidate would have matched),
+`tolerance_at(i)` (effective per-index tolerance), `normalized_score()`
+(stored score or recomputed), `matches_label()` (name or numeric id).
 
 ## TrackedRecord
 
@@ -103,11 +124,15 @@ Consistent with the existing unit newtypes (`Millimeters`, `Pixels`,
 `RawAxisValue`): transparent serialization, `new()`/`as_*` accessors, `From`
 conversions, `Display`.
 
-| Type           | Wraps    | Purpose |
-|----------------|----------|---------|
-| `Milliseconds` | `u64`    | Frame timestamps; `From<Duration>`/`Into<Duration>` |
-| `FrameNumber`  | `u64`    | Session-local `SYN_REPORT` counter |
-| `RecordLabel`  | `String` | Ground-truth tag (`--record-label`, keypress, API) |
+| Type                  | Wraps    | Purpose |
+|-----------------------|----------|---------|
+| `Milliseconds`        | `u64`    | Frame timestamps; `From<Duration>`/`Into<Duration>` |
+| `FrameNumber`         | `u64`    | Frame ordinal — session-local `SYN_REPORT` counter |
+| `FrameCount`          | `u64`    | Frame cardinality; `AddAssign` — grows only, never decrements |
+| `RemainingFrameCount` | `u64`    | Depleting frame budget; saturating `SubAssign` + `is_expired` |
+| `CandidateCount`      | `u64`    | Count of candidate reports — distinct from frame counts (one frame can hold several matched candidates) |
+| `MatchScore`          | `f64`    | Normalized deviation ratio; `≤ 1.0` ⟺ matched |
+| `RecordLabel`         | `String` | Ground-truth tag (`--record-label`, keypress, API) |
 
 ## Units & Markers
 
@@ -142,9 +167,9 @@ tools map onto these variants (task 1.5).
 
 ## Design Rules
 
-- **Serialize-only records**: analysis runs offline in external tooling
-  (jq/Python); no `Deserialize` on the big structs — same convention as
-  `TrackedTangible`.
+- **Shared schema**: the same record types serialize in the engine and
+  deserialize in `crates/analysis` — no schema drift; the `v` version gate
+  still rejects unknown versions.
 - **Opt-in diagnostics**: `CandidateReport` is only produced when the
   recording hook is attached; the hot loop allocates nothing otherwise.
 - **Versioned & append-only**: every line carries `"v"`; tooling refuses

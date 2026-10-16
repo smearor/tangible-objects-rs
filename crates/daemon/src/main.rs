@@ -38,6 +38,9 @@ fn main() -> Result<()> {
     let mut mcp_listen: Option<String> = None;
     let mut record_base: Option<String> = None;
     let mut record_label: Option<String> = None;
+    let mut device_profiles: Option<String> = None;
+    let mut convert_input: Option<String> = None;
+    let mut convert_to: Option<String> = None;
     let mut dbus = false;
 
     let mut i = 0;
@@ -84,6 +87,19 @@ fn main() -> Result<()> {
             "--export-dataset" => {
                 mode = Some("--export-dataset");
                 file = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--convert-device" => {
+                mode = Some("--convert-device");
+                convert_input = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--to" => {
+                convert_to = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--device-profiles" => {
+                device_profiles = args.get(i + 1).cloned();
                 i += 1;
             }
             "--record-label" => {
@@ -135,35 +151,28 @@ fn main() -> Result<()> {
             )
         }
         "--live" | "--record" => {
-            let path = device.ok_or_else(|| {
-                miette::miette!(
-                    "Usage: tangible-objects --live|--record <base> --device /dev/input/eventX"
-                )
-            })?;
+            // Without --device, auto-detect a known touchscreen by
+            // vendor:product (builtin + --device-profiles registry).
+            let path = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
             let interfaces = parse_interfaces(graphql_listen, mcp_listen, dbus)?;
             match record_base {
                 Some(base) => modes::run_record(
-                    Path::new(&path),
+                    &path,
                     Path::new(&base),
                     record_label.map(RecordLabel::new),
                     &patterns,
                     interfaces,
                 ),
-                None => modes::run_live(Path::new(&path), &patterns, interfaces),
+                None => modes::run_live(&path, &patterns, interfaces),
             }
         }
         "--train" => {
-            let dev = device.ok_or_else(|| {
-                miette::miette!(
-                    "Usage: tangible-objects --train --device /dev/input/eventX --name <name>"
-                )
-            })?;
-            let fig_name = name.ok_or_else(|| {
-                miette::miette!("Usage: tangible-objects --train --device ... --name <name>")
-            })?;
+            let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
+            let fig_name = name
+                .ok_or_else(|| miette::miette!("Usage: tangible-objects --train --name <name>"))?;
             let tol = Millimeters::new(tolerance.unwrap_or(30.0));
-            modes::run_train(Path::new(&dev), &fig_name, tol, profiles_dir.as_deref())
+            modes::run_train(&dev, &fig_name, tol, profiles_dir.as_deref())
         }
         "--analyze" => {
             let path = file.ok_or_else(|| {
@@ -176,6 +185,23 @@ fn main() -> Result<()> {
                 miette::miette!("Usage: tangible-objects --export-dataset <recording.jsonl>")
             })?;
             modes::run_export_dataset(Path::new(&path))
+        }
+        "--convert-device" => {
+            let input = convert_input.ok_or_else(|| {
+                miette::miette!(
+                    "Usage: tangible-objects --convert-device <in.evtest> --to <profile|file.toml>"
+                )
+            })?;
+            let target = convert_to.ok_or_else(|| {
+                miette::miette!(
+                    "Usage: tangible-objects --convert-device <in.evtest> --to <profile|file.toml>"
+                )
+            })?;
+            modes::run_convert_device(
+                Path::new(&input),
+                &target,
+                device_profiles.as_deref().map(Path::new),
+            )
         }
         "--list" => {
             modes::list_devices();

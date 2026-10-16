@@ -5,11 +5,14 @@
 //! tangibles across frames. Linux-only for device access; the detection core
 //! itself is platform-agnostic.
 
+mod convert;
 mod device;
 mod engine;
 mod recorder;
 mod replay;
 
+pub use convert::ConvertStats;
+pub use convert::DeviceConverter;
 pub use device::DeviceEntry;
 pub use device::TouchDevice;
 pub use engine::Engine;

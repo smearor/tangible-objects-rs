@@ -63,3 +63,6 @@ impl Display for FrameCount {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(FrameCount);

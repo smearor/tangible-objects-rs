@@ -5,6 +5,7 @@
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
 mod calibration;
+mod device;
 mod event;
 mod millimeters;
 mod milliseconds;
@@ -21,11 +22,15 @@ mod units_per_mm;
 mod vec2;
 
 pub use calibration::Calibration;
+pub use device::DeviceError;
+pub use device::DeviceProfile;
+pub use device::DeviceRegistry;
 pub use event::ABS_MT_POSITION_X;
 pub use event::ABS_MT_POSITION_Y;
 pub use event::ABS_MT_SLOT;
 pub use event::ABS_MT_TRACKING_ID;
 pub use event::EventCode;
+pub use event::EventCount;
 pub use event::EventType;
 pub use event::NamedEventCode;
 pub use event::RawEvent;
