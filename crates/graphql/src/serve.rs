@@ -103,6 +103,7 @@ mod tests {
                 matches: Vec::new(),
                 touches: Vec::new(),
                 events: vec![EngineEvent::TangibleAdded(tracked()[0].clone())],
+                candidates: Vec::new(),
             },
             &tracked(),
         );

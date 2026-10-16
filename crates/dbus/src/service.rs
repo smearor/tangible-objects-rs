@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+
+use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::ControlCommand;
@@ -47,6 +50,37 @@ impl EngineService {
     async fn train_profile(&self, name: &str) -> fdo::Result<()> {
         self.handle
             .send_command(ControlCommand::TrainProfile(name.to_string()))
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
+    /// Starts a recording session writing `<base_path>.jsonl` +
+    /// `<base_path>.evtest`; an empty `label` records unlabeled.
+    async fn start_recording(&self, base_path: &str, label: &str) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::StartRecording {
+                base_path: PathBuf::from(base_path),
+                label: (!label.is_empty()).then(|| RecordLabel::new(label)),
+            })
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
+    /// Stops the active recording session.
+    async fn stop_recording(&self) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::StopRecording)
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
+    /// Sets the ground-truth label for subsequent recorded frames; an empty
+    /// string clears it.
+    async fn set_record_label(&self, label: &str) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::SetRecordLabel(
+                (!label.is_empty()).then(|| RecordLabel::new(label)),
+            ))
             .await
             .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
     }

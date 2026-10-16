@@ -59,12 +59,51 @@ impl TangiblePattern {
 
     /// Total absolute deviation across all distances (lower is better).
     pub fn match_error(&self, points: &[Vec2<Millimeters>]) -> Millimeters {
-        let measured = sorted_pairwise_distances(points);
+        Self::deviations(&Self::distances_of(points), &self.sorted_distances)
+            .iter()
+            .copied()
+            .sum()
+    }
+
+    /// Computes the sorted pairwise distances of an arbitrary point set —
+    /// the measured fingerprint compared against `sorted_distances`.
+    pub fn distances_of(points: &[Vec2<Millimeters>]) -> Vec<Millimeters> {
+        sorted_pairwise_distances(points)
+    }
+
+    /// Absolute per-index deviation between a measured and a reference
+    /// fingerprint; empty when the lengths differ.
+    pub fn deviations(measured: &[Millimeters], reference: &[Millimeters]) -> Vec<Millimeters> {
+        if measured.len() != reference.len() {
+            return Vec::new();
+        }
         measured
             .iter()
-            .zip(self.sorted_distances.iter())
-            .map(|(m, t)| (*m - *t).abs())
-            .sum()
+            .zip(reference.iter())
+            .map(|(m, r)| (*m - *r).abs())
+            .collect()
+    }
+
+    /// Fingerprint of the reference point set with pin `skip` removed.
+    ///
+    /// Returns the kept reference indices and their sorted pairwise
+    /// distances; `None` when no reference points are stored, their count
+    /// differs from `num_points` or `skip` is out of range.
+    pub fn partial_reference(&self, skip: usize) -> Option<(Vec<usize>, Vec<Millimeters>)> {
+        let ref_points = self.ref_points.as_ref()?;
+        if ref_points.len() != self.num_points || skip >= self.num_points {
+            return None;
+        }
+        let subset: Vec<Vec2<Millimeters>> = ref_points
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| *index != skip)
+            .map(|(_, point)| *point)
+            .collect();
+        let indices = (0..self.num_points)
+            .filter(|index| *index != skip)
+            .collect();
+        Some((indices, sorted_pairwise_distances(&subset)))
     }
 
     /// Partial match: tests whether `points` (`num_points - 1` contacts) fit a
@@ -78,7 +117,10 @@ impl TangiblePattern {
         points: &[Vec2<Millimeters>],
     ) -> Option<(Vec<usize>, Millimeters)> {
         let ref_pts = self.ref_points.as_ref()?;
-        if points.len() != self.num_points - 1 || ref_pts.len() != self.num_points {
+        if self.num_points == 0
+            || points.len() != self.num_points - 1
+            || ref_pts.len() != self.num_points
+        {
             return None;
         }
         let partial_tolerance = self.tolerance.0 * 1.5;
@@ -86,33 +128,15 @@ impl TangiblePattern {
         let mut best: Option<(Vec<usize>, Millimeters)> = None;
 
         for skip in 0..self.num_points {
-            let subset: Vec<&Vec2<Millimeters>> = ref_pts
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| *i != skip)
-                .map(|(_, p)| p)
-                .collect();
+            let Some((all_indices, ref_dists)) = self.partial_reference(skip) else {
+                continue;
+            };
 
-            let mut ref_dists = Vec::new();
-            for i in 0..subset.len() {
-                for j in (i + 1)..subset.len() {
-                    ref_dists.push(subset[i].distance(subset[j]));
-                }
-            }
-            ref_dists.sort_by(Millimeters::total_cmp);
-
-            if measured.len() == ref_dists.len()
-                && measured
-                    .iter()
-                    .zip(ref_dists.iter())
-                    .all(|(m, t)| (*m - *t).abs() <= partial_tolerance)
+            let deviations = Self::deviations(&measured, &ref_dists);
+            if deviations.len() == ref_dists.len()
+                && deviations.iter().all(|d| *d <= partial_tolerance)
             {
-                let error: Millimeters = measured
-                    .iter()
-                    .zip(ref_dists.iter())
-                    .map(|(m, t)| (*m - *t).abs())
-                    .sum();
-                let all_indices: Vec<usize> = (0..self.num_points).filter(|i| *i != skip).collect();
+                let error: Millimeters = deviations.iter().copied().sum();
                 match &best {
                     None => best = Some((all_indices, error)),
                     Some((_, best_err)) if error < *best_err => best = Some((all_indices, error)),

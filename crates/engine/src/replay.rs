@@ -20,6 +20,7 @@ use crate::EngineError;
 pub struct EvtestReplay {
     reader: BufReader<File>,
     calibration: Option<Calibration>,
+    device_name: Option<String>,
 }
 
 impl EvtestReplay {
@@ -29,6 +30,7 @@ impl EvtestReplay {
         let mut replay = Self {
             reader: BufReader::new(file),
             calibration: None,
+            device_name: None,
         };
         replay.parse_header();
         Ok(replay)
@@ -60,6 +62,13 @@ impl EvtestReplay {
 
             if line.contains("Testing ...") {
                 break;
+            }
+
+            if let Some(name) = line
+                .strip_prefix("Input device name: \"")
+                .and_then(|rest| rest.strip_suffix("\"\n"))
+            {
+                self.device_name = Some(name.to_string());
             }
 
             if line.contains("Event code") && line.contains("ABS_MT_POSITION_X") {
@@ -117,9 +126,22 @@ impl EvtestReplay {
         self.calibration
     }
 
+    /// Device name from the `Input device name:` header line, if present.
+    pub fn device_name(&self) -> Option<&str> {
+        self.device_name.as_deref()
+    }
+
     /// Returns the next parsed event, skipping non-event lines.
     /// Returns `None` at EOF.
     pub fn next_event(&mut self) -> Option<RawEvent> {
+        self.next_event_timed().map(|(event, _)| event)
+    }
+
+    /// Returns the next parsed event with its `evtest` timestamp in seconds.
+    ///
+    /// Recording passes these timestamps through so replayed sessions produce
+    /// deterministic artifacts. Returns `None` at EOF.
+    pub fn next_event_timed(&mut self) -> Option<(RawEvent, f64)> {
         let mut line = String::new();
         loop {
             line.clear();
@@ -127,8 +149,8 @@ impl EvtestReplay {
             if bytes == 0 {
                 return None;
             }
-            if let Some(event) = parse_evtest_line(&line) {
-                return Some(event);
+            if let Some(timed) = parse_evtest_line_timed(&line) {
+                return Some(timed);
             }
         }
     }
@@ -140,7 +162,11 @@ fn parse_evtest_line(line: &str) -> Option<RawEvent> {
         return None;
     }
 
-    if line.contains("SYN_REPORT") {
+    // Delimiter form only: "Event: time ..., ----- SYN_REPORT -----".
+    // A typed line like `code 0 (SYN_REPORT)` falls through to the typed
+    // parse and still yields a SYN event — while `code 0 (ABS_X)` lines
+    // (legacy single-touch axes) no longer misread as frame boundaries.
+    if line.contains("SYN_REPORT") && !line.contains("type ") {
         return Some(RawEvent::new(EventType::Syn, SYN_REPORT, 0));
     }
 
@@ -150,6 +176,17 @@ fn parse_evtest_line(line: &str) -> Option<RawEvent> {
     let value = parse_i32_after(line, "value ")?;
 
     Some(RawEvent::new(event_type, code, value))
+}
+
+/// Parses a single evtest event line into a [`RawEvent`] plus its timestamp
+/// in seconds (`time S.UUUUUU` field).
+fn parse_evtest_line_timed(line: &str) -> Option<(RawEvent, f64)> {
+    let event = parse_evtest_line(line)?;
+    let start = line.find("time ")? + "time ".len();
+    let rest = &line[start..];
+    let end = rest.find([',', ' '])?;
+    let timestamp = rest[..end].parse::<f64>().ok()?;
+    Some((event, timestamp))
 }
 
 fn parse_u16_after(line: &str, prefix: &str) -> Option<u16> {
@@ -181,6 +218,7 @@ fn parse_value_line(line: &str, keyword: &str) -> Option<f64> {
 mod tests {
     use super::parse_evtest_line;
     use tangible_objects_model::ABS_MT_POSITION_X;
+    use tangible_objects_model::EventCode;
     use tangible_objects_model::EventType;
 
     #[test]
@@ -190,6 +228,26 @@ mod tests {
         assert_eq!(event.event_type, EventType::Abs);
         assert_eq!(event.code, ABS_MT_POSITION_X);
         assert_eq!(event.value, 1234);
+    }
+
+    #[test]
+    fn code_zero_abs_event_is_not_a_syn_report() {
+        // Regression: the SiS controller emits legacy ABS_X (code 0) axes;
+        // a wrongly named `(SYN_REPORT)` in such a line must not split frames.
+        let line =
+            "Event: time 1696584000.123456, type 3 (EV_ABS), code 0 (SYN_REPORT), value 2401";
+        let event = parse_evtest_line(line).unwrap();
+        assert_eq!(event.event_type, EventType::Abs);
+        assert_eq!(event.code, EventCode::new(0));
+        assert!(!event.is_syn_report());
+    }
+
+    #[test]
+    fn typed_syn_report_line_is_still_a_syn_report() {
+        // Some evtest variants write SYN_REPORT as a regular typed event.
+        let line = "Event: time 1696584000.123456, type 0 (EV_SYN), code 0 (SYN_REPORT), value 0";
+        let event = parse_evtest_line(line).unwrap();
+        assert!(event.is_syn_report());
     }
 
     #[test]

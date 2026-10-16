@@ -1,10 +1,14 @@
 use std::collections::HashSet;
 
+use tangible_objects_model::CandidateReport;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::Vec2;
+
+use super::diagnostics::CandidateDiagnostics;
+use super::diagnostics::NoDiagnostics;
 
 /// Finds all pattern matches in the current set of touch points.
 ///
@@ -16,6 +20,27 @@ use tangible_objects_model::Vec2;
 pub(crate) fn find_matches(
     touches: &[TouchPoint],
     patterns: &[TangiblePattern],
+) -> Vec<PatternMatch> {
+    find_matches_inner(touches, patterns, &mut NoDiagnostics)
+}
+
+/// Like [`find_matches`], additionally reporting every tested point
+/// combination — matched or rejected — to `diagnostics`.
+///
+/// Used by the recording pipeline to capture deviation data for offline
+/// tolerance analysis.
+pub(crate) fn find_matches_with_diagnostics(
+    touches: &[TouchPoint],
+    patterns: &[TangiblePattern],
+    diagnostics: &mut impl CandidateDiagnostics,
+) -> Vec<PatternMatch> {
+    find_matches_inner(touches, patterns, diagnostics)
+}
+
+fn find_matches_inner(
+    touches: &[TouchPoint],
+    patterns: &[TangiblePattern],
+    diagnostics: &mut impl CandidateDiagnostics,
 ) -> Vec<PatternMatch> {
     let mut matches = Vec::new();
     let mut used_indices: HashSet<usize> = HashSet::new();
@@ -43,7 +68,9 @@ pub(crate) fn find_matches(
         for combo in combinations(&available, pattern.num_points) {
             let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
 
-            if pattern.matches(&points) {
+            let matched = pattern.matches(&points);
+            diagnostics.report(|| exact_report(pattern, &points, &combo, matched));
+            if matched {
                 let error = pattern.match_error(&points);
                 let candidate = build_match(pattern, &points, &combo, false);
                 consider(&mut best, candidate, error);
@@ -62,7 +89,9 @@ pub(crate) fn find_matches(
                 let points: Vec<Vec2<Millimeters>> =
                     combo.iter().map(|&i| touches[i].pos).collect();
 
-                if let Some((_ref_indices, error)) = pattern.matches_partial(&points) {
+                let result = pattern.matches_partial(&points);
+                diagnostics.report(|| partial_report(pattern, &points, &combo, result.is_some()));
+                if let Some((_ref_indices, error)) = result {
                     let candidate = build_match(pattern, &points, &combo, true);
                     consider(&mut best, candidate, error);
                 }
@@ -78,6 +107,62 @@ pub(crate) fn find_matches(
     }
 
     matches
+}
+
+/// Builds a [`CandidateReport`] for an exact (full-pin) combination.
+fn exact_report(
+    pattern: &TangiblePattern,
+    points: &[Vec2<Millimeters>],
+    combo: &[usize],
+    matched: bool,
+) -> CandidateReport {
+    let measured_distances = TangiblePattern::distances_of(points);
+    let deviations = TangiblePattern::deviations(&measured_distances, &pattern.sorted_distances);
+    CandidateReport {
+        pattern_id: pattern.id,
+        pattern_name: pattern.name.clone(),
+        touch_indices: combo.to_vec(),
+        matched,
+        partial: false,
+        match_error: deviations.iter().copied().sum(),
+        measured_distances,
+        deviations,
+        tolerance: pattern.tolerance,
+    }
+}
+
+/// Builds a [`CandidateReport`] for a partial (`num_points - 1`) combination.
+///
+/// Deviations are reported against the best-fitting one-pin-dropped reference
+/// subset — the closest geometric explanation, matched or not.
+fn partial_report(
+    pattern: &TangiblePattern,
+    points: &[Vec2<Millimeters>],
+    combo: &[usize],
+    matched: bool,
+) -> CandidateReport {
+    let measured_distances = TangiblePattern::distances_of(points);
+    let (deviations, match_error) = (0..pattern.num_points)
+        .filter_map(|skip| pattern.partial_reference(skip))
+        .map(|(_indices, reference)| {
+            let deviations = TangiblePattern::deviations(&measured_distances, &reference);
+            let error: Millimeters = deviations.iter().copied().sum();
+            (deviations, error)
+        })
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .unwrap_or_else(|| (Vec::new(), Millimeters::new(0.0)));
+
+    CandidateReport {
+        pattern_id: pattern.id,
+        pattern_name: pattern.name.clone(),
+        touch_indices: combo.to_vec(),
+        matched,
+        partial: true,
+        measured_distances,
+        deviations,
+        tolerance: pattern.tolerance,
+        match_error,
+    }
 }
 
 /// Builds a [`PatternMatch`] for a matched point combination.
@@ -141,6 +226,7 @@ fn combinations(items: &[usize], k: usize) -> Vec<Vec<usize>> {
 mod tests {
     use super::combinations;
     use super::find_matches;
+    use super::find_matches_with_diagnostics;
     use tangible_objects_model::TangiblePattern;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
@@ -199,5 +285,94 @@ mod tests {
             touch_point(2, 0.0, 60.0),
         ];
         assert!(find_matches(&touches, &patterns).is_empty());
+    }
+
+    #[test]
+    fn diagnostics_report_every_tested_combination() {
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(1, "triangle", &reference, 5.0)];
+        let touches = vec![
+            touch_point(0, 100.0, 100.0),
+            touch_point(1, 150.0, 100.0),
+            touch_point(2, 100.0, 150.0),
+            touch_point(3, 999.0, 999.0),
+        ];
+
+        let mut reports = Vec::new();
+        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+
+        assert_eq!(matches.len(), 1);
+        // C(4,3) combinations: one matches, three are rejected.
+        assert_eq!(reports.len(), 4);
+        assert_eq!(reports.iter().filter(|report| report.matched).count(), 1);
+        assert!(reports.iter().all(|report| !report.partial));
+
+        let matched = reports.iter().find(|report| report.matched).expect("match");
+        assert_eq!(matched.touch_indices, vec![0, 1, 2]);
+        assert!(matched.deviations.iter().all(|d| d.as_f64() <= 5.0));
+    }
+
+    #[test]
+    fn rejected_candidates_carry_deviations() {
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(1, "triangle", &reference, 5.0)];
+        let touches = vec![
+            touch_point(0, 0.0, 0.0),
+            touch_point(1, 30.0, 0.0),
+            touch_point(2, 0.0, 60.0),
+        ];
+
+        let mut reports = Vec::new();
+        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+
+        assert!(matches.is_empty());
+        assert_eq!(reports.len(), 1);
+        let report = &reports[0];
+        assert!(!report.matched);
+        assert_eq!(report.measured_distances.len(), 3);
+        assert_eq!(report.deviations.len(), 3);
+        // |30 - 50| + |60 - 50| + |sqrt(30²+60²) - sqrt(50²+50²)|
+        assert!(report.match_error.as_f64() > 25.0);
+        assert_eq!(report.tolerance.as_f64(), 5.0);
+    }
+
+    #[test]
+    fn diagnostics_report_partial_candidates() {
+        let square = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(0.0, 40.0),
+            Vec2::new(40.0, 40.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        // One pin missing — three square contacts plus a distractor touch
+        // (partial matching requires at least num_points active touches).
+        let touches = vec![
+            touch_point(0, 0.0, 0.0),
+            touch_point(1, 40.0, 0.0),
+            touch_point(2, 0.0, 40.0),
+            touch_point(3, 999.0, 999.0),
+        ];
+
+        let mut reports = Vec::new();
+        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+
+        assert_eq!(matches.len(), 1);
+        assert!(matches[0].pattern_name.ends_with("(partial)"));
+        // C(4,4) = 1 exact candidate + C(4,3) = 4 partial candidates.
+        assert_eq!(reports.len(), 5);
+        let partials: Vec<_> = reports.iter().filter(|report| report.partial).collect();
+        assert_eq!(partials.len(), 4);
+        assert_eq!(partials.iter().filter(|report| report.matched).count(), 1);
+        // A 3-pin subset has C(3,2) = 3 distances.
+        assert!(partials.iter().all(|report| report.deviations.len() == 3));
     }
 }

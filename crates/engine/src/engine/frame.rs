@@ -1,3 +1,4 @@
+use tangible_objects_model::CandidateReport;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
 
@@ -15,4 +16,8 @@ pub struct EngineFrame {
     /// Domain events produced by this frame (touch changes, tangible
     /// added/moved/removed), in emission order.
     pub events: Vec<EngineEvent>,
+    /// Diagnostics: every candidate combination tested in this frame —
+    /// empty unless the frame was produced by
+    /// [`Engine::process_with_diagnostics`](crate::Engine::process_with_diagnostics).
+    pub candidates: Vec<CandidateReport>,
 }

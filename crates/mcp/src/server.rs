@@ -14,6 +14,9 @@ use rmcp::model::ServerConfig;
 use rmcp::service::RequestContext;
 use rmcp::service::RoleServer;
 use rmcp::{ServerHandler, tool, tool_handler, tool_router};
+use std::path::PathBuf;
+
+use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_runtime::ControlCommand;
@@ -21,6 +24,8 @@ use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::GetPoseArgs;
 use super::tool_args::SetFilterModeArgs;
+use super::tool_args::SetRecordLabelArgs;
+use super::tool_args::StartRecordingArgs;
 use super::tool_args::TrainProfileArgs;
 
 /// Resource URI listing the currently tracked tangibles.
@@ -110,6 +115,57 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "training started for '{}'",
             args.name
+        ))]))
+    }
+
+    /// Starts a recording session writing `<base>.jsonl` + `<base>.evtest`.
+    #[tool(description = "Start a recording session writing <base>.jsonl and <base>.evtest.")]
+    async fn start_recording(
+        &self,
+        Parameters(args): Parameters<StartRecordingArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::StartRecording {
+                base_path: PathBuf::from(args.base_path.clone()),
+                label: args.label.clone().map(RecordLabel::new),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "recording started at '{}'",
+            args.base_path
+        ))]))
+    }
+
+    /// Stops the active recording session.
+    #[tool(description = "Stop the active recording session.")]
+    async fn stop_recording(&self) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::StopRecording)
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            "recording stopped",
+        )]))
+    }
+
+    /// Changes the ground-truth label for subsequent recorded frames.
+    #[tool(
+        description = "Set the ground-truth label for subsequent recorded frames; null clears it."
+    )]
+    async fn set_record_label(
+        &self,
+        Parameters(args): Parameters<SetRecordLabelArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetRecordLabel(
+                args.label.clone().map(RecordLabel::new),
+            ))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "record label set to {:?}",
+            args.label
         ))]))
     }
 }

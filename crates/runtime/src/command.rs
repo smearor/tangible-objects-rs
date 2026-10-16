@@ -1,3 +1,7 @@
+use std::path::PathBuf;
+
+use tangible_objects_model::RecordLabel;
+
 /// Control command sent by an interface back to the daemon's device loop.
 ///
 /// Commands are drained by the runtime after each published frame
@@ -10,4 +14,16 @@ pub enum ControlCommand {
     SetFilterMode(bool),
     /// Capture a new figure profile with the given name.
     TrainProfile(String),
+    /// Start a recording session writing `<base_path>.jsonl` (frames) and
+    /// `<base_path>.evtest` (raw events).
+    StartRecording {
+        /// Base path of the recording artifacts, without extension.
+        base_path: PathBuf,
+        /// Ground-truth label applied to recorded frames until changed.
+        label: Option<RecordLabel>,
+    },
+    /// Stop the active recording session.
+    StopRecording,
+    /// Change the ground-truth label applied to subsequent recorded frames.
+    SetRecordLabel(Option<RecordLabel>),
 }

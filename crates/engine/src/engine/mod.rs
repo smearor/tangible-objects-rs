@@ -7,6 +7,7 @@
 //! added/moved/removed) for interface crates.
 
 mod detection;
+mod diagnostics;
 mod error;
 mod event;
 mod frame;

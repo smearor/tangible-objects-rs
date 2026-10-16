@@ -7,6 +7,7 @@
 
 mod device;
 mod engine;
+mod recorder;
 mod replay;
 
 pub use device::DeviceEntry;
@@ -17,6 +18,10 @@ pub use engine::EngineEvent;
 pub use engine::EngineFrame;
 pub use engine::TouchState;
 pub use engine::Tracker;
+pub use recorder::FrameContext;
+pub use recorder::FrameRecorder;
+pub use recorder::RawRecorder;
+pub use recorder::RecordingSession;
 pub use replay::EvtestReplay;
 
 pub use tangible_objects_model as model;

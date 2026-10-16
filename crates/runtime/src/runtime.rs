@@ -212,6 +212,7 @@ mod tests {
             matches: Vec::new(),
             touches: Vec::new(),
             events,
+            candidates: Vec::new(),
         }
     }
 

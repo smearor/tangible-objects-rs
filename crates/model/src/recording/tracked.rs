@@ -1,0 +1,104 @@
+use serde::Serialize;
+use serde::Serializer;
+use serde::ser::SerializeStruct;
+
+use crate::Millimeters;
+use crate::PatternId;
+use crate::RotationRad;
+use crate::TangibleId;
+use crate::TrackedTangible;
+use crate::Vec2;
+
+/// Recorded view of a [`TrackedTangible`] within a [`crate::FrameRecord`].
+///
+/// Unlike the interface-facing serialization of [`TrackedTangible`] this
+/// record keeps the internal `frames_since_match` hysteresis counter — raw
+/// matches and stably tracked objects must be distinguishable in the
+/// flappy-contact analysis.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackedRecord {
+    /// Stable tracker ID of the tangible.
+    pub id: TangibleId,
+    /// ID of the matched pattern.
+    pub pattern_id: PatternId,
+    /// Name of the matched figure profile.
+    pub pattern_name: String,
+    /// Smoothed centroid position.
+    pub center: Vec2<Millimeters>,
+    /// Smoothed orientation in radians; serialized in degrees as
+    /// `rotation_deg`.
+    pub rotation_rad: RotationRad,
+    /// Consecutive frames without a match for this tangible.
+    pub frames_since_match: u32,
+}
+
+impl From<&TrackedTangible> for TrackedRecord {
+    fn from(tracked: &TrackedTangible) -> Self {
+        Self {
+            id: tracked.id,
+            pattern_id: tracked.pattern_id,
+            pattern_name: tracked.pattern_name.clone(),
+            center: tracked.center,
+            rotation_rad: tracked.rotation_rad,
+            frames_since_match: tracked.frames_since_match,
+        }
+    }
+}
+
+impl Serialize for TrackedRecord {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut state = serializer.serialize_struct("TrackedRecord", 6)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("pattern_id", &self.pattern_id)?;
+        state.serialize_field("pattern_name", &self.pattern_name)?;
+        state.serialize_field("center", &self.center)?;
+        state.serialize_field("rotation_deg", &self.rotation_rad.to_degrees())?;
+        state.serialize_field("frames_since_match", &self.frames_since_match)?;
+        state.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TrackedRecord;
+    use crate::RotationRad;
+    use crate::TangibleId;
+    use crate::TrackedTangible;
+    use crate::Vec2;
+
+    fn tracked_tangible() -> TrackedTangible {
+        TrackedTangible {
+            id: TangibleId::new(10),
+            pattern_id: 5.into(),
+            pattern_name: "TestFigur-5P".to_string(),
+            center: Vec2::new(171.94, 80.84),
+            rotation_rad: RotationRad::new(std::f64::consts::PI),
+            frames_since_match: 3,
+        }
+    }
+
+    #[test]
+    fn serializes_degrees_and_hysteresis() {
+        let record = TrackedRecord::from(&tracked_tangible());
+        let json = serde_json::to_value(&record).expect("serialize");
+
+        assert_eq!(json["id"], 10);
+        assert_eq!(json["pattern_id"], 5);
+        assert_eq!(json["frames_since_match"], 3);
+        assert!((json["rotation_deg"].as_f64().expect("deg") - 180.0).abs() < 1e-9);
+        assert!(json["center"]["x"].is_number());
+    }
+
+    #[test]
+    fn from_tracked_tangible_copies_all_fields() {
+        let tracked = tracked_tangible();
+        let record = TrackedRecord::from(&tracked);
+
+        assert_eq!(record.id, tracked.id);
+        assert_eq!(record.pattern_id, tracked.pattern_id);
+        assert_eq!(record.pattern_name, tracked.pattern_name);
+        assert_eq!(record.center, tracked.center);
+        assert_eq!(record.rotation_rad, tracked.rotation_rad);
+        assert_eq!(record.frames_since_match, tracked.frames_since_match);
+    }
+}

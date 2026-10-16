@@ -1,3 +1,5 @@
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Display;
 use std::ops::Div;
 use std::ops::Sub;
@@ -8,8 +10,9 @@ use crate::UnitsPerMm;
 ///
 /// Wraps the plain `f64` so raw device coordinates cannot be confused with
 /// millimeter positions or resolutions. Dividing by [`UnitsPerMm`] yields
-/// millimeters as `f64`.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+/// millimeters as `f64`. Serializes as a bare number.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct RawAxisValue(pub f64);
 
 impl RawAxisValue {

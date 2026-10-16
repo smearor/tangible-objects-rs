@@ -1,8 +1,9 @@
 //! Command-line entry point of the `tangible-objects` daemon binary.
 //!
 //! Modes: `--list` (enumerate devices), `--replay` (replay an evtest
-//! recording), `--live` (live detection), `--train` (record a figure profile),
-//! `--gui` (GTK visualization, feature-gated).
+//! recording), `--live` (live detection), `--record` (frame + raw recording),
+//! `--train` (record a figure profile), `--gui` (GTK visualization,
+//! feature-gated).
 
 mod modes;
 
@@ -15,6 +16,7 @@ use std::path::Path;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_model::Millimeters;
+use tangible_objects_model::RecordLabel;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -34,6 +36,8 @@ fn main() -> Result<()> {
     let mut tolerance: Option<f64> = None;
     let mut graphql_listen: Option<String> = None;
     let mut mcp_listen: Option<String> = None;
+    let mut record_base: Option<String> = None;
+    let mut record_label: Option<String> = None;
     let mut dbus = false;
 
     let mut i = 0;
@@ -68,6 +72,14 @@ fn main() -> Result<()> {
                 tolerance = args.get(i + 1).and_then(|s| s.parse().ok());
                 i += 1;
             }
+            "--record" => {
+                record_base = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--record-label" => {
+                record_label = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--graphql-listen" => {
                 graphql_listen = args.get(i + 1).cloned();
                 i += 1;
@@ -91,33 +103,45 @@ fn main() -> Result<()> {
         i += 1;
     }
 
-    match mode.unwrap_or("--help") {
+    // --record is a mode on its own (--record <base> --device …) but also a
+    // modifier on --replay and --live.
+    let effective_mode = match (mode, record_base.is_some()) {
+        (Some(mode), _) => mode,
+        (None, true) => "--record",
+        (None, false) => "--help",
+    };
+
+    match effective_mode {
         "--replay" => {
             let path = file.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --replay --file <evtest-file>")
             })?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
-            modes::run_replay(Path::new(&path), &patterns)
+            modes::run_replay(
+                Path::new(&path),
+                &patterns,
+                record_base.as_deref().map(Path::new),
+                record_label.map(RecordLabel::new),
+            )
         }
-        "--live" => {
+        "--live" | "--record" => {
             let path = device.ok_or_else(|| {
-                miette::miette!("Usage: tangible-objects --live --device /dev/input/eventX")
+                miette::miette!(
+                    "Usage: tangible-objects --live|--record <base> --device /dev/input/eventX"
+                )
             })?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
-            let graphql_addr = graphql_listen
-                .map(|a| a.parse::<SocketAddr>())
-                .transpose()
-                .into_diagnostic()?;
-            let mcp_addr = mcp_listen
-                .map(|a| a.parse::<SocketAddr>())
-                .transpose()
-                .into_diagnostic()?;
-            let interfaces = modes::Interfaces {
-                graphql_addr,
-                dbus,
-                mcp_addr,
-            };
-            modes::run_live(Path::new(&path), &patterns, interfaces)
+            let interfaces = parse_interfaces(graphql_listen, mcp_listen, dbus)?;
+            match record_base {
+                Some(base) => modes::run_record(
+                    Path::new(&path),
+                    Path::new(&base),
+                    record_label.map(RecordLabel::new),
+                    &patterns,
+                    interfaces,
+                ),
+                None => modes::run_live(Path::new(&path), &patterns, interfaces),
+            }
         }
         "--train" => {
             let dev = device.ok_or_else(|| {
@@ -148,6 +172,27 @@ fn main() -> Result<()> {
     }
 }
 
+/// Parses the optional interface flags into [`modes::Interfaces`].
+fn parse_interfaces(
+    graphql_listen: Option<String>,
+    mcp_listen: Option<String>,
+    dbus: bool,
+) -> Result<modes::Interfaces> {
+    let graphql_addr = graphql_listen
+        .map(|a| a.parse::<SocketAddr>())
+        .transpose()
+        .into_diagnostic()?;
+    let mcp_addr = mcp_listen
+        .map(|a| a.parse::<SocketAddr>())
+        .transpose()
+        .into_diagnostic()?;
+    Ok(modes::Interfaces {
+        graphql_addr,
+        dbus,
+        mcp_addr,
+    })
+}
+
 fn print_help() {
     eprintln!("tangible-objects — kapazitive Touchfiguren-Prototyp");
     eprintln!();
@@ -162,6 +207,12 @@ fn print_help() {
         "  tangible-objects --live --device /dev/input/eventX               Live von einem Eingabegerät"
     );
     eprintln!(
+        "  tangible-objects --record <base> --device /dev/input/eventX      Aufzeichnung (<base>.jsonl + <base>.evtest)"
+    );
+    eprintln!(
+        "  tangible-objects --replay --file <f> --record <base>             Replay deterministisch aufzeichnen"
+    );
+    eprintln!(
         "  tangible-objects --train --device /dev/input/eventX --name <name>  Profil aufnehmen und speichern"
     );
     eprintln!(
@@ -172,6 +223,7 @@ fn print_help() {
     eprintln!("  --profiles <dir>   Profil-Verzeichnis (Standard: profiles/)");
     eprintln!("  --tolerance <mm>   Toleranz für Musterabgleich (Standard: 30.0)");
     eprintln!("  --name <name>      Figurenname (für --train)");
+    eprintln!("  --record-label <label>  Ground-Truth-Label für --record");
     eprintln!("  --graphql-listen <addr>  GraphQL-Endpunkt im --live Modus (z.B. 127.0.0.1:8080)");
     eprintln!("  --mcp-listen <addr>      MCP-HTTP-Endpunkt im --live Modus (z.B. 127.0.0.1:8090)");
     eprintln!("  --dbus               D-Bus-Interface im --live Modus (Session-Bus)");

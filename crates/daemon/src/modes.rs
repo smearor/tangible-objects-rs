@@ -5,18 +5,24 @@ use std::net::SocketAddr;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::Duration;
+use std::time::Instant;
 
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EvtestReplay;
+use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_model::Millimeters;
+use tangible_objects_model::Milliseconds;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
+use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::ProfileInfo;
 use tracing::warn;
@@ -51,7 +57,17 @@ pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
 }
 
 /// Replays an `evtest` recording through the detection pipeline.
-pub fn run_replay(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
+///
+/// With `record_base` a [`RecordingSession`] additionally writes
+/// `<base>.jsonl` + `<base>.evtest`; event timestamps come from the input
+/// file itself (offset to the first event), so the artifacts are
+/// deterministic.
+pub fn run_replay(
+    path: &Path,
+    patterns: &[TangiblePattern],
+    record_base: Option<&Path>,
+    label: Option<RecordLabel>,
+) -> Result<()> {
     let mut replay = EvtestReplay::open(path).into_diagnostic()?;
     let mut engine = Engine::new(patterns.to_vec());
 
@@ -67,11 +83,34 @@ pub fn run_replay(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
         );
     }
 
+    let mut session = match record_base {
+        Some(base) => Some(
+            RecordingSession::start(
+                base.to_path_buf(),
+                replay.device_name(),
+                engine.calibration().as_ref(),
+                label,
+            )
+            .into_diagnostic()?,
+        ),
+        None => None,
+    };
+
     let mut frame_no: u64 = 0;
     let mut detected_frames: u64 = 0;
+    let mut first_timestamp: Option<f64> = None;
 
-    while let Some(event) = replay.next_event() {
-        let Some(frame) = engine.process(&event) else {
+    while let Some((event, timestamp)) = replay.next_event_timed() {
+        let offset = timestamp - *first_timestamp.get_or_insert(timestamp);
+        if let Some(session) = &session {
+            session.record_event(&event, offset);
+        }
+        let engine_frame = if session.is_some() {
+            engine.process_with_diagnostics(&event)
+        } else {
+            engine.process(&event)
+        };
+        let Some(frame) = engine_frame else {
             continue;
         };
         let added = frame
@@ -104,12 +143,29 @@ pub fn run_replay(path: &Path, patterns: &[TangiblePattern]) -> Result<()> {
                 }
             }
         }
+        if let Some(session) = &mut session {
+            session.record_frame(
+                frame_no,
+                Milliseconds::from(Duration::from_secs_f64(offset)),
+                &frame,
+                engine.tracked(),
+            );
+        }
         frame_no += 1;
     }
 
     println!("\n--- Zusammenfassung ---");
     println!("Frames gesamt: {frame_no}");
     println!("Frames mit Erkennung: {detected_frames}");
+    if let Some(session) = session {
+        let recorded = session.recorded_frames();
+        let dropped_frames = session.dropped_frames();
+        let dropped_events = session.dropped_events();
+        session.finish().into_diagnostic()?;
+        println!(
+            "Aufzeichnung: {recorded} Frames (gedroppt: {dropped_frames} Frames, {dropped_events} Events)"
+        );
+    }
     Ok(())
 }
 
@@ -154,6 +210,121 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
     // No set definitions are loaded yet — the set tracker idles.
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    spawn_interfaces(&handle, &interfaces);
+
+    let mut frame: u64 = 0;
+    let session_start = Instant::now();
+    let mut recording: Option<RecordingSession> = None;
+
+    loop {
+        let events = match device.fetch_events() {
+            Ok(events) => events,
+            Err(e) => {
+                eprintln!("Lesefehler: {e}");
+                break;
+            }
+        };
+
+        for raw in events {
+            if let Some(session) = &recording {
+                session.record_event(&raw, session_start.elapsed().as_secs_f64());
+            }
+            let engine_frame = if recording.is_some() {
+                engine.process_with_diagnostics(&raw)
+            } else {
+                engine.process(&raw)
+            };
+            if let Some(engine_frame) = engine_frame {
+                frame += 1;
+                runtime.publish(&engine_frame, engine.tracked());
+                while let Ok(command) = runtime.try_recv_command() {
+                    match command {
+                        ControlCommand::SetFilterMode(enabled) => {
+                            warn!(enabled, "filter mode command — implemented in Phase 4");
+                        }
+                        ControlCommand::TrainProfile(name) => {
+                            warn!(name, "remote training command — not yet wired");
+                        }
+                        ControlCommand::StartRecording { base_path, label } => {
+                            if recording.is_some() {
+                                warn!("recording already active — StartRecording ignored");
+                            } else {
+                                match RecordingSession::start(
+                                    base_path.clone(),
+                                    device.name(),
+                                    engine.calibration().as_ref(),
+                                    label,
+                                ) {
+                                    Ok(started) => {
+                                        println!(
+                                            "\nAufzeichnung gestartet: {}",
+                                            started.base_path.display()
+                                        );
+                                        recording = Some(started);
+                                    }
+                                    Err(e) => {
+                                        warn!(error = %e, "recording could not be started")
+                                    }
+                                }
+                            }
+                        }
+                        ControlCommand::StopRecording => match recording.take() {
+                            Some(stopped) => {
+                                let recorded = stopped.recorded_frames();
+                                if let Err(e) = stopped.finish() {
+                                    warn!(error = %e, "recording flush failed");
+                                }
+                                println!("\nAufzeichnung gestoppt: {recorded} Frames");
+                            }
+                            None => warn!("no recording active — StopRecording ignored"),
+                        },
+                        ControlCommand::SetRecordLabel(new_label) => match &mut recording {
+                            Some(session) => session.set_label(new_label),
+                            None => warn!("no recording active — SetRecordLabel ignored"),
+                        },
+                    }
+                }
+
+                if let Some(session) = &mut recording {
+                    session.record_frame(
+                        frame,
+                        Milliseconds::from(session_start.elapsed()),
+                        &engine_frame,
+                        engine.tracked(),
+                    );
+                }
+
+                let active = engine.tracked();
+                print!("\x1b[2J\x1b[H");
+                println!(
+                    "Frame {frame} | {} Touch-Punkt(e) | {} Figur(en) | Rec: {}",
+                    engine.touch_count(),
+                    active.len(),
+                    recording
+                        .as_ref()
+                        .and_then(|s| s.label().map(|l| l.as_str().to_string()))
+                        .unwrap_or_else(|| if recording.is_some() {
+                            "an".to_string()
+                        } else {
+                            "aus".to_string()
+                        }),
+                );
+                for t in active {
+                    let deg = t.rotation_rad.to_degrees();
+                    println!(
+                        "  {} (id={}): center=({:.0}, {:.0}) rotation={:.1}°",
+                        t.pattern_name, t.pattern_id, t.center.x, t.center.y, deg
+                    );
+                }
+                std::io::stdout().flush().ok();
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Spawns the selected interface endpoints (GraphQL/D-Bus/MCP, Phase 2).
+fn spawn_interfaces(handle: &EngineHandle, interfaces: &Interfaces) {
     if let Some(addr) = interfaces.graphql_addr {
         tangible_objects_graphql::spawn(handle.clone(), addr);
         println!("GraphQL: http://{addr}/ (Endpoint: /graphql)");
@@ -170,20 +341,137 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
         tangible_objects_mcp::spawn_http(handle.clone(), addr);
         println!("MCP: http://{addr}/mcp");
     }
+}
 
-    let mut frame: u64 = 0;
+/// Number of frames a keypress label applies to (~1 s at 120 Hz report rate).
+const LABEL_FRAME_COUNT: u64 = 120;
 
-    loop {
-        let events = match device.fetch_events() {
-            Ok(events) => events,
-            Err(e) => {
-                eprintln!("Lesefehler: {e}");
-                break;
+/// Recording mode: like [`run_live`], additionally writing every frame to
+/// `<base>.jsonl` and every raw event to `<base>.evtest` (TRAINING.md).
+///
+/// Matching runs through [`Engine::process_with_diagnostics`], so every
+/// tested candidate lands in the frame record. Enter stops the recording
+/// cleanly (drains and flushes both writers); Ctrl+C also ends it but may
+/// lose the buffered tail. `SetRecordLabel`/`StopRecording` control commands
+/// are honored live — API-driven labeling for application sessions.
+pub fn run_record(
+    path: &Path,
+    base: &Path,
+    label: Option<RecordLabel>,
+    patterns: &[TangiblePattern],
+    interfaces: Interfaces,
+) -> Result<()> {
+    let mut device = TouchDevice::open(path).into_diagnostic()?;
+
+    println!("Record-Modus: {}", path.display());
+    if let Some(name) = device.name() {
+        println!("Gerät: {name}");
+    }
+
+    let mut engine = Engine::new(patterns.to_vec());
+    if let Some(cal) = device.calibration() {
+        println!(
+            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+            cal.x_res, cal.y_res
+        );
+        engine.set_calibration(cal);
+    } else {
+        eprintln!(
+            "Warnung: Keine Kalibrierung vom Gerät lesbar. Positionen werden als Rohwerte aufgezeichnet."
+        );
+    }
+
+    let mut session = RecordingSession::start(
+        base.to_path_buf(),
+        device.name(),
+        engine.calibration().as_ref(),
+        label,
+    )
+    .into_diagnostic()?;
+    println!(
+        "Aufzeichnung: {}.jsonl + {}.evtest",
+        base.display(),
+        base.display()
+    );
+    println!(
+        "Enter ohne Text beendet — <label>+Enter labelt die nächsten {LABEL_FRAME_COUNT} Frames.\n"
+    );
+
+    let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
+    let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    spawn_interfaces(&handle, &interfaces);
+
+    let mut frame_no: u64 = 0;
+    let session_start = Instant::now();
+
+    // Label input via poll() — wait on device fd and stdin simultaneously.
+    let device_fd = device.as_raw_fd();
+    let stdin_fd = std::io::stdin().as_raw_fd();
+    let mut stdin_buf = [0u8; 64];
+    let mut stdin_line = String::new();
+
+    'recording: loop {
+        let mut fds = [
+            libc::pollfd {
+                fd: device_fd,
+                events: libc::POLLIN,
+                revents: 0,
+            },
+            libc::pollfd {
+                fd: stdin_fd,
+                events: libc::POLLIN,
+                revents: 0,
+            },
+        ];
+        let ret = unsafe { libc::poll(fds.as_mut_ptr(), 2, 500) };
+        if ret < 0 {
+            if unsafe { *libc::__errno_location() } == libc::EINTR {
+                continue;
             }
-        };
+            eprintln!("poll Fehler");
+            break;
+        }
 
-        for raw in events {
-            if let Some(engine_frame) = engine.process(&raw) {
+        // A stdin line marks the next LABEL_FRAME_COUNT frames; an empty line
+        // or "q" ends the recording cleanly.
+        if fds[1].revents & libc::POLLIN != 0 {
+            let n =
+                unsafe { libc::read(stdin_fd, stdin_buf.as_mut_ptr() as *mut _, stdin_buf.len()) };
+            if n > 0 {
+                for &byte in stdin_buf.iter().take(n as usize) {
+                    match byte {
+                        b'\n' | b'\r' => {
+                            let text = stdin_line.trim().to_string();
+                            stdin_line.clear();
+                            if text.is_empty() || text == "q" {
+                                break 'recording;
+                            }
+                            session.mark_label(RecordLabel::new(&text), LABEL_FRAME_COUNT);
+                            println!(
+                                "\nLabel \"{text}\" für die nächsten {LABEL_FRAME_COUNT} Frames"
+                            );
+                        }
+                        _ => stdin_line.push(byte as char),
+                    }
+                }
+            }
+        }
+
+        if fds[0].revents & libc::POLLIN != 0 {
+            let events = match device.fetch_events() {
+                Ok(events) => events,
+                Err(e) => {
+                    eprintln!("Lesefehler: {e}");
+                    break;
+                }
+            };
+
+            for raw in events {
+                session.record_event(&raw, session_start.elapsed().as_secs_f64());
+                let Some(engine_frame) = engine.process_with_diagnostics(&raw) else {
+                    continue;
+                };
+                frame_no += 1;
                 runtime.publish(&engine_frame, engine.tracked());
                 while let Ok(command) = runtime.try_recv_command() {
                     match command {
@@ -193,15 +481,30 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
                         ControlCommand::TrainProfile(name) => {
                             warn!(name, "remote training command — not yet wired");
                         }
+                        ControlCommand::StartRecording { .. } => {
+                            warn!("already recording — StartRecording ignored");
+                        }
+                        ControlCommand::StopRecording => break 'recording,
+                        ControlCommand::SetRecordLabel(new_label) => {
+                            session.set_label(new_label);
+                        }
                     }
                 }
+
+                session.record_frame(
+                    frame_no,
+                    Milliseconds::from(session_start.elapsed()),
+                    &engine_frame,
+                    engine.tracked(),
+                );
 
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
                 println!(
-                    "Frame {frame} | {} Touch-Punkt(e) | {} Figur(en)",
+                    "Frame {frame_no} | {} Touch-Punkt(e) | {} Figur(en) | Label: {}",
                     engine.touch_count(),
-                    active.len()
+                    active.len(),
+                    session.label().map(|l| l.as_str()).unwrap_or("-"),
                 );
                 for t in active {
                     let deg = t.rotation_rad.to_degrees();
@@ -211,10 +514,17 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
                     );
                 }
                 std::io::stdout().flush().ok();
-                frame += 1;
             }
         }
     }
+
+    let recorded = session.recorded_frames();
+    let frame_drops = session.dropped_frames();
+    let raw_drops = session.dropped_events();
+    session.finish().into_diagnostic()?;
+    println!("\n--- Aufzeichnung beendet ---");
+    println!("Frames: {frame_no} (aufgezeichnet: {recorded}, gedroppt: {frame_drops})");
+    println!("Raw-Events gedroppt: {raw_drops}");
     Ok(())
 }
 

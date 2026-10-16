@@ -1,4 +1,5 @@
 use tangible_objects_model::Calibration;
+use tangible_objects_model::CandidateReport;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RawEvent;
@@ -99,14 +100,40 @@ impl Engine {
     ///
     /// Returns `Some` with the frame's matches, touches and domain events on
     /// each `SYN_REPORT`, `None` for all other events.
+    ///
+    /// This is the production path: no candidate diagnostics are emitted and
+    /// [`EngineFrame::candidates`] stays empty.
     pub fn process(&mut self, event: &RawEvent) -> Option<EngineFrame> {
+        self.process_inner(event, None)
+    }
+
+    /// Like [`Engine::process`], additionally collecting a
+    /// [`CandidateReport`] for every tested point combination — matched or
+    /// rejected — into [`EngineFrame::candidates`].
+    ///
+    /// Used by the recording pipeline (`--record`); allocation happens only
+    /// on this path.
+    pub fn process_with_diagnostics(&mut self, event: &RawEvent) -> Option<EngineFrame> {
+        self.process_inner(event, Some(&mut Vec::new()))
+    }
+
+    fn process_inner(
+        &mut self,
+        event: &RawEvent,
+        mut diagnostics: Option<&mut Vec<CandidateReport>>,
+    ) -> Option<EngineFrame> {
         self.touch_state.process(event);
         if !event.is_syn_report() {
             return None;
         }
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
-        let matches = matching::find_matches(&touches, &self.patterns);
+        let matches = match diagnostics.as_mut() {
+            Some(out) => {
+                matching::find_matches_with_diagnostics(&touches, &self.patterns, &mut **out)
+            }
+            None => matching::find_matches(&touches, &self.patterns),
+        };
         let mut events = self.tracker.update(&matches);
         if touches != self.prev_touches {
             self.prev_touches.clone_from(&touches);
@@ -121,6 +148,7 @@ impl Engine {
             matches,
             touches,
             events,
+            candidates: diagnostics.map(std::mem::take).unwrap_or_default(),
         })
     }
 }
@@ -194,5 +222,35 @@ mod tests {
                 .any(|e| matches!(e, EngineEvent::TouchPointsUpdated))
         );
         assert_eq!(engine.tracked().len(), 1);
+    }
+
+    #[test]
+    fn process_with_diagnostics_collects_candidates() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        contact(&mut engine, 0, 1, 0, 0);
+        contact(&mut engine, 1, 2, 50, 0);
+        contact(&mut engine, 2, 3, 0, 50);
+
+        let frame = engine
+            .process_with_diagnostics(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
+            .expect("frame expected on SYN_REPORT");
+
+        assert_eq!(frame.candidates.len(), 1);
+        assert!(frame.candidates[0].matched);
+        assert_eq!(frame.candidates[0].deviations.len(), 3);
+    }
+
+    #[test]
+    fn process_leaves_candidates_empty() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        contact(&mut engine, 0, 1, 0, 0);
+        contact(&mut engine, 1, 2, 50, 0);
+        contact(&mut engine, 2, 3, 0, 50);
+
+        let frame = engine
+            .process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
+            .expect("frame expected on SYN_REPORT");
+
+        assert!(frame.candidates.is_empty());
     }
 }
