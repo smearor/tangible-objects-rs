@@ -9,6 +9,7 @@
 
 mod candidate;
 mod frame;
+mod frame_count;
 mod frame_number;
 mod label;
 mod tracked;
@@ -16,6 +17,7 @@ mod tracked;
 pub use candidate::CandidateReport;
 pub use frame::FrameRecord;
 pub use frame::RECORD_SCHEMA_VERSION;
+pub use frame_count::FrameCount;
 pub use frame_number::FrameNumber;
 pub use label::RecordLabel;
 pub use tracked::TrackedRecord;
