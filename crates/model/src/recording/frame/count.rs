@@ -25,6 +25,12 @@ impl FrameCount {
     }
 }
 
+impl From<u32> for FrameCount {
+    fn from(count: u32) -> Self {
+        Self(u64::from(count))
+    }
+}
+
 impl From<u64> for FrameCount {
     fn from(count: u64) -> Self {
         Self(count)

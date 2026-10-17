@@ -1,6 +1,7 @@
 use super::PatternId;
 use super::PatternTolerance;
 use crate::Millimeters;
+use crate::Region;
 use crate::Vec2;
 
 /// A tangible figure pattern defined by invariant pairwise distances.
@@ -29,6 +30,9 @@ pub struct TangiblePattern {
     /// Original reference point positions, if stored in the profile.
     /// Required for partial matching when one contact pin is missing.
     pub ref_points: Option<Vec<Vec2<Millimeters>>>,
+    /// Detection regions restricting where this figure may match
+    /// (PROFILE_REGIONS.md). Empty = anywhere on the surface.
+    pub regions: Vec<Region>,
 }
 
 impl TangiblePattern {
@@ -47,7 +51,18 @@ impl TangiblePattern {
             tolerance: tolerance.into(),
             tolerances: Vec::new(),
             ref_points: Some(points.to_vec()),
+            regions: Vec::new(),
         }
+    }
+
+    /// Whether `points` may match spatially: every point must lie inside
+    /// the union of this pattern's [`Region`]s. With no regions configured
+    /// every position is accepted.
+    pub fn accepts(&self, points: &[Vec2<Millimeters>]) -> bool {
+        self.regions.is_empty()
+            || points
+                .iter()
+                .all(|point| self.regions.iter().any(|region| region.contains(point)))
     }
 
     /// The effective tolerance for distance index `i`: the per-index value

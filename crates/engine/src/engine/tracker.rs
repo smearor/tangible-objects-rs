@@ -1,7 +1,13 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RotationRad;
 use tangible_objects_model::TangibleId;
+use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
 use tracing::debug;
@@ -15,12 +21,19 @@ use super::EngineEvent;
 /// (same pattern ID, bounded center distance), smooths pose with an
 /// exponential moving average and expires tangibles after a configurable
 /// number of frames without a match.
+///
+/// Additionally keeps every tangible's *slot binding*: the
+/// [`TouchPointSlot`]s of its last successful match. These bindings feed
+/// the slot-affinity matching (TRACKING_STABILIZATION.md) - a bound slot
+/// is reserved for its owner and cannot be stolen by phantom candidates.
 pub struct Tracker {
     tracked: Vec<TrackedTangible>,
+    /// Slot bindings per tangible ID - the slots of its last match.
+    slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
     ema_alpha: f64,
     max_center_distance: Millimeters,
-    max_frames_without_match: u32,
-    next_tangible_id: u32,
+    max_frames_without_match: FrameCount,
+    next_tangible_id: TangibleId,
 }
 
 impl Tracker {
@@ -32,21 +45,35 @@ impl Tracker {
     pub fn new(
         ema_alpha: f64,
         max_center_distance: impl Into<Millimeters>,
-        max_frames_without_match: u32,
+        max_frames_without_match: impl Into<FrameCount>,
     ) -> Self {
         Self {
             tracked: Vec::new(),
+            slots: HashMap::new(),
             ema_alpha,
             max_center_distance: max_center_distance.into(),
-            max_frames_without_match,
-            next_tangible_id: 0,
+            max_frames_without_match: max_frames_without_match.into(),
+            next_tangible_id: TangibleId::new(0),
         }
     }
 
+    /// The slots bound to a tangible by its last match, if any.
+    pub fn slot_set(&self, id: TangibleId) -> Option<&HashSet<TouchPointSlot>> {
+        self.slots.get(&id)
+    }
+
+    /// All slots currently bound to any tracked tangible - the reserved
+    /// set excluded from generic matching.
+    pub fn bound_slots(&self) -> HashSet<TouchPointSlot> {
+        self.slots.values().flatten().copied().collect()
+    }
+
     /// Processes the matches of a new frame: associate, update, create,
-    /// expire. Returns the domain events produced by this update
+    /// expire. `touches` resolves `touch_indices` to slots so every
+    /// tracked tangible keeps its slot binding. Returns the domain events
+    /// produced by this update
     /// (`TangibleMoved`/`TangibleAdded`/`TangibleRemoved`).
-    pub fn update(&mut self, matches: &[PatternMatch]) -> Vec<EngineEvent> {
+    pub fn update(&mut self, matches: &[PatternMatch], touches: &[TouchPoint]) -> Vec<EngineEvent> {
         let mut events = Vec::new();
         for tangible in &mut self.tracked {
             tangible.frames_since_match += 1;
@@ -85,6 +112,8 @@ impl Tracker {
                     self.ema_alpha,
                 ));
                 tangible.frames_since_match = 0;
+                self.slots
+                    .insert(tangible.id, slots_of(pattern_match, touches));
                 events.push(EngineEvent::TangibleMoved(tangible.clone()));
             }
         }
@@ -93,28 +122,32 @@ impl Tracker {
         for (match_index, pattern_match) in matches.iter().enumerate() {
             if !used_matches[match_index] {
                 let tangible = TrackedTangible {
-                    id: TangibleId::new(self.next_tangible_id),
+                    id: self.next_tangible_id,
                     pattern_id: pattern_match.pattern_id,
                     pattern_name: pattern_match.pattern_name.clone(),
                     center: pattern_match.center,
                     rotation_rad: pattern_match.rotation_rad,
                     frames_since_match: 0,
                 };
-                self.next_tangible_id += 1;
+                self.next_tangible_id = TangibleId::new(self.next_tangible_id.as_u32() + 1);
+                self.slots
+                    .insert(tangible.id, slots_of(pattern_match, touches));
                 debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
                 self.tracked.push(tangible.clone());
                 events.push(EngineEvent::TangibleAdded(tangible));
             }
         }
 
-        // Remove stale tracked tangibles.
+        // Remove stale tracked tangibles - their slot bindings die with
+        // them, freeing the slots for new matches.
         let (kept, removed): (Vec<_>, Vec<_>) = self
             .tracked
             .drain(..)
-            .partition(|t| t.frames_since_match <= self.max_frames_without_match);
+            .partition(|t| FrameCount::from(t.frames_since_match) <= self.max_frames_without_match);
         self.tracked = kept;
         for tangible in removed {
             debug!(pattern = %tangible.pattern_name, "tangible removed");
+            self.slots.remove(&tangible.id);
             events.push(EngineEvent::TangibleRemoved(tangible));
         }
         events
@@ -128,7 +161,17 @@ impl Tracker {
     /// Drops all tracked tangibles.
     pub fn clear(&mut self) {
         self.tracked.clear();
+        self.slots.clear();
     }
+}
+
+/// Resolves a match's `touch_indices` to the slots of the touched points.
+fn slots_of(pattern_match: &PatternMatch, touches: &[TouchPoint]) -> HashSet<TouchPointSlot> {
+    pattern_match
+        .touch_indices
+        .iter()
+        .map(|&index| touches[index].slot)
+        .collect()
 }
 
 /// EMA for angles with wraparound handling.
@@ -148,6 +191,7 @@ mod tests {
     use super::Tracker;
     use super::ema_angle;
     use crate::EngineEvent;
+    use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
     use tangible_objects_model::RotationRad;
@@ -159,14 +203,18 @@ mod tests {
             pattern_name: format!("fig-{id}"),
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
-            touch_indices: vec![0, 1, 2],
+            touch_indices: Vec::new(),
         }
+    }
+
+    fn touches() -> Vec<tangible_objects_model::TouchPoint> {
+        Vec::new()
     }
 
     #[test]
     fn new_match_creates_tracked_tangible() {
-        let mut tracker = Tracker::new(0.4, 200.0, 30);
-        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)]);
+        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
         assert_eq!(tracker.active().len(), 1);
         assert_eq!(tracker.active()[0].pattern_id, PatternId::new(1));
         assert!(matches!(events.as_slice(), [EngineEvent::TangibleAdded(_)]));
@@ -174,28 +222,28 @@ mod tests {
 
     #[test]
     fn nearby_match_associates_and_smooths() {
-        let mut tracker = Tracker::new(0.5, 200.0, 30);
-        tracker.update(&[pattern_match(1, 10.0, 20.0)]);
-        tracker.update(&[pattern_match(1, 20.0, 20.0)]);
+        let mut tracker = Tracker::new(0.5, 200.0, FrameCount::new(30));
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
+        tracker.update(&[pattern_match(1, 20.0, 20.0)], &touches());
         // EMA(0.5) of 10 and 20 → 15.
         assert!((tracker.active()[0].center.x - 15.0).abs() < 1e-9);
     }
 
     #[test]
     fn distant_match_creates_second_tangible() {
-        let mut tracker = Tracker::new(0.4, 200.0, 30);
-        tracker.update(&[pattern_match(1, 10.0, 20.0)]);
-        tracker.update(&[pattern_match(1, 500.0, 500.0)]);
+        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
+        tracker.update(&[pattern_match(1, 500.0, 500.0)], &touches());
         assert_eq!(tracker.active().len(), 2);
     }
 
     #[test]
     fn tangible_expires_after_max_frames() {
-        let mut tracker = Tracker::new(0.4, 200.0, 2);
-        tracker.update(&[pattern_match(1, 10.0, 20.0)]);
-        tracker.update(&[]);
-        tracker.update(&[]);
-        let events = tracker.update(&[]);
+        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(2));
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
+        tracker.update(&[], &touches());
+        tracker.update(&[], &touches());
+        let events = tracker.update(&[], &touches());
         assert!(tracker.active().is_empty());
         assert!(matches!(
             events.as_slice(),

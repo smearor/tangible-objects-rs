@@ -10,6 +10,7 @@ use super::ProfileError;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternTolerance;
+use crate::Region;
 use crate::TangiblePattern;
 use crate::Vec2;
 
@@ -35,10 +36,16 @@ pub struct ProfileFile {
     pub tolerances: Vec<PatternTolerance>,
     /// Sorted pairwise distances of the reference geometry (the fingerprint).
     pub sorted_sides: Vec<Millimeters>,
-    /// Original contact positions, flattened as `[x0, y0, x1, y1, ...]`.
-    /// Enables partial matching when one contact pin is missing.
+    /// Original contact positions - enables partial matching when one
+    /// contact pin is missing. Serialized flat as `[x0, y0, x1, y1, ...]`
+    /// for on-disk compatibility.
+    #[serde(default, skip_serializing_if = "Vec::is_empty", with = "flat_points")]
+    pub points: Vec<Vec2<Millimeters>>,
+    /// Detection regions in millimeters restricting where this figure may
+    /// match (PROFILE_REGIONS.md). Empty = anywhere on the surface.
+    /// Serialized as TOML `[[regions]]` blocks.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub points: Vec<f64>,
+    pub regions: Vec<Region>,
 }
 
 impl ProfileFile {
@@ -58,25 +65,19 @@ impl ProfileFile {
             }
         }
         distances.sort_by(Millimeters::total_cmp);
-        let pts: Vec<f64> = points.iter().flat_map(|p| [p.x, p.y]).collect();
         Self {
             name: name.to_string(),
             num_points: points.len(),
             tolerance,
             tolerances: Vec::new(),
             sorted_sides: distances,
-            points: pts,
+            points: points.to_vec(),
+            regions: Vec::new(),
         }
     }
 
     /// Converts this profile into a [`TangiblePattern`] ready for matching.
     pub fn to_pattern(&self, id: PatternId) -> TangiblePattern {
-        let ref_points: Vec<Vec2<Millimeters>> = self
-            .points
-            .chunks(2)
-            .filter(|c| c.len() == 2)
-            .map(|c| Vec2::new(c[0], c[1]))
-            .collect();
         TangiblePattern {
             id,
             name: self.name.clone(),
@@ -84,11 +85,12 @@ impl ProfileFile {
             sorted_distances: self.sorted_sides.clone(),
             tolerance: self.tolerance,
             tolerances: self.tolerances.clone(),
-            ref_points: if ref_points.len() == self.num_points {
-                Some(ref_points)
+            ref_points: if self.points.len() == self.num_points {
+                Some(self.points.clone())
             } else {
                 None
             },
+            regions: self.regions.clone(),
         }
     }
 
@@ -137,6 +139,43 @@ impl ProfileFile {
     }
 }
 
+/// Serde adapter keeping `points` as a flat `[x0, y0, ...]` TOML array
+/// while the field itself is `Vec<Vec2<Millimeters>>` (on-disk format
+/// compatibility).
+mod flat_points {
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde::Serializer;
+    use serde::ser::SerializeSeq;
+
+    use crate::Millimeters;
+    use crate::Vec2;
+
+    pub fn serialize<S>(points: &[Vec2<Millimeters>], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(points.len() * 2))?;
+        for point in points {
+            seq.serialize_element(&point.x)?;
+            seq.serialize_element(&point.y)?;
+        }
+        seq.end()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<Vec2<Millimeters>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let flat = Vec::<f64>::deserialize(deserializer)?;
+        Ok(flat
+            .chunks(2)
+            .filter(|chunk| chunk.len() == 2)
+            .map(|chunk| Vec2::new(chunk[0], chunk[1]))
+            .collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -167,7 +206,7 @@ mod tests {
         assert_eq!(loaded.num_points, 3);
         assert_eq!(loaded.tolerance.as_f64(), 5.0);
         assert_eq!(loaded.sorted_sides, profile.sorted_sides);
-        assert_eq!(loaded.points.len(), 6);
+        assert_eq!(loaded.points.len(), 3);
         // Empty tolerances stay absent - backward-compatible TOML.
         assert!(!serialized.contains("tolerances"));
         assert!(loaded.tolerances.is_empty());
@@ -207,6 +246,39 @@ mod tests {
         assert_eq!(pattern.name, "triangle");
         assert_eq!(pattern.num_points, 3);
         assert_eq!(pattern.ref_points, Some(points));
+    }
+
+    #[test]
+    fn regions_round_trip_and_reach_the_pattern() {
+        let toml = r#"
+            name = "left-pawn"
+            num_points = 3
+            tolerance = 3.0
+            sorted_sides = [40.0, 40.0, 56.57]
+
+            [[regions]]
+            x_min = 0.0
+            y_min = 0.0
+            x_max = 400.0
+            y_max = 800.0
+        "#;
+        let profile: ProfileFile = match toml::from_str(toml) {
+            Ok(p) => p,
+            Err(_) => panic!("deserialization failed"),
+        };
+        assert_eq!(profile.regions.len(), 1);
+        let pattern = profile.to_pattern(PatternId::new(1));
+        assert_eq!(pattern.regions.len(), 1);
+        assert!(pattern.accepts(&[
+            Vec2::new(10.0, 10.0),
+            Vec2::new(50.0, 50.0),
+            Vec2::new(100.0, 100.0),
+        ]));
+        assert!(!pattern.accepts(&[
+            Vec2::new(10.0, 10.0),
+            Vec2::new(50.0, 50.0),
+            Vec2::new(500.0, 100.0),
+        ]));
     }
 
     #[test]

@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use tangible_objects_model::Calibration;
 use tangible_objects_model::CandidateReport;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RawEvent;
@@ -21,7 +24,7 @@ pub const DEFAULT_EMA_ALPHA: f64 = 0.4;
 pub const DEFAULT_MAX_CENTER_DISTANCE: Millimeters = Millimeters::new(200.0);
 
 /// Default number of frames a tangible survives without a match.
-pub const DEFAULT_MAX_FRAMES_WITHOUT_MATCH: u32 = 30;
+pub const DEFAULT_MAX_FRAMES_WITHOUT_MATCH: FrameCount = FrameCount::new(30);
 
 /// Headless detection engine: slot state machine + pattern matching +
 /// frame-to-frame tracking.
@@ -142,13 +145,52 @@ impl Engine {
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
         touches.retain(|touch| !self.is_edge_ghost(touch));
-        let matches = match diagnostics.as_mut() {
-            Some(out) => {
-                matching::find_matches_with_diagnostics(&touches, &self.patterns, &mut **out)
+
+        // Slot affinity (TRACKING_STABILIZATION.md): every tracked
+        // tangible re-matches on the slots it owned in the previous
+        // frame, before generic matching runs. Its slots are reserved
+        // either way - a phantom candidate composed of "stolen" points
+        // cannot claim them while the owner is alive.
+        let mut matches = Vec::new();
+        let mut reserved: HashSet<usize> = HashSet::new();
+        for tangible in self.tracker.active() {
+            let Some(pattern) = self.patterns.iter().find(|p| p.id == tangible.pattern_id) else {
+                continue;
+            };
+            let Some(slot_set) = self.tracker.slot_set(tangible.id) else {
+                continue;
+            };
+            let indices: Vec<usize> = touches
+                .iter()
+                .enumerate()
+                .filter(|(_, touch)| slot_set.contains(&touch.slot))
+                .map(|(index, _)| index)
+                .collect();
+            reserved.extend(indices.iter().copied());
+            let affinity_match = if indices.len() == pattern.num_points {
+                matching::try_pattern(pattern, &indices, &touches)
+            } else if indices.len() + 1 == pattern.num_points && pattern.num_points >= 4 {
+                matching::try_partial(pattern, &indices, &touches)
+            } else {
+                None
+            };
+            if let Some(pattern_match) = affinity_match {
+                matches.push(pattern_match);
             }
-            None => matching::find_matches(&touches, &self.patterns),
+        }
+
+        let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
+            Some(out) => matching::find_matches_with_diagnostics(
+                &touches,
+                &self.patterns,
+                &mut **out,
+                &reserved,
+            ),
+            None => matching::find_matches_excluding(&touches, &self.patterns, &reserved),
         };
-        let mut events = self.tracker.update(&matches);
+        matches.extend(generic);
+
+        let mut events = self.tracker.update(&matches, &touches);
         if touches != self.prev_touches {
             self.prev_touches.clone_from(&touches);
             events.push(EngineEvent::TouchPointsUpdated);
@@ -224,6 +266,15 @@ mod tests {
         engine.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_Y, y));
     }
 
+    fn syn(engine: &mut Engine) -> Option<crate::EngineFrame> {
+        engine.process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
+    }
+
+    fn lift(engine: &mut Engine, slot: i32) {
+        engine.process(&RawEvent::new(EventType::Abs, ABS_MT_SLOT, slot));
+        engine.process(&RawEvent::new(EventType::Abs, ABS_MT_TRACKING_ID, -1));
+    }
+
     #[test]
     fn frame_is_emitted_on_syn_report() {
         let mut engine = Engine::new(vec![]);
@@ -293,5 +344,67 @@ mod tests {
             .expect("frame expected on SYN_REPORT");
 
         assert!(frame.candidates.is_empty());
+    }
+
+    fn big_triangle_pattern() -> TangiblePattern {
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(80.0, 0.0),
+            Vec2::new(0.0, 80.0),
+        ];
+        TangiblePattern::from_points(2, "big-triangle", &reference, 5.0)
+    }
+
+    #[test]
+    fn bound_slots_are_reserved_for_the_incumbent() {
+        // Triangle A (slots 0-2) + big triangle B (slots 3-5). After A
+        // loses a pin, its remaining slots stay bound - a new touch in
+        // the right spot must NOT re-form the pattern on stolen slots.
+        let mut engine = Engine::new(vec![triangle_pattern(), big_triangle_pattern()]);
+        contact(&mut engine, 0, 10, 100, 100);
+        contact(&mut engine, 1, 11, 150, 100);
+        contact(&mut engine, 2, 12, 100, 150);
+        contact(&mut engine, 3, 13, 300, 300);
+        contact(&mut engine, 4, 14, 380, 300);
+        contact(&mut engine, 5, 15, 300, 380);
+        syn(&mut engine);
+        assert_eq!(engine.tracked().len(), 2);
+
+        // A's slot 2 lifts; a new contact lands where the pin was -
+        // geometrically a valid triangle with A's reserved slots.
+        lift(&mut engine, 2);
+        contact(&mut engine, 6, 16, 100, 150);
+        let frame = syn(&mut engine);
+
+        let frame = frame.expect("frame expected");
+        // Only B may match - A's remaining slots are reserved.
+        assert_eq!(frame.matches.len(), 1);
+        assert_eq!(frame.matches[0].pattern_name, "big-triangle");
+        let indices = &frame.matches[0].touch_indices;
+        for &index in indices {
+            let slot = frame.touches[index].slot;
+            assert!(slot.as_u32() >= 3, "phantom stole an incumbent slot {slot}");
+        }
+    }
+
+    #[test]
+    fn incumbent_rematches_on_its_own_slots() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        contact(&mut engine, 0, 10, 100, 100);
+        contact(&mut engine, 1, 11, 150, 100);
+        contact(&mut engine, 2, 12, 100, 150);
+        contact(&mut engine, 3, 20, 900, 900); // distractor
+        syn(&mut engine);
+        assert_eq!(engine.tracked().len(), 1);
+        let id = engine.tracked()[0].id;
+
+        // A fresh finger appears near the figure's third pin - the
+        // incumbent still owns its slots and re-matches; the distractor
+        // stays unmatched.
+        contact(&mut engine, 4, 21, 105, 150);
+        syn(&mut engine);
+
+        assert_eq!(engine.tracked().len(), 1);
+        assert_eq!(engine.tracked()[0].id, id);
     }
 }

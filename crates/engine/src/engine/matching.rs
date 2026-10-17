@@ -22,7 +22,17 @@ pub(crate) fn find_matches(
     touches: &[TouchPoint],
     patterns: &[TangiblePattern],
 ) -> Vec<PatternMatch> {
-    find_matches_inner(touches, patterns, &mut NoDiagnostics)
+    find_matches_inner(touches, patterns, &mut NoDiagnostics, &HashSet::new())
+}
+
+/// Like [`find_matches`], excluding `exclude` touch indices from every
+/// candidate - the reserved slots of incumbent slot bindings.
+pub(crate) fn find_matches_excluding(
+    touches: &[TouchPoint],
+    patterns: &[TangiblePattern],
+    exclude: &HashSet<usize>,
+) -> Vec<PatternMatch> {
+    find_matches_inner(touches, patterns, &mut NoDiagnostics, exclude)
 }
 
 /// Like [`find_matches`], additionally reporting every tested point
@@ -34,14 +44,44 @@ pub(crate) fn find_matches_with_diagnostics(
     touches: &[TouchPoint],
     patterns: &[TangiblePattern],
     diagnostics: &mut impl CandidateDiagnostics,
+    exclude: &HashSet<usize>,
 ) -> Vec<PatternMatch> {
-    find_matches_inner(touches, patterns, diagnostics)
+    find_matches_inner(touches, patterns, diagnostics, exclude)
+}
+
+/// Evaluates a single point combination against one pattern (exact only).
+///
+/// Used for incumbent re-matching in slot-affinity tracking
+/// (TRACKING_STABILIZATION.md): a tracked tangible re-matches on the
+/// slots it owned in the previous frame before generic matching runs.
+pub(crate) fn try_pattern(
+    pattern: &TangiblePattern,
+    combo: &[usize],
+    touches: &[TouchPoint],
+) -> Option<PatternMatch> {
+    let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
+    (pattern.matches(&points) && pattern.accepts(&points))
+        .then(|| build_match(pattern, &points, combo, false))
+}
+
+/// Like [`try_pattern`] for a partial (`num_points - 1`) combination.
+pub(crate) fn try_partial(
+    pattern: &TangiblePattern,
+    combo: &[usize],
+    touches: &[TouchPoint],
+) -> Option<PatternMatch> {
+    let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
+    pattern
+        .matches_partial(&points)
+        .filter(|_| pattern.accepts(&points))
+        .map(|_| build_match(pattern, &points, combo, true))
 }
 
 fn find_matches_inner(
     touches: &[TouchPoint],
     patterns: &[TangiblePattern],
     diagnostics: &mut impl CandidateDiagnostics,
+    exclude: &HashSet<usize>,
 ) -> Vec<PatternMatch> {
     let mut matches = Vec::new();
     let mut used_indices: HashSet<usize> = HashSet::new();
@@ -61,9 +101,10 @@ fn find_matches_inner(
             continue;
         }
 
-        // Indices of touch points not yet assigned to a figure.
+        // Indices of touch points not yet assigned to a figure and not
+        // reserved by an incumbent slot binding (slot affinity).
         let available: Vec<usize> = (0..touches.len())
-            .filter(|i| !used_indices.contains(i))
+            .filter(|i| !used_indices.contains(i) && !exclude.contains(i))
             .collect();
 
         if available.len() < pattern.num_points
@@ -77,7 +118,7 @@ fn find_matches_inner(
         for combo in combinations(&available, pattern.num_points) {
             let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
 
-            let matched = pattern.matches(&points);
+            let matched = pattern.matches(&points) && pattern.accepts(&points);
             diagnostics.report(|| exact_report(pattern, &points, &combo, matched));
             if matched {
                 // Score-based ranking (TRAINING.md 3.2): the normalized
@@ -101,7 +142,9 @@ fn find_matches_inner(
                 let points: Vec<Vec2<Millimeters>> =
                     combo.iter().map(|&i| touches[i].pos).collect();
 
-                let result = pattern.matches_partial(&points);
+                let result = pattern
+                    .matches_partial(&points)
+                    .filter(|_| pattern.accepts(&points));
                 diagnostics.report(|| partial_report(pattern, &points, &combo, result.is_some()));
                 if let Some((_ref_indices, error)) = result {
                     // Partial candidates share the same (scalar × 1.5) scale -
@@ -330,7 +373,12 @@ mod tests {
         ];
 
         let mut reports = Vec::new();
-        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+        let matches = find_matches_with_diagnostics(
+            &touches,
+            &patterns,
+            &mut reports,
+            &std::collections::HashSet::new(),
+        );
 
         assert_eq!(matches.len(), 1);
         // C(4,3) combinations: one matches, three are rejected.
@@ -368,7 +416,12 @@ mod tests {
         ];
 
         let mut reports = Vec::new();
-        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+        let matches = find_matches_with_diagnostics(
+            &touches,
+            &patterns,
+            &mut reports,
+            &std::collections::HashSet::new(),
+        );
 
         assert!(matches.is_empty());
         assert_eq!(reports.len(), 1);
@@ -400,7 +453,12 @@ mod tests {
         ];
 
         let mut reports = Vec::new();
-        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+        let matches = find_matches_with_diagnostics(
+            &touches,
+            &patterns,
+            &mut reports,
+            &std::collections::HashSet::new(),
+        );
 
         assert_eq!(matches.len(), 1);
         assert!(matches[0].pattern_name.ends_with("(partial)"));
@@ -411,6 +469,75 @@ mod tests {
         assert_eq!(partials.iter().filter(|report| report.matched).count(), 1);
         // A 3-pin subset has C(3,2) = 3 distances.
         assert!(partials.iter().all(|report| report.deviations.len() == 3));
+    }
+
+    #[test]
+    fn region_rejects_a_geometrically_valid_match() {
+        use tangible_objects_model::Region;
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let mut pattern = TangiblePattern::from_points(1, "triangle", &reference, 5.0);
+        // Only the left half of the surface may match.
+        pattern.regions = vec![Region {
+            x_min: tangible_objects_model::Millimeters::new(0.0),
+            y_min: tangible_objects_model::Millimeters::new(0.0),
+            x_max: tangible_objects_model::Millimeters::new(200.0),
+            y_max: tangible_objects_model::Millimeters::new(1000.0),
+        }];
+        let patterns = vec![pattern];
+
+        let inside = vec![
+            touch_point(0, 100.0, 100.0),
+            touch_point(1, 150.0, 100.0),
+            touch_point(2, 100.0, 150.0),
+        ];
+        assert_eq!(find_matches(&inside, &patterns).len(), 1);
+
+        // Same fingerprint on the right half: region rejects it.
+        let outside = vec![
+            touch_point(0, 400.0, 100.0),
+            touch_point(1, 450.0, 100.0),
+            touch_point(2, 400.0, 150.0),
+        ];
+        assert!(find_matches(&outside, &patterns).is_empty());
+    }
+
+    #[test]
+    fn region_boundary_point_rejects_the_candidate() {
+        use tangible_objects_model::Region;
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let mut pattern = TangiblePattern::from_points(1, "triangle", &reference, 5.0);
+        pattern.regions = vec![Region {
+            x_min: tangible_objects_model::Millimeters::new(0.0),
+            y_min: tangible_objects_model::Millimeters::new(0.0),
+            x_max: tangible_objects_model::Millimeters::new(200.0),
+            y_max: tangible_objects_model::Millimeters::new(1000.0),
+        }];
+        let patterns = vec![pattern];
+
+        // Two points inside, one point outside - the candidate is
+        // rejected as a whole (conservative rule).
+        let straddling = vec![
+            touch_point(0, 150.0, 100.0),
+            touch_point(1, 200.0, 100.0),
+            touch_point(2, 150.0, 150.0),
+        ];
+        // Distances: 50, 50, ~70.7 - geometrically valid, but point 1 sits
+        // at x=200 (inclusive boundary: still inside). Use x=210 instead.
+        let outside = vec![
+            touch_point(0, 160.0, 100.0),
+            touch_point(1, 210.0, 100.0),
+            touch_point(2, 160.0, 150.0),
+        ];
+        assert_eq!(find_matches(&straddling, &patterns).len(), 1);
+        assert!(find_matches(&outside, &patterns).is_empty());
     }
 
     #[test]
@@ -431,7 +558,12 @@ mod tests {
         ];
 
         let mut reports = Vec::new();
-        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+        let matches = find_matches_with_diagnostics(
+            &touches,
+            &patterns,
+            &mut reports,
+            &std::collections::HashSet::new(),
+        );
 
         assert_eq!(matches.len(), 1);
         assert!(matches[0].pattern_name.ends_with("(partial)"));
