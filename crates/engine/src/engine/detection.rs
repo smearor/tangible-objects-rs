@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use tangible_objects_model::Calibration;
 use tangible_objects_model::CandidateReport;
+use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
@@ -49,6 +50,9 @@ pub struct Engine {
     /// possibly overridden by the device profile. `None` on replays
     /// without an evtest header.
     calibration: Option<Calibration>,
+    /// Missing-pin completion configuration (claim radius, max missing
+    /// pins, persistence, suppression mode).
+    completion: CompletionConfig,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -70,6 +74,7 @@ impl Engine {
                 DEFAULT_MAX_FRAMES_WITHOUT_MATCH,
             ),
             fields: FieldTracker::new(),
+            completion: CompletionConfig::default(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -96,6 +101,17 @@ impl Engine {
     /// Whether occupancy field sets are loaded.
     pub fn has_fields(&self) -> bool {
         self.fields.has_sets()
+    }
+
+    /// Sets the missing-pin completion configuration
+    /// (TRACKING_STABILIZATION.md).
+    pub fn set_completion(&mut self, completion: CompletionConfig) {
+        self.completion = completion;
+    }
+
+    /// The active completion configuration.
+    pub fn completion(&self) -> CompletionConfig {
+        self.completion
     }
 
     /// Sets the edge margin: touches closer than `margin` to the surface
@@ -195,8 +211,18 @@ impl Engine {
             reserved.extend(indices.iter().copied());
             let affinity_match = if indices.len() == pattern.num_points {
                 matching::try_pattern(pattern, &indices, &touches)
-            } else if indices.len() + 1 == pattern.num_points && pattern.num_points >= 4 {
-                matching::try_partial(pattern, &indices, &touches)
+            } else if indices.len() + self.completion.max_missing as usize >= pattern.num_points
+                && pattern.num_points >= 4
+            {
+                // Claim pool: touches neither reserved nor already part
+                // of this incumbent's slot set.
+                let pool: Vec<usize> = touches
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| !reserved.contains(index) && !indices.contains(index))
+                    .map(|(index, _)| index)
+                    .collect();
+                matching::try_partial(pattern, &indices, &touches, &self.completion, &pool)
             } else {
                 None
             };
@@ -211,12 +237,20 @@ impl Engine {
                 &self.patterns,
                 &mut **out,
                 &reserved,
+                &self.completion,
             ),
-            None => matching::find_matches_excluding(&touches, &self.patterns, &reserved),
+            None => matching::find_matches_excluding(
+                &touches,
+                &self.patterns,
+                &reserved,
+                &self.completion,
+            ),
         };
         matches.extend(generic);
 
-        let mut events = self.tracker.update(&matches, &touches);
+        let mut events = self
+            .tracker
+            .update(&matches, &touches, self.completion.persist);
         events.extend(self.fields.update(&touches));
         if touches != self.prev_touches {
             self.prev_touches.clone_from(&touches);

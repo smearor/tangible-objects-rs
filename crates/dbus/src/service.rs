@@ -200,6 +200,52 @@ impl EngineService {
         tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
 
+    /// Active missing-pin completion configuration as a flat tuple
+    /// (`radius_factor`, `max_missing`, `persist`, `mode`) - empty strings
+    /// are impossible here; when nothing was published yet all values are
+    /// defaults.
+    async fn completion(&self) -> (f64, u32, bool, String) {
+        let config = self.handle.snapshot().completion.unwrap_or_default();
+        (
+            config.radius_factor,
+            config.max_missing,
+            config.persist,
+            config.mode.to_string(),
+        )
+    }
+
+    /// Replaces the missing-pin completion configuration (`mode` is
+    /// `match` or `exact`; `max_missing` must be 1 or 2).
+    async fn set_completion(
+        &self,
+        radius_factor: f64,
+        max_missing: u32,
+        persist: bool,
+        mode: &str,
+    ) -> fdo::Result<()> {
+        use tangible_objects_model::CompletionConfig;
+        use tangible_objects_model::CompletionMode;
+
+        let mode = mode.parse::<CompletionMode>().map_err(|_| {
+            fdo::Error::InvalidArgs("mode must be one of: match, exact".to_string())
+        })?;
+        if !(1..=2).contains(&max_missing) {
+            return Err(fdo::Error::InvalidArgs(
+                "max_missing must be 1 or 2".to_string(),
+            ));
+        }
+        let config = CompletionConfig {
+            radius_factor,
+            max_missing,
+            persist,
+            mode,
+        };
+        self.handle
+            .send_command(ControlCommand::SetCompletion(config))
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
     /// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
     #[zbus(signal)]
     pub async fn object_moved(

@@ -16,6 +16,7 @@ use rmcp::service::RoleServer;
 use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use std::path::PathBuf;
 
+use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangibleId;
@@ -25,6 +26,7 @@ use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::GetPoseArgs;
 use super::tool_args::RecordingArtifactArgs;
+use super::tool_args::SetCompletionArgs;
 use super::tool_args::SetFilterModeArgs;
 use super::tool_args::SetRecordLabelArgs;
 use super::tool_args::StartRecordingArgs;
@@ -108,6 +110,56 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(
             json_pretty(&snapshot.recording)?,
         )]))
+    }
+
+    /// Active missing-pin completion configuration.
+    #[tool(
+        description = "Get the missing-pin completion config: claim radius factor, max missing pins, persist flag and mode."
+    )]
+    async fn get_completion(&self) -> Result<CallToolResult, ErrorData> {
+        let snapshot = self.handle.snapshot();
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            json_pretty(&snapshot.completion)?,
+        )]))
+    }
+
+    /// Replaces the missing-pin completion configuration.
+    #[tool(
+        description = "Set the missing-pin completion config: mode 'match' or 'exact', claim radius factor, max missing pins (1|2), persist flag."
+    )]
+    async fn set_completion(
+        &self,
+        Parameters(args): Parameters<SetCompletionArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let mut config = self.handle.snapshot().completion.unwrap_or_default();
+        if let Some(mode) = &args.mode {
+            config.mode = mode.parse::<CompletionMode>().map_err(|_| {
+                ErrorData::invalid_params("mode must be one of: match, exact", None)
+            })?;
+        }
+        if let Some(radius) = args.radius_factor {
+            config.radius_factor = radius;
+        }
+        if let Some(missing) = args.max_missing {
+            if !(1..=2).contains(&missing) {
+                return Err(ErrorData::invalid_params(
+                    "max_missing must be 1 or 2",
+                    None,
+                ));
+            }
+            config.max_missing = missing;
+        }
+        if let Some(persist) = args.persist {
+            config.persist = persist;
+        }
+        self.handle
+            .send_command(ControlCommand::SetCompletion(config))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "completion set: mode={} radius_factor={} max_missing={} persist={}",
+            config.mode, config.radius_factor, config.max_missing, config.persist
+        ))]))
     }
 
     /// Reads a recording artifact file from the daemon host.

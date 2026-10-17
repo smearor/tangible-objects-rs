@@ -59,6 +59,16 @@ impl QueryRoot {
         Ok(ctx.data::<EngineHandle>()?.snapshot().recording)
     }
 
+    /// Active missing-pin completion configuration
+    /// (TRACKING_STABILIZATION.md) - `null` when the device loop has not
+    /// published one yet.
+    async fn completion(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Option<tangible_objects_model::CompletionConfig>> {
+        Ok(ctx.data::<EngineHandle>()?.snapshot().completion)
+    }
+
     /// Reads a recording artifact produced by this daemon.
     ///
     /// Restricted to known recording extensions (`.jsonl`, `.evtest`,

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::RecordLabel;
@@ -36,4 +37,8 @@ pub enum ControlCommand {
     StopRecording,
     /// Change the ground-truth label applied to subsequent recorded frames.
     SetRecordLabel(Option<RecordLabel>),
+    /// Replace the missing-pin completion configuration at runtime
+    /// (TRACKING_STABILIZATION.md). Applies to matching and suppression in
+    /// all modes from the next frame on.
+    SetCompletion(CompletionConfig),
 }

@@ -22,6 +22,7 @@ tangible-objects-graphql.workspace = true
 tangible-objects-mcp.workspace = true
 tangible-objects-model.workspace = true
 tangible-objects-runtime.workspace = true
+toml.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 cairo-rs = { workspace = true, optional = true }

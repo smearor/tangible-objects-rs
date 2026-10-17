@@ -5,6 +5,7 @@
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
 mod calibration;
+mod completion;
 mod contact_count;
 mod device;
 mod event;
@@ -26,6 +27,8 @@ mod units_per_mm;
 mod vec2;
 
 pub use calibration::Calibration;
+pub use completion::CompletionConfig;
+pub use completion::CompletionMode;
 pub use contact_count::ContactCount;
 pub use device::DeviceError;
 pub use device::DeviceProfile;

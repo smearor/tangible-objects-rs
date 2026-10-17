@@ -37,6 +37,7 @@ pub struct EngineRuntime {
     commands: mpsc::Receiver<ControlCommand>,
     device: Option<crate::DeviceInfo>,
     recording: Option<crate::RecordingStatus>,
+    completion: Option<tangible_objects_model::CompletionConfig>,
 }
 
 /// Cloneable consumer-side handle for interface crates.
@@ -84,6 +85,7 @@ impl EngineRuntime {
             commands,
             device: None,
             recording: None,
+            completion: None,
         };
         let handle = EngineHandle {
             events,
@@ -108,6 +110,13 @@ impl EngineRuntime {
         self.recording = status;
     }
 
+    /// Publishes the active completion configuration in subsequent
+    /// snapshots. Set at session start and after each applied
+    /// `SetCompletion` command.
+    pub fn set_completion(&mut self, config: tangible_objects_model::CompletionConfig) {
+        self.completion = Some(config);
+    }
+
     /// Publishes a processed frame: runs the set tracker, updates the
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: &[TrackedTangible]) {
@@ -118,6 +127,7 @@ impl EngineRuntime {
             active_sets: self.set_tracker.active_set_ids(),
             device: self.device.clone(),
             recording: self.recording.clone(),
+            completion: self.completion,
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -138,6 +148,7 @@ impl EngineRuntime {
             active_sets: self.set_tracker.active_set_ids(),
             device: self.device.clone(),
             recording: self.recording.clone(),
+            completion: self.completion,
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));

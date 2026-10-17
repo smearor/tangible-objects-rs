@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use tangible_objects_model::CandidateReport;
+use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::MatchScore;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
@@ -22,7 +23,13 @@ pub(crate) fn find_matches(
     touches: &[TouchPoint],
     patterns: &[TangiblePattern],
 ) -> Vec<PatternMatch> {
-    find_matches_inner(touches, patterns, &mut NoDiagnostics, &HashSet::new())
+    find_matches_inner(
+        touches,
+        patterns,
+        &mut NoDiagnostics,
+        &HashSet::new(),
+        &CompletionConfig::default(),
+    )
 }
 
 /// Like [`find_matches`], excluding `exclude` touch indices from every
@@ -31,8 +38,9 @@ pub(crate) fn find_matches_excluding(
     touches: &[TouchPoint],
     patterns: &[TangiblePattern],
     exclude: &HashSet<usize>,
+    completion: &CompletionConfig,
 ) -> Vec<PatternMatch> {
-    find_matches_inner(touches, patterns, &mut NoDiagnostics, exclude)
+    find_matches_inner(touches, patterns, &mut NoDiagnostics, exclude, completion)
 }
 
 /// Like [`find_matches`], additionally reporting every tested point
@@ -45,8 +53,9 @@ pub(crate) fn find_matches_with_diagnostics(
     patterns: &[TangiblePattern],
     diagnostics: &mut impl CandidateDiagnostics,
     exclude: &HashSet<usize>,
+    completion: &CompletionConfig,
 ) -> Vec<PatternMatch> {
-    find_matches_inner(touches, patterns, diagnostics, exclude)
+    find_matches_inner(touches, patterns, diagnostics, exclude, completion)
 }
 
 /// Evaluates a single point combination against one pattern (exact only).
@@ -61,20 +70,30 @@ pub(crate) fn try_pattern(
 ) -> Option<PatternMatch> {
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
     (pattern.matches(&points) && pattern.accepts(&points))
-        .then(|| build_match(pattern, &points, combo, false))
+        .then(|| build_match(pattern, &points, combo, false, Vec::new()))
 }
 
-/// Like [`try_pattern`] for a partial (`num_points - 1`) combination.
+/// Like [`try_pattern`] for a partial (`num_points - 1`) combination;
+/// also claims the predicted missing pin(s) from `pool` when completion
+/// is enabled.
 pub(crate) fn try_partial(
     pattern: &TangiblePattern,
     combo: &[usize],
     touches: &[TouchPoint],
+    completion: &CompletionConfig,
+    pool: &[usize],
 ) -> Option<PatternMatch> {
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
+    let missing = pattern.num_points.checked_sub(combo.len())?;
     pattern
-        .matches_partial(&points)
+        .matches_partial_missing(&points, missing)
         .filter(|_| pattern.accepts(&points))
-        .map(|_| build_match(pattern, &points, combo, true))
+        .map(|(kept_refs, _)| {
+            let claimed = claim_missing(
+                pattern, &kept_refs, &points, combo, pool, touches, completion,
+            );
+            build_match(pattern, &points, combo, true, claimed)
+        })
 }
 
 fn find_matches_inner(
@@ -82,6 +101,7 @@ fn find_matches_inner(
     patterns: &[TangiblePattern],
     diagnostics: &mut impl CandidateDiagnostics,
     exclude: &HashSet<usize>,
+    completion: &CompletionConfig,
 ) -> Vec<PatternMatch> {
     let mut matches = Vec::new();
     let mut used_indices: HashSet<usize> = HashSet::new();
@@ -125,39 +145,58 @@ fn find_matches_inner(
                 // max-deviation score - equivalent to total error under a
                 // scalar tolerance, decisive under per-index tolerances.
                 let score = pattern.match_score(&points);
-                let candidate = build_match(pattern, &points, &combo, false);
+                let candidate = build_match(pattern, &points, &combo, false, Vec::new());
                 consider(&mut best, candidate, score);
             }
         }
 
-        // Partial match: with reference points, try N-1 points when a figure
-        // loses one contact (e.g. a tilting object). Only for 4+ pin figures.
+        // Partial match: with reference points, try N-k points when a
+        // figure loses contacts (e.g. a tilting object). `max_missing`
+        // bounds how many pins may be missing (1 or 2); 4+ pin figures
+        // only. A successful partial may then *claim* the predicted
+        // missing pins from still-unassigned touches (completion).
         if best.is_none()
             && pattern.ref_points.is_some()
-            && available.len() >= pattern.num_points - 1
+            && available.len() + completion.max_missing as usize >= pattern.num_points
             && pattern.num_points >= 4
         {
-            let partial_n = pattern.num_points - 1;
-            for combo in combinations(&available, partial_n) {
-                let points: Vec<Vec2<Millimeters>> =
-                    combo.iter().map(|&i| touches[i].pos).collect();
+            let max_missing = (completion.max_missing as usize).min(pattern.num_points - 1);
+            for missing in 1..=max_missing {
+                let partial_n = pattern.num_points - missing;
+                for combo in combinations(&available, partial_n) {
+                    let points: Vec<Vec2<Millimeters>> =
+                        combo.iter().map(|&i| touches[i].pos).collect();
 
-                let result = pattern
-                    .matches_partial(&points)
-                    .filter(|_| pattern.accepts(&points));
-                diagnostics.report(|| partial_report(pattern, &points, &combo, result.is_some()));
-                if let Some((_ref_indices, error)) = result {
-                    // Partial candidates share the same (scalar × 1.5) scale -
-                    // ranking by error is ranking by normalized score here.
-                    let score = error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
-                    let candidate = build_match(pattern, &points, &combo, true);
-                    consider(&mut best, candidate, score);
+                    let result = pattern
+                        .matches_partial_missing(&points, missing)
+                        .filter(|_| pattern.accepts(&points));
+                    diagnostics
+                        .report(|| partial_report(pattern, &points, &combo, result.is_some()));
+                    if let Some((kept_refs, error)) = result {
+                        // Partial candidates share the same (scalar × 1.5)
+                        // scale - ranking by error is ranking by
+                        // normalized score here.
+                        let score = error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
+                        let free: Vec<usize> = available
+                            .iter()
+                            .copied()
+                            .filter(|index| !combo.contains(index))
+                            .collect();
+                        let claimed = claim_missing(
+                            pattern, &kept_refs, &points, &combo, &free, touches, completion,
+                        );
+                        let candidate = build_match(pattern, &points, &combo, true, claimed);
+                        consider(&mut best, candidate, score);
+                    }
                 }
             }
         }
 
         if let Some((pattern_match, _)) = best {
-            for &index in &pattern_match.touch_indices {
+            // Matched pins and completion-claimed pins are both consumed -
+            // a claimed point belongs to this figure this frame even when
+            // `persist` is off (persistence only governs future binding).
+            for index in pattern_match.all_indices() {
                 used_indices.insert(index);
             }
             matches.push(pattern_match);
@@ -165,6 +204,47 @@ fn find_matches_inner(
     }
 
     matches
+}
+
+/// Claims the predicted positions of a partial match's missing pins.
+///
+/// `kept_refs` are the reference indices that matched; `points`/`combo`
+/// the measured points. For every missing reference pin the expected
+/// position is predicted via [`TangiblePattern::predict_missing`] and the
+/// nearest free touch inside `radius_factor` × tolerance is claimed.
+fn claim_missing(
+    pattern: &TangiblePattern,
+    kept_refs: &[usize],
+    points: &[Vec2<Millimeters>],
+    combo: &[usize],
+    pool: &[usize],
+    touches: &[TouchPoint],
+    completion: &CompletionConfig,
+) -> Vec<usize> {
+    let radius = pattern.tolerance.as_f64() * completion.radius_factor;
+    let mut claimed = Vec::new();
+    let mut taken: HashSet<usize> = combo.iter().copied().collect();
+    for missing in (0..pattern.num_points).filter(|index| !kept_refs.contains(index)) {
+        let Some(predicted) = pattern.predict_missing(kept_refs, points, missing) else {
+            continue;
+        };
+        let nearest = pool
+            .iter()
+            .filter(|index| !taken.contains(index))
+            .min_by(|&&a, &&b| {
+                touches[a]
+                    .pos
+                    .distance(&predicted)
+                    .total_cmp(&touches[b].pos.distance(&predicted))
+            });
+        if let Some(&index) =
+            nearest.filter(|&&index| touches[index].pos.distance(&predicted).as_f64() <= radius)
+        {
+            claimed.push(index);
+            taken.insert(index);
+        }
+    }
+    claimed
 }
 
 /// Builds a [`CandidateReport`] for an exact (full-pin) combination.
@@ -244,6 +324,7 @@ fn build_match(
     points: &[Vec2<Millimeters>],
     combo: &[usize],
     partial: bool,
+    claimed: Vec<usize>,
 ) -> PatternMatch {
     let center = Vec2::centroid(points);
     let name = if partial {
@@ -257,6 +338,8 @@ fn build_match(
         center,
         rotation_rad: PatternMatch::rotation_of(points, &center),
         touch_indices: combo.to_vec(),
+        partial,
+        claimed_indices: claimed,
     }
 }
 
@@ -296,6 +379,7 @@ fn combinations(items: &[usize], k: usize) -> Vec<Vec<usize>> {
 mod tests {
     use super::combinations;
     use super::find_matches;
+    use super::find_matches_excluding;
     use super::find_matches_with_diagnostics;
     use tangible_objects_model::TangiblePattern;
     use tangible_objects_model::TouchPoint;
@@ -378,6 +462,7 @@ mod tests {
             &patterns,
             &mut reports,
             &std::collections::HashSet::new(),
+            &tangible_objects_model::CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
@@ -421,6 +506,7 @@ mod tests {
             &patterns,
             &mut reports,
             &std::collections::HashSet::new(),
+            &tangible_objects_model::CompletionConfig::default(),
         );
 
         assert!(matches.is_empty());
@@ -458,6 +544,7 @@ mod tests {
             &patterns,
             &mut reports,
             &std::collections::HashSet::new(),
+            &tangible_objects_model::CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
@@ -563,6 +650,7 @@ mod tests {
             &patterns,
             &mut reports,
             &std::collections::HashSet::new(),
+            &tangible_objects_model::CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
@@ -571,5 +659,81 @@ mod tests {
         assert_eq!(reports.len(), 1);
         assert!(reports[0].partial);
         assert!(reports[0].matched);
+    }
+
+    #[test]
+    fn partial_match_claims_predicted_missing_pin() {
+        let square = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(0.0, 40.0),
+            Vec2::new(40.0, 40.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        // Three matched pins at translated positions + a fourth touch near
+        // the predicted missing pin (translated (40,40) → (140,140)).
+        let touches = vec![
+            touch_point(0, 100.0, 100.0),
+            touch_point(1, 140.0, 100.0),
+            touch_point(2, 100.0, 140.0),
+            // ~8.5mm from predicted (140,140): too far for exact
+            // (tolerance 5), inside the claim radius (5 x 2 = 10).
+            touch_point(3, 146.0, 146.0),
+            touch_point(4, 999.0, 999.0), // out of claim radius
+        ];
+
+        let matches = find_matches_excluding(
+            &touches,
+            &patterns,
+            &std::collections::HashSet::new(),
+            &tangible_objects_model::CompletionConfig::default(),
+        );
+
+        assert_eq!(matches.len(), 1);
+        assert!(matches[0].is_partial());
+        // The near-predicted touch is claimed, the distant one is not.
+        assert_eq!(matches[0].claimed_indices, vec![3]);
+        assert!(
+            matches[0]
+                .all_indices()
+                .collect::<Vec<usize>>()
+                .contains(&3)
+        );
+        assert!(
+            !matches[0]
+                .all_indices()
+                .collect::<Vec<usize>>()
+                .contains(&4)
+        );
+    }
+
+    #[test]
+    fn partial_match_does_not_claim_distant_touch() {
+        let square = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(0.0, 40.0),
+            Vec2::new(40.0, 40.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        // Fourth touch 30mm from the predicted position - outside the
+        // claim radius (tolerance 5 × factor 2 = 10mm).
+        let touches = vec![
+            touch_point(0, 0.0, 0.0),
+            touch_point(1, 40.0, 0.0),
+            touch_point(2, 0.0, 40.0),
+            touch_point(3, 70.0, 40.0),
+        ];
+
+        let matches = find_matches_excluding(
+            &touches,
+            &patterns,
+            &std::collections::HashSet::new(),
+            &tangible_objects_model::CompletionConfig::default(),
+        );
+
+        assert_eq!(matches.len(), 1);
+        assert!(matches[0].is_partial());
+        assert!(matches[0].claimed_indices.is_empty());
     }
 }

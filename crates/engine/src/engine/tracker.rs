@@ -80,10 +80,16 @@ impl Tracker {
 
     /// Processes the matches of a new frame: associate, update, create,
     /// expire. `touches` resolves `touch_indices` to slots so every
-    /// tracked tangible keeps its slot binding. Returns the domain events
-    /// produced by this update
-    /// (`TangibleMoved`/`TangibleAdded`/`TangibleRemoved`).
-    pub fn update(&mut self, matches: &[PatternMatch], touches: &[TouchPoint]) -> Vec<EngineEvent> {
+    /// tracked tangible keeps its slot binding. `bind_claimed` controls
+    /// whether completion-claimed indices join the binding
+    /// (`CompletionConfig::persist`). Returns the domain events produced
+    /// by this update (`TangibleMoved`/`TangibleAdded`/`TangibleRemoved`).
+    pub fn update(
+        &mut self,
+        matches: &[PatternMatch],
+        touches: &[TouchPoint],
+        bind_claimed: bool,
+    ) -> Vec<EngineEvent> {
         let mut events = Vec::new();
         for tangible in &mut self.tracked {
             tangible.frames_since_match += 1;
@@ -123,7 +129,7 @@ impl Tracker {
                 ));
                 tangible.frames_since_match = 0;
                 self.slots
-                    .insert(tangible.id, slots_of(pattern_match, touches));
+                    .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
                 events.push(EngineEvent::TangibleMoved(tangible.clone()));
             }
         }
@@ -141,7 +147,7 @@ impl Tracker {
                 };
                 self.next_tangible_id = TangibleId::new(self.next_tangible_id.as_u32() + 1);
                 self.slots
-                    .insert(tangible.id, slots_of(pattern_match, touches));
+                    .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
                 debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
                 self.tracked.push(tangible.clone());
                 events.push(EngineEvent::TangibleAdded(tangible));
@@ -175,11 +181,21 @@ impl Tracker {
     }
 }
 
-/// Resolves a match's `touch_indices` to the slots of the touched points.
-fn slots_of(pattern_match: &PatternMatch, touches: &[TouchPoint]) -> HashSet<TouchPointSlot> {
-    pattern_match
-        .touch_indices
-        .iter()
+/// Resolves a match's `touch_indices` (plus `claimed_indices` when
+/// `bind_claimed`) to the slots of the touched points.
+fn slots_of(
+    pattern_match: &PatternMatch,
+    touches: &[TouchPoint],
+    bind_claimed: bool,
+) -> HashSet<TouchPointSlot> {
+    let indices = pattern_match.touch_indices.iter();
+    let claimed = if bind_claimed {
+        pattern_match.claimed_indices.as_slice()
+    } else {
+        &[]
+    };
+    indices
+        .chain(claimed.iter())
         .map(|&index| touches[index].slot)
         .collect()
 }
@@ -214,6 +230,8 @@ mod tests {
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
             touch_indices: Vec::new(),
+            partial: false,
+            claimed_indices: Vec::new(),
         }
     }
 
@@ -224,7 +242,7 @@ mod tests {
     #[test]
     fn new_match_creates_tracked_tangible() {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
-        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
+        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
         assert_eq!(tracker.active().len(), 1);
         assert_eq!(tracker.active()[0].pattern_id, PatternId::new(1));
         assert!(matches!(events.as_slice(), [EngineEvent::TangibleAdded(_)]));
@@ -233,8 +251,8 @@ mod tests {
     #[test]
     fn nearby_match_associates_and_smooths() {
         let mut tracker = Tracker::new(0.5, 200.0, FrameCount::new(30));
-        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
-        tracker.update(&[pattern_match(1, 20.0, 20.0)], &touches());
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
+        tracker.update(&[pattern_match(1, 20.0, 20.0)], &touches(), true);
         // EMA(0.5) of 10 and 20 → 15.
         assert!((tracker.active()[0].center.x - 15.0).abs() < 1e-9);
     }
@@ -242,18 +260,18 @@ mod tests {
     #[test]
     fn distant_match_creates_second_tangible() {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
-        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
-        tracker.update(&[pattern_match(1, 500.0, 500.0)], &touches());
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
+        tracker.update(&[pattern_match(1, 500.0, 500.0)], &touches(), true);
         assert_eq!(tracker.active().len(), 2);
     }
 
     #[test]
     fn tangible_expires_after_max_frames() {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(2));
-        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches());
-        tracker.update(&[], &touches());
-        tracker.update(&[], &touches());
-        let events = tracker.update(&[], &touches());
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
+        tracker.update(&[], &touches(), true);
+        tracker.update(&[], &touches(), true);
+        let events = tracker.update(&[], &touches(), true);
         assert!(tracker.active().is_empty());
         assert!(matches!(
             events.as_slice(),

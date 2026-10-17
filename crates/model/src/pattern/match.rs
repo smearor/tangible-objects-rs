@@ -16,17 +16,32 @@ pub struct PatternMatch {
     pub rotation_rad: RotationRad,
     /// Indices into the frame's touch point list that belong to this figure.
     pub touch_indices: Vec<usize>,
+    /// Whether the match used a partial (`num_points - k`) fingerprint.
+    /// `true` also for completed partials - see `claimed_indices`.
+    pub partial: bool,
+    /// Touch indices claimed by missing-pin completion - pins predicted
+    /// from the matched geometry and assigned to this figure even though
+    /// they did not satisfy the fingerprint (TRACKING_STABILIZATION.md).
+    /// Empty when completion did not run or found nothing.
+    pub claimed_indices: Vec<usize>,
 }
 
 impl PatternMatch {
-    /// Whether this match is a partial (`num_points - 1`) match - the
-    /// matcher marks them by appending `" (partial)"` to the pattern name.
+    /// Whether this match is a partial (`num_points - k`) match.
     ///
     /// Callers that must distinguish certainty levels (e.g. the filter
     /// proxy, which suppresses slots only on exact matches) use this flag
     /// instead of re-inspecting touch counts.
     pub fn is_partial(&self) -> bool {
-        self.pattern_name.ends_with("(partial)")
+        self.partial
+    }
+
+    /// All slots of this match: matched pins plus claimed pins.
+    pub fn all_indices(&self) -> impl Iterator<Item = usize> + '_ {
+        self.touch_indices
+            .iter()
+            .chain(self.claimed_indices.iter())
+            .copied()
     }
 
     /// Computes the figure orientation from its matched points.
@@ -107,16 +122,24 @@ mod tests {
     }
 
     #[test]
-    fn partial_marker_is_detected() {
+    fn partial_flag_and_all_indices() {
         let mut pattern_match = PatternMatch {
             pattern_id: crate::PatternId::new(1),
             pattern_name: "Figur8".to_string(),
             center: Vec2::new(0.0, 0.0),
             rotation_rad: crate::RotationRad::new(0.0),
             touch_indices: vec![0, 1, 2],
+            partial: false,
+            claimed_indices: Vec::new(),
         };
         assert!(!pattern_match.is_partial());
-        pattern_match.pattern_name = "Figur8 (partial)".to_string();
+        assert_eq!(pattern_match.all_indices().count(), 3);
+        pattern_match.partial = true;
+        pattern_match.claimed_indices = vec![5];
         assert!(pattern_match.is_partial());
+        assert_eq!(
+            pattern_match.all_indices().collect::<Vec<usize>>(),
+            vec![0, 1, 2, 5]
+        );
     }
 }

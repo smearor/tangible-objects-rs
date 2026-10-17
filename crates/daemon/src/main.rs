@@ -46,6 +46,10 @@ fn main() -> Result<()> {
     let mut stability: Option<u64> = None;
     let mut legacy: Option<String> = None;
     let mut fields_path: Option<String> = None;
+    let mut completion_mode: Option<String> = None;
+    let mut completion_radius: Option<f64> = None;
+    let mut completion_missing: Option<u32> = None;
+    let mut completion_no_persist = false;
     let mut dbus = false;
 
     let mut i = 0;
@@ -142,6 +146,21 @@ fn main() -> Result<()> {
                 fields_path = args.get(i + 1).cloned();
                 i += 1;
             }
+            "--completion-mode" => {
+                completion_mode = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--completion-radius" => {
+                completion_radius = args.get(i + 1).and_then(|s| s.parse().ok());
+                i += 1;
+            }
+            "--completion-max-missing" => {
+                completion_missing = args.get(i + 1).and_then(|s| s.parse().ok());
+                i += 1;
+            }
+            "--completion-no-persist" => {
+                completion_no_persist = true;
+            }
             "--help" | "-h" => {
                 mode = Some("--help");
             }
@@ -184,6 +203,12 @@ fn main() -> Result<()> {
             let config = modes::DetectionConfig {
                 edge,
                 fields: modes::load_field_sets(fields_path.as_deref()),
+                completion: parse_completion(
+                    completion_mode,
+                    completion_radius,
+                    completion_missing,
+                    completion_no_persist,
+                )?,
             };
             match record_base {
                 Some(base) => modes::run_record(
@@ -215,6 +240,12 @@ fn main() -> Result<()> {
                 .map(|value| value.parse::<tangible_objects_engine::LegacyMode>())
                 .transpose()
                 .map_err(|_| miette::miette!("--legacy must be one of: auto, always, never"))?;
+            let completion = parse_completion(
+                completion_mode,
+                completion_radius,
+                completion_missing,
+                completion_no_persist,
+            )?;
             modes::run_filter(
                 &dev,
                 &patterns,
@@ -224,6 +255,7 @@ fn main() -> Result<()> {
                 modes::DetectionConfig {
                     edge,
                     fields: modes::load_field_sets(fields_path.as_deref()),
+                    completion,
                 },
                 device_profiles.as_deref().map(Path::new),
             )
@@ -290,6 +322,38 @@ fn main() -> Result<()> {
             Ok(())
         }
     }
+}
+
+/// Builds the [`tangible_objects_model::CompletionConfig`]: base values
+/// come from `~/.config/tangible-objects/completion.toml` (or defaults);
+/// each `--completion-*` flag overrides its field.
+fn parse_completion(
+    mode: Option<String>,
+    radius: Option<f64>,
+    max_missing: Option<u32>,
+    no_persist: bool,
+) -> Result<tangible_objects_model::CompletionConfig> {
+    use tangible_objects_model::CompletionMode;
+
+    let mut config = modes::load_completion();
+    if let Some(value) = mode {
+        config.mode = value
+            .parse::<CompletionMode>()
+            .map_err(|_| miette::miette!("--completion-mode must be one of: match, exact"))?;
+    }
+    if let Some(factor) = radius {
+        config.radius_factor = factor;
+    }
+    if let Some(missing) = max_missing {
+        if !(1..=2).contains(&missing) {
+            return Err(miette::miette!("--completion-max-missing must be 1 or 2"));
+        }
+        config.max_missing = missing;
+    }
+    if no_persist {
+        config.persist = false;
+    }
+    Ok(config)
 }
 
 /// Parses the optional interface flags into [`modes::Interfaces`].
@@ -359,6 +423,11 @@ fn print_help() {
     eprintln!(
         "  --edge-filter-mm <mm>  Geister-Kontakte am Rand verwerfen (--live/--record/--gui)"
     );
+    eprintln!("  --fields <file|dir>       Occupancy-Feld-Sets laden (TOML)");
+    eprintln!("  --completion-mode <m>     match|exact (Default: match)");
+    eprintln!("  --completion-radius <f>   Claim-Radius × Toleranz (Default: 2.0)");
+    eprintln!("  --completion-max-missing <n>  fehlende Pins 1|2 (Default: 1)");
+    eprintln!("  --completion-no-persist   geclaimte Slots nicht binden");
     eprintln!(
         "  --stability-frames <n> Konsekutive Match-Frames vor Suppression (--filter, Default: 2)"
     );

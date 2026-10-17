@@ -22,4 +22,7 @@ pub struct EngineSnapshot {
     pub device: Option<DeviceInfo>,
     /// Recording session status, updated every frame while active.
     pub recording: Option<RecordingStatus>,
+    /// Active missing-pin completion configuration - read-only view for
+    /// interfaces (`set_completion` commands go through the device loop).
+    pub completion: Option<tangible_objects_model::CompletionConfig>,
 }

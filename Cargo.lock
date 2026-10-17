@@ -2210,6 +2210,7 @@ dependencies = [
  "tangible-objects-mcp",
  "tangible-objects-model",
  "tangible-objects-runtime",
+ "toml 0.8.23",
  "tracing",
  "tracing-subscriber",
 ]

@@ -150,18 +150,30 @@ impl TangiblePattern {
     /// distances; `None` when no reference points are stored, their count
     /// differs from `num_points` or `skip` is out of range.
     pub fn partial_reference(&self, skip: usize) -> Option<(Vec<usize>, Vec<Millimeters>)> {
+        self.partial_reference_multi(&[skip])
+    }
+
+    /// Like [`Self::partial_reference`] with `skips` pins removed -
+    /// needed for `num_points - 2` completion candidates.
+    pub fn partial_reference_multi(
+        &self,
+        skips: &[usize],
+    ) -> Option<(Vec<usize>, Vec<Millimeters>)> {
         let ref_points = self.ref_points.as_ref()?;
-        if ref_points.len() != self.num_points || skip >= self.num_points {
+        if ref_points.len() != self.num_points
+            || skips.iter().any(|skip| *skip >= self.num_points)
+            || skips.is_empty()
+        {
             return None;
         }
         let subset: Vec<Vec2<Millimeters>> = ref_points
             .iter()
             .enumerate()
-            .filter(|(index, _)| *index != skip)
+            .filter(|(index, _)| !skips.contains(index))
             .map(|(_, point)| *point)
             .collect();
         let indices = (0..self.num_points)
-            .filter(|index| *index != skip)
+            .filter(|index| !skips.contains(index))
             .collect();
         Some((indices, sorted_pairwise_distances(&subset)))
     }
@@ -178,9 +190,23 @@ impl TangiblePattern {
         &self,
         points: &[Vec2<Millimeters>],
     ) -> Option<(Vec<usize>, Millimeters)> {
+        self.matches_partial_missing(points, 1)
+    }
+
+    /// Generalized partial match with `missing` dropped pins (1 or 2).
+    /// The returned indices are the *kept* reference points, ordered like
+    /// the reference - the complement are the missing pins, used by
+    /// missing-pin completion to predict their expected positions.
+    pub fn matches_partial_missing(
+        &self,
+        points: &[Vec2<Millimeters>],
+        missing: usize,
+    ) -> Option<(Vec<usize>, Millimeters)> {
         let ref_pts = self.ref_points.as_ref()?;
         if self.num_points == 0
-            || points.len() != self.num_points - 1
+            || missing == 0
+            || missing >= self.num_points
+            || points.len() != self.num_points - missing
             || ref_pts.len() != self.num_points
         {
             return None;
@@ -189,8 +215,8 @@ impl TangiblePattern {
         let measured = sorted_pairwise_distances(points);
         let mut best: Option<(Vec<usize>, Millimeters)> = None;
 
-        for skip in 0..self.num_points {
-            let Some((all_indices, ref_dists)) = self.partial_reference(skip) else {
+        for skips in skip_combinations(self.num_points, missing) {
+            let Some((all_indices, ref_dists)) = self.partial_reference_multi(&skips) else {
                 continue;
             };
 
@@ -208,6 +234,62 @@ impl TangiblePattern {
         }
         best
     }
+
+    /// Predicts the screen position of a missing reference pin from a
+    /// partial match's geometry.
+    ///
+    /// `kept_refs` are the reference indices that matched (from
+    /// [`Self::matches_partial_missing`]); `measured` are the frame
+    /// positions of the kept pins in the same order. The missing pin's
+    /// expected position is estimated by fitting a rigid transform
+    /// (rotation + translation, no scale) ref→measured.
+    ///
+    /// Returns `None` when the correspondence between kept reference and
+    /// measured points is ambiguous within `tolerance`.
+    pub fn predict_missing(
+        &self,
+        kept_refs: &[usize],
+        measured: &[Vec2<Millimeters>],
+        missing: usize,
+    ) -> Option<Vec2<Millimeters>> {
+        let ref_points = self.ref_points.as_ref()?;
+        if missing >= self.num_points
+            || kept_refs.len() != measured.len()
+            || kept_refs.len() < 2
+            || kept_refs.iter().any(|i| *i >= self.num_points)
+        {
+            return None;
+        }
+        let kept_ref_points: Vec<Vec2<Millimeters>> =
+            kept_refs.iter().map(|&i| ref_points[i]).collect();
+        // Try every correspondence consistent with the distance
+        // multisets (symmetric figures admit several) and keep the
+        // transform with the smallest residual.
+        let mut best: Option<(RigidTransform, Millimeters)> = None;
+        for mapping in correspondences(&kept_ref_points, measured, self.tolerance) {
+            let Some(transform) = similarity_transform(&kept_ref_points, measured, &mapping) else {
+                continue;
+            };
+            let residual: f64 = kept_ref_points
+                .iter()
+                .enumerate()
+                .map(|(ri, r)| {
+                    let measured_index =
+                        mapping.iter().position(|&mapped| mapped == ri).unwrap_or(0);
+                    transform
+                        .apply(*r)
+                        .distance(&measured[measured_index])
+                        .as_f64()
+                })
+                .map(|d| d * d)
+                .sum();
+            let residual = Millimeters::new(residual.sqrt());
+            if best.as_ref().is_none_or(|(_, r)| residual < *r) {
+                best = Some((transform, residual));
+            }
+        }
+        best.map(|(transform, _)| transform.apply(ref_points[missing]))
+    }
 }
 
 /// Computes all pairwise distances of a point set, sorted ascending.
@@ -220,6 +302,159 @@ fn sorted_pairwise_distances(points: &[Vec2<Millimeters>]) -> Vec<Millimeters> {
     }
     distances.sort_by(Millimeters::total_cmp);
     distances
+}
+
+/// All `missing`-element index combinations of `0..n` (the pins to skip).
+fn skip_combinations(n: usize, missing: usize) -> Vec<Vec<usize>> {
+    let mut result = Vec::new();
+    let mut combo = Vec::with_capacity(missing);
+    fn go(
+        n: usize,
+        missing: usize,
+        start: usize,
+        combo: &mut Vec<usize>,
+        out: &mut Vec<Vec<usize>>,
+    ) {
+        if combo.len() == missing {
+            out.push(combo.clone());
+            return;
+        }
+        for i in start..n {
+            combo.push(i);
+            go(n, missing, i + 1, combo, out);
+            combo.pop();
+        }
+    }
+    go(n, missing, 0, &mut combo, &mut result);
+    result
+}
+
+/// Sorted distance multiset of one point to all others in the set.
+fn distance_multiset(points: &[Vec2<Millimeters>], index: usize) -> Vec<Millimeters> {
+    let mut dists: Vec<Millimeters> = points
+        .iter()
+        .enumerate()
+        .filter(|(j, _)| *j != index)
+        .map(|(_, other)| points[index].distance(other))
+        .collect();
+    dists.sort_by(Millimeters::total_cmp);
+    dists
+}
+
+/// Enumerates every correspondence `measured[i] → refs[mapping[i]]`
+/// consistent with per-point distance multisets (within `tolerance`).
+/// Symmetric figures admit several mappings - the caller picks the one
+/// whose fitted transform has the smallest residual.
+fn correspondences(
+    refs: &[Vec2<Millimeters>],
+    measured: &[Vec2<Millimeters>],
+    tolerance: PatternTolerance,
+) -> Vec<Vec<usize>> {
+    let tol = tolerance.as_millimeters();
+    let ref_sets: Vec<Vec<Millimeters>> = (0..refs.len())
+        .map(|i| distance_multiset(refs, i))
+        .collect();
+    let meas_sets: Vec<Vec<Millimeters>> = (0..measured.len())
+        .map(|i| distance_multiset(measured, i))
+        .collect();
+    if refs.len() != measured.len() {
+        return Vec::new();
+    }
+
+    // Candidates per measured point: ref indices with an equal multiset.
+    let candidates: Vec<Vec<usize>> = meas_sets
+        .iter()
+        .map(|ms| {
+            ref_sets
+                .iter()
+                .enumerate()
+                .filter(|(_, rs)| {
+                    ms.len() == rs.len()
+                        && ms
+                            .iter()
+                            .zip(rs.iter())
+                            .all(|(m, r)| (*m - *r).abs() <= tol)
+                })
+                .map(|(ri, _)| ri)
+                .collect()
+        })
+        .collect();
+
+    let mut result = Vec::new();
+    let mut mapping = vec![usize::MAX; measured.len()];
+    let mut used = vec![false; refs.len()];
+    fn enumerate(
+        candidates: &[Vec<usize>],
+        index: usize,
+        mapping: &mut Vec<usize>,
+        used: &mut Vec<bool>,
+        result: &mut Vec<Vec<usize>>,
+    ) {
+        if index == candidates.len() {
+            result.push(mapping.clone());
+            return;
+        }
+        for &ri in &candidates[index] {
+            if used[ri] {
+                continue;
+            }
+            used[ri] = true;
+            mapping[index] = ri;
+            enumerate(candidates, index + 1, mapping, used, result);
+            used[ri] = false;
+        }
+    }
+    enumerate(&candidates, 0, &mut mapping, &mut used, &mut result);
+    result
+}
+
+/// Rigid 2D transform (rotation + translation) fitted to the measured
+/// points. `mapping[i]` maps `measured[i]` to `refs[mapping[i]]`.
+struct RigidTransform {
+    angle: f64,
+    ref_center: Vec2<Millimeters>,
+    meas_center: Vec2<Millimeters>,
+}
+
+impl RigidTransform {
+    /// Applies the transform: `meas_center + R(angle) · (p - ref_center)`.
+    fn apply(&self, p: Vec2<Millimeters>) -> Vec2<Millimeters> {
+        let (sin, cos) = self.angle.sin_cos();
+        let dx = p.x - self.ref_center.x;
+        let dy = p.y - self.ref_center.y;
+        Vec2::new(
+            self.meas_center.x + dx * cos - dy * sin,
+            self.meas_center.y + dx * sin + dy * cos,
+        )
+    }
+}
+
+/// Least-squares rigid transform: rotation angle via the summed
+/// cross/dot products of centered points.
+fn similarity_transform(
+    refs: &[Vec2<Millimeters>],
+    measured: &[Vec2<Millimeters>],
+    mapping: &[usize],
+) -> Option<RigidTransform> {
+    let ref_center = Vec2::centroid(refs);
+    let meas_center = Vec2::centroid(measured);
+    let mut cross = 0.0;
+    let mut dot = 0.0;
+    for (mi, m) in measured.iter().enumerate() {
+        let r = refs[mapping[mi]];
+        let dr = (r.x - ref_center.x, r.y - ref_center.y);
+        let dm = (m.x - meas_center.x, m.y - meas_center.y);
+        cross += dr.0 * dm.1 - dr.1 * dm.0;
+        dot += dr.0 * dm.0 + dr.1 * dm.1;
+    }
+    if dot.abs() + cross.abs() < 1e-9 {
+        return None;
+    }
+    Some(RigidTransform {
+        angle: cross.atan2(dot),
+        ref_center,
+        meas_center,
+    })
 }
 
 #[cfg(test)]

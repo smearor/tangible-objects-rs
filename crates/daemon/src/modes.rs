@@ -20,6 +20,8 @@ use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::Calibration;
+use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::CompletionMode;
 use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
@@ -243,6 +245,48 @@ pub struct DetectionConfig {
     pub edge: Option<Millimeters>,
     /// Occupancy field sets (`--fields`).
     pub fields: Vec<FieldSet>,
+    /// Missing-pin completion config (`--completion-*` flags).
+    pub completion: CompletionConfig,
+}
+
+/// Default path of the completion config file:
+/// `$XDG_CONFIG_HOME/tangible-objects/completion.toml`, falling back to
+/// `~/.config/tangible-objects/completion.toml`.
+pub fn completion_config_path() -> Option<PathBuf> {
+    let base = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
+    Some(base.join("tangible-objects").join("completion.toml"))
+}
+
+/// Loads the completion config from [`completion_config_path`]; falls
+/// back to [`CompletionConfig::default`] when the file is absent or
+/// unreadable. CLI `--completion-*` flags override individual fields on
+/// top of this.
+pub fn load_completion() -> CompletionConfig {
+    let Some(path) = completion_config_path() else {
+        return CompletionConfig::default();
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => match toml::from_str::<CompletionConfig>(&contents) {
+            Ok(config) => {
+                println!(
+                    "Completion-Config geladen: {} (mode={} radius={} max-missing={} persist={})",
+                    path.display(),
+                    config.mode,
+                    config.radius_factor,
+                    config.max_missing,
+                    config.persist
+                );
+                config
+            }
+            Err(e) => {
+                warn!(path = %path.display(), error = %e, "completion config unreadable - defaults used");
+                CompletionConfig::default()
+            }
+        },
+        Err(_) => CompletionConfig::default(),
+    }
 }
 
 /// Loads occupancy field sets from a file or directory (`--fields`).
@@ -318,12 +362,14 @@ pub fn run_live(
         println!("Edge-Filter: {mm} mm");
     }
     engine.set_fields(config.fields);
+    engine.set_completion(config.completion);
     println!("Ctrl+C zum Beenden\n");
 
     // Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
     // No set definitions are loaded yet - the set tracker idles.
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    runtime.set_completion(config.completion);
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
@@ -350,7 +396,7 @@ pub fn run_live(
             break;
         }
         if ready == 0 {
-            drain_control_commands(&mut runtime, &mut recording, &engine, device.name());
+            drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
             runtime.set_recording_status(recording.as_ref().map(status_of_session));
             runtime.publish_snapshot(engine.touches(), engine.tracked());
             continue;
@@ -376,7 +422,7 @@ pub fn run_live(
             if let Some(engine_frame) = engine_frame {
                 frame += 1;
                 runtime.publish(&engine_frame, engine.tracked());
-                drain_control_commands(&mut runtime, &mut recording, &engine, device.name());
+                drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
 
                 if let Some(session) = &mut recording {
                     session.record_frame(
@@ -426,7 +472,7 @@ pub fn run_live(
 fn drain_control_commands(
     runtime: &mut EngineRuntime,
     recording: &mut Option<RecordingSession>,
-    engine: &Engine,
+    engine: &mut Engine,
     device_name: Option<&str>,
 ) {
     while let Ok(command) = runtime.try_recv_command() {
@@ -469,6 +515,14 @@ fn drain_control_commands(
                 Some(session) => session.set_label(new_label),
                 None => warn!("no recording active - SetRecordLabel ignored"),
             },
+            ControlCommand::SetCompletion(config) => {
+                engine.set_completion(config);
+                runtime.set_completion(config);
+                println!(
+                    "\nCompletion: mode={} radius={} max-missing={} persist={}",
+                    config.mode, config.radius_factor, config.max_missing, config.persist
+                );
+            }
         }
     }
 }
@@ -511,6 +565,7 @@ pub fn run_filter(
         println!("Edge-Filter: {mm} mm");
     }
     engine.set_fields(config.fields);
+    engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
     device.grab().into_diagnostic()?;
@@ -520,6 +575,7 @@ pub fn run_filter(
 
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    runtime.set_completion(config.completion);
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
@@ -542,6 +598,14 @@ pub fn run_filter(
                 ControlCommand::SetFilterMode { mode, stability } => {
                     proxy.set_mode(mode, stability);
                     println!("\nFilter-Modus: {mode}");
+                }
+                ControlCommand::SetCompletion(config) => {
+                    engine.set_completion(config);
+                    runtime.set_completion(config);
+                    println!(
+                        "\nCompletion: mode={} radius={} max-missing={} persist={}",
+                        config.mode, config.radius_factor, config.max_missing, config.persist
+                    );
                 }
                 other => warn!(?other, "command ignored in filter mode"),
             }
@@ -579,12 +643,22 @@ pub fn run_filter(
             };
             frame += 1;
 
+            // Exact matches always suppress; under CompletionMode::Exact a
+            // completed partial suppresses its matched *and* claimed slots.
+            let completion_exact = engine.completion().mode == CompletionMode::Exact;
             let suppressed: HashSet<TouchPointSlot> = engine_frame
                 .matches
                 .iter()
-                .filter(|matched| !matched.is_partial())
-                .flat_map(|matched| matched.touch_indices.iter())
-                .map(|&index| engine_frame.touches[index].slot)
+                .flat_map(|matched| {
+                    if !matched.is_partial()
+                        || (completion_exact && !matched.claimed_indices.is_empty())
+                    {
+                        matched.all_indices().collect::<Vec<usize>>()
+                    } else {
+                        Vec::new()
+                    }
+                })
+                .map(|index| engine_frame.touches[index].slot)
                 .collect();
 
             let out = proxy.finish(&suppressed);
@@ -676,6 +750,7 @@ pub fn run_record(
         println!("Edge-Filter: {mm} mm");
     }
     engine.set_fields(config.fields);
+    engine.set_completion(config.completion);
 
     let mut session = RecordingSession::start(
         base.to_path_buf(),
@@ -695,6 +770,7 @@ pub fn run_record(
 
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    runtime.set_completion(config.completion);
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
@@ -745,6 +821,14 @@ pub fn run_record(
                 ControlCommand::StopRecording => break 'recording,
                 ControlCommand::SetRecordLabel(new_label) => {
                     session.set_label(new_label);
+                }
+                ControlCommand::SetCompletion(config) => {
+                    engine.set_completion(config);
+                    runtime.set_completion(config);
+                    println!(
+                        "\nCompletion: mode={} radius={} max-missing={} persist={}",
+                        config.mode, config.radius_factor, config.max_missing, config.persist
+                    );
                 }
             }
         }

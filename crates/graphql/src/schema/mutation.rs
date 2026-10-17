@@ -77,4 +77,19 @@ impl MutationRoot {
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)
     }
+
+    /// Replaces the missing-pin completion configuration. Takes a full
+    /// config object - read the current one via the `completion` query,
+    /// modify, write back (mutation applies from the next frame on).
+    async fn set_completion(
+        &self,
+        ctx: &Context<'_>,
+        config: tangible_objects_model::CompletionConfig,
+    ) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetCompletion(config))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
 }
