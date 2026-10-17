@@ -228,8 +228,32 @@ pub fn run_live(
     let mut frame: u64 = 0;
     let session_start = Instant::now();
     let mut recording: Option<RecordingSession> = None;
+    let device_fd = device.as_raw_fd();
 
     loop {
+        // Wake periodically even without device events: queued control
+        // commands (start/stop recording) must not wait for input - a
+        // StopRecording on an idle screen has to flush immediately.
+        let mut pfd = libc::pollfd {
+            fd: device_fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let ready = unsafe { libc::poll(&mut pfd, 1, 250) };
+        if ready < 0 {
+            if unsafe { *libc::__errno_location() } == libc::EINTR {
+                continue;
+            }
+            eprintln!("poll Fehler");
+            break;
+        }
+        if ready == 0 {
+            drain_control_commands(&mut runtime, &mut recording, &engine, device.name());
+            runtime.set_recording_status(recording.as_ref().map(status_of_session));
+            runtime.publish_snapshot(engine.touches(), engine.tracked());
+            continue;
+        }
+
         let events = match device.fetch_events() {
             Ok(events) => events,
             Err(e) => {
@@ -250,53 +274,7 @@ pub fn run_live(
             if let Some(engine_frame) = engine_frame {
                 frame += 1;
                 runtime.publish(&engine_frame, engine.tracked());
-                while let Ok(command) = runtime.try_recv_command() {
-                    match command {
-                        ControlCommand::SetFilterMode(enabled) => {
-                            warn!(enabled, "filter mode command - implemented in Phase 4");
-                        }
-                        ControlCommand::TrainProfile(name) => {
-                            warn!(name, "remote training command - not yet wired");
-                        }
-                        ControlCommand::StartRecording { base_path, label } => {
-                            if recording.is_some() {
-                                warn!("recording already active - StartRecording ignored");
-                            } else {
-                                match RecordingSession::start(
-                                    base_path.clone(),
-                                    device.name(),
-                                    engine.calibration().as_ref(),
-                                    label,
-                                ) {
-                                    Ok(started) => {
-                                        println!(
-                                            "\nAufzeichnung gestartet: {}",
-                                            started.base_path.display()
-                                        );
-                                        recording = Some(started);
-                                    }
-                                    Err(e) => {
-                                        warn!(error = %e, "recording could not be started")
-                                    }
-                                }
-                            }
-                        }
-                        ControlCommand::StopRecording => match recording.take() {
-                            Some(stopped) => {
-                                let recorded = stopped.recorded_frames();
-                                if let Err(e) = stopped.finish() {
-                                    warn!(error = %e, "recording flush failed");
-                                }
-                                println!("\nAufzeichnung gestoppt: {recorded} Frames");
-                            }
-                            None => warn!("no recording active - StopRecording ignored"),
-                        },
-                        ControlCommand::SetRecordLabel(new_label) => match &mut recording {
-                            Some(session) => session.set_label(new_label),
-                            None => warn!("no recording active - SetRecordLabel ignored"),
-                        },
-                    }
-                }
+                drain_control_commands(&mut runtime, &mut recording, &engine, device.name());
 
                 if let Some(session) = &mut recording {
                     session.record_frame(
@@ -338,6 +316,61 @@ pub fn run_live(
 }
 
 /// Spawns the selected interface endpoints (GraphQL/D-Bus/MCP, Phase 2).
+/// Drains pending control commands for [`run_live`].
+///
+/// Called both on device frames and on poll-timeouts so commands are
+/// processed while the screen is idle - a queued `StopRecording` flushes the
+/// writers immediately instead of waiting for the next touch.
+fn drain_control_commands(
+    runtime: &mut EngineRuntime,
+    recording: &mut Option<RecordingSession>,
+    engine: &Engine,
+    device_name: Option<&str>,
+) {
+    while let Ok(command) = runtime.try_recv_command() {
+        match command {
+            ControlCommand::SetFilterMode(enabled) => {
+                warn!(enabled, "filter mode command - implemented in Phase 4");
+            }
+            ControlCommand::TrainProfile(name) => {
+                warn!(name, "remote training command - not yet wired");
+            }
+            ControlCommand::StartRecording { base_path, label } => {
+                if recording.is_some() {
+                    warn!("recording already active - StartRecording ignored");
+                } else {
+                    match RecordingSession::start(
+                        base_path.clone(),
+                        device_name,
+                        engine.calibration().as_ref(),
+                        label,
+                    ) {
+                        Ok(started) => {
+                            println!("\nAufzeichnung gestartet: {}", started.base_path.display());
+                            *recording = Some(started);
+                        }
+                        Err(e) => warn!(error = %e, "recording could not be started"),
+                    }
+                }
+            }
+            ControlCommand::StopRecording => match recording.take() {
+                Some(stopped) => {
+                    let recorded = stopped.recorded_frames();
+                    if let Err(e) = stopped.finish() {
+                        warn!(error = %e, "recording flush failed");
+                    }
+                    println!("\nAufzeichnung gestoppt: {recorded} Frames");
+                }
+                None => warn!("no recording active - StopRecording ignored"),
+            },
+            ControlCommand::SetRecordLabel(new_label) => match recording {
+                Some(session) => session.set_label(new_label),
+                None => warn!("no recording active - SetRecordLabel ignored"),
+            },
+        }
+    }
+}
+
 /// Live snapshot of a recording session for the interface-facing status.
 fn status_of_session(session: &RecordingSession) -> RecordingStatus {
     RecordingStatus {
@@ -463,6 +496,26 @@ pub fn run_record(
             break;
         }
 
+        // Control commands run on every loop turn - including poll timeouts -
+        // so `stop_recording` flushes even while the device is idle.
+        while let Ok(command) = runtime.try_recv_command() {
+            match command {
+                ControlCommand::SetFilterMode(enabled) => {
+                    warn!(enabled, "filter mode command - implemented in Phase 4");
+                }
+                ControlCommand::TrainProfile(name) => {
+                    warn!(name, "remote training command - not yet wired");
+                }
+                ControlCommand::StartRecording { .. } => {
+                    warn!("already recording - StartRecording ignored");
+                }
+                ControlCommand::StopRecording => break 'recording,
+                ControlCommand::SetRecordLabel(new_label) => {
+                    session.set_label(new_label);
+                }
+            }
+        }
+
         // A stdin line marks the next LABEL_FRAME_COUNT frames; an empty line
         // or "q" ends the recording cleanly.
         if fds[1].revents & libc::POLLIN != 0 {
@@ -504,23 +557,6 @@ pub fn run_record(
                 };
                 frame_no += 1;
                 runtime.publish(&engine_frame, engine.tracked());
-                while let Ok(command) = runtime.try_recv_command() {
-                    match command {
-                        ControlCommand::SetFilterMode(enabled) => {
-                            warn!(enabled, "filter mode command - implemented in Phase 4");
-                        }
-                        ControlCommand::TrainProfile(name) => {
-                            warn!(name, "remote training command - not yet wired");
-                        }
-                        ControlCommand::StartRecording { .. } => {
-                            warn!("already recording - StartRecording ignored");
-                        }
-                        ControlCommand::StopRecording => break 'recording,
-                        ControlCommand::SetRecordLabel(new_label) => {
-                            session.set_label(new_label);
-                        }
-                    }
-                }
 
                 session.record_frame(
                     FrameNumber::new(frame_no),

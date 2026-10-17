@@ -8,6 +8,7 @@ use tokio::sync::watch;
 use tangible_objects_engine::EngineFrame;
 use tangible_objects_model::SetTracker;
 use tangible_objects_model::TangibleSet;
+use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
 
 use super::ControlCommand;
@@ -121,6 +122,23 @@ impl EngineRuntime {
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
         }
+        for action in actions {
+            self.broadcast(DomainEvent::Set(action));
+        }
+    }
+
+    /// Publishes the current engine state without a frame - used on the
+    /// command-drain wake-up path so interface-visible state (e.g. a stopped
+    /// recording) reaches clients even while the device is idle.
+    pub fn publish_snapshot(&mut self, touches: Vec<TouchPoint>, tracked: &[TrackedTangible]) {
+        let actions = self.set_tracker.update(tracked);
+        self.snapshot.send_replace(EngineSnapshot {
+            tracked: tracked.to_vec(),
+            touches,
+            active_sets: self.set_tracker.active_set_ids(),
+            device: self.device.clone(),
+            recording: self.recording.clone(),
+        });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
         }
