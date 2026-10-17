@@ -89,7 +89,7 @@ impl EngineMcp {
 
     /// Attached input device info (name + axis calibration).
     #[tool(
-        description = "Get the attached touchscreen's name and axis calibration — needed to convert this host's raw recordings to another device."
+        description = "Get the attached touchscreen's name and axis calibration - needed to convert this host's raw recordings to another device."
     )]
     async fn device_info(&self) -> Result<CallToolResult, ErrorData> {
         let snapshot = self.handle.snapshot();
@@ -111,7 +111,7 @@ impl EngineMcp {
 
     /// Reads a recording artifact file from the daemon host.
     #[tool(
-        description = "Download a recording artifact (*.jsonl, *.evtest, *.dataset.jsonl) produced by this daemon — remote recording pull."
+        description = "Download a recording artifact (*.jsonl, *.evtest, *.dataset.jsonl) produced by this daemon - remote recording pull."
     )]
     async fn recording_artifact(
         &self,

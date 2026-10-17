@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::fmt::Display;
 use std::ops::AddAssign;
 
-/// A count of [`super::CandidateReport`]s — a cardinality of tested point
+/// A count of [`super::CandidateReport`]s - a cardinality of tested point
 /// combinations, not of frames.
 ///
 /// One frame can hold several matched candidates of the same pattern (every

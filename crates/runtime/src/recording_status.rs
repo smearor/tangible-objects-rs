@@ -5,7 +5,7 @@ use tangible_objects_model::RecordLabel;
 
 /// Live status of the daemon's recording session.
 ///
-/// Published inside [`crate::EngineSnapshot`] — interfaces read it via the
+/// Published inside [`crate::EngineSnapshot`] - interfaces read it via the
 /// `recording_status` query; `None` in the snapshot means no session is or
 /// was active.
 #[derive(Debug, Clone, Default, Serialize)]

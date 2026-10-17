@@ -121,7 +121,7 @@ impl SetTracker {
                     }
                 }
             } else {
-                // While inactive no member diffing — clear stale members so a
+                // While inactive no member diffing - clear stale members so a
                 // re-activation reports them as added again.
                 state.members.clear();
             }
@@ -258,7 +258,7 @@ mod tests {
             SetAction::ObjectMoved(_, t) if t.id == TangibleId::new(2)
         )));
 
-        // Disappears: ObjectRemoved — but the set stays active because the
+        // Disappears: ObjectRemoved - but the set stays active because the
         // mandatory member remains.
         let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0)]);
         assert!(actions.iter().any(|a| matches!(

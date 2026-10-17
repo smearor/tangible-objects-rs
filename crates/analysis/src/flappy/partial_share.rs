@@ -2,7 +2,7 @@ use tangible_objects_model::CandidateCount;
 
 /// Partial-match share of one pattern (TRAINING.md 2.3).
 ///
-/// A high share indicates unstable contacts at figure level — the pattern
+/// A high share indicates unstable contacts at figure level - the pattern
 /// only matched because one pin was allowed to drop out. Invariant:
 /// `partial_matches <= matched_total`.
 #[derive(Debug)]

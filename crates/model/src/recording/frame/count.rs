@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::ops::Add;
 use std::ops::AddAssign;
 
-/// A count of frames — a cardinality, not an ordinal.
+/// A count of frames - a cardinality, not an ordinal.
 ///
 /// Deliberately distinct from [`super::FrameNumber`]: "frame 47" is a
 /// sequence number, "47 frames" is a quantity. Analysis results count frames

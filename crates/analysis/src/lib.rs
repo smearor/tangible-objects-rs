@@ -1,8 +1,8 @@
 //! Offline analysis of training recordings (TRAINING.md phase 2).
 //!
-//! [`Recording`] loads a JSONL artifact written by `--record`; the reports —
+//! [`Recording`] loads a JSONL artifact written by `--record`; the reports -
 //! [`UtilizationReport`], [`ToleranceReport`], [`FlappyReport`] and
-//! [`CollisionReport`] — turn the recorded candidates into tolerance
+//! [`CollisionReport`] - turn the recorded candidates into tolerance
 //! decisions. All evaluation happens offline, never in the hot detection
 //! loop.
 

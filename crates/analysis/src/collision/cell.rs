@@ -13,12 +13,12 @@ pub struct CollisionCell {
     pub pattern_name: String,
     /// Labeled frames where at least one candidate of this pattern existed.
     pub frames_tested: FrameCount,
-    /// Frames where a candidate of this pattern actually matched — direct
+    /// Frames where a candidate of this pattern actually matched - direct
     /// false-positive collisions.
     pub collided_frames: FrameCount,
     /// Percentiles of the per-frame minimal
     /// [`required_tolerance`](tangible_objects_model::CandidateReport::required_tolerance)
-    /// — the tolerance at which this pattern would start matching the labeled
+    /// - the tolerance at which this pattern would start matching the labeled
     /// geometry.
     pub required: Option<Percentiles>,
     /// The candidate pattern's configured tolerance.

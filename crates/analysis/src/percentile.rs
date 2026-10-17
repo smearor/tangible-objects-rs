@@ -1,6 +1,6 @@
 /// Nearest-rank summary statistics of a measurement sample.
 ///
-/// `None`-safe via [`Percentiles::of`] returning `Option` — empty samples
+/// `None`-safe via [`Percentiles::of`] returning `Option` - empty samples
 /// produce no report line rather than a degenerate row of zeros.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Percentiles {
@@ -23,7 +23,7 @@ pub struct Percentiles {
 impl Percentiles {
     /// Computes percentiles over `samples`; `None` for an empty sample.
     ///
-    /// Accepts any `Into<f64>` item — newtyped measurements (`Millimeters`,
+    /// Accepts any `Into<f64>` item - newtyped measurements (`Millimeters`,
     /// `MatchScore`) feed directly (`samples.iter().copied()`), the unit
     /// crosses only at this computation boundary where stats are
     /// dimensionless.

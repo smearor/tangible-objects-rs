@@ -7,7 +7,7 @@ pub struct ToleranceSuggestion {
     pub pattern_name: String,
     /// Tolerance currently configured (from the recorded candidates).
     pub current_tolerance: PatternTolerance,
-    /// Scalar recommendation: largest per-index suggestion — the conservative
+    /// Scalar recommendation: largest per-index suggestion - the conservative
     /// single value compatible with today's `tolerance` field.
     pub suggested_scalar: PatternTolerance,
     /// Per-distance-index suggestion (`tolerances[i]` parallel to

@@ -26,7 +26,7 @@ pub(crate) fn find_matches(
 }
 
 /// Like [`find_matches`], additionally reporting every tested point
-/// combination — matched or rejected — to `diagnostics`.
+/// combination - matched or rejected - to `diagnostics`.
 ///
 /// Used by the recording pipeline to capture deviation data for offline
 /// tolerance analysis.
@@ -51,7 +51,13 @@ fn find_matches_inner(
     sorted_patterns.sort_by_key(|p| p.id);
 
     for pattern in sorted_patterns {
-        if touches.len() < pattern.num_points {
+        // A missing pin may still match via the partial (num_points - 1)
+        // reference - patterns with stored reference points stay eligible
+        // one touch short of the full pin count.
+        let partial_possible = pattern.ref_points.is_some()
+            && pattern.num_points >= 4
+            && touches.len() + 1 >= pattern.num_points;
+        if touches.len() < pattern.num_points && !partial_possible {
             continue;
         }
 
@@ -60,7 +66,9 @@ fn find_matches_inner(
             .filter(|i| !used_indices.contains(i))
             .collect();
 
-        if available.len() < pattern.num_points {
+        if available.len() < pattern.num_points
+            && !(partial_possible && available.len() + 1 >= pattern.num_points)
+        {
             continue;
         }
 
@@ -73,7 +81,7 @@ fn find_matches_inner(
             diagnostics.report(|| exact_report(pattern, &points, &combo, matched));
             if matched {
                 // Score-based ranking (TRAINING.md 3.2): the normalized
-                // max-deviation score — equivalent to total error under a
+                // max-deviation score - equivalent to total error under a
                 // scalar tolerance, decisive under per-index tolerances.
                 let score = pattern.match_score(&points);
                 let candidate = build_match(pattern, &points, &combo, false);
@@ -96,7 +104,7 @@ fn find_matches_inner(
                 let result = pattern.matches_partial(&points);
                 diagnostics.report(|| partial_report(pattern, &points, &combo, result.is_some()));
                 if let Some((_ref_indices, error)) = result {
-                    // Partial candidates share the same (scalar × 1.5) scale —
+                    // Partial candidates share the same (scalar × 1.5) scale -
                     // ranking by error is ranking by normalized score here.
                     let score = error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
                     let candidate = build_match(pattern, &points, &combo, true);
@@ -147,7 +155,7 @@ fn exact_report(
 /// Builds a [`CandidateReport`] for a partial (`num_points - 1`) combination.
 ///
 /// Deviations are reported against the best-fitting one-pin-dropped reference
-/// subset — the closest geometric explanation, matched or not.
+/// subset - the closest geometric explanation, matched or not.
 fn partial_report(
     pattern: &TangiblePattern,
     points: &[Vec2<Millimeters>],
@@ -209,7 +217,7 @@ fn build_match(
     }
 }
 
-/// Keeps the better of two candidates — lowest normalized score wins
+/// Keeps the better of two candidates - lowest normalized score wins
 /// (TRAINING.md 3.2 score-based ranking).
 fn consider(best: &mut Option<(PatternMatch, f64)>, candidate: PatternMatch, score: f64) {
     match best {
@@ -382,7 +390,7 @@ mod tests {
             Vec2::new(40.0, 40.0),
         ];
         let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
-        // One pin missing — three square contacts plus a distractor touch
+        // One pin missing - three square contacts plus a distractor touch
         // (partial matching requires at least num_points active touches).
         let touches = vec![
             touch_point(0, 0.0, 0.0),
@@ -403,5 +411,33 @@ mod tests {
         assert_eq!(partials.iter().filter(|report| report.matched).count(), 1);
         // A 3-pin subset has C(3,2) = 3 distances.
         assert!(partials.iter().all(|report| report.deviations.len() == 3));
+    }
+
+    #[test]
+    fn partial_match_with_missing_touch() {
+        let square = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(0.0, 40.0),
+            Vec2::new(40.0, 40.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        // True missing-pin case: only num_points - 1 touches exist (a pin
+        // lost contact entirely - e.g. Figur8 with one pin swallowed).
+        let touches = vec![
+            touch_point(0, 0.0, 0.0),
+            touch_point(1, 40.0, 0.0),
+            touch_point(2, 0.0, 40.0),
+        ];
+
+        let mut reports = Vec::new();
+        let matches = find_matches_with_diagnostics(&touches, &patterns, &mut reports);
+
+        assert_eq!(matches.len(), 1);
+        assert!(matches[0].pattern_name.ends_with("(partial)"));
+        // No exact C(3,4) combos are possible - only the C(3,3) = 1 partial.
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].partial);
+        assert!(reports[0].matched);
     }
 }

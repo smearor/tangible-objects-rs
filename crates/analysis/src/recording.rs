@@ -11,7 +11,7 @@ use crate::AnalysisError;
 
 /// A loaded frame recording: validated JSONL lines of schema `"v": 1`.
 ///
-/// Loading rejects malformed lines and unknown schema versions up front —
+/// Loading rejects malformed lines and unknown schema versions up front -
 /// every returned frame is a parseable, version-checked [`FrameRecord`].
 #[derive(Debug)]
 pub struct Recording {

@@ -4,7 +4,7 @@ use std::ops::AddAssign;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Count of raw evdev events — e.g. events processed or dropped.
+/// Count of raw evdev events - e.g. events processed or dropped.
 ///
 /// Keeps event cardinalities unconfusable with frame counts
 /// ([`crate::FrameCount`]) and other `u64` quantities.

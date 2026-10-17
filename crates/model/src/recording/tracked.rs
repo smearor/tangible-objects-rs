@@ -14,7 +14,7 @@ use crate::Vec2;
 /// Recorded view of a [`TrackedTangible`] within a [`crate::FrameRecord`].
 ///
 /// Unlike the interface-facing serialization of [`TrackedTangible`] this
-/// record keeps the internal `frames_since_match` hysteresis counter — raw
+/// record keeps the internal `frames_since_match` hysteresis counter - raw
 /// matches and stably tracked objects must be distinguishable in the
 /// flappy-contact analysis.
 #[derive(Debug, Clone, PartialEq)]

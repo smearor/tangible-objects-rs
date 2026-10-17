@@ -31,36 +31,32 @@ impl ToleranceReport {
         Self::analyze_with_safety(recording, DEFAULT_SAFETY_FACTOR)
     }
 
-    /// Computes per-pair tolerance suggestions from matched full candidates.
+    /// Computes per-pair tolerance suggestions from labeled frames.
     ///
-    /// For every pattern, the best matched candidate per frame contributes its
-    /// deviation vector; `suggested_tolerances[i] = p99(deviations[i]) ×
-    /// safety_factor`, clamped to at least 0.1 mm so a perfect measurement
-    /// does not collapse the tolerance to zero.
+    /// On every labeled frame the labeled pattern's best full candidate
+    /// contributes its deviation vector - matched or not. Sampling only
+    /// matched candidates biases p99 toward the configured tolerance
+    /// (survivorship: worse misses never enter the statistics and the
+    /// suggestion converges to a value that still misses).
+    /// `suggested_tolerances[i] = p99(deviations[i]) × safety_factor`,
+    /// clamped to at least 0.1 mm so a perfect measurement does not
+    /// collapse the tolerance to zero.
     pub fn analyze_with_safety(recording: &Recording, safety_factor: f64) -> Self {
         let mut deviations: BTreeMap<PatternId, Vec<Vec<Millimeters>>> = BTreeMap::new();
         let mut tolerance: BTreeMap<PatternId, PatternTolerance> = BTreeMap::new();
         let mut names: BTreeMap<PatternId, String> = BTreeMap::new();
 
         for frame in recording.frames() {
-            let mut best: BTreeMap<PatternId, &tangible_objects_model::CandidateReport> =
-                BTreeMap::new();
-            for candidate in &frame.candidates {
-                if !candidate.matched || candidate.partial {
+            let Some(label) = &frame.label else {
+                continue;
+            };
+            for candidate in frame.best_candidates().values() {
+                if candidate.partial || !candidate.matches_label(label) {
                     continue;
                 }
-                let replace = match best.get(&candidate.pattern_id) {
-                    None => true,
-                    Some(current) => candidate.match_error < current.match_error,
-                };
-                if replace {
-                    best.insert(candidate.pattern_id, candidate);
-                }
-            }
-            for (pattern_id, candidate) in best {
-                tolerance.insert(pattern_id, candidate.tolerance);
-                names.insert(pattern_id, candidate.pattern_name.clone());
-                let slots = deviations.entry(pattern_id).or_default();
+                tolerance.insert(candidate.pattern_id, candidate.tolerance);
+                names.insert(candidate.pattern_id, candidate.pattern_name.clone());
+                let slots = deviations.entry(candidate.pattern_id).or_default();
                 for (index, deviation) in candidate.deviations.iter().enumerate() {
                     if slots.len() <= index {
                         slots.resize_with(index + 1, Vec::new);

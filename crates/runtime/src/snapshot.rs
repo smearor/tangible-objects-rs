@@ -18,7 +18,7 @@ pub struct EngineSnapshot {
     pub touches: Vec<TouchPoint>,
     /// IDs of the currently active Tangible Object Sets.
     pub active_sets: Vec<TangibleSetId>,
-    /// Attached input device — set once at session start.
+    /// Attached input device - set once at session start.
     pub device: Option<DeviceInfo>,
     /// Recording session status, updated every frame while active.
     pub recording: Option<RecordingStatus>,

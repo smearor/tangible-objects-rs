@@ -12,7 +12,7 @@ use serde::ser::SerializeStruct;
 /// Produced by the engine's `Tracker`; position and rotation are
 /// exponentially smoothed over consecutive frames. Serializes to the
 /// interface-facing flat shape `{id, pattern_id, pattern_name, center_x,
-/// center_y, rotation_deg}` — millimeters and degrees, without the internal
+/// center_y, rotation_deg}` - millimeters and degrees, without the internal
 /// `frames_since_match` hysteresis counter.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]

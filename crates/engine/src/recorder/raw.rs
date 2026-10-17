@@ -66,7 +66,7 @@ impl RawRecorder {
 
     /// Queues a raw event for writing.
     ///
-    /// `timestamp_secs` is the session-relative event time in seconds —
+    /// `timestamp_secs` is the session-relative event time in seconds -
     /// callers on the replay path pass the evtest timestamp so recorded
     /// artifacts stay deterministic. Never blocks: a full channel drops the
     /// event and counts it; a closed channel logs a warning once.
@@ -79,7 +79,7 @@ impl RawRecorder {
             Err(TrySendError::Full(_)) => {
                 let dropped = self.dropped.fetch_add(1, Ordering::Relaxed) + 1;
                 if dropped == 1 {
-                    warn!("raw recorder buffer full — dropping events");
+                    warn!("raw recorder buffer full - dropping events");
                 }
             }
             Err(TrySendError::Disconnected(_)) => {
@@ -216,7 +216,7 @@ mod tests {
             RawEvent::new(EventType::Abs, ABS_MT_SLOT, 0),
             RawEvent::new(EventType::Abs, ABS_MT_TRACKING_ID, 240),
             RawEvent::new(EventType::Abs, ABS_MT_POSITION_X, 1927),
-            // code 0 under EV_ABS is ABS_X — must not decode as SYN_REPORT
+            // code 0 under EV_ABS is ABS_X - must not decode as SYN_REPORT
             // (the original recorder bug produced phantom frames this way).
             RawEvent::new(
                 EventType::Abs,

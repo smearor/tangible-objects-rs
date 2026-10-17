@@ -8,7 +8,7 @@ pub struct DeviceEntry {
     pub path: PathBuf,
     /// Device name reported by the kernel.
     pub name: String,
-    /// evdev vendor ID (`InputId::vendor`) — `vendor 0x…` in evtest headers.
+    /// evdev vendor ID (`InputId::vendor`) - `vendor 0x…` in evtest headers.
     pub vendor: u16,
     /// evdev product ID (`InputId::product`).
     pub product: u16,

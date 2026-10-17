@@ -2,8 +2,8 @@
 //! hysteresis.
 //!
 //! A [`TangibleSet`] defines which patterns belong to a set (mandatory and
-//! additional members). [`SetTracker`] derives [`SetAction`]s — the TOS
-//! action vocabulary from `TANGIBLE_OBJECT_SET.md` — from the engine's
+//! additional members). [`SetTracker`] derives [`SetAction`]s - the TOS
+//! action vocabulary from `TANGIBLE_OBJECT_SET.md` - from the engine's
 //! tracked tangibles.
 
 mod action;

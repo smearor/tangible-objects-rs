@@ -242,7 +242,7 @@ fn parse_interfaces(
 }
 
 fn print_help() {
-    eprintln!("tangible-objects — kapazitive Touchfiguren-Prototyp");
+    eprintln!("tangible-objects - kapazitive Touchfiguren-Prototyp");
     eprintln!();
     eprintln!("Usage:");
     eprintln!(

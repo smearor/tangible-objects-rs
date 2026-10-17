@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::fmt::Display;
 use std::ops::SubAssign;
 
-/// Remaining budget of a temporary frame-scoped marker — a countdown that
+/// Remaining budget of a temporary frame-scoped marker - a countdown that
 /// depletes as frames are consumed.
 ///
 /// Deliberately distinct from [`super::FrameCount`]: a `FrameCount` only

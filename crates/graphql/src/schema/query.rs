@@ -41,7 +41,7 @@ impl QueryRoot {
         Ok(handle.profiles().to_vec())
     }
 
-    /// Attached input device — name and axis calibration. Needed by remote
+    /// Attached input device - name and axis calibration. Needed by remote
     /// clients before converting this host's raw recordings (TRAINING.md
     /// device profiles).
     async fn device_info(
@@ -62,7 +62,7 @@ impl QueryRoot {
     /// Reads a recording artifact produced by this daemon.
     ///
     /// Restricted to known recording extensions (`.jsonl`, `.evtest`,
-    /// `.dataset.jsonl`) and paths below the daemon's working directory —
+    /// `.dataset.jsonl`) and paths below the daemon's working directory -
     /// a LAN/debug convenience, not a general file server.
     async fn recording_artifact(&self, path: String) -> Result<String> {
         let path = std::path::PathBuf::from(&path);

@@ -25,7 +25,7 @@ pub struct ProfileFile {
     pub num_points: usize,
     /// Matching tolerance for the distance fingerprint.
     ///
-    /// Scalar fallback — always required; per-index `tolerances` below refine
+    /// Scalar fallback - always required; per-index `tolerances` below refine
     /// it where configured.
     pub tolerance: PatternTolerance,
     /// Optional per-distance tolerances, parallel to `sorted_sides`.
@@ -168,7 +168,7 @@ mod tests {
         assert_eq!(loaded.tolerance.as_f64(), 5.0);
         assert_eq!(loaded.sorted_sides, profile.sorted_sides);
         assert_eq!(loaded.points.len(), 6);
-        // Empty tolerances stay absent — backward-compatible TOML.
+        // Empty tolerances stay absent - backward-compatible TOML.
         assert!(!serialized.contains("tolerances"));
         assert!(loaded.tolerances.is_empty());
     }

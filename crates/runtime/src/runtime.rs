@@ -40,7 +40,7 @@ pub struct EngineRuntime {
 
 /// Cloneable consumer-side handle for interface crates.
 ///
-/// Provides event subscription, snapshot access and the control channel —
+/// Provides event subscription, snapshot access and the control channel -
 /// everything an interface needs without engine access.
 #[derive(Clone)]
 pub struct EngineHandle {
@@ -96,7 +96,7 @@ impl EngineRuntime {
 
     /// Sets the device info published in every subsequent snapshot.
     ///
-    /// Call once at session start — the device does not change mid-session.
+    /// Call once at session start - the device does not change mid-session.
     pub fn set_device_info(&mut self, info: crate::DeviceInfo) {
         self.device = Some(info);
     }

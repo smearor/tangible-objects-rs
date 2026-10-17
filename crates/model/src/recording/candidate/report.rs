@@ -9,8 +9,8 @@ use crate::RecordLabel;
 
 /// Diagnostic record of one tested point combination against a pattern.
 ///
-/// Emitted by the engine's opt-in matching diagnostics for every candidate —
-/// including rejected ones — so deviation distributions, per-pair tolerances
+/// Emitted by the engine's opt-in matching diagnostics for every candidate -
+/// including rejected ones - so deviation distributions, per-pair tolerances
 /// and collision risks can be analyzed offline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CandidateReport {
@@ -36,18 +36,18 @@ pub struct CandidateReport {
     /// partial candidates, whose re-indexed fingerprint cannot use
     /// per-index tolerances).
     pub tolerance: PatternTolerance,
-    /// Per-index tolerances applied during the test — only present when the
+    /// Per-index tolerances applied during the test - only present when the
     /// pattern configured `tolerances`; absent means `tolerance` applied to
     /// every index. `#[serde(default)]` keeps older recordings loadable.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tolerances: Vec<Millimeters>,
     /// Normalized deviation score (`max_i dev[i] / tolerance[i]`), recorded
-    /// for matched and rejected candidates. `None` in older recordings — the
+    /// for matched and rejected candidates. `None` in older recordings - the
     /// analysis recomputes it from `deviations` and `tolerances`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub score: Option<MatchScore>,
     /// Total absolute deviation across all distances (lower is better).
-    /// Recorded for rejected candidates too — near-misses feed the
+    /// Recorded for rejected candidates too - near-misses feed the
     /// collision analysis.
     pub match_error: Millimeters,
 }
@@ -56,7 +56,7 @@ impl CandidateReport {
     /// The tolerance this candidate would need to match: the largest
     /// per-index deviation.
     ///
-    /// Basis of the collision analysis — for a rejected candidate it is the
+    /// Basis of the collision analysis - for a rejected candidate it is the
     /// tolerance at which it would have become a false positive. An empty
     /// deviation vector (degenerate candidate) needs zero tolerance.
     pub fn required_tolerance(&self) -> Millimeters {
@@ -67,7 +67,7 @@ impl CandidateReport {
             .unwrap_or(Millimeters::new(0.0))
     }
 
-    /// Effective tolerance for distance index `i` — the recorded per-index
+    /// Effective tolerance for distance index `i` - the recorded per-index
     /// value when present, else the scalar `tolerance`.
     pub fn tolerance_at(&self, index: usize) -> PatternTolerance {
         self.tolerances
@@ -98,7 +98,7 @@ impl CandidateReport {
     /// Whether a ground-truth label refers to this candidate's pattern.
     ///
     /// Labels carry either a profile name (`"TestFigur-4P"`) or a numeric
-    /// pattern ID (`"4"`) — both forms are produced by `--record-label` and
+    /// pattern ID (`"4"`) - both forms are produced by `--record-label` and
     /// the interface APIs.
     pub fn matches_label(&self, label: &RecordLabel) -> bool {
         let label = label.as_str();

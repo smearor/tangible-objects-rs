@@ -11,8 +11,8 @@ use super::SYN_REPORT;
 
 /// An event code paired with its event type.
 ///
-/// Linux input code namespaces are per event type — `code 0` means
-/// `SYN_REPORT` under `EV_SYN` but `ABS_X` under `EV_ABS` — so a code alone
+/// Linux input code namespaces are per event type - `code 0` means
+/// `SYN_REPORT` under `EV_SYN` but `ABS_X` under `EV_ABS` - so a code alone
 /// cannot be named. This pair is the smallest unit carrying enough context
 /// for a correct `evtest`-style name lookup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,7 +31,7 @@ impl NamedEventCode {
 
     /// The `evtest`-style name of the code within its type namespace.
     ///
-    /// Unknown combinations yield `"?"` — recording stays lossless because
+    /// Unknown combinations yield `"?"` - recording stays lossless because
     /// only the label is unknown, never the numeric pair.
     pub fn name(&self) -> &'static str {
         match self.event_type {

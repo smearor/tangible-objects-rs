@@ -210,7 +210,7 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
     println!("Ctrl+C zum Beenden\n");
 
     // Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
-    // No set definitions are loaded yet — the set tracker idles.
+    // No set definitions are loaded yet - the set tracker idles.
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     spawn_interfaces(&handle, &interfaces);
@@ -244,14 +244,14 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
                 while let Ok(command) = runtime.try_recv_command() {
                     match command {
                         ControlCommand::SetFilterMode(enabled) => {
-                            warn!(enabled, "filter mode command — implemented in Phase 4");
+                            warn!(enabled, "filter mode command - implemented in Phase 4");
                         }
                         ControlCommand::TrainProfile(name) => {
-                            warn!(name, "remote training command — not yet wired");
+                            warn!(name, "remote training command - not yet wired");
                         }
                         ControlCommand::StartRecording { base_path, label } => {
                             if recording.is_some() {
-                                warn!("recording already active — StartRecording ignored");
+                                warn!("recording already active - StartRecording ignored");
                             } else {
                                 match RecordingSession::start(
                                     base_path.clone(),
@@ -280,11 +280,11 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
                                 }
                                 println!("\nAufzeichnung gestoppt: {recorded} Frames");
                             }
-                            None => warn!("no recording active — StopRecording ignored"),
+                            None => warn!("no recording active - StopRecording ignored"),
                         },
                         ControlCommand::SetRecordLabel(new_label) => match &mut recording {
                             Some(session) => session.set_label(new_label),
-                            None => warn!("no recording active — SetRecordLabel ignored"),
+                            None => warn!("no recording active - SetRecordLabel ignored"),
                         },
                     }
                 }
@@ -369,7 +369,7 @@ const LABEL_FRAME_COUNT: u64 = 120;
 /// tested candidate lands in the frame record. Enter stops the recording
 /// cleanly (drains and flushes both writers); Ctrl+C also ends it but may
 /// lose the buffered tail. `SetRecordLabel`/`StopRecording` control commands
-/// are honored live — API-driven labeling for application sessions.
+/// are honored live - API-driven labeling for application sessions.
 pub fn run_record(
     path: &Path,
     base: &Path,
@@ -410,7 +410,7 @@ pub fn run_record(
         base.display()
     );
     println!(
-        "Enter ohne Text beendet — <label>+Enter labelt die nächsten {LABEL_FRAME_COUNT} Frames.\n"
+        "Enter ohne Text beendet - <label>+Enter labelt die nächsten {LABEL_FRAME_COUNT} Frames.\n"
     );
 
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
@@ -421,7 +421,7 @@ pub fn run_record(
     let mut frame_no: u64 = 0;
     let session_start = Instant::now();
 
-    // Label input via poll() — wait on device fd and stdin simultaneously.
+    // Label input via poll() - wait on device fd and stdin simultaneously.
     let device_fd = device.as_raw_fd();
     let stdin_fd = std::io::stdin().as_raw_fd();
     let mut stdin_buf = [0u8; 64];
@@ -493,13 +493,13 @@ pub fn run_record(
                 while let Ok(command) = runtime.try_recv_command() {
                     match command {
                         ControlCommand::SetFilterMode(enabled) => {
-                            warn!(enabled, "filter mode command — implemented in Phase 4");
+                            warn!(enabled, "filter mode command - implemented in Phase 4");
                         }
                         ControlCommand::TrainProfile(name) => {
-                            warn!(name, "remote training command — not yet wired");
+                            warn!(name, "remote training command - not yet wired");
                         }
                         ControlCommand::StartRecording { .. } => {
-                            warn!("already recording — StartRecording ignored");
+                            warn!("already recording - StartRecording ignored");
                         }
                         ControlCommand::StopRecording => break 'recording,
                         ControlCommand::SetRecordLabel(new_label) => {
@@ -558,7 +558,7 @@ pub fn run_train(
     let tolerance = tolerance.into();
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
-    println!("Trainingsmodus: {} — Figur \"{}\"", path.display(), name);
+    println!("Trainingsmodus: {} - Figur \"{}\"", path.display(), name);
     if let Some(dev_name) = device.name() {
         println!("Gerät: {dev_name}");
     }
@@ -582,7 +582,7 @@ pub fn run_train(
     let mut stable_count: Option<usize> = None;
     let mut stable_frames: u32 = 0;
 
-    // Enter detection via poll() — wait on device fd and stdin simultaneously.
+    // Enter detection via poll() - wait on device fd and stdin simultaneously.
     let device_fd = device.as_raw_fd();
     let stdin_fd = std::io::stdin().as_raw_fd();
 
@@ -653,7 +653,7 @@ pub fn run_train(
                     println!("Trainingsmodus: \"{}\" | {} Touch-Punkt(e)", name, count);
                     if count >= 3 {
                         if stable_frames >= STABLE_THRESHOLD {
-                            println!("STABIL — Drücke Enter zum Speichern");
+                            println!("STABIL - Drücke Enter zum Speichern");
                         } else {
                             println!("Stabilisiere... {}/{}", stable_frames, STABLE_THRESHOLD);
                         }
@@ -723,7 +723,7 @@ pub fn run_train(
 
 /// Resolves the device argument: an explicit `--device` path wins;
 /// otherwise auto-detect via `vendor:product` against the device registry
-/// (builtin + `--device-profiles` dir) — succeeds only when exactly one
+/// (builtin + `--device-profiles` dir) - succeeds only when exactly one
 /// known touchscreen is attached.
 pub fn resolve_device(device: Option<String>, profiles_dir: Option<&Path>) -> Result<PathBuf> {
     if let Some(path) = device {
@@ -795,7 +795,7 @@ pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path
 
 /// Labeled dataset export of a `.jsonl` recording (TRAINING.md 3.3).
 ///
-/// Writes `<stem>.dataset.csv` next to the recording — one CSV row per
+/// Writes `<stem>.dataset.csv` next to the recording - one CSV row per
 /// candidate of every labeled frame (normalized deviation features +
 /// ground-truth target) for external ML tooling.
 pub fn run_export_dataset(path: &Path) -> Result<()> {
@@ -810,7 +810,7 @@ pub fn run_export_dataset(path: &Path) -> Result<()> {
         dataset.feature_width
     );
     if dataset.rows.is_empty() {
-        println!("  (keine gelabelten Frames — mit --record-label aufzeichnen)");
+        println!("  (keine gelabelten Frames - mit --record-label aufzeichnen)");
     }
     Ok(())
 }

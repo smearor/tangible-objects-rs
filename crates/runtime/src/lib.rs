@@ -5,7 +5,7 @@
 //! processed [`tangible_objects_engine::EngineFrame`] is published once,
 //! updating the snapshot and broadcasting domain events. Interface crates
 //! (GraphQL, D-Bus, MCP) receive a cloneable [`EngineHandle`] with stream,
-//! snapshot and control access — they never touch the engine directly.
+//! snapshot and control access - they never touch the engine directly.
 
 mod command;
 mod device_info;

@@ -6,7 +6,7 @@ use super::Accuracy;
 use super::LogisticBaseline;
 use crate::Recording;
 
-/// Gradient-descent epochs for the baseline — fixed for determinism.
+/// Gradient-descent epochs for the baseline - fixed for determinism.
 const EPOCHS: usize = 500;
 /// Learning rate of the baseline.
 const LEARNING_RATE: f64 = 0.5;
@@ -15,9 +15,9 @@ const TEST_EVERY: usize = 5;
 
 /// Baseline ML evaluation over a recording (TRAINING.md 3.3).
 ///
-/// Trains a [`LogisticBaseline`] on labeled candidates — features are the
+/// Trains a [`LogisticBaseline`] on labeled candidates - features are the
 /// normalized deviations (`dev[i] / tolerance[i]`), the label is whether the
-/// candidate's pattern is the frame's ground-truth label — and compares its
+/// candidate's pattern is the frame's ground-truth label - and compares its
 /// held-out accuracy against the binary score rule (`score <= 1.0`).
 #[derive(Debug)]
 pub struct MlReport {
@@ -37,7 +37,7 @@ pub struct MlReport {
 impl MlReport {
     /// Trains and evaluates the baseline on labeled candidates.
     ///
-    /// On recordings without labels the report is empty — the evaluation
+    /// On recordings without labels the report is empty - the evaluation
     /// requires ground truth.
     pub fn analyze(recording: &Recording) -> Self {
         // Feature rows: normalized deviations; target: candidate pattern == label.
@@ -101,7 +101,7 @@ impl Display for MlReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "== ML baseline == ({} labeled candidates)", self.samples)?;
         if self.samples.as_u64() == 0 {
-            writeln!(f, "  (no labeled frames — record with --record-label)")?;
+            writeln!(f, "  (no labeled frames - record with --record-label)")?;
             return Ok(());
         }
         if let Some(rule) = self.rule_accuracy {

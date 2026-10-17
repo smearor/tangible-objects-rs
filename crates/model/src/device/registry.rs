@@ -13,7 +13,7 @@ use super::DeviceProfile;
 /// evdev `vendor:product` pair.
 #[derive(Debug, Default)]
 pub struct DeviceRegistry {
-    /// All registered profiles — builtins first, then loaded ones.
+    /// All registered profiles - builtins first, then loaded ones.
     pub profiles: Vec<DeviceProfile>,
     /// Files that failed to load, with their errors.
     pub errors: Vec<(PathBuf, DeviceError)>,
@@ -23,8 +23,12 @@ impl DeviceRegistry {
     /// The compiled-in profiles of known touchscreens.
     pub fn builtin() -> Self {
         const SIS_HID_TOUCH: &str = include_str!("../../devices/sis-hid-touch.toml");
+        const ILITEK_TOUCH: &str = include_str!("../../devices/ilitek-touch.toml");
         let mut registry = Self::default();
-        for (name, toml) in [("sis-hid-touch.toml", SIS_HID_TOUCH)] {
+        for (name, toml) in [
+            ("sis-hid-touch.toml", SIS_HID_TOUCH),
+            ("ilitek-touch.toml", ILITEK_TOUCH),
+        ] {
             match toml::from_str::<DeviceProfile>(toml) {
                 Ok(profile) => registry.profiles.push(profile),
                 Err(source) => registry.errors.push((

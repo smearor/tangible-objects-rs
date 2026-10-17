@@ -324,7 +324,7 @@ fn create_control_bar(
                 } else if count < 3 {
                     status_clone.set_label(&format!("Warte auf ≥3 Punkte... ({})", count));
                 } else if s.stable {
-                    status_clone.set_label("STABIL — Name eingeben und Speichern klicken");
+                    status_clone.set_label("STABIL - Name eingeben und Speichern klicken");
                 } else {
                     status_clone.set_label(&format!(
                         "Stabilisiere... {}/{}",
@@ -382,7 +382,7 @@ fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mutex<Sh
             cr.set_font_size(20.0);
             cr.move_to(20.0, 40.0);
             let _ = cr
-                .show_text("Keine Kalibrierung verfügbar — GUI ohne Auflösungsinfo nicht nutzbar");
+                .show_text("Keine Kalibrierung verfügbar - GUI ohne Auflösungsinfo nicht nutzbar");
             return;
         }
     };
@@ -460,7 +460,7 @@ fn draw_training(
     let status_text = if count < 3 {
         format!("Warte auf ≥3 Punkte... ({})", count)
     } else if s.stable {
-        format!("STABIL: {} Punkte — Name eingeben und Speichern", count)
+        format!("STABIL: {} Punkte - Name eingeben und Speichern", count)
     } else {
         format!(
             "Stabilisiere... {}/{} ({} Punkte)",

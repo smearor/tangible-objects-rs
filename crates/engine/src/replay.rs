@@ -164,7 +164,7 @@ fn parse_evtest_line(line: &str) -> Option<RawEvent> {
 
     // Delimiter form only: "Event: time ..., ----- SYN_REPORT -----".
     // A typed line like `code 0 (SYN_REPORT)` falls through to the typed
-    // parse and still yields a SYN event — while `code 0 (ABS_X)` lines
+    // parse and still yields a SYN event - while `code 0 (ABS_X)` lines
     // (legacy single-touch axes) no longer misread as frame boundaries.
     if line.contains("SYN_REPORT") && !line.contains("type ") {
         return Some(RawEvent::new(EventType::Syn, SYN_REPORT, 0));

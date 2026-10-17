@@ -108,8 +108,8 @@ impl Engine {
     }
 
     /// Like [`Engine::process`], additionally collecting a
-    /// [`CandidateReport`] for every tested point combination — matched or
-    /// rejected — into [`EngineFrame::candidates`].
+    /// [`CandidateReport`] for every tested point combination - matched or
+    /// rejected - into [`EngineFrame::candidates`].
     ///
     /// Used by the recording pipeline (`--record`); allocation happens only
     /// on this path.

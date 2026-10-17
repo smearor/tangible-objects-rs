@@ -23,7 +23,7 @@ pub struct TangiblePattern {
     pub tolerance: PatternTolerance,
     /// Optional per-distance tolerances, parallel to `sorted_distances`.
     /// When empty (or length-mismatched), the scalar `tolerance` applies to
-    /// every index — the recorded `p99` suggestions from the analysis crate
+    /// every index - the recorded `p99` suggestions from the analysis crate
     /// are written here.
     pub tolerances: Vec<PatternTolerance>,
     /// Original reference point positions, if stored in the profile.
@@ -81,7 +81,7 @@ impl TangiblePattern {
     /// deviation-to-tolerance ratio across all distance indices.
     ///
     /// `score <= 1.0` is equivalent to [`Self::matches`] on the same point
-    /// set — but the score additionally ranks candidates (lower is closer)
+    /// set - but the score additionally ranks candidates (lower is closer)
     /// and quantifies near-misses, which the score-based matcher and the
     /// offline analysis use.
     pub fn match_score(&self, points: &[Vec2<Millimeters>]) -> f64 {
@@ -91,7 +91,7 @@ impl TangiblePattern {
         ))
     }
 
-    /// Score of an already-computed deviation vector — `max_i dev[i] /
+    /// Score of an already-computed deviation vector - `max_i dev[i] /
     /// tolerance_at(i)`; 0.0 for empty or length-mismatched input.
     pub fn score_of(&self, deviations: &[Millimeters]) -> f64 {
         deviations
@@ -110,7 +110,7 @@ impl TangiblePattern {
             .sum()
     }
 
-    /// Computes the sorted pairwise distances of an arbitrary point set —
+    /// Computes the sorted pairwise distances of an arbitrary point set -
     /// the measured fingerprint compared against `sorted_distances`.
     pub fn distances_of(points: &[Vec2<Millimeters>]) -> Vec<Millimeters> {
         sorted_pairwise_distances(points)
@@ -155,7 +155,7 @@ impl TangiblePattern {
     /// subset of the reference points with one pin missing (e.g. a tilting
     /// object). Every possibility of dropping one reference point is tried.
     /// The scalar tolerance is raised by 50% to account for the higher
-    /// uncertainty — per-index `tolerances` cannot apply here because
+    /// uncertainty - per-index `tolerances` cannot apply here because
     /// dropping a pin re-indexes the distance fingerprint.
     ///
     /// Returns the matched reference indices and the total error.
@@ -273,7 +273,7 @@ mod tests {
         // Fingerprint [50, 50, ~70.7]; indices 1–2 generous, index 0 strict.
         let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
         pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
-        // Stretched third contact: deviations [0, ~15, ~11] — the shortest
+        // Stretched third contact: deviations [0, ~15, ~11] - the shortest
         // edge is exact, the longer ones sit inside their 20 mm budget.
         // Rejected under scalar 1.0, accepted per-index.
         let stretched = vec![
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn mismatched_tolerances_length_falls_back_to_scalar() {
         let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
-        pattern.tolerances = vec![0.1.into()]; // too few — must not apply
+        pattern.tolerances = vec![0.1.into()]; // too few - must not apply
         let slightly_off = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(53.0, 0.0),

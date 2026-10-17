@@ -20,7 +20,7 @@ pub const RECORD_SCHEMA_VERSION: u16 = 1;
 
 /// One JSONL line of a frame recording (TRAINING.md schema `"v": 1`).
 ///
-/// Written once per non-empty `SYN_REPORT` frame — never for frames without
+/// Written once per non-empty `SYN_REPORT` frame - never for frames without
 /// touches and tracked tangibles. All spatial quantities are in
 /// [`Millimeters`](crate::Millimeters); when `calibration` is `null` the
 /// device was uncalibrated and positions are raw axis values.
@@ -41,7 +41,7 @@ pub struct FrameRecord {
     pub calibration: Option<Calibration>,
     /// Active touch points in this frame.
     pub touches: Vec<TouchPoint>,
-    /// All tested candidate combinations — matched and rejected.
+    /// All tested candidate combinations - matched and rejected.
     pub candidates: Vec<CandidateReport>,
     /// Tracker state after processing this frame.
     pub tracked: Vec<TrackedRecord>,
@@ -51,7 +51,7 @@ pub struct FrameRecord {
 }
 
 impl FrameRecord {
-    /// The best candidate per pattern in this frame — the candidate whose
+    /// The best candidate per pattern in this frame - the candidate whose
     /// [`required_tolerance`](CandidateReport::required_tolerance) is lowest.
     ///
     /// Used by the collision analysis: for each pattern this is the closest

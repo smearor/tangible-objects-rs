@@ -8,7 +8,7 @@ use crate::Percentiles;
 pub struct PatternUtilization {
     /// ID of the figure profile; `None` for label-only rows (a label that
     /// never produced a candidate, e.g. a figure whose pin count exceeded
-    /// the recorded touch count — or a misspelled label).
+    /// the recorded touch count - or a misspelled label).
     pub pattern_id: Option<PatternId>,
     /// Name of the figure profile (or the raw label for label-only rows).
     pub pattern_name: String,
@@ -18,13 +18,18 @@ pub struct PatternUtilization {
     pub partial_matched_frames: FrameCount,
     /// Frames carrying this pattern's ground-truth label.
     pub labeled_frames: FrameCount,
-    /// Labeled frames without any matched candidate for this pattern —
+    /// Labeled frames without any matched candidate for this pattern -
     /// the figure lay on the surface but was not detected.
     pub false_negative_frames: FrameCount,
-    /// Deviation distribution per distance index (matched full candidates;
-    /// index `i` corresponds to `sorted_distances[i]`).
+    /// Deviation distribution per distance index - the labeled pattern's
+    /// best candidate per labeled frame (matched or not; index `i`
+    /// corresponds to `sorted_distances[i]`).
     pub per_distance: Vec<Percentiles>,
-    /// Matched frames binned by `required_tolerance / tolerance`:
+    /// Labeled presence frames binned by `required_tolerance / tolerance`:
     /// `[<25 %, 25–50 %, 50–75 %, 75–100 %]`.
     pub bands: [FrameCount; 4],
+    /// Labeled presence frames whose best candidate exceeds the configured
+    /// tolerance (ratio `>= 1.0`) - counted separately because the bands
+    /// only cover `< 1.0`.
+    pub over_tolerance_frames: FrameCount,
 }

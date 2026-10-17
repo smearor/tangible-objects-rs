@@ -4,7 +4,7 @@
 //! per non-empty [`crate::EngineFrame`]; [`RawRecorder`] writes every consumed
 //! [`tangible_objects_model::RawEvent`] in `evtest`-compatible text format so
 //! the artifact replays through [`crate::EvtestReplay`]. Both write on
-//! dedicated threads behind bounded channels — a full buffer drops data with
+//! dedicated threads behind bounded channels - a full buffer drops data with
 //! a warning, it never stalls the device loop.
 
 mod context;

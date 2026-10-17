@@ -14,7 +14,7 @@ use crate::engine::EngineError;
 use crate::recorder::raw::format_event;
 use crate::recorder::raw::header_text;
 
-/// Codes carrying positions that convert through the calibration map —
+/// Codes carrying positions that convert through the calibration map -
 /// both multitouch axes and the legacy single-touch duplicates.
 const POSITION_CODES: &[u16] = &[
     53, // ABS_MT_POSITION_X
@@ -27,13 +27,13 @@ const POSITION_CODES: &[u16] = &[
 /// stream another device would produce.
 ///
 /// Position values travel raw → mm → raw through both calibrations;
-/// timestamps pass through unchanged (the source report cadence is kept —
+/// timestamps pass through unchanged (the source report cadence is kept -
 /// the target's `report_rate_hz` is informational). Events whose
 /// `(type, code)` the target does not emit are dropped and counted in
 /// [`ConvertStats::dropped`]; out-of-bounds positions clamp to the target
 /// axis range ([`ConvertStats::clamped`]).
 pub struct DeviceConverter {
-    /// Target device — provides the calibration, capability set and the
+    /// Target device - provides the calibration, capability set and the
     /// `evtest` header of the output artifact.
     target: DeviceProfile,
 }
@@ -49,7 +49,7 @@ impl DeviceConverter {
         let mut replay = EvtestReplay::open(input)?;
         let source = replay.calibration().ok_or_else(|| {
             EngineError::InvalidInput(format!(
-                "{} has no calibration header — cannot convert to raw axis values",
+                "{} has no calibration header - cannot convert to raw axis values",
                 input.display()
             ))
         })?;

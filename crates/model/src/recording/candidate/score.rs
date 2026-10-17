@@ -4,7 +4,7 @@ use std::fmt::Display;
 
 /// Normalized deviation score of a candidate: `max_i dev[i] / tolerance[i]`.
 ///
-/// Dimensionless — `score <= 1.0` means the candidate matched; values above
+/// Dimensionless - `score <= 1.0` means the candidate matched; values above
 /// quantify how far a near-miss was off. Used for score-based ranking and
 /// offline threshold sweeps.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]

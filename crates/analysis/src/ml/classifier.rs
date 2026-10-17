@@ -1,7 +1,7 @@
 /// Dependency-free logistic-regression baseline over normalized deviation
 /// features (TRAINING.md 3.3).
 ///
-/// Deliberately minimal: plain gradient descent, fixed epochs — a baseline
+/// Deliberately minimal: plain gradient descent, fixed epochs - a baseline
 /// to decide whether learned matching beats the score threshold, not a
 /// production classifier.
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ impl LogisticBaseline {
     /// Trains on `(features, is_match)` samples via batch gradient descent.
     ///
     /// Returns `None` when the sample set is empty or one-dimensional labels
-    /// are all identical — nothing to learn.
+    /// are all identical - nothing to learn.
     pub fn train(samples: &[Vec<f64>], labels: &[bool], epochs: usize, rate: f64) -> Option<Self> {
         if samples.is_empty() {
             return None;

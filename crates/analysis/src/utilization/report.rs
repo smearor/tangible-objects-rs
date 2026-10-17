@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 
-use tangible_objects_model::CandidateReport;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternId;
 
@@ -25,8 +24,10 @@ pub struct UtilizationReport {
 impl UtilizationReport {
     /// Computes the utilization report for a loaded recording.
     ///
-    /// Only the best matched *full* candidate per pattern per frame feeds the
-    /// deviation statistics — near-misses belong to the collision analysis.
+    /// Deviation statistics come from the labeled pattern's best candidate
+    /// per labeled frame - matched or not. Sampling only `matched`
+    /// candidates would bias percentiles toward the configured tolerance
+    /// (survivorship: worse misses never enter the statistics).
     pub fn analyze(recording: &Recording) -> Self {
         let mut labeled_frames = 0u64;
         let mut acc: BTreeMap<PatternId, (String, Accumulator)> = BTreeMap::new();
@@ -40,7 +41,6 @@ impl UtilizationReport {
 
             let mut matched_full: BTreeSet<PatternId> = BTreeSet::new();
             let mut matched_partial: BTreeSet<PatternId> = BTreeSet::new();
-            let mut best_full: BTreeMap<PatternId, &CandidateReport> = BTreeMap::new();
             for candidate in &frame.candidates {
                 if !candidate.matched {
                     continue;
@@ -49,40 +49,51 @@ impl UtilizationReport {
                     matched_partial.insert(candidate.pattern_id);
                 } else {
                     matched_full.insert(candidate.pattern_id);
-                    let replace = match best_full.get(&candidate.pattern_id) {
-                        None => true,
-                        Some(current) => candidate.match_error < current.match_error,
-                    };
-                    if replace {
-                        best_full.insert(candidate.pattern_id, candidate);
-                    }
+                    acc.entry(candidate.pattern_id)
+                        .or_insert_with(|| (candidate.pattern_name.clone(), Accumulator::default()))
+                        .1
+                        .matched_frames += 1;
                 }
             }
 
-            // Deviation statistics from the best full match per pattern.
-            for (pattern_id, candidate) in best_full {
-                let entry = &mut acc
-                    .entry(pattern_id)
-                    .or_insert_with(|| (candidate.pattern_name.clone(), Accumulator::default()))
-                    .1;
-                entry.matched_frames += 1;
-                for (index, deviation) in candidate.deviations.iter().enumerate() {
-                    if entry.deviations.len() <= index {
-                        entry.deviations.resize_with(index + 1, Vec::new);
+            // Deviation statistics: the labeled pattern's best candidate
+            // per labeled frame - matched or not. Sampling only `matched`
+            // candidates biases percentiles toward the configured tolerance
+            // (survivorship: worse misses never enter the statistics).
+            if let Some(label) = &frame.label {
+                for candidate in frame.best_candidates().values() {
+                    if candidate.partial || !candidate.matches_label(label) {
+                        continue;
                     }
-                    entry.deviations[index].push(*deviation);
+                    let entry = &mut acc
+                        .entry(candidate.pattern_id)
+                        .or_insert_with(|| (candidate.pattern_name.clone(), Accumulator::default()))
+                        .1;
+                    for (index, deviation) in candidate.deviations.iter().enumerate() {
+                        if entry.deviations.len() <= index {
+                            entry.deviations.resize_with(index + 1, Vec::new);
+                        }
+                        entry.deviations[index].push(*deviation);
+                    }
+                    // The score is already the per-index normalized
+                    // deviation (max_i dev_i / tolerance_at(i)) - using the
+                    // recorded scalar tolerance would ignore `tolerances[]`.
+                    let ratio = candidate.normalized_score().as_f64();
+                    if ratio >= 1.0 {
+                        entry.over_tolerance_frames += 1;
+                    } else {
+                        let band = if ratio < 0.25 {
+                            0
+                        } else if ratio < 0.5 {
+                            1
+                        } else if ratio < 0.75 {
+                            2
+                        } else {
+                            3
+                        };
+                        entry.bands[band] += 1;
+                    }
                 }
-                let ratio = candidate.required_tolerance().as_f64() / candidate.tolerance.as_f64();
-                let band = if ratio < 0.25 {
-                    0
-                } else if ratio < 0.5 {
-                    1
-                } else if ratio < 0.75 {
-                    2
-                } else {
-                    3
-                };
-                entry.bands[band] += 1;
             }
 
             for pattern_id in matched_partial.difference(&matched_full) {
@@ -120,7 +131,7 @@ impl UtilizationReport {
                     }
                 }
                 // The labeled pattern produced no candidate at all (fewer
-                // touches than pins) — still a false negative; numeric labels
+                // touches than pins) - still a false negative; numeric labels
                 // merge into the pattern's row, names land in label_only.
                 if !label_seen {
                     if let Ok(id) = label.as_str().parse::<u32>() {
@@ -176,6 +187,7 @@ impl From<(Option<PatternId>, String, Accumulator)> for PatternUtilization {
                 .filter_map(|samples| Percentiles::of(samples.iter().copied()))
                 .collect(),
             bands: entry.bands,
+            over_tolerance_frames: entry.over_tolerance_frames,
         }
     }
 }
@@ -211,8 +223,12 @@ impl Display for UtilizationReport {
             }
             writeln!(
                 f,
-                "    bands: <25%={} | 25-50%={} | 50-75%={} | 75-100%={}",
-                pattern.bands[0], pattern.bands[1], pattern.bands[2], pattern.bands[3]
+                "    bands: <25%={} | 25-50%={} | 50-75%={} | 75-100%={} | >100% (missed)={}",
+                pattern.bands[0],
+                pattern.bands[1],
+                pattern.bands[2],
+                pattern.bands[3],
+                pattern.over_tolerance_frames
             )?;
         }
         Ok(())

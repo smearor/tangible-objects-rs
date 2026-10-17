@@ -4,8 +4,8 @@ use tangible_objects_model::CandidateReport;
 
 /// Sink receiving one [`CandidateReport`] per tested point combination.
 ///
-/// The report is built lazily via `make`: a sink that discards it — the
-/// production path's [`NoDiagnostics`] — never constructs it, so the hot
+/// The report is built lazily via `make`: a sink that discards it - the
+/// production path's [`NoDiagnostics`] - never constructs it, so the hot
 /// matching loop allocates nothing when recording is off.
 pub(crate) trait CandidateDiagnostics {
     /// Records one tested candidate; `make` builds the report on demand.

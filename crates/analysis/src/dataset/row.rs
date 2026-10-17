@@ -23,7 +23,7 @@ pub struct DatasetRow {
     pub pattern_id: PatternId,
     /// Normalized deviation score (`max_i dev[i] / tolerance[i]`).
     pub score: MatchScore,
-    /// Per-index normalized deviations `dev[i] / tolerance[i]` — the
+    /// Per-index normalized deviations `dev[i] / tolerance[i]` - the
     /// classifier features; `score` is their maximum.
     pub features: Vec<MatchScore>,
 }

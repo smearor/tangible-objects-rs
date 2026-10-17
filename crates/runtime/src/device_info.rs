@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tangible_objects_model::Calibration;
 
-/// Static information about the input device attached to this daemon —
+/// Static information about the input device attached to this daemon -
 /// the identity needed to interpret or convert its raw event stream.
 ///
 /// Published once at session start inside [`crate::EngineSnapshot`];

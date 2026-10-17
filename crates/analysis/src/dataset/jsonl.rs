@@ -6,10 +6,10 @@ use super::DatasetRow;
 use crate::AnalysisError;
 use crate::Recording;
 
-/// Labeled dataset over a whole recording — one row per candidate of every
+/// Labeled dataset over a whole recording - one row per candidate of every
 /// labeled frame (TRAINING.md 3.3).
 ///
-/// Serialized as JSONL — the same line format as the recordings themselves:
+/// Serialized as JSONL - the same line format as the recordings themselves:
 /// typed fields instead of CSV's untyped, escaping- and locale-sensitive
 /// text cells. Unlabeled frames contribute no rows: without a ground-truth
 /// target the features are unlearnable.
@@ -41,7 +41,7 @@ impl Dataset {
         }
     }
 
-    /// Writes the dataset as JSONL — one [`DatasetRow`] per line.
+    /// Writes the dataset as JSONL - one [`DatasetRow`] per line.
     pub fn write_jsonl(&self, path: &Path) -> Result<(), AnalysisError> {
         write_json_lines(path, &self.rows).map_err(|source| AnalysisError::Io {
             path: path.to_path_buf(),

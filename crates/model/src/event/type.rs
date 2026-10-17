@@ -8,7 +8,7 @@ pub enum EventType {
     Syn,
     /// Key/button event (`EV_KEY`).
     Key,
-    /// Absolute axis event (`EV_ABS`) — multitouch slots, positions and
+    /// Absolute axis event (`EV_ABS`) - multitouch slots, positions and
     /// tracking IDs.
     Abs,
     /// Any other event type not interpreted by the pipeline.

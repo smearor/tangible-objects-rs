@@ -61,7 +61,7 @@ impl FrameRecorder {
 
     /// Records one engine frame.
     ///
-    /// `frame_no` counts every `SYN_REPORT` of the session — skipped empty
+    /// `frame_no` counts every `SYN_REPORT` of the session - skipped empty
     /// frames leave gaps, keeping [`FrameNumber`] aligned with the raw stream.
     /// `timestamp_ms` is caller-supplied (session clock live, evtest time on
     /// replay) so replayed recordings stay deterministic.
@@ -93,7 +93,7 @@ impl FrameRecorder {
             Err(TrySendError::Full(_)) => {
                 let dropped = self.dropped.fetch_add(1, Ordering::Relaxed) + 1;
                 if dropped == 1 {
-                    warn!("frame recorder buffer full — dropping frames");
+                    warn!("frame recorder buffer full - dropping frames");
                 }
             }
             Err(TrySendError::Disconnected(_)) => {

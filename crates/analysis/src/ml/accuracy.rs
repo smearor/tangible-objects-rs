@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-/// Classification accuracy — a share of correct predictions, clamped to
+/// Classification accuracy - a share of correct predictions, clamped to
 /// `0.0..=1.0`.
 ///
 /// `Option<Accuracy>` is `None` when evaluation was impossible (no held-out

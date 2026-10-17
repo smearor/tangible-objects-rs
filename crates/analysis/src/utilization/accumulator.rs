@@ -11,10 +11,16 @@ pub(crate) struct Accumulator {
     pub labeled_frames: FrameCount,
     /// Labeled frames without a matched candidate (figure present, missed).
     pub false_negative_frames: FrameCount,
-    /// Deviation samples per distance index.
+    /// Deviation samples per distance index - from the labeled pattern's
+    /// best candidate per labeled frame, matched or not.
     pub deviations: Vec<Vec<Millimeters>>,
-    /// Matched frames binned by `required_tolerance / tolerance` ratio.
+    /// Labeled presence frames binned by `required_tolerance / tolerance`
+    /// ratio (`< 1.0` - within the configured tolerance).
     pub bands: [FrameCount; 4],
+    /// Labeled presence frames whose best candidate would have needed a
+    /// tolerance above the configured one (ratio `>= 1.0`) - the misses
+    /// the bands cannot represent.
+    pub over_tolerance_frames: FrameCount,
 }
 
 impl Default for Accumulator {
@@ -26,6 +32,7 @@ impl Default for Accumulator {
             false_negative_frames: FrameCount::new(0),
             deviations: Vec::new(),
             bands: [FrameCount::new(0); 4],
+            over_tolerance_frames: FrameCount::new(0),
         }
     }
 }

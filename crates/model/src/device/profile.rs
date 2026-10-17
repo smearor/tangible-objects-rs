@@ -8,7 +8,7 @@ use crate::Millimeters;
 use crate::RawAxisValue;
 use crate::UnitsPerMm;
 
-/// Complete profile of a touchscreen device — everything needed to convert
+/// Complete profile of a touchscreen device - everything needed to convert
 /// raw `.evtest` recordings between devices (TRAINING.md device profiles).
 ///
 /// The TOML shape mirrors the `evtest` capability header: axis bounds and
@@ -16,7 +16,7 @@ use crate::UnitsPerMm;
 /// `abs_codes`/`key_codes` list every event code the device emits.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceProfile {
-    /// Human-readable device name — the `Input device name:` header line.
+    /// Human-readable device name - the `Input device name:` header line.
     pub name: String,
     /// evdev vendor ID for auto-matching (`vendor` in the evtest header).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -44,7 +44,7 @@ pub struct DeviceProfile {
     /// `EV_KEY` codes the device emits (e.g. `330` = `BTN_TOUCH`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub key_codes: Vec<u16>,
-    /// Typical report rate in Hz — informational; conversion keeps the
+    /// Typical report rate in Hz - informational; conversion keeps the
     /// source timestamps.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub report_rate_hz: Option<u16>,
@@ -58,7 +58,7 @@ impl DeviceProfile {
         )
     }
 
-    /// Whether the device emits `(event_type, code)` — conversion drops
+    /// Whether the device emits `(event_type, code)` - conversion drops
     /// events outside the profile's set.
     pub fn supports(&self, event_type: EventType, code: EventCode) -> bool {
         match event_type {
@@ -69,7 +69,7 @@ impl DeviceProfile {
         }
     }
 
-    /// Converts a millimeter position to this device's raw axis value —
+    /// Converts a millimeter position to this device's raw axis value -
     /// the inverse of [`Calibration::to_mm`], clamped to `[min, max]`.
     ///
     /// Returns the clamped raw value and whether clamping occurred (the

@@ -14,7 +14,7 @@ const THRESHOLDS: &[f64] = &[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 /// (TRAINING.md 3.2).
 ///
 /// For every labeled frame the best candidate per pattern is scored with
-/// [`CandidateReport::normalized_score`] — the sweep shows recall/precision
+/// [`CandidateReport::normalized_score`] - the sweep shows recall/precision
 /// at each acceptance threshold τ, locating the trade-off the binary
 /// matcher (τ = 1.0) sits on.
 ///
@@ -25,7 +25,7 @@ pub struct ScoringReport {
     pub labeled_frames: FrameCount,
     /// Per-threshold detection statistics.
     pub rows: Vec<ThresholdRow>,
-    /// Scores of the best candidate per labeled frame — the label's own
+    /// Scores of the best candidate per labeled frame - the label's own
     /// pattern (detected) and foreign patterns (collision pressure).
     pub own_score: Option<Percentiles>,
     /// Scores of the best foreign candidate per labeled frame.
@@ -106,7 +106,7 @@ impl Display for ScoringReport {
             self.labeled_frames
         )?;
         if self.labeled_frames.as_u64() == 0 {
-            writeln!(f, "  (no labeled frames — record with --record-label)")?;
+            writeln!(f, "  (no labeled frames - record with --record-label)")?;
             return Ok(());
         }
         if let Some(own) = self.own_score {

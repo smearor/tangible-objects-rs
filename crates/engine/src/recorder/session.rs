@@ -25,7 +25,7 @@ use crate::EngineFrame;
 ///
 /// Two label channels exist: a persistent session label (`--record-label`,
 /// `SetRecordLabel`) and a temporary mark ([`Self::mark_label`]) that applies
-/// to the next N recorded frames — the interactive keypress path.
+/// to the next N recorded frames - the interactive keypress path.
 pub struct RecordingSession {
     /// Base path the artifacts are written to (without extension).
     pub base_path: PathBuf,
@@ -42,7 +42,7 @@ pub struct RecordingSession {
 struct LabelOverride {
     /// Temporary ground-truth label.
     label: RecordLabel,
-    /// Remaining budget — decremented per recorded frame, saturates at zero
+    /// Remaining budget - decremented per recorded frame, saturates at zero
     /// and expires the override.
     remaining: RemainingFrameCount,
 }
@@ -82,7 +82,7 @@ impl RecordingSession {
     /// Records a non-empty frame; returns whether the frame was written.
     ///
     /// Frames without touches and tracked tangibles are skipped per the
-    /// recording rules — the caller still counts `frame_no` for every
+    /// recording rules - the caller still counts `frame_no` for every
     /// `SYN_REPORT` so numbering stays aligned.
     pub fn record_frame(
         &mut self,
@@ -126,7 +126,7 @@ impl RecordingSession {
         self.label = label;
     }
 
-    /// Temporarily applies `label` to the next `frames` recorded frames —
+    /// Temporarily applies `label` to the next `frames` recorded frames -
     /// the interactive keypress path; afterwards the session label applies
     /// again.
     pub fn mark_label(&mut self, label: RecordLabel, frames: u64) {

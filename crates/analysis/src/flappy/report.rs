@@ -15,8 +15,8 @@ const LIFETIME_EDGES: [u64; 5] = [1, 5, 15, 60, 120];
 ///
 /// Built from the `tracking_id` time series (`touches`) and the tracker's
 /// `frames_since_match` hysteresis (`tracked`). Per-pin attribution is not
-/// derivable from recordings — `touch_indices` is an unordered combination,
-/// not a pin mapping — so instability is reported per contact, not per pin.
+/// derivable from recordings - `touch_indices` is an unordered combination,
+/// not a pin mapping - so instability is reported per contact, not per pin.
 #[derive(Debug)]
 pub struct FlappyReport {
     /// Number of distinct tracking IDs observed.
@@ -26,7 +26,7 @@ pub struct FlappyReport {
     /// Lifetime histogram; the last bucket is open-ended.
     pub lifetime_buckets: Vec<LifetimeBucket>,
     /// Dropout events: runs of `frames_since_match > 0` inside a tracked
-    /// tangible's lifetime — the figure lost its match but stayed tracked.
+    /// tangible's lifetime - the figure lost its match but stayed tracked.
     pub dropout_events: u64,
     /// Percentiles of dropout run lengths in frames.
     pub dropout_lengths: Option<Percentiles>,
