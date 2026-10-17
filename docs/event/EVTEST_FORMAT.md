@@ -6,7 +6,7 @@ The `.evtest` text format used by the raw recording artifact
 `evtest` is the Linux input-subsystem debugging tool
 (`evtest /dev/input/eventX`): it dumps the device's capability header and
 then every evdev event as human-readable text. The daemon *replays* this
-format (`EvtestReplay`) and *writes* it (`RawRecorder`) — the
+format (`EvtestReplay`) and *writes* it (`RawRecorder`) - the
 hardware-free round trip of the recording pipeline. Types are documented in
 [`DATA_MODEL.md`](DATA_MODEL.md).
 
@@ -41,10 +41,10 @@ Event: time 1787786579.074730, type 3 (EV_ABS), code 57 (ABS_MT_TRACKING_ID), va
 
 | Line pattern                                    | Used for |
 |-------------------------------------------------|----------|
-| `Input device name: "…"`                        | `device_name()` — written back into recorded headers |
+| `Input device name: "…"`                        | `device_name()` - written back into recorded headers |
 | `Event code N (ABS_MT_POSITION_X)` + `Value/Min/Max/Resolution` | X-axis calibration (`Calibration`) |
 | `Event code N (ABS_MT_POSITION_Y)` + `Value/Min/Max/Resolution` | Y-axis calibration |
-| `Testing ... (interrupt to exit)`               | Ends the header — event parsing starts here |
+| `Testing ... (interrupt to exit)`               | Ends the header - event parsing starts here |
 
 Other header lines (driver version, device ID, other event codes) are
 skipped.
@@ -60,7 +60,7 @@ Event: time <sec>.<µsec>, -------------- SYN_REPORT ------------
   informational.
 - The **delimiter form** marks a frame boundary (`SYN_REPORT`). The typed
   form `type 0 (EV_SYN), code 0 (SYN_REPORT), value 0` produced by some
-  evtest variants parses to the same `RawEvent{Syn, 0, 0}` — both are frame
+  evtest variants parses to the same `RawEvent{Syn, 0, 0}` - both are frame
   boundaries (`RawEvent::is_syn_report` covers both).
 - `SYN_DROPPED` delimiters are not `SYN_REPORT` and do not open a frame.
 - `time` is seconds with microsecond precision; `next_event_timed` returns
@@ -70,10 +70,10 @@ Event: time <sec>.<µsec>, -------------- SYN_REPORT ------------
 
 Event **code numbers are only unique per event type**: `code 0` is
 `SYN_REPORT` under `EV_SYN` but `ABS_X` under `EV_ABS`. Writers must resolve
-names type-aware — `NamedEventCode { event_type, code }` does this;
+names type-aware - `NamedEventCode { event_type, code }` does this;
 `EventCode` alone is intentionally not nameable. A type-ignorant writer once
 emitted `code 0 (SYN_REPORT)` for an `EV_ABS` line and the parser created
-phantom frames — the round-trip test (`--record` → `--replay`) caught it.
+phantom frames - the round-trip test (`--record` → `--replay`) caught it.
 The parser additionally accepts `SYN_REPORT` delimiters only when the line
 carries no `type` field.
 
@@ -83,7 +83,7 @@ carries no `type` field.
 |-------------|----------------|-------|
 | write       | `RawRecorder` (`crates/engine/src/recorder/raw.rs`) | Header (device name + `ABS_MT_POSITION_X/Y` blocks from `Calibration`), one event line per `RawEvent`, delimiter line per `SYN_REPORT` |
 | read        | `EvtestReplay` (`crates/engine/src/replay.rs`) | Header → `Calibration` + `device_name`; lines → `RawEvent` (+ timestamp) |
-| convert     | `DeviceConverter` (`crates/engine/src/convert`) | Re-emits a source artifact in a target `DeviceProfile`'s raw space — see [`../device/DATA_MODEL.md`](../device/DATA_MODEL.md) |
+| convert     | `DeviceConverter` (`crates/engine/src/convert`) | Re-emits a source artifact in a target `DeviceProfile`'s raw space - see [`../device/DATA_MODEL.md`](../device/DATA_MODEL.md) |
 | canonical   | `evtest /dev/input/eventX` | Any real evtest dump is a valid fixture |
 
 Determinism rule: replayed timestamps come from the file, so recording a

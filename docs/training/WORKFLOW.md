@@ -1,7 +1,7 @@
 # Training Workflow
 
 End-to-end pipeline for training tangible figures and tuning matching
-tolerances — the developer-facing view of
+tolerances - the developer-facing view of
 [`concepts/planned/TRAINING.md`](../../concepts/planned/TRAINING.md).
 Data shapes are documented per domain: [recording](../recording/DATA_MODEL.md)
 (wire format: [JSONL](../recording/JSONL_FORMAT.md)),
@@ -47,7 +47,7 @@ tangible-objects --replay --file research/figure-tracking-4.txt \
 
 Artifacts: `<base>.jsonl` (one `FrameRecord` per non-empty frame) +
 `<base>.evtest` (raw events, replayable). Recording never blocks the
-device loop — bounded channels drop with a counter, `raw_dropped` is
+device loop - bounded channels drop with a counter, `raw_dropped` is
 reported per frame.
 
 Labels are the ground truth for every downstream evaluation; without them
@@ -57,15 +57,15 @@ reports degrade gracefully (collision/score/ML sections print a hint).
 
 `ControlCommand::{StartRecording, StopRecording, SetRecordLabel}` steer the
 daemon's session from GraphQL (`startRecording`, `stopRecording`,
-`setRecordLabel`), D-Bus methods and MCP tools — applications can guide a
+`setRecordLabel`), D-Bus methods and MCP tools - applications can guide a
 user through training steps without touching devices or files.
 
 ### Remote recording
 
-Interfaces bind `SocketAddr`s — `--graphql-listen 0.0.0.0:8000` /
+Interfaces bind `SocketAddr`s - `--graphql-listen 0.0.0.0:8000` /
 `--mcp-listen 0.0.0.0:9000` expose the daemon on the LAN. A client on
 computer A can steer a session on computer B end-to-end (device info →
-start/status/stop → artifact pull) — see
+start/status/stop → artifact pull) - see
 [remote access](../device/CONVERSION.md#remote-access).
 
 ## Cross-device conversion
@@ -89,15 +89,15 @@ tangible-objects --export-dataset recordings/session1.jsonl   # → .dataset.jso
 
 `--analyze` prints, in order:
 
-1. **Utilization** — deviation percentiles per distance index, bands,
+1. **Utilization** - deviation percentiles per distance index, bands,
    false negatives (labeled frames without a match).
-2. **Tolerance suggestions** — `tolerances = [p99[i] × 1.25]` ready to
+2. **Tolerance suggestions** - `tolerances = [p99[i] × 1.25]` ready to
    paste into the profile TOML.
-3. **Flappy contacts** — tracking-id lifetimes, dropout gaps, partial share.
-4. **Collision matrix** — label × foreign pattern collisions and the
+3. **Flappy contacts** - tracking-id lifetimes, dropout gaps, partial share.
+4. **Collision matrix** - label × foreign pattern collisions and the
    tolerance at which they would appear.
-5. **Score sweep** — recall/precision per acceptance threshold τ.
-6. **ML baseline** — logistic regression vs. the `score ≤ 1.0` rule on a
+5. **Score sweep** - recall/precision per acceptance threshold τ.
+6. **ML baseline** - logistic regression vs. the `score ≤ 1.0` rule on a
    deterministic hold-out.
 
 ## Applying results
@@ -106,7 +106,7 @@ tangible-objects --export-dataset recordings/session1.jsonl   # → .dataset.jso
   (scalar `tolerance` stays required as the fallback and for partial
   matching).
 - Collision cells marked `← COLLIDES` indicate profiles whose fingerprints
-  are geometrically too close — shrink tolerances or disambiguate.
+  are geometrically too close - shrink tolerances or disambiguate.
 - `--export-dataset` produces the labeled feature set for external ML
   tooling; use it once score-sweep results show headroom over the rule.
 

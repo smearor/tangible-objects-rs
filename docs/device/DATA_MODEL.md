@@ -1,6 +1,6 @@
 # Device Data Model
 
-Touchscreen device profiles and related record types — the module
+Touchscreen device profiles and related record types - the module
 `model/src/device` plus the conversion types in `engine/src/convert`.
 Runtime behavior (registry loading, auto-detection, the conversion
 pipeline, remote access) is documented separately in
@@ -8,9 +8,9 @@ pipeline, remote access) is documented separately in
 
 ```
 crates/model/src/
-├── devices/                 — compiled-in profiles (*.toml, include_str!)
+├── devices/                 - compiled-in profiles (*.toml, include_str!)
 └── device/
-    ├── mod.rs               — module docs + re-exports
+    ├── mod.rs               - module docs + re-exports
     ├── profile.rs           → DeviceProfile
     ├── registry.rs          → DeviceRegistry
     └── error.rs             → DeviceError
@@ -27,33 +27,33 @@ crates/engine/src/
 
 ## DeviceProfile
 
-TOML-serializable device profile — the persistent form of a touchscreen's
+TOML-serializable device profile - the persistent form of a touchscreen's
 capabilities. Bundles the affine axis map (calibration raw material) and
 the emitted event-code set.
 
 | Field            | Rust type              | TOML             | Notes |
 |------------------|------------------------|------------------|-------|
-| `name`           | `String`               | `"SiS …"`        | `Input device name` header line — registry lookup key |
+| `name`           | `String`               | `"SiS …"`        | `Input device name` header line - registry lookup key |
 | `vendor`         | `Option<u16>`          | `0x457`          | evdev vendor ID for auto-matching |
 | `product`        | `Option<u16>`          | `0x11dc`         | evdev product ID |
 | `x_res`/`y_res`  | `UnitsPerMm`           | `7.0`/`12.0`     | Units per mm (`Resolution` of `ABS_MT_POSITION_X/Y`) |
 | `x_min`/`x_max`  | `RawAxisValue`         | `0`/`4095`       | Raw axis bounds |
 | `y_min`/`y_max`  | `RawAxisValue`         | `0`/`4095`       | Raw axis bounds |
-| `abs_codes`      | `Vec<u16>`             | `[53, 54, 57]`   | `EV_ABS` codes the device emits — conversion drops anything unlisted |
+| `abs_codes`      | `Vec<u16>`             | `[53, 54, 57]`   | `EV_ABS` codes the device emits - conversion drops anything unlisted |
 | `key_codes`      | `Vec<u16>`             | `[330]`          | `EV_KEY` codes (e.g. `BTN_TOUCH`) |
-| `report_rate_hz` | `Option<u16>`          | `120`            | Typical cadence — informational; conversion keeps source timestamps |
+| `report_rate_hz` | `Option<u16>`          | `120`            | Typical cadence - informational; conversion keeps source timestamps |
 
 ### Methods
 
 | Method         | Signature                                          | Purpose |
 |----------------|----------------------------------------------------|---------|
 | `calibration`  | `(&self) -> Calibration`                           | The affine axis map (`raw / res → mm`) |
-| `supports`     | `(EventType, EventCode) -> bool`                   | Capability check — `EV_SYN` is always supported (delimiter, not capability) |
+| `supports`     | `(EventType, EventCode) -> bool`                   | Capability check - `EV_SYN` is always supported (delimiter, not capability) |
 | `to_raw`       | `(Millimeters, axis_x) -> (RawAxisValue, bool)`    | Inverse of `Calibration::to_mm`, clamped to `[min, max]`; the flag reports clamping |
 
 ## DeviceRegistry
 
-Collection of known profiles — builtins first, then directory-loaded ones;
+Collection of known profiles - builtins first, then directory-loaded ones;
 load failures collect into `errors` like `ProfileDir`.
 
 | Field      | Rust type                        | Notes |
@@ -71,7 +71,7 @@ One enumerated `/dev/input/eventX` node.
 |-----------------|------------|-------|
 | `path`          | `PathBuf`  | Device node (`/dev/input/event3`) |
 | `name`          | `String`   | Kernel-reported device name |
-| `vendor`        | `u16`      | `InputId::vendor` — `vendor 0x…` in evtest headers |
+| `vendor`        | `u16`      | `InputId::vendor` - `vendor 0x…` in evtest headers |
 | `product`       | `u16`      | `InputId::product` |
 | `is_multitouch` | `bool`     | Has the `ABS_MT_SLOT` axis (protocol type B) |
 
@@ -79,7 +79,7 @@ One enumerated `/dev/input/eventX` node.
 
 ## ConvertStats
 
-Counters of one `.evtest` device conversion — every field is an
+Counters of one `.evtest` device conversion - every field is an
 [`EventCount`](../recording/DATA_MODEL.md) of raw evdev events.
 
 | Field     | Notes |

@@ -3,7 +3,7 @@
 The raw text wire format these types replay and record is documented in
 [`EVTEST_FORMAT.md`](EVTEST_FORMAT.md).
 
-Linux input event types — the module `model/src/event`. `RawEvent` is the
+Linux input event types - the module `model/src/event`. `RawEvent` is the
 device-agnostic `(type, code, value)` triple mirroring the kernel's
 `input_event`; it can be produced from `evdev` events or parsed from `evtest`
 recordings without either dependency. `Engine::process` consumes one
@@ -11,7 +11,7 @@ recordings without either dependency. `Engine::process` consumes one
 
 ```
 crates/model/src/event/
-├── mod.rs    — module docs + re-exports
+├── mod.rs    - module docs + re-exports
 ├── type.rs   → EventType
 ├── code.rs   → EventCode
 ├── input.rs  → SYN_REPORT, ABS_MT_* constants
@@ -20,14 +20,14 @@ crates/model/src/event/
 
 ## EventType
 
-Linux input event type — only the variants the pipeline interprets have named
+Linux input event type - only the variants the pipeline interprets have named
 representations; everything else maps to `Other(u16)` losslessly.
 
 | Variant       | Raw value | Meaning |
 |---------------|-----------|---------|
-| `Syn`         | `0x00`    | `EV_SYN` — delimits one input frame |
-| `Key`         | `0x01`    | `EV_KEY` — key/button events (e.g. `BTN_TOUCH`) |
-| `Abs`         | `0x03`    | `EV_ABS` — absolute axes: slots, positions, tracking IDs |
+| `Syn`         | `0x00`    | `EV_SYN` - delimits one input frame |
+| `Key`         | `0x01`    | `EV_KEY` - key/button events (e.g. `BTN_TOUCH`) |
+| `Abs`         | `0x03`    | `EV_ABS` - absolute axes: slots, positions, tracking IDs |
 | `Other(u16)`  | any       | Types not interpreted by the pipeline (preserved, not dropped) |
 
 `From<u16>`/`From<EventType>` convert both ways; `Other` round-trips the
@@ -35,7 +35,7 @@ original numeric value.
 
 ## EventCode
 
-Strongly typed event code within an `EventType` — `EventCode(pub u16)`. Plain
+Strongly typed event code within an `EventType` - `EventCode(pub u16)`. Plain
 newtype (`new`/`as_u16`, `From` both ways, `Display`, `Ord`) so codes cannot
 be confused with types or values. No serde: raw events are recorded in
 `evtest` text format, not JSON (see
@@ -56,7 +56,7 @@ The multitouch protocol type-B codes interpreted by `TouchState`, declared as
 
 ## RawEvent
 
-One raw input event as `(type, code, value)` triple — `Copy`, `Eq`, no serde.
+One raw input event as `(type, code, value)` triple - `Copy`, `Eq`, no serde.
 
 | Field        | Rust type    | Notes |
 |--------------|--------------|-------|
@@ -72,7 +72,7 @@ codes/types convert implicitly. `is_syn_report()` is the frame boundary check
 
 - **Device-agnostic**: no `evdev` types leak into `model`; the `device` module
   in `engine` and the `EvtestReplay` parser both produce `RawEvent`s.
-- **Lossless**: unknown types/codes survive as `Other`/raw numerics — a
+- **Lossless**: unknown types/codes survive as `Other`/raw numerics - a
   replayed or re-recorded stream stays byte-equivalent, which the
   `.evtest` raw artifact of a recording relies on.
 - The frame boundary is the only semantic the engine itself consumes;

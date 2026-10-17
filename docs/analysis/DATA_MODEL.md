@@ -1,14 +1,14 @@
 # Analysis Data Model
 
-Offline evaluation of recordings — the crate `tangible-objects-analysis`
+Offline evaluation of recordings - the crate `tangible-objects-analysis`
 (`crates/analysis`). It loads `*.jsonl` recordings ([frame schema
-`"v": 1`](../recording/DATA_MODEL.md)) into typed `FrameRecord`s — the same
-types that serialize in `model`, so writer and reader cannot drift apart —
+`"v": 1`](../recording/DATA_MODEL.md)) into typed `FrameRecord`s - the same
+types that serialize in `model`, so writer and reader cannot drift apart -
 and renders human-readable reports for TRAINING.md phases 2 and 3.
 
 ```
 crates/analysis/src/
-├── lib.rs               — crate docs + re-exports
+├── lib.rs               - crate docs + re-exports
 ├── error.rs             → AnalysisError
 ├── recording.rs         → Recording           (JSONL loader + version gate)
 ├── percentile.rs        → Percentiles         (generic over Into<f64>)
@@ -52,13 +52,13 @@ Invoked via `tangible-objects --analyze <recording.jsonl>` and
 `Recording::load(path)` parses one `FrameRecord` per line, checks
 `schema_version == RECORD_SCHEMA_VERSION` per line (`UnsupportedVersion`
 with the 1-based line number) and rejects malformed JSON (`Parse`).
-Unknown fields are tolerated — older/newer minor shapes stay loadable;
+Unknown fields are tolerated - older/newer minor shapes stay loadable;
 new optional record fields (`score`, `tolerances`) default to absent.
 
 ## Reports
 
 All reports implement `Display` for the `--analyze` CLI output and are pure
-functions of `&Recording` — no engine state.
+functions of `&Recording` - no engine state.
 
 | Report               | Phase | Question answered |
 |----------------------|-------|-------------------|
@@ -71,20 +71,20 @@ functions of `&Recording` — no engine state.
 | `Dataset`            | 3.3   | JSONL export of labeled candidates (`features` = normalized deviations, `is_label` target) |
 
 `UtilizationReport` keys patterns by `PatternId` (stable identity); the
-name is display-only. Label-only rows — a label that never produced a
-candidate — appear with `pattern_id: None`.
+name is display-only. Label-only rows - a label that never produced a
+candidate - appear with `pattern_id: None`.
 
 ## Types
 
 | Type          | Wraps   | Purpose |
 |---------------|---------|---------|
-| `Percentiles` | `f64`×6 | min/p50/p95/p99/max/mean; `of(Iterator<Item = impl Into<f64>>)` accepts `Millimeters`/`MatchScore`/`f64` uniformly — the unit crosses only at the stats boundary |
+| `Percentiles` | `f64`×6 | min/p50/p95/p99/max/mean; `of(Iterator<Item = impl Into<f64>>)` accepts `Millimeters`/`MatchScore`/`f64` uniformly - the unit crosses only at the stats boundary |
 | `Accuracy`    | `f64`   | Clamped `0.0..=1.0`; `Option<Accuracy>` = not evaluable |
-| `DatasetRow`  | —       | Serialized per line: `frame` `is_label` `matched` `partial` `pattern_id` `score` `features[]` |
+| `DatasetRow`  | -       | Serialized per line: `frame` `is_label` `matched` `partial` `pattern_id` `score` `features[]` |
 
 ## Design Rules
 
-- **Shared schema**: records deserialize with the `model` types — no
+- **Shared schema**: records deserialize with the `model` types - no
   mirrored struct definitions.
 - **Newtypes at boundaries**: accumulators count in `FrameCount`/
   `CandidateCount`, samples stay `Millimeters`/`MatchScore`; `f64` is the
@@ -92,5 +92,5 @@ candidate — appear with `pattern_id: None`.
 - **Labels are ground truth**: utilization false negatives, the collision
   matrix, the score sweep and ML evaluation all require labeled frames;
   unlabeled recordings print a hint instead of empty tables.
-- **No per-pin attribution**: `touch_indices` is an unordered combination —
+- **No per-pin attribution**: `touch_indices` is an unordered combination -
   the flappy report measures per-contact stability, not per-pin.

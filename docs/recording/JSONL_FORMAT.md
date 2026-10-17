@@ -2,22 +2,22 @@
 
 On-disk format of the frame recordings (`<base>.jsonl`) and the exported
 labeled datasets (`<stem>.dataset.jsonl`). Rust types are documented in
-[`DATA_MODEL.md`](DATA_MODEL.md) — this file is the **wire format**: what is
+[`DATA_MODEL.md`](DATA_MODEL.md) - this file is the **wire format**: what is
 actually in the bytes.
 
 Both artifacts follow [JSON Lines](https://jsonlines.org): every line is one
 complete JSON object, terminated by `\n` (UTF-8, no BOM, no trailing
-commas). One line = one event — the stream is append-only within a session
+commas). One line = one event - the stream is append-only within a session
 and survives a crash at line granularity.
 
-## `<base>.jsonl` — Frame Records
+## `<base>.jsonl` - Frame Records
 
-Written by `FrameRecorder` for every **non-empty** `SYN_REPORT` frame —
+Written by `FrameRecorder` for every **non-empty** `SYN_REPORT` frame -
 frames with neither touches nor tracked tangibles are skipped, leaving gaps
 in `frame` (the counter still counts every `SYN_REPORT`, keeping the
 numbering aligned with the raw event stream and the device's report rate).
 
-Example line (pretty-printed — on disk it is a single line):
+Example line (pretty-printed - on disk it is a single line):
 
 ```json
 {
@@ -62,15 +62,15 @@ Example line (pretty-printed — on disk it is a single line):
 
 | JSON key          | Type           | Required | Semantics |
 |-------------------|----------------|----------|-----------|
-| `v`               | `u16`          | always   | Schema version — currently `1`; consumers must refuse unknown versions |
+| `v`               | `u16`          | always   | Schema version - currently `1`; consumers must refuse unknown versions |
 | `frame`           | `u64`          | always   | `SYN_REPORT` ordinal; gaps mark skipped empty frames |
 | `timestamp_ms`    | `u64`          | always   | Milliseconds since recording start (replay: source timestamps → deterministic) |
-| `label`           | `string\|null` | always   | Ground truth; `null` = unlabeled. Present but nullable — the marker is intentional |
+| `label`           | `string\|null` | always   | Ground truth; `null` = unlabeled. Present but nullable - the marker is intentional |
 | `calibration`     | `object\|null` | always   | Calibration snapshot; `null` = uncalibrated → `touches` carry raw axis units |
-| `touches`         | `array`        | always   | `{slot, tracking_id, x, y}` — positions in millimeters |
-| `candidates`      | `array`        | always   | Every tested combination — matched *and* rejected |
+| `touches`         | `array`        | always   | `{slot, tracking_id, x, y}` - positions in millimeters |
+| `candidates`      | `array`        | always   | Every tested combination - matched *and* rejected |
 | `tracked`         | `array`        | always   | Tracker view incl. `frames_since_match` |
-| `raw_dropped`     | `u64` (`EventCount`) | always | Running count of raw events dropped on a full sink buffer — non-zero breaks replay round-trip equality |
+| `raw_dropped`     | `u64` (`EventCount`) | always | Running count of raw events dropped on a full sink buffer - non-zero breaks replay round-trip equality |
 
 ### CandidateReport fields
 
@@ -78,13 +78,13 @@ Example line (pretty-printed — on disk it is a single line):
 |----------------------|----------------|----------|-----------|
 | `pattern_id`         | `u32`          | always   | Pattern under test |
 | `pattern_name`       | `string`       | always   | Denormalized display name |
-| `touch_indices`      | `array<u32>`   | always   | Indices into `touches` — an unordered combination, *not* a pin mapping |
+| `touch_indices`      | `array<u32>`   | always   | Indices into `touches` - an unordered combination, *not* a pin mapping |
 | `matched`            | `bool`         | always   | Passed the tolerance check |
 | `partial`            | `bool`         | always   | `num_points − 1` candidate (one pin missing) |
 | `measured_distances` | `array<f64>`   | always   | Sorted pairwise distances (mm); index `i` ↔ pattern's `sorted_distances[i]` |
 | `deviations`         | `array<f64>`   | always   | `|measured[i] − reference[i]|`, parallel to `measured_distances` |
 | `tolerance`          | `f64`          | always   | Scalar tolerance applied (mm) |
-| `tolerances`         | `array<f64>`   | optional | Per-index tolerances — **absent** (not `null`) under scalar-only patterns |
+| `tolerances`         | `array<f64>`   | optional | Per-index tolerances - **absent** (not `null`) under scalar-only patterns |
 | `score`              | `f64`          | optional | Normalized `max_i dev[i]/tol[i]`; absent in older recordings |
 | `match_error`        | `f64`          | always   | Sum of `deviations` |
 
@@ -92,9 +92,9 @@ Example line (pretty-printed — on disk it is a single line):
 
 - **Version gate first**: `v` must equal `RECORD_SCHEMA_VERSION` (1) before
   any field is trusted.
-- **Unknown keys are ignored** — newer minor additions stay loadable by
+- **Unknown keys are ignored** - newer minor additions stay loadable by
   older readers that tolerate extra fields.
-- **`label`/`calibration` are explicit `null` markers** — distinguish
+- **`label`/`calibration` are explicit `null` markers** - distinguish
   "absent by old schema" from "recorded as none". Optional candidate fields
   (`tolerances`, `score`) instead *omit* the key entirely.
 - Order of lines is frame order; `frame` numbers are monotonically
@@ -108,9 +108,9 @@ jq '.candidates[] | select(.matched) | .score' rec.jsonl    # matched scores
 jq '[.raw_dropped] | max' rec.jsonl                          # must be 0
 ```
 
-## `<stem>.dataset.jsonl` — Labeled Dataset
+## `<stem>.dataset.jsonl` - Labeled Dataset
 
-Written by `--export-dataset` via `serde_jsonlines` — one `DatasetRow` per
+Written by `--export-dataset` via `serde_jsonlines` - one `DatasetRow` per
 recorded candidate of every **labeled** frame:
 
 ```json
@@ -121,18 +121,18 @@ recorded candidate of every **labeled** frame:
 | JSON key     | Type          | Semantics |
 |--------------|---------------|-----------|
 | `frame`      | `u64`         | Source frame number |
-| `is_label`   | `bool`        | Ground-truth target — candidate's pattern equals the frame label |
+| `is_label`   | `bool`        | Ground-truth target - candidate's pattern equals the frame label |
 | `matched`    | `bool`        | Binary matcher outcome at the recorded tolerance |
 | `partial`    | `bool`        | Partial (`num_points − 1`) candidate |
 | `pattern_id` | `u32`         | Pattern under test |
-| `score`      | `f64`         | `max(features)` — normalized deviation score |
-| `features`   | `array<f64>`  | Per-index normalized deviations `dev[i]/tol[i]` — the classifier input |
+| `score`      | `f64`         | `max(features)` - normalized deviation score |
+| `features`   | `array<f64>`  | Per-index normalized deviations `dev[i]/tol[i]` - the classifier input |
 
-Empty file when no labeled frames exist — the export reports `0 rows`.
+Empty file when no labeled frames exist - the export reports `0 rows`.
 
 ## Companion: `<base>.evtest`
 
-The raw twin artifact is **not** JSON — it is `evtest`-compatible text,
+The raw twin artifact is **not** JSON - it is `evtest`-compatible text,
 documented in [`../event/EVTEST_FORMAT.md`](../event/EVTEST_FORMAT.md), and
 replays through `EvtestReplay`/`--replay`. See
 [`../event/DATA_MODEL.md`](../event/DATA_MODEL.md) for the Rust types.

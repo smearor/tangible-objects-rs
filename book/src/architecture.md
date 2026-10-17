@@ -42,7 +42,7 @@ graph BT
 
 | Crate | Role | Depends on |
 | ----- | ---- | ---------- |
-| `tangible-objects-model` | Domain types: `TrackedTangible`, `TangiblePattern`, `TangibleSet`, `TouchPoint`, `SetAction` | — |
+| `tangible-objects-model` | Domain types: `TrackedTangible`, `TangiblePattern`, `TangibleSet`, `TouchPoint`, `SetAction` | - |
 | `tangible-objects-engine` | Consumes `RawEvent`s, detects tangibles, emits `EngineFrame`/`EngineEvent` | `model` |
 | `tangible-objects-runtime` | Event hub: `broadcast<DomainEvent>`, `watch<EngineSnapshot>`, `mpsc<ControlCommand>`; publishes `EngineHandle` | `engine`, `model` |
 | `tangible-objects-graphql` | GraphQL query/mutation/subscription via axum + async-graphql | `runtime`, `engine`, `model` |

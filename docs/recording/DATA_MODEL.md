@@ -3,8 +3,8 @@
 Data model for the frame recording pipeline described in
 [`concepts/planned/TRAINING.md`](../../concepts/planned/TRAINING.md). It defines
 the JSONL frame schema (`"v": 1`), the newtypes that carry it, and the control
-commands that steer a recording session. The raw wire format — field-by-field
-with JSON examples — lives in [`JSONL_FORMAT.md`](JSONL_FORMAT.md).
+commands that steer a recording session. The raw wire format - field-by-field
+with JSON examples - lives in [`JSONL_FORMAT.md`](JSONL_FORMAT.md).
 
 A recording session produces **two artifacts**:
 
@@ -20,23 +20,23 @@ must regenerate the same frame stream deterministically.
 
 The record types live in `tangible-objects-model` so the engine, the daemon
 and future analysis tools share one definition without depending on I/O.
-`model` stays dependency-light (serde/toml only) — all types are
+`model` stays dependency-light (serde/toml only) - all types are
 `Serialize`-only where nothing reads them back in Rust.
 
 ```
 crates/model/src/
 ├── milliseconds.rs        → Milliseconds          (unit newtype)
 └── recording/
-    ├── mod.rs             — module docs + re-exports
+    ├── mod.rs             - module docs + re-exports
     ├── label.rs           → RecordLabel
     ├── tracked.rs         → TrackedRecord
     ├── candidate/
-    │   ├── mod.rs         — re-exports
+    │   ├── mod.rs         - re-exports
     │   ├── report.rs      → CandidateReport
     │   ├── count.rs       → CandidateCount
     │   └── score.rs       → MatchScore
     └── frame/
-        ├── mod.rs         — re-exports
+        ├── mod.rs         - re-exports
         ├── record.rs      → FrameRecord, RECORD_SCHEMA_VERSION
         ├── number.rs      → FrameNumber            (ordinal)
         ├── count.rs       → FrameCount             (grows only)
@@ -50,7 +50,7 @@ only grows ("47 frames"), `RemainingFrameCount` a budget that only shrinks
 
 ## FrameRecord
 
-`FrameRecord` is one JSONL line — the state of a single `SYN_REPORT` frame.
+`FrameRecord` is one JSONL line - the state of a single `SYN_REPORT` frame.
 Written only for frames with touches or tracked tangibles; an idle surface
 produces no output.
 
@@ -66,7 +66,7 @@ produces no output.
 | `tracked`        | `Vec<TrackedRecord>`     | `[{…}]`              | Tracker view incl. `frames_since_match` |
 | `raw_dropped`    | `EventCount`             | `0`                  | Running count of raw events dropped on a full sink buffer; non-zero breaks round-trip equality |
 
-`RECORD_SCHEMA_VERSION: u16 = 1` is written into every record — bump it when
+`RECORD_SCHEMA_VERSION: u16 = 1` is written into every record - bump it when
 the shape changes; the stream is append-only within a session.
 
 ## CandidateReport
@@ -74,7 +74,7 @@ the shape changes; the stream is append-only within a session.
 One entry per point combination tested against a pattern. `find_matches`
 keeps only the best combination per pattern; the opt-in diagnostics path
 (`Engine::process_with_diagnostics` → `find_matches_with_diagnostics`, sink
-trait `CandidateDiagnostics` — lazy `FnOnce` construction, zero cost on the
+trait `CandidateDiagnostics` - lazy `FnOnce` construction, zero cost on the
 production path) emits a `CandidateReport` for **all** of them so rejected
 near-misses feed the collision analysis. Reports land in
 `EngineFrame::candidates`.
@@ -85,16 +85,16 @@ near-misses feed the collision analysis. Reports land in
 | `pattern_name`       | `String`            | Denormalized for readable analysis output |
 | `touch_indices`      | `Vec<usize>`        | Indices into the frame's `touches` |
 | `matched`            | `bool`              | Combination passed the tolerance check |
-| `partial`            | `bool`              | `num_points - 1` attempt (one pin missing) — compares against a subset fingerprint |
+| `partial`            | `bool`              | `num_points - 1` attempt (one pin missing) - compares against a subset fingerprint |
 | `measured_distances` | `Vec<Millimeters>`  | Sorted pairwise distances; index `i` ↔ `sorted_distances[i]` |
-| `deviations`         | `Vec<Millimeters>`  | `\|measured[i] − reference[i]\|`, parallel to `measured_distances` — the raw basis for per-pair analysis |
-| `tolerance`          | `PatternTolerance`  | Scalar tolerance applied during the test (also the fallback for partial candidates — pin-drop re-indexes the fingerprint) |
-| `tolerances`         | `Vec<Millimeters>`  | Per-index tolerances when the pattern configures them; **absent** (not `null`) when scalar-only — `#[serde(default)]` keeps older recordings loadable |
-| `score`              | `Option<MatchScore>`| Normalized `max_i dev[i]/tol[i]` score; `None` in older recordings — `normalized_score()` recomputes it from `deviations`/`tolerances` |
+| `deviations`         | `Vec<Millimeters>`  | `\|measured[i] − reference[i]\|`, parallel to `measured_distances` - the raw basis for per-pair analysis |
+| `tolerance`          | `PatternTolerance`  | Scalar tolerance applied during the test (also the fallback for partial candidates - pin-drop re-indexes the fingerprint) |
+| `tolerances`         | `Vec<Millimeters>`  | Per-index tolerances when the pattern configures them; **absent** (not `null`) when scalar-only - `#[serde(default)]` keeps older recordings loadable |
+| `score`              | `Option<MatchScore>`| Normalized `max_i dev[i]/tol[i]` score; `None` in older recordings - `normalized_score()` recomputes it from `deviations`/`tolerances` |
 | `match_error`        | `Millimeters`       | Total absolute deviation; recorded for rejected candidates too |
 
 Derived helpers on `CandidateReport`: `required_tolerance()`
-(`max(deviations)` — tolerance at which the candidate would have matched),
+(`max(deviations)` - tolerance at which the candidate would have matched),
 `tolerance_at(i)` (effective per-index tolerance), `normalized_score()`
 (stored score or recomputed), `matches_label()` (name or numeric id).
 
@@ -102,7 +102,7 @@ Derived helpers on `CandidateReport`: `required_tolerance()`
 
 The tracker's view of a tangible within a frame. Unlike the interface-facing
 serialization of `TrackedTangible` (which hides internals), the record keeps
-`frames_since_match` — the flappy-contact analysis needs to distinguish raw
+`frames_since_match` - the flappy-contact analysis needs to distinguish raw
 matches from stably tracked objects.
 
 | Field                 | Rust type             | JSON            |
@@ -127,18 +127,18 @@ conversions, `Display`.
 | Type                  | Wraps    | Purpose |
 |-----------------------|----------|---------|
 | `Milliseconds`        | `u64`    | Frame timestamps; `From<Duration>`/`Into<Duration>` |
-| `FrameNumber`         | `u64`    | Frame ordinal — session-local `SYN_REPORT` counter |
-| `FrameCount`          | `u64`    | Frame cardinality; `AddAssign` — grows only, never decrements |
+| `FrameNumber`         | `u64`    | Frame ordinal - session-local `SYN_REPORT` counter |
+| `FrameCount`          | `u64`    | Frame cardinality; `AddAssign` - grows only, never decrements |
 | `RemainingFrameCount` | `u64`    | Depleting frame budget; saturating `SubAssign` + `is_expired` |
-| `CandidateCount`      | `u64`    | Count of candidate reports — distinct from frame counts (one frame can hold several matched candidates) |
+| `CandidateCount`      | `u64`    | Count of candidate reports - distinct from frame counts (one frame can hold several matched candidates) |
 | `MatchScore`          | `f64`    | Normalized deviation ratio; `≤ 1.0` ⟺ matched |
 | `RecordLabel`         | `String` | Ground-truth tag (`--record-label`, keypress, API) |
 
 ## Units & Markers
 
-- All spatial quantities are `Millimeters` — the same domain as
+- All spatial quantities are `Millimeters` - the same domain as
   `TangiblePattern`. No raw axis values appear in the JSONL; when calibration
-  was unavailable `calibration` is `null` and positions stay in raw units —
+  was unavailable `calibration` is `null` and positions stay in raw units -
   the marker records that fact.
 - `Calibration`, `UnitsPerMm` and `RawAxisValue` carry `Serialize`/
   `Deserialize` so the calibration snapshot round-trips inside the record.
@@ -161,18 +161,18 @@ enum ControlCommand {
 ```
 
 `StartRecording` carries the artifact base path (`<base>.jsonl` +
-`<base>.evtest`); `SetRecordLabel` re-tags subsequent frames — the API
+`<base>.evtest`); `SetRecordLabel` re-tags subsequent frames - the API
 counterpart of the stdin keypress. GraphQL mutations, D-Bus methods and MCP
 tools map onto these variants (task 1.5).
 
 ## Design Rules
 
 - **Shared schema**: the same record types serialize in the engine and
-  deserialize in `crates/analysis` — no schema drift; the `v` version gate
+  deserialize in `crates/analysis` - no schema drift; the `v` version gate
   still rejects unknown versions.
 - **Opt-in diagnostics**: `CandidateReport` is only produced when the
   recording hook is attached; the hot loop allocates nothing otherwise.
 - **Versioned & append-only**: every line carries `"v"`; tooling refuses
   unknown versions.
-- **Recording artifacts live outside `profiles/`** — profiles stay
+- **Recording artifacts live outside `profiles/`** - profiles stay
   hand-managed, recordings are generated data.
