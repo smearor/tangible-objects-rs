@@ -18,6 +18,8 @@ use tangible_objects_engine::FilterProxy;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
+use tangible_objects_model::Calibration;
+use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
@@ -32,6 +34,41 @@ use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::ProfileInfo;
 use tangible_objects_runtime::RecordingStatus;
 use tracing::warn;
+
+/// Effective calibration for a live device.
+///
+/// ABS_INFO (`device.calibration()`) is authoritative for axis bounds, but
+/// when the device's profile declares a resolution override the measured
+/// physical resolution wins - some panels misreport their units/mm in
+/// firmware (e.g. the SiS panel reporting 7/12 while driving a 65" display).
+/// Returns the reported calibration when the device has no profile or the
+/// profile has no override.
+pub fn effective_calibration(
+    device: &TouchDevice,
+    device_profiles: Option<&Path>,
+) -> Option<Calibration> {
+    let reported = device.calibration()?;
+    let mut registry = DeviceRegistry::builtin();
+    if let Some(dir) = device_profiles {
+        registry = registry.with_dir(dir);
+    }
+    let id = device.inner().input_id();
+    let profile = registry.find_by_ids(id.vendor(), id.product())?;
+    let (x_res, y_res) = profile.resolution_override()?;
+    println!(
+        "Resolution-Override aus Geräteprofil: X={:.3}, Y={:.3} units/mm",
+        x_res.as_f64(),
+        y_res.as_f64()
+    );
+    Some(Calibration::with_bounds(
+        x_res,
+        y_res,
+        reported.x_min,
+        reported.x_max,
+        reported.y_min,
+        reported.y_max,
+    ))
+}
 
 /// Loads figure patterns from a profile directory (default: `profiles/`).
 pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
@@ -195,6 +232,7 @@ pub fn run_live(
     patterns: &[TangiblePattern],
     interfaces: Interfaces,
     edge: Option<Millimeters>,
+    device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
@@ -204,7 +242,7 @@ pub fn run_live(
     }
 
     let mut engine = Engine::new(patterns.to_vec());
-    if let Some(cal) = device.calibration() {
+    if let Some(cal) = effective_calibration(&device, device_profiles) {
         println!(
             "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
@@ -384,6 +422,7 @@ pub fn run_filter(
     path: &Path,
     patterns: &[TangiblePattern],
     edge: Option<Millimeters>,
+    device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
     println!("Filter-Proxy: {}", path.display());
@@ -392,7 +431,7 @@ pub fn run_filter(
     }
 
     let mut engine = Engine::new(patterns.to_vec());
-    if let Some(cal) = device.calibration() {
+    if let Some(cal) = effective_calibration(&device, device_profiles) {
         println!(
             "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
@@ -499,6 +538,7 @@ pub fn run_record(
     patterns: &[TangiblePattern],
     interfaces: Interfaces,
     edge: Option<Millimeters>,
+    device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
@@ -508,7 +548,7 @@ pub fn run_record(
     }
 
     let mut engine = Engine::new(patterns.to_vec());
-    if let Some(cal) = device.calibration() {
+    if let Some(cal) = effective_calibration(&device, device_profiles) {
         println!(
             "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
@@ -684,6 +724,7 @@ pub fn run_train(
     name: &str,
     tolerance: impl Into<Millimeters>,
     profiles_dir: Option<&str>,
+    device_profiles: Option<&Path>,
 ) -> Result<()> {
     let tolerance = tolerance.into();
     let mut device = TouchDevice::open(path).into_diagnostic()?;
@@ -696,7 +737,7 @@ pub fn run_train(
     println!("Drücke Enter zum Erfassen, Ctrl+C zum Abbrechen.\n");
 
     let mut engine = Engine::new(Vec::new());
-    if let Some(cal) = device.calibration() {
+    if let Some(cal) = effective_calibration(&device, device_profiles) {
         println!(
             "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res

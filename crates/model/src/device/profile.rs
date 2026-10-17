@@ -36,6 +36,14 @@ pub struct DeviceProfile {
     pub y_min: RawAxisValue,
     /// Maximum raw Y value.
     pub y_max: RawAxisValue,
+    /// Measured physical resolution on X - used instead of `x_res` when the
+    /// firmware misreports axis density (e.g. a 65" panel whose controller
+    /// declares 7 units/mm while the real sensor grid is ~2.87).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x_res_override: Option<UnitsPerMm>,
+    /// Measured physical resolution on Y (see `x_res_override`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y_res_override: Option<UnitsPerMm>,
     /// `EV_ABS` codes the device emits (e.g. `53`/`54`/`57`, plus legacy
     /// `0`/`1` where present). Converting to this device drops any source
     /// event whose code is not listed.
@@ -51,11 +59,23 @@ pub struct DeviceProfile {
 }
 
 impl DeviceProfile {
-    /// The affine axis map as a [`Calibration`].
+    /// The affine axis map as a [`Calibration`] - the resolution override
+    /// (physical truth) wins over the firmware-reported value when present.
     pub fn calibration(&self) -> Calibration {
         Calibration::with_bounds(
-            self.x_res, self.y_res, self.x_min, self.x_max, self.y_min, self.y_max,
+            self.x_res_override.unwrap_or(self.x_res),
+            self.y_res_override.unwrap_or(self.y_res),
+            self.x_min,
+            self.x_max,
+            self.y_min,
+            self.y_max,
         )
+    }
+
+    /// The measured resolutions when the firmware misreports them - `Some`
+    /// only when the profile declares an override for *both* axes.
+    pub fn resolution_override(&self) -> Option<(UnitsPerMm, UnitsPerMm)> {
+        self.x_res_override.zip(self.y_res_override)
     }
 
     /// Whether the device emits `(event_type, code)` - conversion drops
@@ -76,9 +96,17 @@ impl DeviceProfile {
     /// source geometry exceeded this device's bounds).
     pub fn to_raw(&self, position: Millimeters, axis_x: bool) -> (RawAxisValue, bool) {
         let (res, min, max) = if axis_x {
-            (self.x_res, self.x_min, self.x_max)
+            (
+                self.x_res_override.unwrap_or(self.x_res),
+                self.x_min,
+                self.x_max,
+            )
         } else {
-            (self.y_res, self.y_min, self.y_max)
+            (
+                self.y_res_override.unwrap_or(self.y_res),
+                self.y_min,
+                self.y_max,
+            )
         };
         let raw = position.as_f64() * res.as_f64() + min.as_f64();
         let clamped = raw.clamp(min.as_f64(), max.as_f64());
@@ -110,6 +138,8 @@ mod tests {
             abs_codes: vec![53, 54, 57],
             key_codes: vec![330],
             report_rate_hz: Some(120),
+            x_res_override: None,
+            y_res_override: None,
         }
     }
 

@@ -56,8 +56,11 @@ Gerät erkannt: SiS HID Touch Controller (SiS HID Touch Controller) → /dev/inp
 
 ### Deliberate limits
 
-- The profile match only selects **which** device - calibration still
-  comes from `ABS_INFO` at open (more accurate than static profile values).
+- The profile match only selects **which** device - axis bounds come from
+  `ABS_INFO` at open. Resolution is different: `x_res_override`/
+  `y_res_override` in the profile win over `ABS_INFO` when the firmware
+  misreports density (`modes::effective_calibration`, e.g. the SiS panel
+  declares 7/12 units/mm while driving a 65" display at ~2.87/5.10).
 - Devices without a known profile are never guessed - a multitouch
   touchpad auto-selected as "the touchscreen" would be worse than a clear
   error. Unknown hardware gets a `DeviceProfile` first.

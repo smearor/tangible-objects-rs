@@ -10,6 +10,11 @@ x_min = 0.0
 x_max = 4095.0
 y_min = 0.0
 y_max = 4095.0
+# The firmware-reported resolutions are wrong: this controller drives an
+# iiyama ProLite TF6539UHSC-B1AG (65", active area 1428.48 x 803.52 mm), so
+# the true densities are 4095/1428.48 and 4095/803.52 units per mm.
+x_res_override = 2.867
+y_res_override = 5.096
 # EV_ABS: 0=ABS_X, 1=ABS_Y (legacy single-touch), 47=ABS_MT_SLOT,
 #         53=ABS_MT_POSITION_X, 54=ABS_MT_POSITION_Y, 57=ABS_MT_TRACKING_ID
 abs_codes = [0, 1, 47, 53, 54, 57]

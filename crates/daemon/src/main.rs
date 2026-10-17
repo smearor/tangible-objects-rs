@@ -12,6 +12,7 @@ mod gtk_app;
 
 use std::net::SocketAddr;
 use std::path::Path;
+use std::path::PathBuf;
 
 use miette::IntoDiagnostic;
 use miette::Result;
@@ -173,8 +174,15 @@ fn main() -> Result<()> {
                     &patterns,
                     interfaces,
                     edge,
+                    device_profiles.as_deref().map(Path::new),
                 ),
-                None => modes::run_live(&path, &patterns, interfaces, edge),
+                None => modes::run_live(
+                    &path,
+                    &patterns,
+                    interfaces,
+                    edge,
+                    device_profiles.as_deref().map(Path::new),
+                ),
             }
         }
         "--filter" => {
@@ -182,14 +190,25 @@ fn main() -> Result<()> {
             // events on a uinput clone (FILTER_PROXY_VIRTUAL.md).
             let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
-            modes::run_filter(&dev, &patterns, edge)
+            modes::run_filter(
+                &dev,
+                &patterns,
+                edge,
+                device_profiles.as_deref().map(Path::new),
+            )
         }
         "--train" => {
             let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let fig_name = name
                 .ok_or_else(|| miette::miette!("Usage: tangible-objects --train --name <name>"))?;
             let tol = Millimeters::new(tolerance.unwrap_or(30.0));
-            modes::run_train(&dev, &fig_name, tol, profiles_dir.as_deref())
+            modes::run_train(
+                &dev,
+                &fig_name,
+                tol,
+                profiles_dir.as_deref(),
+                device_profiles.as_deref().map(Path::new),
+            )
         }
         "--analyze" => {
             let path = file.ok_or_else(|| {
@@ -228,7 +247,12 @@ fn main() -> Result<()> {
             let dev = device.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --gui --device /dev/input/eventX")
             })?;
-            run_gui_mode(&dev, profiles_dir.as_deref(), edge)
+            run_gui_mode(
+                &dev,
+                profiles_dir.as_deref(),
+                device_profiles.as_deref().map(PathBuf::from),
+                edge,
+            )
         }
         _ => {
             print_help();
@@ -313,14 +337,24 @@ fn print_help() {
 
 /// Runs the GTK visualization (feature `gui`).
 #[cfg(feature = "gui")]
-fn run_gui_mode(dev: &str, profiles_dir: Option<&str>, edge: Option<Millimeters>) -> Result<()> {
-    gtk_app::run_gui(dev, profiles_dir, edge);
+fn run_gui_mode(
+    dev: &str,
+    profiles_dir: Option<&str>,
+    device_profiles: Option<PathBuf>,
+    edge: Option<Millimeters>,
+) -> Result<()> {
+    gtk_app::run_gui(dev, profiles_dir, device_profiles, edge);
     Ok(())
 }
 
 /// Fallback when the binary was built without the `gui` feature.
 #[cfg(not(feature = "gui"))]
-fn run_gui_mode(_dev: &str, _profiles_dir: Option<&str>, _edge: Option<Millimeters>) -> Result<()> {
+fn run_gui_mode(
+    _dev: &str,
+    _profiles_dir: Option<&str>,
+    _device_profiles: Option<PathBuf>,
+    _edge: Option<Millimeters>,
+) -> Result<()> {
     eprintln!("GUI-Modus nicht kompiliert. Baue mit: cargo build --features gui");
     std::process::exit(1);
 }

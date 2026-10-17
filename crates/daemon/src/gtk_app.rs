@@ -1,6 +1,7 @@
 //! Fullscreen GTK4/Cairo visualization (temporary home in the daemon until
 //! the dedicated `tangible-objects-ui` crate exists).
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -54,7 +55,12 @@ struct SharedState {
 }
 
 /// Starts the fullscreen GUI on the given evdev device path.
-pub fn run_gui(device_path: &str, profiles_dir: Option<&str>, edge: Option<Millimeters>) {
+pub fn run_gui(
+    device_path: &str,
+    profiles_dir: Option<&str>,
+    device_profiles: Option<PathBuf>,
+    edge: Option<Millimeters>,
+) {
     let app = Application::builder()
         .application_id("org.tangibleobjects.gui")
         .build();
@@ -62,6 +68,7 @@ pub fn run_gui(device_path: &str, profiles_dir: Option<&str>, edge: Option<Milli
     let patterns = crate::modes::load_patterns(profiles_dir);
     let device_path = device_path.to_string();
     let profiles_dir = profiles_dir.map(|s| s.to_string());
+    let device_profiles = device_profiles.map(std::sync::Arc::new);
 
     app.connect_activate(move |app| {
         let win = ApplicationWindow::builder()
@@ -84,8 +91,15 @@ pub fn run_gui(device_path: &str, profiles_dir: Option<&str>, edge: Option<Milli
         let state_thread = state.clone();
         let patterns_thread = patterns.clone();
         let dev_path_thread = device_path.clone();
+        let device_profiles_thread = device_profiles.clone();
         std::thread::spawn(move || {
-            evdev_thread(dev_path_thread, patterns_thread, state_thread, edge);
+            evdev_thread(
+                dev_path_thread,
+                patterns_thread,
+                state_thread,
+                edge,
+                device_profiles_thread,
+            );
         });
 
         // DrawingArea.
@@ -143,6 +157,7 @@ fn evdev_thread(
     patterns: Vec<TangiblePattern>,
     state: Arc<Mutex<SharedState>>,
     edge: Option<Millimeters>,
+    device_profiles: Option<Arc<PathBuf>>,
 ) {
     let mut device = match TouchDevice::open(std::path::Path::new(&device_path)) {
         Ok(d) => d,
@@ -159,7 +174,10 @@ fn evdev_thread(
         engine.set_edge_margin(mm);
     }
     let mut touch_state = TouchState::new();
-    if let Some(cal) = device.calibration() {
+    if let Some(cal) = crate::modes::effective_calibration(
+        &device,
+        device_profiles.as_deref().map(PathBuf::as_path),
+    ) {
         touch_state.set_calibration(cal);
         engine.set_calibration(cal);
         if let Ok(mut s) = state.lock() {
