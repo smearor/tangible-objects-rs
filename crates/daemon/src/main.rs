@@ -44,6 +44,7 @@ fn main() -> Result<()> {
     let mut convert_to: Option<String> = None;
     let mut edge: Option<Millimeters> = None;
     let mut stability: Option<u64> = None;
+    let mut legacy: Option<String> = None;
     let mut dbus = false;
 
     let mut i = 0;
@@ -121,6 +122,10 @@ fn main() -> Result<()> {
             "--dbus" => {
                 dbus = true;
             }
+            "--legacy" => {
+                legacy = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--stability-frames" => {
                 stability = args.get(i + 1).and_then(|s| s.parse().ok());
                 i += 1;
@@ -196,12 +201,18 @@ fn main() -> Result<()> {
             let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
             let interfaces = parse_interfaces(graphql_listen, mcp_listen, dbus)?;
+            let legacy_mode = legacy
+                .as_deref()
+                .map(|value| value.parse::<tangible_objects_engine::LegacyMode>())
+                .transpose()
+                .map_err(|_| miette::miette!("--legacy must be one of: auto, always, never"))?;
             modes::run_filter(
                 &dev,
                 &patterns,
                 interfaces,
                 edge,
                 stability.map(tangible_objects_model::FrameCount::new),
+                legacy_mode,
                 device_profiles.as_deref().map(Path::new),
             )
         }
@@ -338,6 +349,9 @@ fn print_help() {
     );
     eprintln!(
         "  --stability-frames <n> Konsekutive Match-Frames vor Suppression (--filter, Default: 2)"
+    );
+    eprintln!(
+        "  --legacy <auto|always|never>  BTN_TOUCH/ABS_X/Y-Handling (--filter, Default: auto)"
     );
     eprintln!();
     eprintln!("Beispiel:");

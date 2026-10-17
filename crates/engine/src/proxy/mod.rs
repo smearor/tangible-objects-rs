@@ -5,7 +5,9 @@
 //! contacts never reach it.
 
 mod filter;
+mod legacy_mode;
 mod virtual_device;
 
 pub use filter::FilterProxy;
+pub use legacy_mode::LegacyMode;
 pub use virtual_device::VirtualTouchscreen;

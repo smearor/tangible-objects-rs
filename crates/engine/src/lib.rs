@@ -23,6 +23,7 @@ pub use engine::EngineFrame;
 pub use engine::TouchState;
 pub use engine::Tracker;
 pub use proxy::FilterProxy;
+pub use proxy::LegacyMode;
 pub use proxy::VirtualTouchscreen;
 pub use recorder::FrameContext;
 pub use recorder::FrameRecorder;

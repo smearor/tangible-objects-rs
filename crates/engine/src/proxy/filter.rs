@@ -5,12 +5,15 @@ use evdev::InputEvent;
 
 use tangible_objects_model::ABS_MT_SLOT;
 use tangible_objects_model::ABS_MT_TRACKING_ID;
+use tangible_objects_model::BTN_TOUCH;
 use tangible_objects_model::EventType;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::SYN_REPORT;
 use tangible_objects_model::TouchPointSlot;
+
+use super::LegacyMode;
 
 /// Frames a suppressed slot survives without a renewed match - mirrors the
 /// tracker's expiry hysteresis so a transient match loss (tilt, flaky pin)
@@ -36,7 +39,7 @@ const DEFAULT_STABILITY_GATE: FrameCount = FrameCount::new(2);
 /// Suppression is persistent: a slot classified as tangible stays
 /// suppressed across frames without match until its tracking contact ends
 /// or [`SUPPRESSION_HYSTERESIS`] expires. Entry is gated by
-/// [`STABILITY_GATE`] consecutive matched frames.
+/// `stability_gate` consecutive matched frames.
 pub struct FilterProxy {
     /// Events of the frame currently accumulating.
     frame: Vec<RawEvent>,
@@ -59,6 +62,9 @@ pub struct FilterProxy {
     held: HashMap<TouchPointSlot, Vec<RawEvent>>,
     /// Active suppression policy.
     mode: FilterMode,
+    /// Policy for the legacy single-touch events (`BTN_TOUCH`, `ABS_X`,
+    /// `ABS_Y`) - not slot-scoped, handled separately.
+    legacy: LegacyMode,
 }
 
 impl Default for FilterProxy {
@@ -78,7 +84,15 @@ impl FilterProxy {
             held: HashMap::new(),
             mode: FilterMode::default(),
             stability_gate: DEFAULT_STABILITY_GATE,
+            legacy: LegacyMode::default(),
         }
+    }
+
+    /// Switches the legacy single-touch event policy (`BTN_TOUCH`,
+    /// `ABS_X`, `ABS_Y`). [`LegacyMode::Auto`] (default) emits them only
+    /// while a contact is live on the virtual device.
+    pub fn set_legacy_mode(&mut self, legacy: LegacyMode) {
+        self.legacy = legacy;
     }
 
     /// Switches the suppression policy (`SetFilterMode` control command).
@@ -150,6 +164,10 @@ impl FilterProxy {
         });
 
         let mut out = Vec::with_capacity(self.frame.len() + 8);
+        // Whether the clone still believes a contact is live right now -
+        // captured before retraction injections and the event scan so the
+        // legacy rule below can emit the BTN_TOUCH=0 down-transition.
+        let had_contact = !self.emitted.is_empty();
 
         // TangiblesOnly: no contact ever reaches the clone. Slots still
         // live from an earlier policy get retracted once; classification
@@ -161,6 +179,13 @@ impl FilterProxy {
             for slot in emitted {
                 out.push(input_event(ABS_MT_SLOT.as_u16(), slot.as_u32() as i32));
                 out.push(input_event(ABS_MT_TRACKING_ID.as_u16(), -1));
+            }
+            if had_contact {
+                out.push(InputEvent::new(
+                    evdev::EventType(u16::from(EventType::Key)),
+                    BTN_TOUCH.as_u16(),
+                    0,
+                ));
             }
             out.push(syn_event());
             return out;
@@ -212,11 +237,23 @@ impl FilterProxy {
         }
 
         let mut current_slot: Option<TouchPointSlot> = None;
+        // Legacy single-touch events (ABS_X, ABS_Y, BTN_TOUCH) are not
+        // slot-scoped - they are collected and emitted or dropped at
+        // frame end depending on `legacy` and the emitted contact set.
+        let mut legacy_events = Vec::new();
         for raw in self.frame.drain(..) {
             if raw.is_syn_report() {
                 continue;
             }
             if raw.event_type == EventType::Abs {
+                // Multitouch axes live in the ABS_MT_* range 0x2f..=0x3e
+                // (SLOT, TOOL, POSITION_*, TRACKING_ID, PRESSURE, ...).
+                // Legacy axes (ABS_X=0, ABS_Y=1) are slot-independent.
+                let is_mt = (ABS_MT_SLOT.as_u16()..=0x3e).contains(&raw.code.as_u16());
+                if !is_mt {
+                    legacy_events.push(raw);
+                    continue;
+                }
                 if raw.code == ABS_MT_SLOT {
                     current_slot = (raw.value >= 0).then(|| TouchPointSlot::new(raw.value as u32));
                 }
@@ -267,8 +304,24 @@ impl FilterProxy {
                         self.emitted.insert(slot);
                     }
                 }
+            } else if raw.event_type == EventType::Key && raw.code == BTN_TOUCH {
+                legacy_events.push(raw);
+                continue;
             }
             out.push(to_input_event(&raw));
+        }
+
+        // Legacy single-touch events mirror "at least one active contact" -
+        // emitting them with an empty virtual device would fabricate a
+        // phantom tap. The down-transition (`had_contact` → none) must
+        // still emit so the clone's BTN_TOUCH=0 reaches the system.
+        let emit_legacy = match self.legacy {
+            LegacyMode::Always => true,
+            LegacyMode::Never => false,
+            LegacyMode::Auto => !self.emitted.is_empty() || had_contact,
+        };
+        if emit_legacy {
+            out.extend(legacy_events.iter().map(to_input_event));
         }
 
         out.push(syn_event());
@@ -310,6 +363,8 @@ mod tests {
     use tangible_objects_model::ABS_MT_POSITION_Y;
     use tangible_objects_model::ABS_MT_SLOT;
     use tangible_objects_model::ABS_MT_TRACKING_ID;
+    use tangible_objects_model::ABS_X;
+    use tangible_objects_model::BTN_TOUCH;
     use tangible_objects_model::EventCode;
     use tangible_objects_model::EventType;
     use tangible_objects_model::RawEvent;
@@ -322,6 +377,17 @@ mod tests {
 
     fn syn() -> RawEvent {
         RawEvent::new(EventType::Syn, SYN_REPORT, 0)
+    }
+
+    /// True for a legacy `ABS_X` event (code 0 is shared with SYN_REPORT -
+    /// the event type disambiguates).
+    fn is_legacy_axis(e: &evdev::InputEvent) -> bool {
+        e.event_type() == evdev::EventType::ABSOLUTE && e.code() == ABS_X.as_u16()
+    }
+
+    /// True for a `BTN_TOUCH` key event.
+    fn is_btn_touch(e: &evdev::InputEvent) -> bool {
+        e.event_type() == evdev::EventType::KEY && e.code() == BTN_TOUCH.as_u16()
     }
 
     /// Feeds a minimal frame for `slot` and finishes it with `matched`.
@@ -576,5 +642,92 @@ mod tests {
         contact_frame(&mut proxy, 0, 7, 502);
         let out = proxy.finish(&HashSet::new());
         assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn legacy_events_dropped_when_no_contact_is_live() {
+        let mut proxy = FilterProxy::new();
+        proxy.set_mode(tangible_objects_model::FilterMode::Gated, None);
+        // A suppressed tangible plus legacy single-touch events: the
+        // clone has no live contact, so ABS_X/BTN_TOUCH must not leak.
+        suppress(&mut proxy, 0);
+        for ev in [
+            abs(ABS_MT_SLOT, 0),
+            abs(ABS_MT_POSITION_X, 500),
+            abs(ABS_X, 500),
+            RawEvent::new(EventType::Key, BTN_TOUCH, 1),
+            syn(),
+        ] {
+            proxy.push(ev);
+        }
+        let out = proxy.finish(&HashSet::new());
+        assert_eq!(out.len(), 1); // SYN only
+    }
+
+    #[test]
+    fn legacy_events_pass_with_a_live_contact() {
+        let mut proxy = FilterProxy::new();
+        proxy.set_mode(tangible_objects_model::FilterMode::Gated, None);
+        // An emitted finger contact plus legacy events: Auto mirrors them.
+        for ev in [
+            abs(ABS_MT_SLOT, 0),
+            abs(ABS_MT_TRACKING_ID, 9),
+            abs(ABS_MT_POSITION_X, 100),
+            abs(ABS_X, 100),
+            RawEvent::new(EventType::Key, BTN_TOUCH, 1),
+            syn(),
+        ] {
+            proxy.push(ev);
+        }
+        let out = proxy.finish(&HashSet::new());
+        assert!(out.iter().any(is_legacy_axis));
+        assert!(out.iter().any(is_btn_touch));
+    }
+
+    #[test]
+    fn legacy_mode_never_drops_even_with_contacts() {
+        let mut proxy = FilterProxy::new();
+        proxy.set_mode(tangible_objects_model::FilterMode::Gated, None);
+        proxy.set_legacy_mode(super::LegacyMode::Never);
+        contact_frame(&mut proxy, 0, 7, 100);
+        proxy.push(abs(ABS_X, 100));
+        proxy.push(RawEvent::new(EventType::Key, BTN_TOUCH, 1));
+        let out = proxy.finish(&HashSet::new());
+        assert!(out.iter().all(|e| !is_legacy_axis(e)));
+        assert!(out.iter().all(|e| !is_btn_touch(e)));
+    }
+
+    #[test]
+    fn legacy_mode_always_emits_without_contacts() {
+        let mut proxy = FilterProxy::new();
+        proxy.set_mode(tangible_objects_model::FilterMode::Gated, None);
+        proxy.set_legacy_mode(super::LegacyMode::Always);
+        proxy.push(abs(ABS_X, 77));
+        proxy.push(syn());
+        let out = proxy.finish(&HashSet::new());
+        assert!(out.iter().any(is_legacy_axis));
+    }
+
+    #[test]
+    fn legacy_lift_emits_btn_touch_up() {
+        let mut proxy = FilterProxy::new();
+        proxy.set_mode(tangible_objects_model::FilterMode::Gated, None);
+        // Finger down: contact emitted live, BTN_TOUCH=1 passes.
+        contact_frame(&mut proxy, 0, 7, 100);
+        proxy.push(RawEvent::new(EventType::Key, BTN_TOUCH, 1));
+        proxy.finish(&HashSet::new());
+        // Finger up: the frame ends with no live contact, but BTN_TOUCH=0
+        // must still pass so the clone clears its key state (otherwise it
+        // stays stuck at 1).
+        for ev in [
+            abs(ABS_MT_SLOT, 0),
+            abs(ABS_MT_TRACKING_ID, -1),
+            RawEvent::new(EventType::Key, BTN_TOUCH, 0),
+            syn(),
+        ] {
+            proxy.push(ev);
+        }
+        let out = proxy.finish(&HashSet::new());
+        assert!(out.iter().any(|e| is_btn_touch(e) && e.value() == 0));
     }
 }

@@ -15,6 +15,7 @@ use tangible_objects_engine::Engine;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EvtestReplay;
 use tangible_objects_engine::FilterProxy;
+use tangible_objects_engine::LegacyMode;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
@@ -430,6 +431,7 @@ pub fn run_filter(
     interfaces: Interfaces,
     edge: Option<Millimeters>,
     stability: Option<FrameCount>,
+    legacy: Option<LegacyMode>,
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
@@ -466,6 +468,10 @@ pub fn run_filter(
     if let Some(gate) = stability {
         proxy.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
         println!("Stabilitäts-Gate: {gate} Frames");
+    }
+    if let Some(legacy_mode) = legacy {
+        proxy.set_legacy_mode(legacy_mode);
+        println!("Legacy-Events (BTN_TOUCH/ABS_X/Y): {legacy_mode}");
     }
     let mut frame: u64 = 0;
     let device_fd = device.as_raw_fd();
