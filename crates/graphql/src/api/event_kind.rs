@@ -21,4 +21,10 @@ pub enum EventKind {
     ObjectRemoved,
     /// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
     ObjectMoved,
+    /// An occupancy field became occupied (debounced placed).
+    FieldPlaced,
+    /// An occupancy field became empty (debounced lifted).
+    FieldLifted,
+    /// An occupancy field's debounced contact count changed.
+    FieldCountChanged,
 }

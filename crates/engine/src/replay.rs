@@ -18,8 +18,13 @@ use crate::EngineError;
 /// calibration (resolution + bounds of the position axes) from the header
 /// block before the `Testing ...` line.
 pub struct EvtestReplay {
+    /// Buffered reader over the recording file - events stream out one
+    /// per `next_event` call.
     reader: BufReader<File>,
+    /// Calibration extracted from the evtest header (`ABS_MT_POSITION_X/Y`
+    /// resolution + bounds); `None` when the header carried no axes.
     calibration: Option<Calibration>,
+    /// Device name from the `Input device name:` header line, if any.
     device_name: Option<String>,
 }
 

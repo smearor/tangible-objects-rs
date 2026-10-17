@@ -5,8 +5,10 @@
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
 mod calibration;
+mod contact_count;
 mod device;
 mod event;
+mod field;
 mod filter_mode;
 mod millimeters;
 mod milliseconds;
@@ -24,6 +26,7 @@ mod units_per_mm;
 mod vec2;
 
 pub use calibration::Calibration;
+pub use contact_count::ContactCount;
 pub use device::DeviceError;
 pub use device::DeviceProfile;
 pub use device::DeviceRegistry;
@@ -40,6 +43,9 @@ pub use event::EventType;
 pub use event::NamedEventCode;
 pub use event::RawEvent;
 pub use event::SYN_REPORT;
+pub use field::Field;
+pub use field::FieldSet;
+pub use field::WindowAnchor;
 pub use filter_mode::FilterMode;
 pub use millimeters::Millimeters;
 pub use milliseconds::Milliseconds;

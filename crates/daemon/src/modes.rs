@@ -21,6 +21,7 @@ use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeviceRegistry;
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
@@ -172,6 +173,15 @@ pub fn run_replay(
                 EngineEvent::TangibleRemoved(_) if engine.tracked().is_empty() => {
                     println!("[Frame {frame_no}] Figur verloren");
                 }
+                EngineEvent::FieldPlaced { set, field } => {
+                    println!("[Frame {frame_no}] Feld belegt: {set}.{field}")
+                }
+                EngineEvent::FieldLifted { set, field } => {
+                    println!("[Frame {frame_no}] Feld frei: {set}.{field}")
+                }
+                EngineEvent::FieldCountChanged { set, field, count } => {
+                    println!("[Frame {frame_no}] Feld {set}.{field}: {count} Kontakt(e)")
+                }
                 _ => {}
             }
         }
@@ -226,6 +236,53 @@ pub struct Interfaces {
     pub mcp_addr: Option<SocketAddr>,
 }
 
+/// Optional detection settings bundled for the run_* modes.
+#[derive(Debug, Default)]
+pub struct DetectionConfig {
+    /// Edge ghost margin in millimeters (`--edge-filter-mm`).
+    pub edge: Option<Millimeters>,
+    /// Occupancy field sets (`--fields`).
+    pub fields: Vec<FieldSet>,
+}
+
+/// Loads occupancy field sets from a file or directory (`--fields`).
+///
+/// A `.toml` file loads one set, a directory loads all sets inside.
+/// Invalid files are reported and skipped.
+pub fn load_field_sets(path: Option<&str>) -> Vec<FieldSet> {
+    let Some(path) = path else { return Vec::new() };
+    let path = Path::new(path);
+    let sets = if path.is_dir() {
+        let (sets, errors) = FieldSet::load_dir(path);
+        for (file, error) in &errors {
+            eprintln!(
+                "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
+                file.display()
+            );
+        }
+        sets
+    } else {
+        match FieldSet::load(path) {
+            Ok(set) => vec![set],
+            Err(error) => {
+                eprintln!(
+                    "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
+                    path.display()
+                );
+                Vec::new()
+            }
+        }
+    };
+    for set in &sets {
+        println!(
+            "Feld-Set geladen: {} ({} Felder)",
+            set.name,
+            set.fields.len()
+        );
+    }
+    sets
+}
+
 /// Live detection loop on a real evdev device.
 ///
 /// `interfaces` selects which Phase-2 interfaces are served on dedicated
@@ -234,7 +291,7 @@ pub fn run_live(
     path: &Path,
     patterns: &[TangiblePattern],
     interfaces: Interfaces,
-    edge: Option<Millimeters>,
+    config: DetectionConfig,
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
@@ -256,10 +313,11 @@ pub fn run_live(
             "Warnung: Keine Kalibrierung vom Gerät lesbar. Profile müssen in Rohkoordinaten vorliegen."
         );
     }
-    if let Some(mm) = edge {
+    if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
         println!("Edge-Filter: {mm} mm");
     }
+    engine.set_fields(config.fields);
     println!("Ctrl+C zum Beenden\n");
 
     // Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
@@ -429,9 +487,9 @@ pub fn run_filter(
     path: &Path,
     patterns: &[TangiblePattern],
     interfaces: Interfaces,
-    edge: Option<Millimeters>,
     stability: Option<FrameCount>,
     legacy: Option<LegacyMode>,
+    config: DetectionConfig,
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
@@ -448,10 +506,11 @@ pub fn run_filter(
         );
         engine.set_calibration(cal);
     }
-    if let Some(mm) = edge {
+    if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
         println!("Edge-Filter: {mm} mm");
     }
+    engine.set_fields(config.fields);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
     device.grab().into_diagnostic()?;
@@ -590,7 +649,7 @@ pub fn run_record(
     label: Option<RecordLabel>,
     patterns: &[TangiblePattern],
     interfaces: Interfaces,
-    edge: Option<Millimeters>,
+    config: DetectionConfig,
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
@@ -612,10 +671,11 @@ pub fn run_record(
             "Warnung: Keine Kalibrierung vom Gerät lesbar. Positionen werden als Rohwerte aufgezeichnet."
         );
     }
-    if let Some(mm) = edge {
+    if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
         println!("Edge-Filter: {mm} mm");
     }
+    engine.set_fields(config.fields);
 
     let mut session = RecordingSession::start(
         base.to_path_buf(),

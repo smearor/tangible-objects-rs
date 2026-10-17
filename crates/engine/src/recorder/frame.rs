@@ -33,8 +33,14 @@ const FRAME_CHANNEL_CAPACITY: usize = 1024;
 /// a full buffer drops frames and counts them in
 /// [`FrameRecorder::dropped_count`].
 pub struct FrameRecorder {
+    /// Channel to the writer thread - `None` after shutdown so the
+    /// writer's `recv` fails and the thread finishes.
     sender: Option<SyncSender<FrameRecord>>,
+    /// Frames dropped because the channel was full; shared with the
+    /// polling side so [`Self::dropped_count`] stays readable while the
+    /// writer runs.
     dropped: Arc<AtomicU64>,
+    /// Writer thread join handle - `None` after `finish`/`shutdown`.
     thread: Option<JoinHandle<std::io::Result<()>>>,
 }
 

@@ -1,3 +1,4 @@
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::TrackedTangible;
 
 /// Domain event emitted by the engine for a completed input frame.
@@ -14,4 +15,27 @@ pub enum EngineEvent {
     TangibleMoved(TrackedTangible),
     /// A tracked tangible expired after exceeding its match-less frame budget.
     TangibleRemoved(TrackedTangible),
+    /// A field became occupied (debounced `placed` transition, count 0 -> n).
+    FieldPlaced {
+        /// Name of the owning field set.
+        set: String,
+        /// Name of the occupied field.
+        field: String,
+    },
+    /// A field became empty (debounced `lifted` transition, count n -> 0).
+    FieldLifted {
+        /// Name of the owning field set.
+        set: String,
+        /// Name of the vacated field.
+        field: String,
+    },
+    /// A field's debounced contact count changed (multi-contact fields).
+    FieldCountChanged {
+        /// Name of the owning field set.
+        set: String,
+        /// Name of the field.
+        field: String,
+        /// Confirmed contact count inside the field.
+        count: ContactCount,
+    },
 }

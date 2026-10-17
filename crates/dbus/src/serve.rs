@@ -82,6 +82,15 @@ async fn emit_signal(emitter: &SignalEmitter<'_>, event: &DomainEvent) {
         DomainEvent::Engine(EngineEvent::TangibleRemoved(tangible)) => {
             EngineService::tangible_removed(emitter, tangible).await
         }
+        DomainEvent::Engine(EngineEvent::FieldPlaced { set, field }) => {
+            EngineService::field_placed(emitter, set, field).await
+        }
+        DomainEvent::Engine(EngineEvent::FieldLifted { set, field }) => {
+            EngineService::field_lifted(emitter, set, field).await
+        }
+        DomainEvent::Engine(EngineEvent::FieldCountChanged { set, field, count }) => {
+            EngineService::field_count_changed(emitter, set, field, count.as_u32()).await
+        }
         DomainEvent::Set(action) => emit_set_action(emitter, action).await,
     };
     if let Err(err) = result {

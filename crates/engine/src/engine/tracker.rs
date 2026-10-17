@@ -27,12 +27,22 @@ use super::EngineEvent;
 /// the slot-affinity matching (TRACKING_STABILIZATION.md) - a bound slot
 /// is reserved for its owner and cannot be stolen by phantom candidates.
 pub struct Tracker {
+    /// Currently alive tangibles with EMA-smoothed pose and
+    /// `frames_since_match` age.
     tracked: Vec<TrackedTangible>,
     /// Slot bindings per tangible ID - the slots of its last match.
     slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
+    /// Smoothing factor of the exponential moving average applied to
+    /// center and rotation on every associated match (`0..1`; higher =
+    /// faster, more jitter).
     ema_alpha: f64,
+    /// Maximum distance between a match's center and a tracked
+    /// tangible's center for nearest-neighbor association.
     max_center_distance: Millimeters,
+    /// Frames a tracked tangible survives without a renewed match
+    /// (expiry hysteresis, e.g. against match flapping).
     max_frames_without_match: FrameCount,
+    /// Next free [`TangibleId`] - incremented for every new tangible.
     next_tangible_id: TangibleId,
 }
 

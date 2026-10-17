@@ -32,8 +32,13 @@ const RAW_CHANNEL_CAPACITY: usize = 8192;
 /// bounded channel: [`RawRecorder::record`] never blocks the device loop; a
 /// full buffer drops events and counts them in [`RawRecorder::dropped_count`].
 pub struct RawRecorder {
+    /// Channel to the writer thread carrying `(event, timestamp_secs)` -
+    /// `None` after shutdown so the writer's `recv` fails and the thread
+    /// finishes.
     sender: Option<SyncSender<(RawEvent, f64)>>,
+    /// Events dropped because the channel was full.
     dropped: Arc<AtomicU64>,
+    /// Writer thread join handle - `None` after `finish`/`shutdown`.
     thread: Option<JoinHandle<std::io::Result<()>>>,
 }
 

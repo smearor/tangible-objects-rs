@@ -45,6 +45,7 @@ fn main() -> Result<()> {
     let mut edge: Option<Millimeters> = None;
     let mut stability: Option<u64> = None;
     let mut legacy: Option<String> = None;
+    let mut fields_path: Option<String> = None;
     let mut dbus = false;
 
     let mut i = 0;
@@ -137,6 +138,10 @@ fn main() -> Result<()> {
                     .map(Millimeters::new);
                 i += 1;
             }
+            "--fields" => {
+                fields_path = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--help" | "-h" => {
                 mode = Some("--help");
             }
@@ -176,6 +181,10 @@ fn main() -> Result<()> {
             let path = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
             let interfaces = parse_interfaces(graphql_listen, mcp_listen, dbus)?;
+            let config = modes::DetectionConfig {
+                edge,
+                fields: modes::load_field_sets(fields_path.as_deref()),
+            };
             match record_base {
                 Some(base) => modes::run_record(
                     &path,
@@ -183,14 +192,14 @@ fn main() -> Result<()> {
                     record_label.map(RecordLabel::new),
                     &patterns,
                     interfaces,
-                    edge,
+                    config,
                     device_profiles.as_deref().map(Path::new),
                 ),
                 None => modes::run_live(
                     &path,
                     &patterns,
                     interfaces,
-                    edge,
+                    config,
                     device_profiles.as_deref().map(Path::new),
                 ),
             }
@@ -210,9 +219,12 @@ fn main() -> Result<()> {
                 &dev,
                 &patterns,
                 interfaces,
-                edge,
                 stability.map(tangible_objects_model::FrameCount::new),
                 legacy_mode,
+                modes::DetectionConfig {
+                    edge,
+                    fields: modes::load_field_sets(fields_path.as_deref()),
+                },
                 device_profiles.as_deref().map(Path::new),
             )
         }

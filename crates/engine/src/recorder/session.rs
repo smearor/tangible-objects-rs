@@ -29,11 +29,20 @@ use crate::EngineFrame;
 pub struct RecordingSession {
     /// Base path the artifacts are written to (without extension).
     pub base_path: PathBuf,
+    /// JSONL writer for processed frames (`<base>.jsonl`).
     frame_recorder: FrameRecorder,
+    /// evtest writer for raw events (`<base>.evtest`).
     raw_recorder: RawRecorder,
+    /// Calibration snapshot recorded into every frame's context.
     calibration: Option<Calibration>,
+    /// Session-wide ground-truth label (e.g. the figure being recorded).
     label: Option<RecordLabel>,
+    /// Temporary label override for `SetRecordLabel` - takes precedence
+    /// over `label` while its frame budget lasts.
     label_override: Option<LabelOverride>,
+    /// Frames recorded so far - the session's own counter, separate from
+    /// the frame numbers which count `SYN_REPORT`s including skipped
+    /// empty frames.
     recorded_frames: FrameCount,
 }
 

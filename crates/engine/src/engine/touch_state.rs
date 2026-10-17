@@ -18,8 +18,14 @@ use tangible_objects_model::Vec2;
 /// positions on `ABS_MT_POSITION_X/Y`. When a [`Calibration`] is set, raw
 /// device units are converted to millimeters on the fly.
 pub struct TouchState {
+    /// Active contacts keyed by slot - inserted on `TRACKING_ID >= 0`,
+    /// removed on lift-off (`-1`).
     slots: HashMap<TouchPointSlot, TouchPoint>,
+    /// Slot addressed by subsequent `ABS_MT_*` events (the kernel
+    /// delivers events per slot, addressed by `ABS_MT_SLOT`).
     current_slot: TouchPointSlot,
+    /// Raw-to-millimeter conversion for position updates; `None` leaves
+    /// positions in raw device units.
     calibration: Option<Calibration>,
 }
 

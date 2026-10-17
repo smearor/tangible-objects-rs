@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use tangible_objects_model::Calibration;
 use tangible_objects_model::CandidateReport;
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
@@ -13,6 +14,7 @@ use tracing::debug;
 
 use super::EngineEvent;
 use super::EngineFrame;
+use super::FieldTracker;
 use super::TouchState;
 use super::Tracker;
 use super::matching;
@@ -33,10 +35,22 @@ pub const DEFAULT_MAX_FRAMES_WITHOUT_MATCH: FrameCount = FrameCount::new(30);
 /// [`EngineFrame`] with the frame's matches, touches and domain events, and
 /// updates the tracker.
 pub struct Engine {
+    /// Slot state machine: accumulates `ABS_MT_*` events into active
+    /// contacts between `SYN_REPORT` boundaries.
     touch_state: TouchState,
+    /// Loaded figure patterns evaluated against every frame's touches.
     patterns: Vec<TangiblePattern>,
+    /// Frame-to-frame tracker: nearest-neighbor association, EMA
+    /// smoothing, slot bindings and expiry hysteresis.
     tracker: Tracker,
+    /// Occupancy tracking for single-contact field sets.
+    fields: FieldTracker,
+    /// Raw-to-millimeter conversion derived from the device's `ABS_INFO`,
+    /// possibly overridden by the device profile. `None` on replays
+    /// without an evtest header.
     calibration: Option<Calibration>,
+    /// Previous frame's touches - used to emit `TouchPointsUpdated` only
+    /// on actual change.
     prev_touches: Vec<TouchPoint>,
     /// Edge margin in millimeters — touches inside it are treated as ghost
     /// contacts and excluded from the frame before matching.
@@ -55,6 +69,7 @@ impl Engine {
                 DEFAULT_MAX_CENTER_DISTANCE,
                 DEFAULT_MAX_FRAMES_WITHOUT_MATCH,
             ),
+            fields: FieldTracker::new(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -70,6 +85,17 @@ impl Engine {
     /// Currently configured calibration, if any.
     pub fn calibration(&self) -> Option<Calibration> {
         self.calibration
+    }
+
+    /// Loads occupancy field sets (SINGLE_CONTACT_FIELD.md). Sets with
+    /// overlapping fields are rejected inside the tracker.
+    pub fn set_fields(&mut self, sets: Vec<FieldSet>) {
+        self.fields.set_fields(sets);
+    }
+
+    /// Whether occupancy field sets are loaded.
+    pub fn has_fields(&self) -> bool {
+        self.fields.has_sets()
     }
 
     /// Sets the edge margin: touches closer than `margin` to the surface
@@ -191,6 +217,7 @@ impl Engine {
         matches.extend(generic);
 
         let mut events = self.tracker.update(&matches, &touches);
+        events.extend(self.fields.update(&touches));
         if touches != self.prev_touches {
             self.prev_touches.clone_from(&touches);
             events.push(EngineEvent::TouchPointsUpdated);

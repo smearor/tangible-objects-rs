@@ -16,6 +16,8 @@ use crate::EngineError;
 /// Thin wrapper around [`evdev::Device`] that speaks the engine's
 /// [`RawEvent`] vocabulary instead of `evdev::InputEvent`.
 pub struct TouchDevice {
+    /// The opened evdev device - source of raw events and target of
+    /// `EVIOCGRAB`/`ungrab`/`EVIOCGABS` ioctls.
     device: evdev::Device,
 }
 

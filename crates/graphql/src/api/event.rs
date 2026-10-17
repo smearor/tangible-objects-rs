@@ -10,7 +10,8 @@ use super::EventKind;
 /// Flattened domain event delivered by the `events` subscription.
 ///
 /// `kind` discriminates the payload: `tangible` carries the affected object
-/// for `TANGIBLE_*`/`OBJECT_*` kinds, `setId` for `SET_*`/`OBJECT_*` kinds.
+/// for `TANGIBLE_*`/`OBJECT_*` kinds, `setId` for `SET_*`/`OBJECT_*` kinds,
+/// `field`/`fieldSet`/`count` for `FIELD_*` kinds.
 #[derive(Debug, Clone, SimpleObject)]
 pub struct TangibleEvent {
     /// What happened.
@@ -19,31 +20,70 @@ pub struct TangibleEvent {
     pub tangible: Option<TrackedTangible>,
     /// Affected set for `SET_*` and `OBJECT_*` events.
     pub set_id: Option<TangibleSetId>,
+    /// Field-set name for `FIELD_*` events.
+    pub field_set: Option<String>,
+    /// Field name for `FIELD_*` events.
+    pub field: Option<String>,
+    /// Debounced contact count for `FIELD_COUNT_CHANGED` events.
+    pub count: Option<i32>,
 }
 
 impl From<&EngineEvent> for TangibleEvent {
     fn from(event: &EngineEvent) -> Self {
-        match event {
-            EngineEvent::TouchPointsUpdated => Self {
-                kind: EventKind::TouchPointsUpdated,
-                tangible: None,
-                set_id: None,
-            },
-            EngineEvent::TangibleAdded(tangible) => Self {
-                kind: EventKind::TangibleAdded,
-                tangible: Some(tangible.clone()),
-                set_id: None,
-            },
-            EngineEvent::TangibleMoved(tangible) => Self {
-                kind: EventKind::TangibleMoved,
-                tangible: Some(tangible.clone()),
-                set_id: None,
-            },
-            EngineEvent::TangibleRemoved(tangible) => Self {
-                kind: EventKind::TangibleRemoved,
-                tangible: Some(tangible.clone()),
-                set_id: None,
-            },
+        let (kind, tangible, field_set, field, count) = match event {
+            EngineEvent::TouchPointsUpdated => {
+                (EventKind::TouchPointsUpdated, None, None, None, None)
+            }
+            EngineEvent::TangibleAdded(tangible) => (
+                EventKind::TangibleAdded,
+                Some(tangible.clone()),
+                None,
+                None,
+                None,
+            ),
+            EngineEvent::TangibleMoved(tangible) => (
+                EventKind::TangibleMoved,
+                Some(tangible.clone()),
+                None,
+                None,
+                None,
+            ),
+            EngineEvent::TangibleRemoved(tangible) => (
+                EventKind::TangibleRemoved,
+                Some(tangible.clone()),
+                None,
+                None,
+                None,
+            ),
+            EngineEvent::FieldPlaced { set, field } => (
+                EventKind::FieldPlaced,
+                None,
+                Some(set.clone()),
+                Some(field.clone()),
+                None,
+            ),
+            EngineEvent::FieldLifted { set, field } => (
+                EventKind::FieldLifted,
+                None,
+                Some(set.clone()),
+                Some(field.clone()),
+                None,
+            ),
+            EngineEvent::FieldCountChanged { set, field, count } => (
+                EventKind::FieldCountChanged,
+                None,
+                Some(set.clone()),
+                Some(field.clone()),
+                Some(count.as_u32() as i32),
+            ),
+        };
+        Self {
+            kind,
+            tangible,
+            set_id: None,
+            field_set,
+            field,
+            count,
         }
     }
 }
@@ -63,6 +103,9 @@ impl From<&SetAction> for TangibleEvent {
             kind,
             set_id: Some(set_id),
             tangible: tangible.cloned(),
+            field_set: None,
+            field: None,
+            count: None,
         }
     }
 }

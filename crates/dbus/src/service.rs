@@ -207,4 +207,29 @@ impl EngineService {
         set_id: TangibleSetId,
         tangible: &TrackedTangible,
     ) -> zbus::Result<()>;
+
+    /// A field became occupied (debounced placed transition).
+    #[zbus(signal)]
+    pub async fn field_placed(
+        emitter: &SignalEmitter<'_>,
+        set: &str,
+        field: &str,
+    ) -> zbus::Result<()>;
+
+    /// A field became empty (debounced lifted transition).
+    #[zbus(signal)]
+    pub async fn field_lifted(
+        emitter: &SignalEmitter<'_>,
+        set: &str,
+        field: &str,
+    ) -> zbus::Result<()>;
+
+    /// A field's debounced contact count changed.
+    #[zbus(signal)]
+    pub async fn field_count_changed(
+        emitter: &SignalEmitter<'_>,
+        set: &str,
+        field: &str,
+        count: u32,
+    ) -> zbus::Result<()>;
 }
