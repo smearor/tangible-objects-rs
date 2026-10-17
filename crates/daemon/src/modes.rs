@@ -187,7 +187,12 @@ pub struct Interfaces {
 ///
 /// `interfaces` selects which Phase-2 interfaces are served on dedicated
 /// threads (GraphQL HTTP/WebSocket, D-Bus session bus).
-pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interfaces) -> Result<()> {
+pub fn run_live(
+    path: &Path,
+    patterns: &[TangiblePattern],
+    interfaces: Interfaces,
+    edge: Option<Millimeters>,
+) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
     println!("Live-Modus: {}", path.display());
@@ -206,6 +211,10 @@ pub fn run_live(path: &Path, patterns: &[TangiblePattern], interfaces: Interface
         eprintln!(
             "Warnung: Keine Kalibrierung vom Gerät lesbar. Profile müssen in Rohkoordinaten vorliegen."
         );
+    }
+    if let Some(mm) = edge {
+        engine.set_edge_margin(mm);
+        println!("Edge-Filter: {mm} mm");
     }
     println!("Ctrl+C zum Beenden\n");
 
@@ -376,6 +385,7 @@ pub fn run_record(
     label: Option<RecordLabel>,
     patterns: &[TangiblePattern],
     interfaces: Interfaces,
+    edge: Option<Millimeters>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
 
@@ -395,6 +405,10 @@ pub fn run_record(
         eprintln!(
             "Warnung: Keine Kalibrierung vom Gerät lesbar. Positionen werden als Rohwerte aufgezeichnet."
         );
+    }
+    if let Some(mm) = edge {
+        engine.set_edge_margin(mm);
+        println!("Edge-Filter: {mm} mm");
     }
 
     let mut session = RecordingSession::start(

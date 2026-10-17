@@ -41,6 +41,7 @@ fn main() -> Result<()> {
     let mut device_profiles: Option<String> = None;
     let mut convert_input: Option<String> = None;
     let mut convert_to: Option<String> = None;
+    let mut edge: Option<Millimeters> = None;
     let mut dbus = false;
 
     let mut i = 0;
@@ -117,6 +118,13 @@ fn main() -> Result<()> {
             "--dbus" => {
                 dbus = true;
             }
+            "--edge-filter-mm" => {
+                edge = args
+                    .get(i + 1)
+                    .and_then(|s| s.parse().ok())
+                    .map(Millimeters::new);
+                i += 1;
+            }
             "--help" | "-h" => {
                 mode = Some("--help");
             }
@@ -163,8 +171,9 @@ fn main() -> Result<()> {
                     record_label.map(RecordLabel::new),
                     &patterns,
                     interfaces,
+                    edge,
                 ),
-                None => modes::run_live(&path, &patterns, interfaces),
+                None => modes::run_live(&path, &patterns, interfaces, edge),
             }
         }
         "--train" => {
@@ -211,7 +220,7 @@ fn main() -> Result<()> {
             let dev = device.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --gui --device /dev/input/eventX")
             })?;
-            run_gui_mode(&dev, profiles_dir.as_deref())
+            run_gui_mode(&dev, profiles_dir.as_deref(), edge)
         }
         _ => {
             print_help();
@@ -281,6 +290,9 @@ fn print_help() {
     eprintln!("  --graphql-listen <addr>  GraphQL-Endpunkt im --live Modus (z.B. 127.0.0.1:8080)");
     eprintln!("  --mcp-listen <addr>      MCP-HTTP-Endpunkt im --live Modus (z.B. 127.0.0.1:8090)");
     eprintln!("  --dbus               D-Bus-Interface im --live Modus (Session-Bus)");
+    eprintln!(
+        "  --edge-filter-mm <mm>  Geister-Kontakte am Rand verwerfen (--live/--record/--gui)"
+    );
     eprintln!();
     eprintln!("Beispiel:");
     eprintln!("  tangible-objects --replay --file research/figure-tracking-4.txt");
@@ -290,14 +302,14 @@ fn print_help() {
 
 /// Runs the GTK visualization (feature `gui`).
 #[cfg(feature = "gui")]
-fn run_gui_mode(dev: &str, profiles_dir: Option<&str>) -> Result<()> {
-    gtk_app::run_gui(dev, profiles_dir);
+fn run_gui_mode(dev: &str, profiles_dir: Option<&str>, edge: Option<Millimeters>) -> Result<()> {
+    gtk_app::run_gui(dev, profiles_dir, edge);
     Ok(())
 }
 
 /// Fallback when the binary was built without the `gui` feature.
 #[cfg(not(feature = "gui"))]
-fn run_gui_mode(_dev: &str, _profiles_dir: Option<&str>) -> Result<()> {
+fn run_gui_mode(_dev: &str, _profiles_dir: Option<&str>, _edge: Option<Millimeters>) -> Result<()> {
     eprintln!("GUI-Modus nicht kompiliert. Baue mit: cargo build --features gui");
     std::process::exit(1);
 }

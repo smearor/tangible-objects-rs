@@ -19,7 +19,7 @@ pub struct CollisionCell {
     /// Percentiles of the per-frame minimal
     /// [`required_tolerance`](tangible_objects_model::CandidateReport::required_tolerance)
     /// - the tolerance at which this pattern would start matching the labeled
-    /// geometry.
+    ///   geometry.
     pub required: Option<Percentiles>,
     /// The candidate pattern's configured tolerance.
     pub tolerance: PatternTolerance,

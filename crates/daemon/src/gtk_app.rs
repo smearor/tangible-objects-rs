@@ -54,7 +54,7 @@ struct SharedState {
 }
 
 /// Starts the fullscreen GUI on the given evdev device path.
-pub fn run_gui(device_path: &str, profiles_dir: Option<&str>) {
+pub fn run_gui(device_path: &str, profiles_dir: Option<&str>, edge: Option<Millimeters>) {
     let app = Application::builder()
         .application_id("org.tangibleobjects.gui")
         .build();
@@ -85,7 +85,7 @@ pub fn run_gui(device_path: &str, profiles_dir: Option<&str>) {
         let patterns_thread = patterns.clone();
         let dev_path_thread = device_path.clone();
         std::thread::spawn(move || {
-            evdev_thread(dev_path_thread, patterns_thread, state_thread);
+            evdev_thread(dev_path_thread, patterns_thread, state_thread, edge);
         });
 
         // DrawingArea.
@@ -126,13 +126,23 @@ pub fn run_gui(device_path: &str, profiles_dir: Option<&str>) {
         });
     });
 
-    app.run();
+    // GTK parses argv for its own options — the daemon's mode flag
+    // (`--gui`) is not one of them, so run with an empty argument list.
+    app.run_with_args(&[] as &[String]);
+}
+
+fn mode_is_live(state: &Arc<Mutex<SharedState>>) -> bool {
+    state
+        .lock()
+        .map(|s| s.mode == GuiMode::Live)
+        .unwrap_or(false)
 }
 
 fn evdev_thread(
     device_path: String,
     patterns: Vec<TangiblePattern>,
     state: Arc<Mutex<SharedState>>,
+    edge: Option<Millimeters>,
 ) {
     let mut device = match TouchDevice::open(std::path::Path::new(&device_path)) {
         Ok(d) => d,
@@ -145,6 +155,9 @@ fn evdev_thread(
     };
 
     let mut engine = Engine::new(patterns);
+    if let Some(mm) = edge {
+        engine.set_edge_margin(mm);
+    }
     let mut touch_state = TouchState::new();
     if let Some(cal) = device.calibration() {
         touch_state.set_calibration(cal);
@@ -161,22 +174,19 @@ fn evdev_thread(
         for raw in events {
             touch_state.process(&raw);
 
+            // The engine builds its own touch state from every event —
+            // feeding it only SYN_REPORTs leaves that state empty and no
+            // figure ever matches.
+            let frame = if mode_is_live(&state) {
+                engine.process(&raw)
+            } else {
+                None
+            };
+
             if raw.is_syn_report() {
                 let touches = touch_state.active_touches();
                 let count = touches.len();
-                let mode = match state.lock() {
-                    Ok(s) => s.mode,
-                    Err(_) => break,
-                };
-
-                let matches = if mode == GuiMode::Live {
-                    match engine.process(&raw) {
-                        Some(frame) => frame.matches,
-                        None => Vec::new(),
-                    }
-                } else {
-                    Vec::new()
-                };
+                let matches = frame.map(|f| f.matches).unwrap_or_default();
 
                 // Stability check (for training mode).
                 if stable_count == Some(count) && count >= 3 {

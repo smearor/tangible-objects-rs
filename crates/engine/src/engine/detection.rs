@@ -35,6 +35,9 @@ pub struct Engine {
     tracker: Tracker,
     calibration: Option<Calibration>,
     prev_touches: Vec<TouchPoint>,
+    /// Edge margin in millimeters — touches inside it are treated as ghost
+    /// contacts and excluded from the frame before matching.
+    edge_margin: Millimeters,
 }
 
 impl Engine {
@@ -51,6 +54,7 @@ impl Engine {
             ),
             calibration: None,
             prev_touches: Vec::new(),
+            edge_margin: Millimeters::new(0.0),
         }
     }
 
@@ -63,6 +67,15 @@ impl Engine {
     /// Currently configured calibration, if any.
     pub fn calibration(&self) -> Option<Calibration> {
         self.calibration
+    }
+
+    /// Sets the edge margin: touches closer than `margin` to the surface
+    /// bounds are dropped before matching (ghost contacts reported by some
+    /// panels at `x=0`/`y=0` or the max bounds). `0` disables the filter.
+    /// Needs a calibration — without mm bounds there is nothing to filter
+    /// against.
+    pub fn set_edge_margin(&mut self, margin: Millimeters) {
+        self.edge_margin = margin;
     }
 
     /// The loaded figure patterns.
@@ -128,6 +141,7 @@ impl Engine {
         }
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
+        touches.retain(|touch| !self.is_edge_ghost(touch));
         let matches = match diagnostics.as_mut() {
             Some(out) => {
                 matching::find_matches_with_diagnostics(&touches, &self.patterns, &mut **out)
@@ -150,6 +164,33 @@ impl Engine {
             events,
             candidates: diagnostics.map(std::mem::take).unwrap_or_default(),
         })
+    }
+
+    /// Whether a touch sits inside the configured edge margin — a likely
+    /// ghost contact some panels emit at the axis bounds.
+    ///
+    /// Disabled when the margin is zero or no calibration is loaded (the mm
+    /// surface bounds are unknowable then).
+    fn is_edge_ghost(&self, touch: &TouchPoint) -> bool {
+        let Some(cal) = &self.calibration else {
+            return false;
+        };
+        let margin = self.edge_margin.as_f64();
+        if margin <= 0.0 {
+            return false;
+        }
+        let (x0, x1) = (
+            cal.x_min.as_f64() / cal.x_res.as_f64(),
+            cal.x_max.as_f64() / cal.x_res.as_f64(),
+        );
+        let (y0, y1) = (
+            cal.y_min.as_f64() / cal.y_res.as_f64(),
+            cal.y_max.as_f64() / cal.y_res.as_f64(),
+        );
+        touch.pos.x < x0 + margin
+            || touch.pos.x > x1 - margin
+            || touch.pos.y < y0 + margin
+            || touch.pos.y > y1 - margin
     }
 }
 

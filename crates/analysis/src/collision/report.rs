@@ -21,7 +21,7 @@ impl CollisionReport {
     /// For every labeled frame, each candidate pattern *other* than the
     /// labeled one contributes its best (lowest required-tolerance) candidate
     /// - [`FrameRecord::best_candidates`]. Patterns matching their own label
-    /// are skipped: those are true positives, not collisions.
+    ///   are skipped: those are true positives, not collisions.
     ///
     /// [`FrameRecord::best_candidates`]: tangible_objects_model::FrameRecord::best_candidates
     pub fn analyze(recording: &Recording) -> Self {
