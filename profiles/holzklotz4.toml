@@ -1,0 +1,8 @@
+name = "Holzklotz4"
+num_points = 3
+tolerance = 3.0
+sorted_sides = [
+    53.65689352005223,
+    57.82748289332482,
+    64.62751392058613,
+]
