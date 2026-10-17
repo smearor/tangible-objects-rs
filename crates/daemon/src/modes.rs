@@ -20,12 +20,14 @@ use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeviceRegistry;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangiblePattern;
+use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
@@ -370,8 +372,8 @@ fn drain_control_commands(
 ) {
     while let Ok(command) = runtime.try_recv_command() {
         match command {
-            ControlCommand::SetFilterMode(enabled) => {
-                warn!(enabled, "filter mode command - implemented in Phase 4");
+            ControlCommand::SetFilterMode { mode, .. } => {
+                warn!(%mode, "filter mode command - only honored in --filter mode");
             }
             ControlCommand::TrainProfile(name) => {
                 warn!(name, "remote training command - not yet wired");
@@ -417,11 +419,17 @@ fn drain_control_commands(
 /// tangible occupies.
 ///
 /// Only exact matches suppress - partial candidates carry a widened
-/// tolerance that would eat finger touches resembling a profile.
+/// tolerance that would eat finger touches resembling a profile. A matched
+/// slot stays suppressed across transient match loss until its tracking
+/// contact ends or the filter's hysteresis expires (Figur7/8-style flappy
+/// pins must not leak to the OS). `SetFilterMode` control commands switch
+/// the suppression policy live (off/immediate/gated/guarded).
 pub fn run_filter(
     path: &Path,
     patterns: &[TangiblePattern],
+    interfaces: Interfaces,
     edge: Option<Millimeters>,
+    stability: Option<FrameCount>,
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
@@ -449,9 +457,48 @@ pub fn run_filter(
     println!("uinput-Klon erstellt - Tangibles werden unterdrückt");
     println!("Ctrl+C zum Beenden\n");
 
+    let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
+    let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    spawn_interfaces(&handle, &interfaces);
+    runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
+
     let mut proxy = FilterProxy::new();
+    if let Some(gate) = stability {
+        proxy.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
+        println!("Stabilitäts-Gate: {gate} Frames");
+    }
     let mut frame: u64 = 0;
+    let device_fd = device.as_raw_fd();
     loop {
+        // Commands run on every loop turn - including poll timeouts - so a
+        // queued SetFilterMode applies while the device is idle.
+        while let Ok(command) = runtime.try_recv_command() {
+            match command {
+                ControlCommand::SetFilterMode { mode, stability } => {
+                    proxy.set_mode(mode, stability);
+                    println!("\nFilter-Modus: {mode}");
+                }
+                other => warn!(?other, "command ignored in filter mode"),
+            }
+        }
+
+        let mut pfd = libc::pollfd {
+            fd: device_fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let ready = unsafe { libc::poll(&mut pfd, 1, 250) };
+        if ready < 0 {
+            if unsafe { *libc::__errno_location() } == libc::EINTR {
+                continue;
+            }
+            eprintln!("poll Fehler");
+            break;
+        }
+        if ready == 0 {
+            continue;
+        }
+
         let events = match device.fetch_events() {
             Ok(events) => events,
             Err(e) => {
@@ -467,12 +514,12 @@ pub fn run_filter(
             };
             frame += 1;
 
-            let suppressed: HashSet<u32> = engine_frame
+            let suppressed: HashSet<TouchPointSlot> = engine_frame
                 .matches
                 .iter()
                 .filter(|matched| !matched.is_partial())
                 .flat_map(|matched| matched.touch_indices.iter())
-                .map(|&index| engine_frame.touches[index].slot.as_u32())
+                .map(|&index| engine_frame.touches[index].slot)
                 .collect();
 
             let out = proxy.finish(&suppressed);
@@ -620,8 +667,8 @@ pub fn run_record(
         // so `stop_recording` flushes even while the device is idle.
         while let Ok(command) = runtime.try_recv_command() {
             match command {
-                ControlCommand::SetFilterMode(enabled) => {
-                    warn!(enabled, "filter mode command - implemented in Phase 4");
+                ControlCommand::SetFilterMode { mode, .. } => {
+                    warn!(%mode, "filter mode command - only honored in --filter mode");
                 }
                 ControlCommand::TrainProfile(name) => {
                     warn!(name, "remote training command - not yet wired");

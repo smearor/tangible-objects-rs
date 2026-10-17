@@ -4,6 +4,8 @@ use async_graphql::Context;
 use async_graphql::Error;
 use async_graphql::Object;
 use async_graphql::Result;
+use tangible_objects_model::FilterMode;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
@@ -13,10 +15,17 @@ pub struct MutationRoot;
 
 #[Object]
 impl MutationRoot {
-    /// Enables or disables the tangible filter mode.
-    async fn set_filter_mode(&self, ctx: &Context<'_>, enabled: bool) -> Result<bool> {
+    /// Switches the filter proxy's suppression policy
+    /// (`off`/`immediate`/`gated`/`guarded`/`tangiblesOnly`); `stability`
+    /// overrides the consecutive-matched-frames gate, `null` keeps it.
+    async fn set_filter_mode(
+        &self,
+        ctx: &Context<'_>,
+        mode: FilterMode,
+        stability: Option<FrameCount>,
+    ) -> Result<bool> {
         ctx.data::<EngineHandle>()?
-            .send_command(ControlCommand::SetFilterMode(enabled))
+            .send_command(ControlCommand::SetFilterMode { mode, stability })
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

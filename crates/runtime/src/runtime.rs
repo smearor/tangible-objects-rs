@@ -303,12 +303,18 @@ mod tests {
         let (mut runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
 
         handle
-            .try_send_command(ControlCommand::SetFilterMode(true))
+            .try_send_command(ControlCommand::SetFilterMode {
+                mode: tangible_objects_model::FilterMode::Guarded,
+                stability: Some(tangible_objects_model::FrameCount::new(3)),
+            })
             .unwrap();
 
         assert!(matches!(
             runtime.try_recv_command(),
-            Ok(ControlCommand::SetFilterMode(true))
+            Ok(ControlCommand::SetFilterMode {
+                mode: tangible_objects_model::FilterMode::Guarded,
+                stability: Some(_),
+            })
         ));
     }
 

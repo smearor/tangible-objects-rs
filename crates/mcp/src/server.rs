@@ -16,6 +16,7 @@ use rmcp::service::RoleServer;
 use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use std::path::PathBuf;
 
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TangibleSetState;
@@ -146,19 +147,27 @@ impl EngineMcp {
         }
     }
 
-    /// Enables or disables the tangible filter mode.
-    #[tool(description = "Enable or disable the tangible filter mode.")]
+    /// Switches the filter proxy's suppression policy.
+    #[tool(
+        description = "Set the filter proxy mode: off, immediate, gated, guarded or tangibles-only."
+    )]
     async fn set_filter_mode(
         &self,
         Parameters(args): Parameters<SetFilterModeArgs>,
     ) -> Result<CallToolResult, ErrorData> {
+        let mode = args.mode.parse::<FilterMode>().map_err(|_| {
+            ErrorData::invalid_params(
+                "mode must be one of: off, immediate, gated, guarded, tangibles-only",
+                None,
+            )
+        })?;
+        let stability = args.stability.map(tangible_objects_model::FrameCount::new);
         self.handle
-            .send_command(ControlCommand::SetFilterMode(args.enabled))
+            .send_command(ControlCommand::SetFilterMode { mode, stability })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-            "filter mode set to {}",
-            args.enabled
+            "filter mode set to {mode}"
         ))]))
     }
 

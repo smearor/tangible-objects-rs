@@ -126,15 +126,16 @@ mod tests {
         let schema = build_schema(handle);
 
         let result = schema
-            .execute("mutation { setFilterMode(enabled: true) }")
+            .execute("mutation { setFilterMode(mode: GUARDED, stability: 3) }")
             .await;
         assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
         assert!(matches!(
             runtime.try_recv_command(),
-            Ok(tangible_objects_runtime::ControlCommand::SetFilterMode(
-                true
-            ))
+            Ok(tangible_objects_runtime::ControlCommand::SetFilterMode {
+                mode: tangible_objects_model::FilterMode::Guarded,
+                stability: Some(_),
+            })
         ));
     }
 }

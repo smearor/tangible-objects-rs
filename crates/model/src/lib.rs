@@ -7,6 +7,7 @@
 mod calibration;
 mod device;
 mod event;
+mod filter_mode;
 mod millimeters;
 mod milliseconds;
 mod pattern;
@@ -35,6 +36,7 @@ pub use event::EventType;
 pub use event::NamedEventCode;
 pub use event::RawEvent;
 pub use event::SYN_REPORT;
+pub use filter_mode::FilterMode;
 pub use millimeters::Millimeters;
 pub use milliseconds::Milliseconds;
 pub use pattern::PatternId;

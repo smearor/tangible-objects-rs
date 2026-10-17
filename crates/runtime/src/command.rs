@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use tangible_objects_model::FilterMode;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::RecordLabel;
 
 /// Control command sent by an interface back to the daemon's device loop.
@@ -10,8 +12,16 @@ use tangible_objects_model::RecordLabel;
 /// Phase 4, remote training with the interface crates).
 #[derive(Debug, Clone)]
 pub enum ControlCommand {
-    /// Enable or disable the tangible filter mode.
-    SetFilterMode(bool),
+    /// Switch the filter proxy's suppression policy
+    /// ([`FilterMode::Off`] = transparent passthrough). `stability`
+    /// overrides the consecutive-matched-frames gate when `Some`; `None`
+    /// keeps the current value.
+    SetFilterMode {
+        /// New suppression policy.
+        mode: FilterMode,
+        /// Consecutive frames a slot must match before suppression starts.
+        stability: Option<FrameCount>,
+    },
     /// Capture a new figure profile with the given name.
     TrainProfile(String),
     /// Start a recording session writing `<base_path>.jsonl` (frames) and

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use tangible_objects_model::FilterMode;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TrackedTangible;
@@ -91,10 +93,18 @@ impl EngineService {
         ]
     }
 
-    /// Enables or disables the tangible filter mode.
-    async fn set_filter_mode(&self, enabled: bool) -> fdo::Result<()> {
+    /// Switches the filter proxy's suppression policy
+    /// (`off`/`immediate`/`gated`/`guarded`); `stability > 0` overrides
+    /// the consecutive-matched-frames gate, `0` keeps it.
+    async fn set_filter_mode(&self, mode: &str, stability: u64) -> fdo::Result<()> {
+        let mode = mode.parse::<FilterMode>().map_err(|_| {
+            fdo::Error::InvalidArgs(
+                "mode must be one of: off, immediate, gated, guarded, tangibles-only".to_string(),
+            )
+        })?;
+        let stability = (stability > 0).then(|| FrameCount::new(stability));
         self.handle
-            .send_command(ControlCommand::SetFilterMode(enabled))
+            .send_command(ControlCommand::SetFilterMode { mode, stability })
             .await
             .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
     }

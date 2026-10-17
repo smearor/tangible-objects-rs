@@ -43,6 +43,7 @@ fn main() -> Result<()> {
     let mut convert_input: Option<String> = None;
     let mut convert_to: Option<String> = None;
     let mut edge: Option<Millimeters> = None;
+    let mut stability: Option<u64> = None;
     let mut dbus = false;
 
     let mut i = 0;
@@ -120,6 +121,10 @@ fn main() -> Result<()> {
             "--dbus" => {
                 dbus = true;
             }
+            "--stability-frames" => {
+                stability = args.get(i + 1).and_then(|s| s.parse().ok());
+                i += 1;
+            }
             "--edge-filter-mm" => {
                 edge = args
                     .get(i + 1)
@@ -190,10 +195,13 @@ fn main() -> Result<()> {
             // events on a uinput clone (FILTER_PROXY_VIRTUAL.md).
             let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let patterns = modes::load_patterns(profiles_dir.as_deref());
+            let interfaces = parse_interfaces(graphql_listen, mcp_listen, dbus)?;
             modes::run_filter(
                 &dev,
                 &patterns,
+                interfaces,
                 edge,
+                stability.map(tangible_objects_model::FrameCount::new),
                 device_profiles.as_deref().map(Path::new),
             )
         }
@@ -327,6 +335,9 @@ fn print_help() {
     eprintln!("  --dbus               D-Bus-Interface im --live Modus (Session-Bus)");
     eprintln!(
         "  --edge-filter-mm <mm>  Geister-Kontakte am Rand verwerfen (--live/--record/--gui)"
+    );
+    eprintln!(
+        "  --stability-frames <n> Konsekutive Match-Frames vor Suppression (--filter, Default: 2)"
     );
     eprintln!();
     eprintln!("Beispiel:");
