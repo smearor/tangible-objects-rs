@@ -40,14 +40,18 @@ Rules per frame (executed in `finish`):
 | `off` | none (passthrough) | n/a | none |
 | `immediate` | first matched frame | none | eats contacts on 1-frame phantoms |
 | `gated` | `stability_gate` consecutive matches | ~1-2 frames | none |
-| `guarded` (default) | gate + hold unclassified contacts | none | none |
+| `guarded` (default) | gate + hold unclassified contacts until `stability_gate` unmatched frames | none | none |
 | `tangibles-only` | n/a - all contacts suppressed | none | n/a |
 
 `Guarded` detail: a fresh `TRACKING_ID >= 0` on a slot that is neither
 emitted nor suppressed starts a hold; all that slot's events are buffered.
-On the next frame: matched -> stays held (candidate); graduated ->
-dropped; unmatched -> the buffered events are replayed and the contact
-appears ~1 frame late but complete.
+Per frame: matched -> stays held (candidate tangible); graduated ->
+buffered events dropped; unmatched -> a per-slot counter increments and
+the contact is replayed only once it reaches `stability_gate`
+consecutive unmatched frames - the symmetric counterpart of the match
+gate. Tangibles whose pins land asynchronously therefore stay held until
+the full pattern matches (zero placement leak); fingers appear
+`stability_gate` frames late (~16 ms at 120 Hz, gate 2).
 
 ## Legacy filter (`LegacyMode`)
 

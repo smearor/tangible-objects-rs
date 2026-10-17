@@ -56,15 +56,27 @@ pub struct FilterProxy {
     /// (`Gated`/`Guarded`; `Immediate` ignores it).
     stability_gate: FrameCount,
     /// Withheld events of unclassified new contacts (`Guarded` mode):
-    /// a new contact's events are buffered until the first frame
-    /// evaluation - tangible contacts are dropped, finger contacts
-    /// are replayed.
-    held: HashMap<TouchPointSlot, Vec<RawEvent>>,
+    /// a new contact's events are buffered until classification -
+    /// matched slots stay held (candidate tangible), slots unmatched for
+    /// `stability_gate` consecutive frames are replayed as fingers.
+    held: HashMap<TouchPointSlot, HeldContact>,
     /// Active suppression policy.
     mode: FilterMode,
     /// Policy for the legacy single-touch events (`BTN_TOUCH`, `ABS_X`,
     /// `ABS_Y`) - not slot-scoped, handled separately.
     legacy: LegacyMode,
+}
+
+/// A withheld contact in `Guarded` mode.
+#[derive(Default)]
+struct HeldContact {
+    /// Buffered events of the contact, replayed on release.
+    events: Vec<RawEvent>,
+    /// Consecutive frames this contact went unmatched. Only once this
+    /// reaches `stability_gate` does the contact turn out to be a finger
+    /// and get released - a tangible whose pins land asynchronously
+    /// stays held until the full pattern matches.
+    unmatched: FrameCount,
 }
 
 impl Default for FilterProxy {
@@ -192,25 +204,31 @@ impl FilterProxy {
         }
 
         // Withheld contacts are resolved at each frame boundary. In
-        // `Guarded` a held slot that matched stays held (pending tangible),
-        // one that graduated is dropped, one without a match is replayed
-        // as a finger contact. Every other mode drains `held` outright -
-        // withheld events are replayed so nothing is lost.
+        // `Guarded` a held slot that matched stays held (pending
+        // tangible), one that graduated is dropped, and one accumulating
+        // `stability_gate` consecutive unmatched frames is replayed as a
+        // finger contact - the symmetric counterpart of the match gate.
+        // Every other mode drains `held` outright - withheld events are
+        // replayed so nothing is lost.
         let mut release = Vec::new();
-        for &slot in self.held.keys() {
-            let keep = self.mode == FilterMode::Guarded
-                && matched.contains(&slot)
-                && !self.suppressed.contains_key(&slot);
-            if !keep {
+        for (&slot, held) in self.held.iter_mut() {
+            if self.mode != FilterMode::Guarded || self.suppressed.contains_key(&slot) {
                 release.push(slot);
+            } else if matched.contains(&slot) {
+                held.unmatched = FrameCount::new(0);
+            } else {
+                held.unmatched += 1;
+                if held.unmatched >= self.stability_gate {
+                    release.push(slot);
+                }
             }
         }
         for slot in release {
-            let events = self.held.remove(&slot).unwrap_or_default();
+            let held = self.held.remove(&slot).unwrap_or_default();
             if self.mode == FilterMode::Guarded && self.suppressed.contains_key(&slot) {
                 continue; // pending tangible: drop the withheld events
             }
-            for raw in events {
+            for raw in held.events {
                 if raw.event_type == EventType::Abs && raw.code == ABS_MT_TRACKING_ID {
                     if raw.value == -1 {
                         self.emitted.remove(&slot);
@@ -290,7 +308,7 @@ impl FilterProxy {
                             && raw.value >= 0
                             && !self.emitted.contains(&slot);
                         if self.held.contains_key(&slot) || starts_contact {
-                            self.held.entry(slot).or_default().push(raw);
+                            self.held.entry(slot).or_default().events.push(raw);
                             continue;
                         }
                     }
@@ -563,11 +581,17 @@ mod tests {
         contact_frame(&mut proxy, 0, 7, 500);
         let out = proxy.finish(&HashSet::new());
         assert!(out.iter().all(|e| e.value() != 500 && e.value() != 7));
-        // Frame 2: not matched - the contact is replayed and flows.
+        // Frame 2: first unmatched frame - still held (gate symmetric).
         contact_frame(&mut proxy, 0, 7, 501);
+        let out = proxy.finish(&HashSet::new());
+        assert!(out.iter().all(|e| e.value() != 500 && e.value() != 501));
+        // Frame 3: second consecutive unmatched frame reaches the gate -
+        // the contact is replayed and flows.
+        contact_frame(&mut proxy, 0, 7, 502);
         let out = proxy.finish(&HashSet::new());
         assert!(out.iter().any(|e| e.value() == 500));
         assert!(out.iter().any(|e| e.value() == 501));
+        assert!(out.iter().any(|e| e.value() == 502));
     }
 
     #[test]
