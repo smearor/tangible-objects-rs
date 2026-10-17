@@ -1,5 +1,6 @@
 //! Daemon modes: replay, live detection, training and device listing.
 
+use std::collections::HashSet;
 use std::io::Write;
 use std::net::SocketAddr;
 use std::os::unix::io::AsRawFd;
@@ -13,8 +14,10 @@ use miette::Result;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EvtestReplay;
+use tangible_objects_engine::FilterProxy;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
+use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
@@ -369,6 +372,83 @@ fn drain_control_commands(
             },
         }
     }
+}
+
+/// Filter-proxy mode (FILTER_PROXY_VIRTUAL.md): grabs the real device and
+/// re-emits its event stream on a uinput clone, minus the slots a matched
+/// tangible occupies.
+///
+/// Only exact matches suppress - partial candidates carry a widened
+/// tolerance that would eat finger touches resembling a profile.
+pub fn run_filter(
+    path: &Path,
+    patterns: &[TangiblePattern],
+    edge: Option<Millimeters>,
+) -> Result<()> {
+    let mut device = TouchDevice::open(path).into_diagnostic()?;
+    println!("Filter-Proxy: {}", path.display());
+    if let Some(name) = device.name() {
+        println!("Gerät: {name}");
+    }
+
+    let mut engine = Engine::new(patterns.to_vec());
+    if let Some(cal) = device.calibration() {
+        println!(
+            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+            cal.x_res, cal.y_res
+        );
+        engine.set_calibration(cal);
+    }
+    if let Some(mm) = edge {
+        engine.set_edge_margin(mm);
+        println!("Edge-Filter: {mm} mm");
+    }
+
+    let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
+    device.grab().into_diagnostic()?;
+    println!("EVIOCGRAB aktiv - alle Events laufen über die Proxy");
+    println!("uinput-Klon erstellt - Tangibles werden unterdrückt");
+    println!("Ctrl+C zum Beenden\n");
+
+    let mut proxy = FilterProxy::new();
+    let mut frame: u64 = 0;
+    loop {
+        let events = match device.fetch_events() {
+            Ok(events) => events,
+            Err(e) => {
+                eprintln!("Lesefehler: {e}");
+                break;
+            }
+        };
+        for raw in events {
+            let engine_frame = engine.process(&raw);
+            proxy.push(raw);
+            let Some(engine_frame) = engine_frame else {
+                continue;
+            };
+            frame += 1;
+
+            let suppressed: HashSet<u32> = engine_frame
+                .matches
+                .iter()
+                .filter(|matched| !matched.is_partial())
+                .flat_map(|matched| matched.touch_indices.iter())
+                .map(|&index| engine_frame.touches[index].slot.as_u32())
+                .collect();
+
+            let out = proxy.finish(&suppressed);
+            virtual_device.emit(&out).into_diagnostic()?;
+
+            print!(
+                "\rFrame {frame} | {} Touch | {} Figur | {} unterdrückt     ",
+                engine_frame.touches.len(),
+                engine_frame.matches.len(),
+                suppressed.len()
+            );
+            std::io::stdout().flush().ok();
+        }
+    }
+    Ok(())
 }
 
 /// Live snapshot of a recording session for the interface-facing status.

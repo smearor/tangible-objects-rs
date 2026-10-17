@@ -47,12 +47,13 @@ fn main() -> Result<()> {
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
-            "--replay" | "--live" | "--list" | "--train" | "--gui" => {
+            "--replay" | "--live" | "--list" | "--train" | "--gui" | "--filter" => {
                 mode = Some(match args[i].as_str() {
                     "--replay" => "--replay",
                     "--live" => "--live",
                     "--train" => "--train",
                     "--gui" => "--gui",
+                    "--filter" => "--filter",
                     _ => "--list",
                 });
             }
@@ -176,6 +177,13 @@ fn main() -> Result<()> {
                 None => modes::run_live(&path, &patterns, interfaces, edge),
             }
         }
+        "--filter" => {
+            // Filter proxy: grab the real device and re-emit non-tangible
+            // events on a uinput clone (FILTER_PROXY_VIRTUAL.md).
+            let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
+            let patterns = modes::load_patterns(profiles_dir.as_deref());
+            modes::run_filter(&dev, &patterns, edge)
+        }
         "--train" => {
             let dev = modes::resolve_device(device, device_profiles.as_deref().map(Path::new))?;
             let fig_name = name
@@ -280,6 +288,9 @@ fn print_help() {
     );
     eprintln!(
         "  tangible-objects --gui --device /dev/input/eventX                  GTK Fullscreen-Visualisierung"
+    );
+    eprintln!(
+        "  tangible-objects --filter --device /dev/input/eventX               Filter-Proxy (Grab + uinput-Klon)"
     );
     eprintln!();
     eprintln!("Optionen:");

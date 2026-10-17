@@ -19,6 +19,16 @@ pub struct PatternMatch {
 }
 
 impl PatternMatch {
+    /// Whether this match is a partial (`num_points - 1`) match - the
+    /// matcher marks them by appending `" (partial)"` to the pattern name.
+    ///
+    /// Callers that must distinguish certainty levels (e.g. the filter
+    /// proxy, which suppresses slots only on exact matches) use this flag
+    /// instead of re-inspecting touch counts.
+    pub fn is_partial(&self) -> bool {
+        self.pattern_name.ends_with("(partial)")
+    }
+
     /// Computes the figure orientation from its matched points.
     ///
     /// For 3 points the vertex opposite the shortest side defines the
@@ -94,5 +104,19 @@ mod tests {
             PatternMatch::rotation_of(&[], &Vec2::new(0.0, 0.0)).as_f64(),
             0.0
         );
+    }
+
+    #[test]
+    fn partial_marker_is_detected() {
+        let mut pattern_match = PatternMatch {
+            pattern_id: crate::PatternId::new(1),
+            pattern_name: "Figur8".to_string(),
+            center: Vec2::new(0.0, 0.0),
+            rotation_rad: crate::RotationRad::new(0.0),
+            touch_indices: vec![0, 1, 2],
+        };
+        assert!(!pattern_match.is_partial());
+        pattern_match.pattern_name = "Figur8 (partial)".to_string();
+        assert!(pattern_match.is_partial());
     }
 }

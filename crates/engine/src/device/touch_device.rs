@@ -89,6 +89,20 @@ impl TouchDevice {
         self.device.as_raw_fd()
     }
 
+    /// Exclusive grab (`EVIOCGRAB`): all other processes stop receiving
+    /// events. Used by the filter proxy so tangible contacts stay invisible
+    /// to the rest of the system.
+    pub fn grab(&mut self) -> Result<(), EngineError> {
+        self.device.grab()?;
+        Ok(())
+    }
+
+    /// Read access to the wrapped evdev device - the filter proxy mirrors
+    /// its capabilities onto a uinput clone.
+    pub fn inner(&self) -> &evdev::Device {
+        &self.device
+    }
+
     /// Reads the device calibration (`resolution` and min/max of the
     /// `ABS_MT_POSITION_X/Y` axes, units/mm).
     ///

@@ -8,6 +8,7 @@
 mod convert;
 mod device;
 mod engine;
+mod proxy;
 mod recorder;
 mod replay;
 
@@ -21,6 +22,8 @@ pub use engine::EngineEvent;
 pub use engine::EngineFrame;
 pub use engine::TouchState;
 pub use engine::Tracker;
+pub use proxy::FilterProxy;
+pub use proxy::VirtualTouchscreen;
 pub use recorder::FrameContext;
 pub use recorder::FrameRecorder;
 pub use recorder::RawRecorder;
