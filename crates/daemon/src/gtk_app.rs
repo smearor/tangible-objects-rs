@@ -202,7 +202,14 @@ fn evdev_thread(
             };
 
             if raw.is_syn_report() {
-                let touches = touch_state.active_touches();
+                // In live mode the frame's own touch list is authoritative:
+                // `touch_indices` in matches index into it (slot-sorted).
+                // The GUI's touch_state (HashMap order) would misalign them
+                // and draw figure lines across objects.
+                let touches = match &frame {
+                    Some(engine_frame) => engine_frame.touches.clone(),
+                    None => touch_state.active_touches(),
+                };
                 let count = touches.len();
                 let matches = frame.map(|f| f.matches).unwrap_or_default();
 
