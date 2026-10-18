@@ -5,6 +5,7 @@
 mod match_risk;
 mod pair;
 mod report;
+mod subset_collision;
 
 pub use match_risk::MatchRisk;
 pub use pair::SimilarityPair;

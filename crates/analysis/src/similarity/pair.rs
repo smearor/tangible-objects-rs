@@ -1,4 +1,5 @@
 use serde::Serialize;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
@@ -6,6 +7,7 @@ use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::Vec2;
 
 use super::MatchRisk;
+use super::subset_collision::SubsetCollision;
 
 /// Collision assessment of one pattern pair.
 ///
@@ -21,7 +23,7 @@ pub struct SimilarityPair {
     pub b: PatternName,
     /// Contact count of the closest subset pairing - `num_points` means
     /// the exact fingerprints collide.
-    pub contact_count: usize,
+    pub contact_count: ContactCount,
     /// Smallest achievable maximum deviation across subset pairings.
     pub min_max_deviation: Millimeters,
     /// Risk classification derived from `min_max_deviation` and the
@@ -36,33 +38,42 @@ impl SimilarityPair {
     /// Returns `None` when no comparable fingerprints exist (different
     /// sizes and no `ref_points` to derive subsets).
     pub fn closest(a: &TangiblePattern, b: &TangiblePattern) -> Option<Self> {
-        let (contact_count, deviation) = Self::closest_collision(a, b)?;
+        let collision = Self::closest_collision(a, b)?;
         Some(Self {
             a: a.name.clone(),
             b: b.name.clone(),
-            contact_count,
-            min_max_deviation: deviation,
-            risk: Self::risk_of(deviation, a.tolerance, b.tolerance),
+            contact_count: collision.contact_count,
+            min_max_deviation: collision.min_max_deviation,
+            risk: Self::risk_of(collision.min_max_deviation, a.tolerance, b.tolerance),
         })
     }
 
     /// Finds the closest fingerprint collision between two patterns over
     /// all same-size subset pairings.
     ///
-    /// Returns `(contact_count, min_max_deviation)` - `contact_count ==
-    /// num_points` means even the exact fingerprints nearly collide.
-    fn closest_collision(a: &TangiblePattern, b: &TangiblePattern) -> Option<(usize, Millimeters)> {
+    /// `contact_count == num_points` means even the exact fingerprints
+    /// nearly collide.
+    fn closest_collision(
+        a: &TangiblePattern,
+        b: &TangiblePattern,
+    ) -> Option<SubsetCollision> {
         if let (Some(points_a), Some(points_b)) = (a.ref_points.as_ref(), b.ref_points.as_ref()) {
             let max_k = a.num_points.min(b.num_points);
-            let mut best: Option<(usize, Millimeters)> = None;
+            let mut best: Option<SubsetCollision> = None;
             for k in (3..=max_k).rev() {
                 for keep_a in combinations(a.num_points, k) {
                     let fp_a = subset_fingerprint(a, points_a, &keep_a);
                     for keep_b in combinations(b.num_points, k) {
                         let fp_b = subset_fingerprint(b, points_b, &keep_b);
                         let deviation = Millimeters::max_deviation(&fp_a, &fp_b);
-                        if best.as_ref().is_none_or(|(_, d)| deviation < *d) {
-                            best = Some((k, deviation));
+                        if best
+                            .as_ref()
+                            .is_none_or(|c| deviation < c.min_max_deviation)
+                        {
+                            best = Some(SubsetCollision {
+                                contact_count: ContactCount::new(k as u32),
+                                min_max_deviation: deviation,
+                            });
                         }
                     }
                 }
@@ -73,10 +84,13 @@ impl SimilarityPair {
         // Fallback without ref_points: exact fingerprint comparison when
         // both patterns carry the same number of distances.
         if a.sorted_distances.len() == b.sorted_distances.len() {
-            return Some((
-                a.num_points.max(b.num_points),
-                Millimeters::max_deviation(&a.sorted_distances, &b.sorted_distances),
-            ));
+            return Some(SubsetCollision {
+                contact_count: ContactCount::new(a.num_points.max(b.num_points) as u32),
+                min_max_deviation: Millimeters::max_deviation(
+                    &a.sorted_distances,
+                    &b.sorted_distances,
+                ),
+            });
         }
         None
     }
