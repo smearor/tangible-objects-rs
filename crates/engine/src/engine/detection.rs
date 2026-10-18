@@ -188,7 +188,7 @@ impl Engine {
                 .patterns
                 .iter()
                 .filter(|existing| Some(existing.id) != except)
-                .find(|existing| existing.matches(points))
+                .find(|existing| existing.matches(points.into()))
         {
             return Err(format!(
                 "fingerprint collides with registered profile '{}'",
@@ -549,7 +549,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        TangiblePattern::from_points(1, "triangle", &reference, 5.0)
+        TangiblePattern::from_points(1, "triangle", (&reference).into(), 5.0)
     }
 
     fn contact(engine: &mut Engine, slot: i32, id: i32, x: i32, y: i32) {
@@ -645,7 +645,7 @@ mod tests {
             Vec2::new(80.0, 0.0),
             Vec2::new(0.0, 80.0),
         ];
-        TangiblePattern::from_points(2, "big-triangle", &reference, 5.0)
+        TangiblePattern::from_points(2, "big-triangle", (&reference).into(), 5.0)
     }
 
     #[test]
@@ -775,7 +775,7 @@ mod tests {
             ],
             5.0,
         );
-        engine.update_pattern(id, &bigger).expect("update");
+        engine.update_pattern(id, (&bigger).into()).expect("update");
         assert_eq!(engine.patterns()[0].id, id);
         assert_eq!(engine.patterns()[0].name.as_str(), "pawn-v2");
         assert_eq!(engine.pattern_owner(id).map(Owner::as_str), Some("chess"));
@@ -828,12 +828,13 @@ mod tests {
         TangiblePattern::from_points(
             id,
             name,
-            &[
+            (&[
                 Vec2::new(0.0, 0.0),
                 Vec2::new(100.0, 0.0),
                 Vec2::new(0.0, 100.0),
                 Vec2::new(100.0, 100.0),
-            ],
+            ])
+                .into(),
             5.0,
         )
     }

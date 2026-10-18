@@ -73,8 +73,8 @@ pub(crate) fn try_pattern(
     completion: &CompletionConfig,
 ) -> Option<PatternMatch> {
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
-    (pattern.match_score(&points) <= completion.affinity_factor.as_f64()
-        && pattern.accepts(&points))
+    (pattern.match_score((&points).into()) <= completion.affinity_factor.as_f64()
+        && pattern.accepts((&points).into()))
     .then(|| build_match(pattern, &points, combo, false, Vec::new()))
 }
 
@@ -91,11 +91,21 @@ pub(crate) fn try_partial(
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
     let missing = pattern.num_points.as_usize().checked_sub(combo.len())?;
     pattern
-        .matches_partial_missing_scaled(&points, missing, completion.affinity_factor.as_f64())
-        .filter(|_| pattern.accepts(&points))
+        .matches_partial_missing_scaled(
+            (&points).into(),
+            missing,
+            completion.affinity_factor.as_f64(),
+        )
+        .filter(|_| pattern.accepts((&points).into()))
         .map(|matched| {
             let claimed = claim_missing(
-                pattern, &matched.kept_indices, &points, combo, pool, touches, completion,
+                pattern,
+                &matched.kept_indices,
+                &points,
+                combo,
+                pool,
+                touches,
+                completion,
             );
             build_match(pattern, &points, combo, true, claimed)
         })
@@ -143,13 +153,13 @@ fn find_matches_inner(
         for combo in combinations(&available, pattern.num_points.as_usize()) {
             let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
 
-            let matched = pattern.matches(&points) && pattern.accepts(&points);
+            let matched = pattern.matches((&points).into()) && pattern.accepts((&points).into());
             diagnostics.report(|| exact_report(pattern, &points, &combo, matched));
             if matched {
                 // Score-based ranking (TRAINING.md 3.2): the normalized
                 // max-deviation score - equivalent to total error under a
                 // scalar tolerance, decisive under per-index tolerances.
-                let score = pattern.match_score(&points);
+                let score = pattern.match_score((&points).into());
                 let candidate = build_match(pattern, &points, &combo, false, Vec::new());
                 consider(&mut best, candidate, score);
             }
@@ -178,8 +188,8 @@ fn find_matches_inner(
                         combo.iter().map(|&i| touches[i].pos).collect();
 
                     let result = pattern
-                        .matches_partial_missing(&points, missing)
-                        .filter(|_| pattern.accepts(&points));
+                        .matches_partial_missing((&points).into(), missing)
+                        .filter(|_| pattern.accepts((&points).into()));
                     diagnostics
                         .report(|| partial_report(pattern, &points, &combo, result.is_some()));
                     if let Some(matched) = result {
@@ -194,7 +204,12 @@ fn find_matches_inner(
                             .filter(|index| !combo.contains(index))
                             .collect();
                         let claimed = claim_missing(
-                            pattern, &matched.kept_indices, &points, &combo, &free, touches,
+                            pattern,
+                            &matched.kept_indices,
+                            &points,
+                            &combo,
+                            &free,
+                            touches,
                             completion,
                         );
                         let candidate = build_match(pattern, &points, &combo, true, claimed);
@@ -237,7 +252,7 @@ fn claim_missing(
     let mut claimed = Vec::new();
     let mut taken: HashSet<usize> = combo.iter().copied().collect();
     for missing in (0..pattern.num_points.as_usize()).filter(|index| !kept_refs.contains(index)) {
-        let Some(predicted) = pattern.predict_missing(kept_refs, points, missing) else {
+        let Some(predicted) = pattern.predict_missing(kept_refs, points.into(), missing) else {
             continue;
         };
         let nearest = pool
@@ -266,7 +281,7 @@ fn exact_report(
     combo: &[usize],
     matched: bool,
 ) -> CandidateReport {
-    let measured_distances = TangiblePattern::distances_of(points);
+    let measured_distances = TangiblePattern::distances_of(points.into());
     let deviations = TangiblePattern::deviations(&measured_distances, &pattern.sorted_distances);
     CandidateReport {
         pattern_id: pattern.id,
@@ -297,12 +312,11 @@ fn partial_report(
     combo: &[usize],
     matched: bool,
 ) -> CandidateReport {
-    let measured_distances = TangiblePattern::distances_of(points);
+    let measured_distances = TangiblePattern::distances_of(points.into());
     let (deviations, match_error) = (0..pattern.num_points.as_usize())
         .filter_map(|skip| pattern.partial_reference(skip))
         .map(|reference| {
-            let deviations =
-                TangiblePattern::deviations(&measured_distances, &reference.distances);
+            let deviations = TangiblePattern::deviations(&measured_distances, &reference.distances);
             let error: Millimeters = deviations.iter().copied().sum();
             (deviations, error)
         })
@@ -350,7 +364,7 @@ fn build_match(
         pattern_name: name,
         spawn_stability: pattern.spawn_stability,
         center,
-        rotation_rad: PatternMatch::rotation_of(points, &center),
+        rotation_rad: PatternMatch::rotation_of(points.into(), &center),
         touch_indices: combo.to_vec(),
         partial,
         claimed_indices: claimed,
@@ -423,7 +437,12 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "triangle", &reference, 5.0)];
+        let patterns = vec![TangiblePattern::from_points(
+            1,
+            "triangle",
+            (&reference).into(),
+            5.0,
+        )];
 
         let touches = vec![
             touch_point(0, 100.0, 100.0),
@@ -446,7 +465,12 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "triangle", &reference, 5.0)];
+        let patterns = vec![TangiblePattern::from_points(
+            1,
+            "triangle",
+            (&reference).into(),
+            5.0,
+        )];
         let touches = vec![
             touch_point(0, 0.0, 0.0),
             touch_point(1, 30.0, 0.0),
@@ -462,7 +486,12 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "triangle", &reference, 5.0)];
+        let patterns = vec![TangiblePattern::from_points(
+            1,
+            "triangle",
+            (&reference).into(),
+            5.0,
+        )];
         let touches = vec![
             touch_point(0, 100.0, 100.0),
             touch_point(1, 150.0, 100.0),
@@ -507,7 +536,12 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "triangle", &reference, 5.0)];
+        let patterns = vec![TangiblePattern::from_points(
+            1,
+            "triangle",
+            (&reference).into(),
+            5.0,
+        )];
         let touches = vec![
             touch_point(0, 0.0, 0.0),
             touch_point(1, 30.0, 0.0),
@@ -542,7 +576,7 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
         let patterns = vec![pattern];
         // One pin missing - three square contacts plus a distractor touch
@@ -582,7 +616,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "triangle", &reference, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "triangle", (&reference).into(), 5.0);
         // Only the left half of the surface may match.
         pattern.regions = vec![Region {
             x_min: tangible_objects_model::Millimeters::new(0.0),
@@ -616,7 +650,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "triangle", &reference, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "triangle", (&reference).into(), 5.0);
         pattern.regions = vec![Region {
             x_min: tangible_objects_model::Millimeters::new(0.0),
             y_min: tangible_objects_model::Millimeters::new(0.0),
@@ -651,7 +685,7 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
         let patterns = vec![pattern];
         // True missing-pin case: only num_points - 1 touches exist (a pin
@@ -687,7 +721,7 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
         let patterns = vec![pattern];
         // Three matched pins at translated positions + a fourth touch near
@@ -735,7 +769,7 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
         let patterns = vec![pattern];
         // Fourth touch 30mm from the predicted position - outside the

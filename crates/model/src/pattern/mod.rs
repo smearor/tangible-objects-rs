@@ -14,10 +14,10 @@ mod tangible;
 mod tolerance;
 
 pub use id::PatternId;
-pub use partial_match::PartialMatch;
-pub use partial_reference::PartialReference;
 pub use r#match::PatternMatch;
 pub use name::PatternName;
+pub use partial_match::PartialMatch;
+pub use partial_reference::PartialReference;
 pub use pin_count::PinCount;
 pub use tangible::TangiblePattern;
 pub use tolerance::PatternTolerance;

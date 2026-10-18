@@ -86,7 +86,7 @@ impl DeviationReport {
                 for subset in Self::combinations(touches.len(), pattern.num_points.as_usize()) {
                     let points: Vec<_> = subset.iter().map(|&index| touches[index]).collect();
                     let deviations = TangiblePattern::deviations(
-                        &TangiblePattern::distances_of(&points),
+                        &TangiblePattern::distances_of((&points).into()),
                         &pattern.sorted_distances,
                     );
                     let score = pattern.score_of(&deviations);

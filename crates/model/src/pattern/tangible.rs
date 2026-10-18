@@ -5,6 +5,8 @@ use super::PatternTolerance;
 use super::PinCount;
 use crate::FrameCount;
 use crate::Millimeters;
+use crate::PatternName;
+use crate::PointSet;
 use crate::Region;
 use crate::Vec2;
 
@@ -19,13 +21,13 @@ pub struct TangiblePattern {
     /// Runtime ID assigned when the profile directory is loaded.
     pub id: PatternId,
     /// Human-readable figure name (from the profile file).
-    pub name: crate::PatternName,
+    pub name: PatternName,
     /// Whether a partial match may spawn this tangible
     /// (SPAWN_AS_PARTIAL.md); the incumbent path ignores the flag.
     pub spawn_on_partial: bool,
     /// Frames a partial spawn must hold before the tangible leaves
     /// pending state.
-    pub spawn_stability: crate::FrameCount,
+    pub spawn_stability: FrameCount,
     /// Number of contact pins the figure must have.
     pub num_points: PinCount,
     /// Sorted pairwise distances of the reference point set (the fingerprint).
@@ -50,7 +52,7 @@ impl TangiblePattern {
     pub fn from_points(
         id: impl Into<PatternId>,
         name: &str,
-        points: &[Vec2<Millimeters>],
+        points: PointSet<'_>,
         tolerance: impl Into<PatternTolerance>,
     ) -> Self {
         Self {
@@ -59,7 +61,7 @@ impl TangiblePattern {
             spawn_on_partial: false,
             spawn_stability: FrameCount::new(15),
             num_points: PinCount::new(points.len()),
-            sorted_distances: sorted_pairwise_distances(points),
+            sorted_distances: sorted_pairwise_distances(points.0),
             tolerance: tolerance.into(),
             tolerances: Vec::new(),
             ref_points: Some(points.to_vec()),
@@ -70,7 +72,7 @@ impl TangiblePattern {
     /// Whether `points` may match spatially: every point must lie inside
     /// the union of this pattern's [`Region`]s. With no regions configured
     /// every position is accepted.
-    pub fn accepts(&self, points: &[Vec2<Millimeters>]) -> bool {
+    pub fn accepts(&self, points: PointSet<'_>) -> bool {
         self.regions.is_empty()
             || points
                 .iter()
@@ -91,11 +93,11 @@ impl TangiblePattern {
     /// Each deviation is compared against its per-index tolerance
     /// ([`Self::tolerance_at`]); the scalar `tolerance` is the fallback when
     /// no `tolerances` vector is configured.
-    pub fn matches(&self, points: &[Vec2<Millimeters>]) -> bool {
+    pub fn matches(&self, points: PointSet<'_>) -> bool {
         if points.len() != self.num_points {
             return false;
         }
-        let measured = sorted_pairwise_distances(points);
+        let measured = sorted_pairwise_distances(points.0);
         measured.len() == self.sorted_distances.len()
             && measured
                 .iter()
@@ -111,7 +113,7 @@ impl TangiblePattern {
     /// set - but the score additionally ranks candidates (lower is closer)
     /// and quantifies near-misses, which the score-based matcher and the
     /// offline analysis use.
-    pub fn match_score(&self, points: &[Vec2<Millimeters>]) -> f64 {
+    pub fn match_score(&self, points: PointSet<'_>) -> f64 {
         self.score_of(&Self::deviations(
             &Self::distances_of(points),
             &self.sorted_distances,
@@ -130,7 +132,7 @@ impl TangiblePattern {
     }
 
     /// Total absolute deviation across all distances (lower is better).
-    pub fn match_error(&self, points: &[Vec2<Millimeters>]) -> Millimeters {
+    pub fn match_error(&self, points: PointSet<'_>) -> Millimeters {
         Self::deviations(&Self::distances_of(points), &self.sorted_distances)
             .iter()
             .copied()
@@ -139,8 +141,8 @@ impl TangiblePattern {
 
     /// Computes the sorted pairwise distances of an arbitrary point set -
     /// the measured fingerprint compared against `sorted_distances`.
-    pub fn distances_of(points: &[Vec2<Millimeters>]) -> Vec<Millimeters> {
-        sorted_pairwise_distances(points)
+    pub fn distances_of(points: PointSet<'_>) -> Vec<Millimeters> {
+        sorted_pairwise_distances(points.0)
     }
 
     /// Absolute per-index deviation between a measured and a reference
@@ -167,10 +169,7 @@ impl TangiblePattern {
 
     /// Like [`Self::partial_reference`] with `skips` pins removed -
     /// needed for `num_points - 2` completion candidates.
-    pub fn partial_reference_multi(
-        &self,
-        skips: &[usize],
-    ) -> Option<PartialReference> {
+    pub fn partial_reference_multi(&self, skips: &[usize]) -> Option<PartialReference> {
         let ref_points = self.ref_points.as_ref()?;
         if ref_points.len() != self.num_points
             || skips.iter().any(|skip| *skip >= self.num_points)
@@ -201,10 +200,7 @@ impl TangiblePattern {
     /// dropping a pin re-indexes the distance fingerprint.
     ///
     /// Returns the matched reference indices and the total error.
-    pub fn matches_partial(
-        &self,
-        points: &[Vec2<Millimeters>],
-    ) -> Option<PartialMatch> {
+    pub fn matches_partial(&self, points: PointSet<'_>) -> Option<PartialMatch> {
         self.matches_partial_missing(points, 1)
     }
 
@@ -214,7 +210,7 @@ impl TangiblePattern {
     /// missing-pin completion to predict their expected positions.
     pub fn matches_partial_missing(
         &self,
-        points: &[Vec2<Millimeters>],
+        points: PointSet<'_>,
         missing: usize,
     ) -> Option<PartialMatch> {
         let ref_pts = self.ref_points.as_ref()?;
@@ -234,13 +230,13 @@ impl TangiblePattern {
     /// (slot binding already proves identity); `1.0` keeps the default.
     pub fn matches_partial_missing_scaled(
         &self,
-        points: &[Vec2<Millimeters>],
+        points: PointSet<'_>,
         missing: usize,
         tol_scale: f64,
     ) -> Option<PartialMatch> {
         self.ref_points.as_ref()?;
         let partial_tolerance = self.tolerance.0 * 1.5 * tol_scale;
-        let measured = sorted_pairwise_distances(points);
+        let measured = sorted_pairwise_distances(points.0);
         let mut best: Option<PartialMatch> = None;
 
         for skips in skip_combinations(self.num_points.as_usize(), missing) {
@@ -282,7 +278,7 @@ impl TangiblePattern {
     pub fn predict_missing(
         &self,
         kept_refs: &[usize],
-        measured: &[Vec2<Millimeters>],
+        measured: PointSet<'_>,
         missing: usize,
     ) -> Option<Vec2<Millimeters>> {
         let ref_points = self.ref_points.as_ref()?;
@@ -299,8 +295,9 @@ impl TangiblePattern {
         // multisets (symmetric figures admit several) and keep the
         // transform with the smallest residual.
         let mut best: Option<(RigidTransform, Millimeters)> = None;
-        for mapping in correspondences(&kept_ref_points, measured, self.tolerance) {
-            let Some(transform) = similarity_transform(&kept_ref_points, measured, &mapping) else {
+        for mapping in correspondences(&kept_ref_points, measured.0, self.tolerance) {
+            let Some(transform) = similarity_transform(&kept_ref_points, measured.0, &mapping)
+            else {
                 continue;
             };
             let residual: f64 = kept_ref_points
@@ -506,37 +503,37 @@ mod tests {
 
     #[test]
     fn fingerprint_contains_all_pairwise_distances() {
-        let pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
+        let pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
         assert_eq!(pattern.sorted_distances.len(), 3);
     }
 
     #[test]
     fn same_geometry_different_pose_matches() {
-        let pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
+        let pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
         // Same triangle, translated and rotated.
         let rotated = vec![
             Vec2::new(100.0, 100.0),
             Vec2::new(100.0, 150.0),
             Vec2::new(150.0, 100.0),
         ];
-        assert!(pattern.matches(&rotated));
+        assert!(pattern.matches((&rotated).into()));
     }
 
     #[test]
     fn wrong_geometry_does_not_match() {
-        let pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
+        let pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
         let other = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(30.0, 0.0),
             Vec2::new(0.0, 60.0),
         ];
-        assert!(!pattern.matches(&other));
+        assert!(!pattern.matches((&other).into()));
     }
 
     #[test]
     fn wrong_point_count_does_not_match() {
-        let pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
-        assert!(!pattern.matches(&triangle()[..2]));
+        let pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
+        assert!(!pattern.matches((&triangle()[..2]).into()));
     }
 
     #[test]
@@ -547,14 +544,14 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
-        assert!(pattern.matches_partial(&square[..3]).is_some());
+        let pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
+        assert!(pattern.matches_partial((&square[..3]).into()).is_some());
     }
 
     #[test]
     fn per_index_tolerances_refine_scalar() {
         // Fingerprint [50, 50, ~70.7]; indices 1–2 generous, index 0 strict.
-        let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
+        let mut pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 1.0);
         pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
         // Stretched third contact: deviations [0, ~15, ~11] - the shortest
         // edge is exact, the longer ones sit inside their 20 mm budget.
@@ -564,14 +561,14 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 65.0),
         ];
-        let scalar_only = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
-        assert!(!scalar_only.matches(&stretched));
-        assert!(pattern.matches(&stretched));
+        let scalar_only = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 1.0);
+        assert!(!scalar_only.matches((&stretched).into()));
+        assert!(pattern.matches((&stretched).into()));
     }
 
     #[test]
     fn per_index_tolerances_still_reject_short_edges() {
-        let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 1.0);
+        let mut pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 1.0);
         pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
         // The shortest edge shrinks (45 vs 50): index 0 deviates by 5 mm and
         // exceeds its strict 1 mm budget even though indices 1–2 would allow
@@ -581,32 +578,32 @@ mod tests {
             Vec2::new(45.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        assert!(!pattern.matches(&warped));
+        assert!(!pattern.matches((&warped).into()));
     }
 
     #[test]
     fn mismatched_tolerances_length_falls_back_to_scalar() {
-        let mut pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
         pattern.tolerances = vec![0.1.into()]; // too few - must not apply
         let slightly_off = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(53.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        assert!(pattern.matches(&slightly_off)); // scalar 5.0 still applies
+        assert!(pattern.matches((&slightly_off).into())); // scalar 5.0 still applies
     }
 
     #[test]
     fn match_score_marks_boundary_and_near_misses() {
-        let pattern = TangiblePattern::from_points(1, "triangle", &triangle(), 5.0);
-        assert_eq!(pattern.match_score(&triangle()), 0.0);
+        let pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
+        assert_eq!(pattern.match_score((&triangle()).into()), 0.0);
         // A 2.5 mm deviation on one edge is score 0.5 with scalar 5.0.
         let slightly_off = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(52.5, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let score = pattern.match_score(&slightly_off);
+        let score = pattern.match_score((&slightly_off).into());
         assert!(score > 0.4 && score < 0.6);
     }
 
@@ -618,8 +615,8 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.ref_points = None;
-        assert!(pattern.matches_partial(&square[..3]).is_none());
+        assert!(pattern.matches_partial((&square[..3]).into()).is_none());
     }
 }

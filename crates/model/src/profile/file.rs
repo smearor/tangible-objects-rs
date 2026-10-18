@@ -302,16 +302,26 @@ mod tests {
         assert_eq!(profile.regions.len(), 1);
         let pattern = profile.to_pattern(PatternId::new(1));
         assert_eq!(pattern.regions.len(), 1);
-        assert!(pattern.accepts(&[
-            Vec2::new(10.0, 10.0),
-            Vec2::new(50.0, 50.0),
-            Vec2::new(100.0, 100.0),
-        ]));
-        assert!(!pattern.accepts(&[
-            Vec2::new(10.0, 10.0),
-            Vec2::new(50.0, 50.0),
-            Vec2::new(500.0, 100.0),
-        ]));
+        assert!(
+            pattern.accepts(
+                (&[
+                    Vec2::new(10.0, 10.0),
+                    Vec2::new(50.0, 50.0),
+                    Vec2::new(100.0, 100.0),
+                ])
+                    .into()
+            )
+        );
+        assert!(
+            !pattern.accepts(
+                (&[
+                    Vec2::new(10.0, 10.0),
+                    Vec2::new(50.0, 50.0),
+                    Vec2::new(500.0, 100.0),
+                ])
+                    .into()
+            )
+        );
     }
 
     #[test]

@@ -1,5 +1,8 @@
 use super::PatternId;
+use crate::FrameCount;
 use crate::Millimeters;
+use crate::PatternName;
+use crate::PointSet;
 use crate::RotationRad;
 use crate::Vec2;
 
@@ -9,7 +12,7 @@ pub struct PatternMatch {
     /// ID of the matched pattern (assigned at profile load time).
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
-    pub pattern_name: crate::PatternName,
+    pub pattern_name: PatternName,
     /// Centroid of the matched touch points.
     pub center: Vec2<Millimeters>,
     /// Estimated figure orientation in radians.
@@ -27,7 +30,7 @@ pub struct PatternMatch {
     /// Frames a partial *spawn* must hold before the tangible is
     /// confirmed - carried from the pattern
     /// (SPAWN_AS_PARTIAL.md); ignored for non-partial matches.
-    pub spawn_stability: crate::FrameCount,
+    pub spawn_stability: FrameCount,
 }
 
 impl PatternMatch {
@@ -53,7 +56,7 @@ impl PatternMatch {
     /// For 3 points the vertex opposite the shortest side defines the
     /// orientation; for 4+ points the point farthest from the centroid is used.
     /// Returns 0.0 for empty point sets.
-    pub fn rotation_of(points: &[Vec2<Millimeters>], center: &Vec2<Millimeters>) -> RotationRad {
+    pub fn rotation_of(points: PointSet<'_>, center: &Vec2<Millimeters>) -> RotationRad {
         if points.is_empty() {
             return RotationRad::new(0.0);
         }
@@ -98,7 +101,7 @@ mod tests {
             Vec2::new(30.0, 0.0),
         ];
         let center = Vec2::centroid(&points);
-        let rotation = PatternMatch::rotation_of(&points, &center).as_f64();
+        let rotation = PatternMatch::rotation_of((&points).into(), &center).as_f64();
         // Vertex 1 at (0, 50), center at (10, 50/3): direction points up-left.
         assert!(rotation > std::f64::consts::PI / 2.0);
     }
@@ -112,7 +115,7 @@ mod tests {
             Vec2::new(100.0, 0.0),
         ];
         let center = Vec2::centroid(&points);
-        let rotation = PatternMatch::rotation_of(&points, &center).as_f64();
+        let rotation = PatternMatch::rotation_of((&points).into(), &center).as_f64();
         // Farthest point (100, 0) lies to the right of the centroid.
         assert!(rotation.abs() < std::f64::consts::PI / 2.0);
     }
@@ -120,7 +123,7 @@ mod tests {
     #[test]
     fn rotation_of_empty_set_is_zero() {
         assert_eq!(
-            PatternMatch::rotation_of(&[], &Vec2::new(0.0, 0.0)).as_f64(),
+            PatternMatch::rotation_of((&[]).into(), &Vec2::new(0.0, 0.0)).as_f64(),
             0.0
         );
     }
