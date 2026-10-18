@@ -12,6 +12,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 pub enum AnalysisMode {
     /// Fold the recorded generic candidates - fast, but blind to frames
     /// whose contacts ran through the incumbent track path.
