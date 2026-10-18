@@ -60,3 +60,6 @@ impl Display for RawAxisValue {
         self.0.fmt(f)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(RawAxisValue);

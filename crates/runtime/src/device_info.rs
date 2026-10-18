@@ -1,5 +1,7 @@
 use serde::Serialize;
 use tangible_objects_model::Calibration;
+use tangible_objects_model::RawAxisValue;
+use tangible_objects_model::UnitsPerMm;
 
 /// Static information about the input device attached to this daemon -
 /// the identity needed to interpret or convert its raw event stream.
@@ -13,17 +15,17 @@ pub struct DeviceInfo {
     /// `Input device name` of the evdev device (or the replayed file).
     pub name: Option<String>,
     /// Device units per millimeter on X (`ABS_MT_POSITION_X` resolution).
-    pub x_res: Option<f64>,
+    pub x_res: Option<UnitsPerMm>,
     /// Device units per millimeter on Y (`ABS_MT_POSITION_Y` resolution).
-    pub y_res: Option<f64>,
+    pub y_res: Option<UnitsPerMm>,
     /// Minimum raw X value.
-    pub x_min: Option<f64>,
+    pub x_min: Option<RawAxisValue>,
     /// Maximum raw X value.
-    pub x_max: Option<f64>,
+    pub x_max: Option<RawAxisValue>,
     /// Minimum raw Y value.
-    pub y_min: Option<f64>,
+    pub y_min: Option<RawAxisValue>,
     /// Maximum raw Y value.
-    pub y_max: Option<f64>,
+    pub y_max: Option<RawAxisValue>,
 }
 
 impl DeviceInfo {
@@ -32,12 +34,12 @@ impl DeviceInfo {
         match calibration {
             Some(cal) => Self {
                 name: name.map(|s| s.to_string()),
-                x_res: Some(cal.x_res.as_f64()),
-                y_res: Some(cal.y_res.as_f64()),
-                x_min: Some(cal.x_min.as_f64()),
-                x_max: Some(cal.x_max.as_f64()),
-                y_min: Some(cal.y_min.as_f64()),
-                y_max: Some(cal.y_max.as_f64()),
+                x_res: Some(cal.x_res),
+                y_res: Some(cal.y_res),
+                x_min: Some(cal.x_min),
+                x_max: Some(cal.x_max),
+                y_min: Some(cal.y_min),
+                y_max: Some(cal.y_max),
             },
             None => Self {
                 name: name.map(|s| s.to_string()),

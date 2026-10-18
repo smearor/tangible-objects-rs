@@ -40,3 +40,6 @@ impl Display for UnitsPerMm {
         self.0.fmt(f)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(UnitsPerMm);
