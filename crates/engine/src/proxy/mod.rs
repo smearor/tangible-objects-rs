@@ -4,8 +4,10 @@
 //! occupies ([`FilterProxy`]). The operating system sees the clone; tangible
 //! contacts never reach it.
 
+mod boundary;
 mod filter;
 mod legacy_mode;
+mod stage;
 mod virtual_device;
 
 pub use filter::FilterProxy;

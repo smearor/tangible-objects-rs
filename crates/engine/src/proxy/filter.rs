@@ -1,82 +1,39 @@
-use std::collections::HashMap;
 use std::collections::HashSet;
 
 use evdev::InputEvent;
 
-use tangible_objects_model::ABS_MT_SLOT;
-use tangible_objects_model::ABS_MT_TRACKING_ID;
-use tangible_objects_model::BTN_TOUCH;
-use tangible_objects_model::EventType;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::RawEvent;
-use tangible_objects_model::SYN_REPORT;
 use tangible_objects_model::TouchPointSlot;
 
 use super::LegacyMode;
+use super::boundary::EmitBoundary;
+use super::stage::TangibleStage;
 
-/// Frames a suppressed slot survives without a renewed match - mirrors the
-/// tracker's expiry hysteresis so a transient match loss (tilt, flaky pin)
-/// does not briefly leak the contact to the operating system.
-const SUPPRESSION_HYSTERESIS: FrameCount = FrameCount::new(30);
-
-/// Default for [`FilterProxy::set_mode`]'s stability parameter:
-/// consecutive frames a slot must be matched before suppression starts.
-/// A one-frame phantom match (fingers coincidentally forming a profile)
-/// never enters suppression - combined with the hysteresis, which would
-/// otherwise hold the wrongly-suppressed contact for ~250 ms.
-/// FILTER_PROXY_VIRTUAL.md, "Mitigation 2".
-const DEFAULT_STABILITY_GATE: FrameCount = FrameCount::new(2);
-
-/// Frame-buffered event filter for the proxy path.
+/// Frame-buffered event filter for the proxy path - a single-stage
+/// pipeline (EVENT_PIPELINE.md).
 ///
 /// Events accumulate until `SYN_REPORT`; only then is the complete set of
-/// active touch points known and the matcher can say which slots belong to a
-/// tangible. Events of suppressed slots are dropped; a slot that already
+/// active touch points known and the matcher can say which slots belong to
+/// a tangible. Events of suppressed slots are dropped; a slot that already
 /// emitted a contact before being classified gets a synthetic
 /// `TRACKING_ID = -1` injection to retract it.
 ///
 /// Suppression is persistent: a slot classified as tangible stays
 /// suppressed across frames without match until its tracking contact ends
-/// or [`SUPPRESSION_HYSTERESIS`] expires. Entry is gated by
-/// `stability_gate` consecutive matched frames.
+/// or the hysteresis expires. Entry is gated by `stability_gate`
+/// consecutive matched frames.
+///
+/// Composed of the policy half ([`TangibleStage`]: mode, gate, hysteresis)
+/// and the mechanism half ([`EmitBoundary`]: buffering, emitted-set,
+/// guarded withholding, retraction); today's single stage is the
+/// reference stage of the future pipeline.
 pub struct FilterProxy {
-    /// Events of the frame currently accumulating.
-    frame: Vec<RawEvent>,
-    /// Source slots with a live contact on the virtual device.
-    emitted: HashSet<TouchPointSlot>,
-    /// Suppressed slots mapped to frames elapsed since their last match.
-    /// Resets on every renewed match; expiry releases the slot.
-    suppressed: HashMap<TouchPointSlot, FrameCount>,
-    /// Slots matched consecutively but not yet past the stability gate.
-    /// Resets when a slot misses a frame; graduates into `suppressed`
-    /// after `stability_gate` consecutive matches.
-    pending: HashMap<TouchPointSlot, FrameCount>,
-    /// Consecutive matched frames required before suppression starts
-    /// (`Gated`/`Guarded`; `Immediate` ignores it).
-    stability_gate: FrameCount,
-    /// Withheld events of unclassified new contacts (`Guarded` mode):
-    /// a new contact's events are buffered until classification -
-    /// matched slots stay held (candidate tangible), slots unmatched for
-    /// `stability_gate` consecutive frames are replayed as fingers.
-    held: HashMap<TouchPointSlot, HeldContact>,
-    /// Active suppression policy.
-    mode: FilterMode,
-    /// Policy for the legacy single-touch events (`BTN_TOUCH`, `ABS_X`,
-    /// `ABS_Y`) - not slot-scoped, handled separately.
-    legacy: LegacyMode,
-}
-
-/// A withheld contact in `Guarded` mode.
-#[derive(Default)]
-struct HeldContact {
-    /// Buffered events of the contact, replayed on release.
-    events: Vec<RawEvent>,
-    /// Consecutive frames this contact went unmatched. Only once this
-    /// reaches `stability_gate` does the contact turn out to be a finger
-    /// and get released - a tangible whose pins land asynchronously
-    /// stays held until the full pattern matches.
-    unmatched: FrameCount,
+    /// Suppression policy: which slots count as tangible-suppressed.
+    stage: TangibleStage,
+    /// Emit mechanism: frame buffer, emitted set, guarded withholding.
+    boundary: EmitBoundary,
 }
 
 impl Default for FilterProxy {
@@ -89,14 +46,8 @@ impl FilterProxy {
     /// Creates an empty filter proxy.
     pub fn new() -> Self {
         Self {
-            frame: Vec::new(),
-            emitted: HashSet::new(),
-            suppressed: HashMap::new(),
-            pending: HashMap::new(),
-            held: HashMap::new(),
-            mode: FilterMode::default(),
-            stability_gate: DEFAULT_STABILITY_GATE,
-            legacy: LegacyMode::default(),
+            stage: TangibleStage::new(),
+            boundary: EmitBoundary::new(),
         }
     }
 
@@ -104,7 +55,7 @@ impl FilterProxy {
     /// `ABS_X`, `ABS_Y`). [`LegacyMode::Auto`] (default) emits them only
     /// while a contact is live on the virtual device.
     pub fn set_legacy_mode(&mut self, legacy: LegacyMode) {
-        self.legacy = legacy;
+        self.boundary.set_legacy_mode(legacy);
     }
 
     /// Switches the suppression policy (`SetFilterMode` control command).
@@ -113,266 +64,23 @@ impl FilterProxy {
     /// stay suppressed, held contacts stay held until their next
     /// evaluation.
     pub fn set_mode(&mut self, mode: FilterMode, stability: Option<FrameCount>) {
-        self.mode = mode;
-        if let Some(gate) = stability {
-            self.stability_gate = gate;
-        }
+        self.stage.set_mode(mode, stability);
     }
 
     /// Buffers one source event for the current frame.
     pub fn push(&mut self, event: RawEvent) {
-        self.frame.push(event);
+        self.boundary.push(event);
     }
 
-    /// Finishes the buffered frame: drops events targeting suppressed
-    /// slots and prepends `TRACKING_ID = -1` injections for suppressed slots
-    /// that still have a live contact on the virtual device. Returns the
-    /// complete frame to emit, ending in `SYN_REPORT`.
-    ///
-    /// `matched` carries the slots of this frame's exact matches; they reset
-    /// their hysteresis counter. Slots in earlier matches stay suppressed
-    /// until their contact ends or [`SUPPRESSION_HYSTERESIS`] expires.
+    /// Finishes the buffered frame: runs the stage's classification over
+    /// `matched` (the slots of this frame's exact matches), then lets the
+    /// boundary shape the emitted frame - drops, retraction injections,
+    /// guarded replay - ending in `SYN_REPORT`.
     pub fn finish(&mut self, matched: &HashSet<TouchPointSlot>) -> Vec<InputEvent> {
-        // Classification bookkeeping per policy:
-        // - `Immediate` suppresses on the first matched frame.
-        // - `Gated`/`Guarded` count consecutive matches in `pending` and
-        //   graduate into `suppressed` after `STABILITY_GATE`.
-        // - `Off` still tracks contacts (consistent state on re-enable)
-        //   but never enters suppression.
-        match self.mode {
-            FilterMode::Immediate => {
-                for &slot in matched {
-                    self.suppressed.insert(slot, FrameCount::new(0));
-                }
-            }
-            FilterMode::Gated | FilterMode::Guarded => {
-                self.pending.retain(|slot, _| matched.contains(slot));
-                for &slot in matched {
-                    if let std::collections::hash_map::Entry::Occupied(mut suppressed) =
-                        self.suppressed.entry(slot)
-                    {
-                        *suppressed.get_mut() = FrameCount::new(0);
-                    } else {
-                        *self.pending.entry(slot).or_insert(FrameCount::new(0)) += 1;
-                    }
-                }
-                let graduated: Vec<TouchPointSlot> = self
-                    .pending
-                    .iter()
-                    .filter(|(_, count)| **count >= self.stability_gate)
-                    .map(|(&slot, _)| slot)
-                    .collect();
-                for slot in graduated {
-                    self.pending.remove(&slot);
-                    self.suppressed.insert(slot, FrameCount::new(0));
-                }
-            }
-            FilterMode::Off | FilterMode::TangiblesOnly => {}
-        }
-        // Age every suppression; expired entries are released.
-        self.suppressed.retain(|_, age| {
-            *age += 1;
-            *age <= SUPPRESSION_HYSTERESIS
-        });
-
-        let mut out = Vec::with_capacity(self.frame.len() + 8);
-        // Whether the clone still believes a contact is live right now -
-        // captured before retraction injections and the event scan so the
-        // legacy rule below can emit the BTN_TOUCH=0 down-transition.
-        let had_contact = !self.emitted.is_empty();
-
-        // TangiblesOnly: no contact ever reaches the clone. Slots still
-        // live from an earlier policy get retracted once; classification
-        // bookkeeping above stays alive for a consistent switch back.
-        if self.mode == FilterMode::TangiblesOnly {
-            self.frame.clear();
-            self.held.clear();
-            let emitted: Vec<TouchPointSlot> = self.emitted.drain().collect();
-            for slot in emitted {
-                out.push(input_event(ABS_MT_SLOT.as_u16(), slot.as_u32() as i32));
-                out.push(input_event(ABS_MT_TRACKING_ID.as_u16(), -1));
-            }
-            if had_contact {
-                out.push(InputEvent::new(
-                    evdev::EventType(u16::from(EventType::Key)),
-                    BTN_TOUCH.as_u16(),
-                    0,
-                ));
-            }
-            out.push(syn_event());
-            return out;
-        }
-
-        // Withheld contacts are resolved at each frame boundary. In
-        // `Guarded` a held slot that matched stays held (pending
-        // tangible), one that graduated is dropped, and one accumulating
-        // `stability_gate` consecutive unmatched frames is replayed as a
-        // finger contact - the symmetric counterpart of the match gate.
-        // Every other mode drains `held` outright - withheld events are
-        // replayed so nothing is lost.
-        let mut release = Vec::new();
-        for (&slot, held) in self.held.iter_mut() {
-            if self.mode != FilterMode::Guarded || self.suppressed.contains_key(&slot) {
-                release.push(slot);
-            } else if matched.contains(&slot) {
-                held.unmatched = FrameCount::new(0);
-            } else {
-                held.unmatched += 1;
-                if held.unmatched >= self.stability_gate {
-                    release.push(slot);
-                }
-            }
-        }
-        for slot in release {
-            let held = self.held.remove(&slot).unwrap_or_default();
-            if self.mode == FilterMode::Guarded && self.suppressed.contains_key(&slot) {
-                continue; // pending tangible: drop the withheld events
-            }
-            for raw in held.events {
-                if raw.event_type == EventType::Abs && raw.code == ABS_MT_TRACKING_ID {
-                    if raw.value == -1 {
-                        self.emitted.remove(&slot);
-                    } else {
-                        self.emitted.insert(slot);
-                    }
-                }
-                out.push(to_input_event(&raw));
-            }
-        }
-
-        // Retract contacts that were emitted before their slot got
-        // classified as a tangible.
-        let retract: Vec<TouchPointSlot> = self
-            .suppressed
-            .keys()
-            .copied()
-            .filter(|slot| self.emitted.contains(slot))
-            .collect();
-        for slot in retract {
-            out.push(input_event(ABS_MT_SLOT.as_u16(), slot.as_u32() as i32));
-            out.push(input_event(ABS_MT_TRACKING_ID.as_u16(), -1));
-            self.emitted.remove(&slot);
-        }
-
-        let mut current_slot: Option<TouchPointSlot> = None;
-        // Legacy single-touch events (ABS_X, ABS_Y, BTN_TOUCH) are not
-        // slot-scoped - they are collected and emitted or dropped at
-        // frame end depending on `legacy` and the emitted contact set.
-        let mut legacy_events = Vec::new();
-        for raw in self.frame.drain(..) {
-            if raw.is_syn_report() {
-                continue;
-            }
-            if raw.event_type == EventType::Abs {
-                // Multitouch axes live in the ABS_MT_* range 0x2f..=0x3e
-                // (SLOT, TOOL, POSITION_*, TRACKING_ID, PRESSURE, ...).
-                // Legacy axes (ABS_X=0, ABS_Y=1) are slot-independent.
-                let is_mt = (ABS_MT_SLOT.as_u16()..=0x3e).contains(&raw.code.as_u16());
-                if !is_mt {
-                    legacy_events.push(raw);
-                    continue;
-                }
-                if raw.code == ABS_MT_SLOT {
-                    current_slot = (raw.value >= 0).then(|| TouchPointSlot::new(raw.value as u32));
-                }
-                // A lifting contact ends the suppression - the slot becomes
-                // free for a new tracking contact. Its own -1 event is
-                // still dropped; the retraction injection above already
-                // closed the contact on the virtual side.
-                if raw.code == ABS_MT_TRACKING_ID
-                    && raw.value == -1
-                    && let Some(slot) = current_slot
-                {
-                    self.suppressed.remove(&slot);
-                }
-                if self.mode != FilterMode::Off
-                    && current_slot.is_some_and(|slot| self.suppressed.contains_key(&slot))
-                {
-                    continue;
-                }
-                if self.mode == FilterMode::Guarded {
-                    // The slot this event applies to: the SLOT selector
-                    // event names its own target, every other event
-                    // belongs to the current slot.
-                    let target = if raw.code == ABS_MT_SLOT {
-                        (raw.value >= 0).then(|| TouchPointSlot::new(raw.value as u32))
-                    } else {
-                        current_slot
-                    };
-                    if let Some(slot) = target {
-                        // A fresh contact (new TRACKING_ID on a slot that
-                        // is neither live on the clone nor suppressed) is
-                        // withheld until classified; events of an already
-                        // held slot keep accumulating.
-                        let starts_contact = raw.code == ABS_MT_TRACKING_ID
-                            && raw.value >= 0
-                            && !self.emitted.contains(&slot);
-                        if self.held.contains_key(&slot) || starts_contact {
-                            self.held.entry(slot).or_default().events.push(raw);
-                            continue;
-                        }
-                    }
-                }
-                if raw.code == ABS_MT_TRACKING_ID
-                    && let Some(slot) = current_slot
-                {
-                    if raw.value == -1 {
-                        self.emitted.remove(&slot);
-                    } else {
-                        self.emitted.insert(slot);
-                    }
-                }
-            } else if raw.event_type == EventType::Key && raw.code == BTN_TOUCH {
-                legacy_events.push(raw);
-                continue;
-            }
-            out.push(to_input_event(&raw));
-        }
-
-        // Legacy single-touch events mirror "at least one active contact" -
-        // emitting them with an empty virtual device would fabricate a
-        // phantom tap. The down-transition (`had_contact` → none) must
-        // still emit so the clone's BTN_TOUCH=0 reaches the system.
-        let emit_legacy = match self.legacy {
-            LegacyMode::Always => true,
-            LegacyMode::Never => false,
-            LegacyMode::Auto => !self.emitted.is_empty() || had_contact,
-        };
-        if emit_legacy {
-            out.extend(legacy_events.iter().map(to_input_event));
-        }
-
-        out.push(syn_event());
-        out
+        self.stage.classify(matched);
+        self.boundary.finish(&mut self.stage, matched)
     }
 }
-
-/// Builds the `SYN_REPORT` event closing an emitted frame.
-fn syn_event() -> InputEvent {
-    InputEvent::new(
-        evdev::EventType(u16::from(EventType::Syn)),
-        SYN_REPORT.as_u16(),
-        0,
-    )
-}
-
-/// Converts a [`RawEvent`] back into an [`InputEvent`] for the clone.
-///
-/// The timestamp is assigned at emission; the proxy adds at most one frame
-/// of latency so source timestamps are not carried over.
-fn to_input_event(raw: &RawEvent) -> InputEvent {
-    InputEvent::new(
-        evdev::EventType(u16::from(raw.event_type)),
-        raw.code.as_u16(),
-        raw.value,
-    )
-}
-
-/// Builds an `EV_ABS` input event for a fixed code/value pair.
-fn input_event(code: u16, value: i32) -> InputEvent {
-    InputEvent::new(evdev::EventType(u16::from(EventType::Abs)), code, value)
-}
-
 #[cfg(test)]
 mod tests {
     use super::FilterProxy;
@@ -548,7 +256,7 @@ mod tests {
         proxy.set_mode(tangible_objects_model::FilterMode::Gated, None);
         suppress(&mut proxy, 0);
         // Hysteresis + 1 frames without a match → the position leaks again.
-        for _ in 0..=super::SUPPRESSION_HYSTERESIS.as_u64() + 1 {
+        for _ in 0..=crate::proxy::stage::SUPPRESSION_HYSTERESIS.as_u64() + 1 {
             for ev in [abs(ABS_MT_SLOT, 0), abs(ABS_MT_POSITION_X, 1), syn()] {
                 proxy.push(ev);
             }
