@@ -201,6 +201,7 @@ pub(crate) fn header_text(device_name: Option<&str>, calibration: Option<&Calibr
 #[cfg(test)]
 mod tests {
     use super::RawRecorder;
+    use crate::EvtestReplay;
     use tangible_objects_model::ABS_MT_POSITION_X;
     use tangible_objects_model::ABS_MT_SLOT;
     use tangible_objects_model::ABS_MT_TRACKING_ID;
@@ -240,7 +241,7 @@ mod tests {
             recorder.finish().expect("finish recorder");
         }
 
-        let mut replay = crate::EvtestReplay::open(&path).expect("open replay");
+        let mut replay = EvtestReplay::open(&path).expect("open replay");
         let replayed_calibration = replay.calibration().expect("calibration in header");
         assert_eq!(replayed_calibration.x_res.as_f64(), 7.0);
         assert_eq!(replayed_calibration.y_res.as_f64(), 12.0);
@@ -263,7 +264,7 @@ mod tests {
             recorder.record(&RawEvent::new(EventType::Syn, SYN_REPORT, 0), 0.0);
             recorder.finish().expect("finish recorder");
         }
-        let mut replay = crate::EvtestReplay::open(&path).expect("open replay");
+        let mut replay = EvtestReplay::open(&path).expect("open replay");
         assert!(replay.calibration().is_none());
         assert_eq!(
             replay.next_event().map(|e| e.event_type),

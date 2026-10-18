@@ -548,6 +548,7 @@ impl Engine {
 mod tests {
     use super::Engine;
     use crate::EngineEvent;
+    use crate::EngineFrame;
     use tangible_objects_model::ABS_MT_POSITION_X;
     use tangible_objects_model::ABS_MT_POSITION_Y;
     use tangible_objects_model::ABS_MT_SLOT;
@@ -578,7 +579,7 @@ mod tests {
         engine.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_Y, y));
     }
 
-    fn syn(engine: &mut Engine) -> Option<crate::EngineFrame> {
+    fn syn(engine: &mut Engine) -> Option<EngineFrame> {
         engine.process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
     }
 

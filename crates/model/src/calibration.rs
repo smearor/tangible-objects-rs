@@ -109,12 +109,13 @@ impl Calibration {
 #[cfg(test)]
 mod tests {
     use super::Calibration;
+    use crate::RawAxisValue;
     use crate::Vec2;
 
     #[test]
     fn raw_coordinate_converts_to_mm() {
         let cal = Calibration::new(4.0, 2.0);
-        let mm = cal.to_mm(Vec2::<crate::RawAxisValue>::new(40.0, 20.0));
+        let mm = cal.to_mm(Vec2::<RawAxisValue>::new(40.0, 20.0));
         assert!((mm.x - 10.0).abs() < 1e-9);
         assert!((mm.y - 10.0).abs() < 1e-9);
     }

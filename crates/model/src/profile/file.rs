@@ -8,8 +8,10 @@ use serde::Serialize;
 use super::ProfileDir;
 use super::ProfileError;
 use crate::Distances;
+use crate::FrameCount;
 use crate::Millimeters;
 use crate::PatternId;
+use crate::PatternName;
 use crate::PatternTolerance;
 use crate::PatternTolerances;
 use crate::PinCount;
@@ -24,7 +26,7 @@ use crate::Vec2;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileFile {
     /// Human-readable figure name.
-    pub name: crate::PatternName,
+    pub name: PatternName,
     /// Whether the profile is enabled - a disabled profile is skipped at
     /// startup (`enabled = false` keeps the file without registering).
     #[serde(default = "default_enabled")]
@@ -40,7 +42,7 @@ pub struct ProfileFile {
     /// pending state and emits `TangibleAdded` - phantom partials die
     /// inside this window. Only meaningful with `spawn_on_partial`.
     #[serde(default = "default_spawn_stability")]
-    pub spawn_stability: crate::FrameCount,
+    pub spawn_stability: FrameCount,
     /// Number of contact pins.
     pub num_points: usize,
     /// Matching tolerance for the distance fingerprint.
@@ -74,8 +76,8 @@ fn default_enabled() -> bool {
 
 /// Default partial-spawn confirmation window (`spawn_stability = 15`
 /// frames, ~0.25 s at 60 Hz).
-fn default_spawn_stability() -> crate::FrameCount {
-    crate::FrameCount::new(15)
+fn default_spawn_stability() -> FrameCount {
+    FrameCount::new(15)
 }
 
 impl ProfileFile {
