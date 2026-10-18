@@ -5,6 +5,7 @@ use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PointSet;
 use tangible_objects_model::TangiblePattern;
 
 use super::DistanceStats;
@@ -85,10 +86,9 @@ impl DeviationReport {
                 let mut best: Option<(Vec<Millimeters>, f64)> = None;
                 for subset in Self::combinations(touches.len(), pattern.num_points.as_usize()) {
                     let points: Vec<_> = subset.iter().map(|&index| touches[index]).collect();
-                    let deviations = TangiblePattern::deviations(
-                        &TangiblePattern::distances_of((&points).into()),
-                        &pattern.sorted_distances,
-                    );
+                    let deviations = PointSet::new(&points)
+                        .distances()
+                        .deviations(&pattern.sorted_distances);
                     let score = pattern.score_of(&deviations);
                     if best.as_ref().is_none_or(|(_, s)| score < *s) {
                         best = Some((deviations, score));

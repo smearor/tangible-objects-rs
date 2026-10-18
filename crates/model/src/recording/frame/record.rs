@@ -104,7 +104,7 @@ mod tests {
                 touch_indices: vec![0, 1, 2, 3],
                 matched: true,
                 partial: false,
-                measured_distances: vec![Millimeters::new(34.15)],
+                measured_distances: vec![Millimeters::new(34.15)].into(),
                 deviations: vec![Millimeters::new(0.83)],
                 tolerance: PatternTolerance::new(3.0),
                 tolerances: Vec::new(),

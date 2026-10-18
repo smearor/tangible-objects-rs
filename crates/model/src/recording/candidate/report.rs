@@ -28,7 +28,7 @@ pub struct CandidateReport {
     /// Sorted pairwise distances measured on the combination's points.
     /// Index `i` corresponds to the pattern's `sorted_distances[i]` (or the
     /// subset fingerprint for partial candidates).
-    pub measured_distances: Vec<Millimeters>,
+    pub measured_distances: crate::Distances,
     /// Absolute deviation `|measured[i] - reference[i]|` per distance index,
     /// parallel to `measured_distances`.
     pub deviations: Vec<Millimeters>,

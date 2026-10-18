@@ -7,6 +7,7 @@ use serde::Serialize;
 
 use super::ProfileDir;
 use super::ProfileError;
+use crate::Distances;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternTolerance;
@@ -52,7 +53,7 @@ pub struct ProfileFile {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tolerances: Vec<PatternTolerance>,
     /// Sorted pairwise distances of the reference geometry (the fingerprint).
-    pub sorted_sides: Vec<Millimeters>,
+    pub sorted_sides: Distances,
     /// Original contact positions - enables partial matching when one
     /// contact pin is missing. Serialized flat as `[x0, y0, x1, y1, ...]`
     /// for on-disk compatibility.
@@ -101,7 +102,7 @@ impl ProfileFile {
             num_points: points.len(),
             tolerance,
             tolerances: Vec::new(),
-            sorted_sides: distances,
+            sorted_sides: Distances(distances),
             points: points.to_vec(),
             regions: Vec::new(),
         }

@@ -5,6 +5,7 @@ use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::MatchScore;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::PointSet;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::Vec2;
@@ -281,8 +282,8 @@ fn exact_report(
     combo: &[usize],
     matched: bool,
 ) -> CandidateReport {
-    let measured_distances = TangiblePattern::distances_of(points.into());
-    let deviations = TangiblePattern::deviations(&measured_distances, &pattern.sorted_distances);
+    let measured_distances = PointSet::new(points).distances();
+    let deviations = measured_distances.deviations(&pattern.sorted_distances);
     CandidateReport {
         pattern_id: pattern.id,
         pattern_name: pattern.name.clone(),
@@ -312,7 +313,7 @@ fn partial_report(
     combo: &[usize],
     matched: bool,
 ) -> CandidateReport {
-    let measured_distances = TangiblePattern::distances_of(points.into());
+    let measured_distances = PointSet::new(points).distances();
     let (deviations, match_error) = (0..pattern.num_points.as_usize())
         .filter_map(|skip| pattern.partial_reference(skip))
         .map(|reference| {

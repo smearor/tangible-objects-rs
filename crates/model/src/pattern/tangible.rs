@@ -1,3 +1,4 @@
+use super::Distances;
 use super::PartialMatch;
 use super::PartialReference;
 use super::PatternId;
@@ -31,7 +32,7 @@ pub struct TangiblePattern {
     /// Number of contact pins the figure must have.
     pub num_points: PinCount,
     /// Sorted pairwise distances of the reference point set (the fingerprint).
-    pub sorted_distances: Vec<Millimeters>,
+    pub sorted_distances: Distances,
     /// Maximum allowed deviation per distance during matching.
     pub tolerance: PatternTolerance,
     /// Optional per-distance tolerances, parallel to `sorted_distances`.
@@ -61,7 +62,7 @@ impl TangiblePattern {
             spawn_on_partial: false,
             spawn_stability: FrameCount::new(15),
             num_points: PinCount::new(points.len()),
-            sorted_distances: sorted_pairwise_distances(points.0),
+            sorted_distances: points.distances(),
             tolerance: tolerance.into(),
             tolerances: Vec::new(),
             ref_points: Some(points.to_vec()),
@@ -97,7 +98,7 @@ impl TangiblePattern {
         if points.len() != self.num_points {
             return false;
         }
-        let measured = sorted_pairwise_distances(points.0);
+        let measured = points.distances();
         measured.len() == self.sorted_distances.len()
             && measured
                 .iter()
@@ -114,10 +115,7 @@ impl TangiblePattern {
     /// and quantifies near-misses, which the score-based matcher and the
     /// offline analysis use.
     pub fn match_score(&self, points: PointSet<'_>) -> f64 {
-        self.score_of(&Self::deviations(
-            &Self::distances_of(points),
-            &self.sorted_distances,
-        ))
+        self.score_of(&points.distances().deviations(&self.sorted_distances))
     }
 
     /// Score of an already-computed deviation vector - `max_i dev[i] /
@@ -133,29 +131,18 @@ impl TangiblePattern {
 
     /// Total absolute deviation across all distances (lower is better).
     pub fn match_error(&self, points: PointSet<'_>) -> Millimeters {
-        Self::deviations(&Self::distances_of(points), &self.sorted_distances)
+        points
+            .distances()
+            .deviations(&self.sorted_distances)
             .iter()
             .copied()
             .sum()
     }
 
-    /// Computes the sorted pairwise distances of an arbitrary point set -
-    /// the measured fingerprint compared against `sorted_distances`.
-    pub fn distances_of(points: PointSet<'_>) -> Vec<Millimeters> {
-        sorted_pairwise_distances(points.0)
-    }
-
     /// Absolute per-index deviation between a measured and a reference
     /// fingerprint; empty when the lengths differ.
-    pub fn deviations(measured: &[Millimeters], reference: &[Millimeters]) -> Vec<Millimeters> {
-        if measured.len() != reference.len() {
-            return Vec::new();
-        }
-        measured
-            .iter()
-            .zip(reference.iter())
-            .map(|(m, r)| (*m - *r).abs())
-            .collect()
+    pub fn deviations(measured: &Distances, reference: &Distances) -> Vec<Millimeters> {
+        measured.deviations(reference)
     }
 
     /// Fingerprint of the reference point set with pin `skip` removed.
@@ -188,7 +175,7 @@ impl TangiblePattern {
             .collect();
         Some(PartialReference {
             kept_indices: indices,
-            distances: sorted_pairwise_distances(&subset),
+            distances: PointSet::new(&subset).distances(),
         })
     }
 
@@ -236,7 +223,7 @@ impl TangiblePattern {
     ) -> Option<PartialMatch> {
         self.ref_points.as_ref()?;
         let partial_tolerance = self.tolerance.0 * 1.5 * tol_scale;
-        let measured = sorted_pairwise_distances(points.0);
+        let measured = points.distances();
         let mut best: Option<PartialMatch> = None;
 
         for skips in skip_combinations(self.num_points.as_usize(), missing) {
@@ -320,18 +307,6 @@ impl TangiblePattern {
         }
         best.map(|(transform, _)| transform.apply(ref_points[missing]))
     }
-}
-
-/// Computes all pairwise distances of a point set, sorted ascending.
-fn sorted_pairwise_distances(points: &[Vec2<Millimeters>]) -> Vec<Millimeters> {
-    let mut distances = Vec::new();
-    for i in 0..points.len() {
-        for j in (i + 1)..points.len() {
-            distances.push(points[i].distance(&points[j]));
-        }
-    }
-    distances.sort_by(Millimeters::total_cmp);
-    distances
 }
 
 /// All `missing`-element index combinations of `0..n` (the pins to skip).

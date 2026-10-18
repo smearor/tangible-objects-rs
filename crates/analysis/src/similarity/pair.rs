@@ -1,8 +1,10 @@
 use serde::Serialize;
 use tangible_objects_model::ContactCount;
+use tangible_objects_model::Distances;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
+use tangible_objects_model::PointSet;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::Vec2;
 
@@ -62,7 +64,7 @@ impl SimilarityPair {
                     let fp_a = subset_fingerprint(a, points_a, &keep_a);
                     for keep_b in combinations(b.num_points.as_usize(), k) {
                         let fp_b = subset_fingerprint(b, points_b, &keep_b);
-                        let deviation = Millimeters::max_deviation(&fp_a, &fp_b);
+                        let deviation = fp_a.max_deviation(&fp_b);
                         if best
                             .as_ref()
                             .is_none_or(|c| deviation < c.min_max_deviation)
@@ -83,10 +85,7 @@ impl SimilarityPair {
         if a.sorted_distances.len() == b.sorted_distances.len() {
             return Some(SubsetCollision {
                 contact_count: ContactCount::new(a.num_points.max(b.num_points).as_u32()),
-                min_max_deviation: Millimeters::max_deviation(
-                    &a.sorted_distances,
-                    &b.sorted_distances,
-                ),
+                min_max_deviation: a.sorted_distances.max_deviation(&b.sorted_distances),
             });
         }
         None
@@ -117,19 +116,12 @@ fn subset_fingerprint(
     pattern: &TangiblePattern,
     points: &[Vec2<Millimeters>],
     keep: &[usize],
-) -> Vec<Millimeters> {
+) -> Distances {
     if keep.len() == pattern.num_points {
         return pattern.sorted_distances.clone();
     }
     let subset: Vec<Vec2<Millimeters>> = keep.iter().map(|&i| points[i]).collect();
-    let mut distances = Vec::new();
-    for (i, a) in subset.iter().enumerate() {
-        for b in &subset[i + 1..] {
-            distances.push(a.distance(b));
-        }
-    }
-    distances.sort_by(Millimeters::total_cmp);
-    distances
+    PointSet::new(&subset).distances()
 }
 
 /// All `k`-element index subsets of `n` points (lexicographic order).

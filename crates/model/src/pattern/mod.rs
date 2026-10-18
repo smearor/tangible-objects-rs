@@ -4,6 +4,7 @@
 //! [`PatternMatch`] a successful detection within a frame, [`PatternId`]
 //! the runtime identifier and [`PatternTolerance`] the matching tolerance.
 
+mod distances;
 mod id;
 mod r#match;
 mod name;
@@ -13,6 +14,7 @@ mod pin_count;
 mod tangible;
 mod tolerance;
 
+pub use distances::Distances;
 pub use id::PatternId;
 pub use r#match::PatternMatch;
 pub use name::PatternName;

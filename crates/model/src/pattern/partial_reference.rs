@@ -1,4 +1,4 @@
-use crate::Millimeters;
+use crate::Distances;
 
 /// Reference subset with its reduced fingerprint - the pins that remain
 /// after dropping `skips` for partial matching.
@@ -12,5 +12,5 @@ pub struct PartialReference {
     pub kept_indices: Vec<usize>,
     /// Sorted pairwise distances of the kept subset - the reduced
     /// fingerprint the measured points are compared against.
-    pub distances: Vec<Millimeters>,
+    pub distances: Distances,
 }

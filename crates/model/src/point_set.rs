@@ -22,6 +22,12 @@ impl<'a> PointSet<'a> {
     pub const fn as_slice(self) -> &'a [Vec2<Millimeters>] {
         self.0
     }
+
+    /// Sorted pairwise distances of this point set - the measured
+    /// fingerprint compared against `pattern.sorted_distances`.
+    pub fn distances(self) -> crate::Distances {
+        crate::Distances::of(self)
+    }
 }
 
 impl<'a> From<&'a [Vec2<Millimeters>]> for PointSet<'a> {
