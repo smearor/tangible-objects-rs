@@ -2,13 +2,21 @@ use async_graphql::Context;
 use async_graphql::Object;
 use async_graphql::Result;
 use std::path::PathBuf;
-use tangible_objects_analysis::{AnalysisReport, Recording, SimilarityReport};
+use tangible_objects_analysis::AnalysisReport;
+use tangible_objects_analysis::Recording;
+use tangible_objects_analysis::SimilarityReport;
+use tangible_objects_model::AnalysisMode;
+use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::Owner;
+use tangible_objects_model::ProfileFile;
+use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
-use tangible_objects_model::{AnalysisMode, CompletionConfig, Owner, ProfileFile, SessionMetrics};
+use tangible_objects_runtime::DeviceInfo;
+use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::ProfileInfo;
-use tangible_objects_runtime::{DeviceInfo, EngineHandle, RecordingStatus};
+use tangible_objects_runtime::RecordingStatus;
 
 /// Read access to the detection state.
 pub struct QueryRoot;
