@@ -6,6 +6,8 @@ use crate::Millimeters;
 use crate::PatternName;
 use crate::PointSet;
 use crate::RotationRad;
+use crate::TouchPointSlot;
+use crate::TouchSet;
 use crate::Vec2;
 
 /// A successful pattern match within a single input frame.
@@ -51,6 +53,39 @@ impl PatternMatch {
             .iter()
             .chain(self.claimed_indices.iter())
             .copied()
+    }
+
+    /// Resolves `touch_indices` to the slots of the touched points -
+    /// the genuine-match set used for incumbent re-matching (claimed
+    /// indices excluded: a claimed pin did not satisfy the fingerprint).
+    pub fn matched_slots(
+        &self,
+        touches: TouchSet<'_>,
+    ) -> std::collections::HashSet<TouchPointSlot> {
+        self.touch_indices
+            .iter()
+            .map(|&index| touches[index].slot)
+            .collect()
+    }
+
+    /// Resolves `touch_indices` (plus `claimed_indices` when
+    /// `bind_claimed`) to the slots of the touched points - the slot
+    /// binding a tracked figure holds over its contacts.
+    pub fn slots_of(
+        &self,
+        touches: TouchSet<'_>,
+        bind_claimed: bool,
+    ) -> std::collections::HashSet<TouchPointSlot> {
+        let claimed = if bind_claimed {
+            self.claimed_indices.as_slice()
+        } else {
+            &[]
+        };
+        self.touch_indices
+            .iter()
+            .chain(claimed.iter())
+            .map(|&index| touches[index].slot)
+            .collect()
     }
 
     /// Computes the figure orientation from its matched points.

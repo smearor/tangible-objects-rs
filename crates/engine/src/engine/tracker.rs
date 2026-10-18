@@ -145,9 +145,9 @@ impl Tracker {
                 ));
                 tangible.frames_since_match = 0;
                 self.matched_slots
-                    .insert(tangible.id, matched_slots_of(pattern_match, touches));
+                    .insert(tangible.id, pattern_match.matched_slots(touches));
                 self.slots
-                    .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
+                    .insert(tangible.id, pattern_match.slots_of(touches, bind_claimed));
                 if tangible.pending {
                     // Confirmation: an exact match on the same slot set
                     // confirms immediately; a held partial match counts
@@ -189,9 +189,9 @@ impl Tracker {
                 };
                 self.next_tangible_id = TangibleId::new(self.next_tangible_id.as_u32() + 1);
                 self.matched_slots
-                    .insert(tangible.id, matched_slots_of(pattern_match, touches));
+                    .insert(tangible.id, pattern_match.matched_slots(touches));
                 self.slots
-                    .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
+                    .insert(tangible.id, pattern_match.slots_of(touches, bind_claimed));
                 debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
                 self.tracked.push(tangible.clone());
                 if !pending {
@@ -235,38 +235,6 @@ impl Tracker {
         self.slots.clear();
         self.matched_slots.clear();
     }
-}
-
-/// Resolves a match's `touch_indices` to the slots of the touched points
-/// - the genuine-match set used for incumbent re-matching.
-fn matched_slots_of(
-    pattern_match: &PatternMatch,
-    touches: TouchSet<'_>,
-) -> HashSet<TouchPointSlot> {
-    pattern_match
-        .touch_indices
-        .iter()
-        .map(|&index| touches[index].slot)
-        .collect()
-}
-
-/// Resolves a match's `touch_indices` (plus `claimed_indices` when
-/// `bind_claimed`) to the slots of the touched points.
-fn slots_of(
-    pattern_match: &PatternMatch,
-    touches: TouchSet<'_>,
-    bind_claimed: bool,
-) -> HashSet<TouchPointSlot> {
-    let indices = pattern_match.touch_indices.iter();
-    let claimed = if bind_claimed {
-        pattern_match.claimed_indices.as_slice()
-    } else {
-        &[]
-    };
-    indices
-        .chain(claimed.iter())
-        .map(|&index| touches[index].slot)
-        .collect()
 }
 
 /// EMA for angles with wraparound handling.
