@@ -37,6 +37,21 @@ impl Millimeters {
     pub fn total_cmp(&self, other: &Self) -> Ordering {
         self.0.total_cmp(&other.0)
     }
+
+    /// Element-wise maximum absolute deviation of two equal-length
+    /// distance sets - the closest possible collision surface of two
+    /// (partial) fingerprints. Returns [`f64::MAX`] millimeters when the
+    /// sets are empty or differ in length.
+    pub fn max_deviation(a: &[Self], b: &[Self]) -> Self {
+        if a.len() != b.len() || a.is_empty() {
+            return Self(f64::MAX);
+        }
+        a.iter()
+            .zip(b)
+            .map(|(da, db)| (*da - *db).abs())
+            .max_by(Self::total_cmp)
+            .unwrap_or(Self(f64::MAX))
+    }
 }
 
 impl Add for Millimeters {

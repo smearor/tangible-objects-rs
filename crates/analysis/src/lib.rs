@@ -15,6 +15,7 @@ mod ml;
 mod percentile;
 mod recording;
 mod scoring;
+mod similarity;
 mod tolerance;
 mod utilization;
 
@@ -35,6 +36,9 @@ pub use percentile::Percentiles;
 pub use recording::Recording;
 pub use scoring::ScoringReport;
 pub use scoring::ThresholdRow;
+pub use similarity::MatchRisk;
+pub use similarity::SimilarityPair;
+pub use similarity::SimilarityReport;
 pub use tolerance::DEFAULT_SAFETY_FACTOR;
 pub use tolerance::ToleranceReport;
 pub use tolerance::ToleranceSuggestion;

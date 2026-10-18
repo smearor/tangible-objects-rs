@@ -1425,6 +1425,27 @@ pub fn run_analyze(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Prints the pairwise profile-similarity report for a profile
+/// directory - the phantom-collision surface (which reduced contact
+/// sets of one figure can satisfy another figure's fingerprint).
+pub fn run_similarity(dir: &Path) -> Result<()> {
+    let loaded = tangible_objects_model::ProfileFile::load_dir(dir);
+    for (file, error) in &loaded.errors {
+        eprintln!("{}: {error}", file.display());
+    }
+    let patterns = loaded.into_patterns();
+    println!(
+        "Aehnlichkeits-Analyse: {} ({} Profile)\n",
+        dir.display(),
+        patterns.len()
+    );
+    println!(
+        "{}",
+        tangible_objects_analysis::SimilarityReport::analyze(&patterns)
+    );
+    Ok(())
+}
+
 /// Lists all `/dev/input/eventX` devices with names and multitouch markers.
 pub fn list_devices() {
     let entries = TouchDevice::enumerate();

@@ -96,6 +96,11 @@ fn main() -> Result<()> {
                 file = args.get(i + 1).cloned();
                 i += 1;
             }
+            "--similarity" => {
+                mode = Some("--similarity");
+                file = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--export-dataset" => {
                 mode = Some("--export-dataset");
                 file = args.get(i + 1).cloned();
@@ -293,6 +298,12 @@ fn main() -> Result<()> {
             })?;
             modes::run_analyze(Path::new(&path))
         }
+        "--similarity" => {
+            let dir = file.ok_or_else(|| {
+                miette::miette!("Usage: tangible-objects --similarity <profiles-dir>")
+            })?;
+            modes::run_similarity(Path::new(&dir))
+        }
         "--export-dataset" => {
             let path = file.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --export-dataset <recording.jsonl>")
@@ -434,6 +445,9 @@ fn print_help() {
     );
     eprintln!(
         "  tangible-objects --analyze <recording.jsonl>                     Aufzeichnung analysieren (Phase 2+3)"
+    );
+    eprintln!(
+        "  tangible-objects --similarity <profiles-dir>                    Profil-Aehnlichkeit / Kollisionsflaeche analysieren"
     );
     eprintln!(
         "  tangible-objects --export-dataset <recording.jsonl>              Gelabeltes Dataset exportieren (Phase 3)"
