@@ -7,8 +7,8 @@ use std::path::Path;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_engine::Engine;
-use tangible_objects_engine::FilterProxy;
 use tangible_objects_engine::LegacyMode;
+use tangible_objects_engine::Pipeline;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::CompletionMode;
@@ -80,13 +80,13 @@ pub fn run_filter(
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
-    let mut proxy = FilterProxy::new();
+    let mut pipeline = Pipeline::new();
     if let Some(gate) = stability {
-        proxy.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
+        pipeline.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
         println!("Stabilitäts-Gate: {gate} Frames");
     }
     if let Some(legacy_mode) = legacy {
-        proxy.set_legacy_mode(legacy_mode);
+        pipeline.set_legacy_mode(legacy_mode);
         println!("Legacy-Events (BTN_TOUCH/ABS_X/Y): {legacy_mode}");
     }
     let mut frame: u64 = 0;
@@ -97,7 +97,7 @@ pub fn run_filter(
         while let Ok(command) = runtime.try_recv_command() {
             match command {
                 ControlCommand::SetFilterMode { mode, stability } => {
-                    proxy.set_mode(mode, stability);
+                    pipeline.set_mode(mode, stability);
                     runtime.emit_lifecycle(LifecycleEvent::FilterModeChanged(mode));
                     println!("\nFilter-Modus: {mode}");
                 }
@@ -140,7 +140,7 @@ pub fn run_filter(
         };
         for raw in events {
             let engine_frame = engine.process(&raw);
-            proxy.push(raw);
+            pipeline.push(raw);
             let Some(engine_frame) = engine_frame else {
                 continue;
             };
@@ -167,7 +167,7 @@ pub fn run_filter(
             // the OS either (SINGLE_CONTACT_FIELD.md).
             suppressed.extend(engine.field_suppressed_slots((&engine_frame.touches).into()));
 
-            let out = proxy.finish(&suppressed);
+            let out = pipeline.finish(&suppressed);
             virtual_device.emit(&out).into_diagnostic()?;
 
             print!(
