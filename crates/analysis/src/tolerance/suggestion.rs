@@ -1,7 +1,8 @@
+use serde::Serialize;
 use tangible_objects_model::PatternTolerance;
 
 /// Suggested tolerances for one pattern (TRAINING.md 2.2).
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ToleranceSuggestion {
     /// Name of the figure profile.
     pub pattern_name: String,

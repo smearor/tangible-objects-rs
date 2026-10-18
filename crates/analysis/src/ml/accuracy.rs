@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Display;
 
 /// Classification accuracy - a share of correct predictions, clamped to
@@ -6,7 +7,7 @@ use std::fmt::Display;
 /// `Option<Accuracy>` is `None` when evaluation was impossible (no held-out
 /// samples, untrainable model); a `NaN` input clamps to `0.0` rather than
 /// propagating.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
 pub struct Accuracy(pub f64);
 
 impl Accuracy {

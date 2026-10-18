@@ -1,3 +1,4 @@
+use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::MatchScore;
 
@@ -5,7 +6,7 @@ use tangible_objects_model::MatchScore;
 ///
 /// For threshold `tau`, a labeled frame counts as detected when the label's
 /// best candidate has `normalized_score <= tau`.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ThresholdRow {
     /// Acceptance threshold on the normalized score (`1.0` = current binary
     /// matcher behaviour).

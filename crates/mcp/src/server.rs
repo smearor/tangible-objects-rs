@@ -27,6 +27,7 @@ use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::AnalyzeArgs;
+use super::tool_args::SimilarityArgs;
 use super::tool_args::GetPoseArgs;
 use super::tool_args::RecordingArtifactArgs;
 use super::tool_args::RegisterFieldSetArgs;
@@ -236,7 +237,8 @@ impl EngineMcp {
             &args.path,
         ))
         .map_err(|e| ErrorData::invalid_params(format!("recording unreadable: {e}"), None))?;
-        let report = if args.mode == Some(tangible_objects_model::AnalysisMode::Contacts) {
+        let mode = args.mode.unwrap_or_default();
+        let patterns = if mode == tangible_objects_model::AnalysisMode::Contacts {
             let dir = args.profiles_dir.as_deref().unwrap_or("profiles");
             let loaded = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir));
             let patterns = loaded.into_patterns();
@@ -246,10 +248,35 @@ impl EngineMcp {
                     None,
                 ));
             }
-            tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
+            patterns
         } else {
-            tangible_objects_analysis::DeviationReport::analyze(&recording)
+            Vec::new()
         };
+        let report = tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            serde_json::to_string_pretty(&report)
+                .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,
+        )]))
+    }
+
+    /// Pairwise profile-collision analysis over a profile directory.
+    #[tool(
+        description = "Analyze a profile directory for fingerprint collisions: every profile pair's minimum achievable max deviation over same-size contact subsets, classified as Safe/Partial/Exact risk."
+    )]
+    async fn analyze_similarity(
+        &self,
+        Parameters(args): Parameters<SimilarityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let dir = args.profiles_dir.as_deref().unwrap_or("profiles");
+        let loaded = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir));
+        let patterns = loaded.into_patterns();
+        if patterns.is_empty() {
+            return Err(ErrorData::invalid_params(
+                format!("no profiles loaded from {dir}"),
+                None,
+            ));
+        }
+        let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,

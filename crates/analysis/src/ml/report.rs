@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Display;
 
 use tangible_objects_model::FrameCount;
@@ -19,7 +20,7 @@ const TEST_EVERY: usize = 5;
 /// normalized deviations (`dev[i] / tolerance[i]`), the label is whether the
 /// candidate's pattern is the frame's ground-truth label - and compares its
 /// held-out accuracy against the binary score rule (`score <= 1.0`).
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct MlReport {
     /// Labeled candidates used (train + held-out).
     pub samples: FrameCount,

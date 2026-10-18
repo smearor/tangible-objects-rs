@@ -117,7 +117,8 @@ impl QueryRoot {
     ) -> Result<String> {
         let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(&path))
             .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
-        let report = if mode == Some(tangible_objects_model::AnalysisMode::Contacts) {
+        let mode = mode.unwrap_or_default();
+        let patterns = if mode == tangible_objects_model::AnalysisMode::Contacts {
             let dir = profiles_dir.as_deref().unwrap_or("profiles");
             let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
                 .into_patterns();
@@ -126,10 +127,28 @@ impl QueryRoot {
                     "no profiles loaded from {dir}"
                 )));
             }
-            tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
+            patterns
         } else {
-            tangible_objects_analysis::DeviationReport::analyze(&recording)
+            Vec::new()
         };
+        let report = tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        serde_json::to_string_pretty(&report)
+            .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
+    }
+
+    /// Pairwise profile-collision analysis over a profile directory -
+    /// every pair's minimum achievable max deviation over same-size
+    /// contact subsets, classified as Safe/Partial/Exact risk.
+    async fn analyze_similarity(&self, profiles_dir: Option<String>) -> Result<String> {
+        let dir = profiles_dir.as_deref().unwrap_or("profiles");
+        let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
+            .into_patterns();
+        if patterns.is_empty() {
+            return Err(async_graphql::Error::new(format!(
+                "no profiles loaded from {dir}"
+            )));
+        }
+        let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }

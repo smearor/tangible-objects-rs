@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
@@ -8,7 +9,7 @@ use crate::Recording;
 
 /// Collision matrix across all recorded labels × candidate patterns
 /// (TRAINING.md 2.4).
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct CollisionReport {
     /// Matrix cells with at least one tested frame, sorted by label ×
     /// pattern.

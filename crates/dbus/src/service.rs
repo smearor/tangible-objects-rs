@@ -316,7 +316,7 @@ impl EngineService {
             mode.parse::<tangible_objects_model::AnalysisMode>()
                 .map_err(fdo::Error::InvalidArgs)?
         };
-        let report = if mode == tangible_objects_model::AnalysisMode::Contacts {
+        let patterns = if mode == tangible_objects_model::AnalysisMode::Contacts {
             let dir = if profiles_dir.is_empty() {
                 "profiles"
             } else {
@@ -329,10 +329,32 @@ impl EngineService {
                     "no profiles loaded from {dir}"
                 )));
             }
-            tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
+            patterns
         } else {
-            tangible_objects_analysis::DeviationReport::analyze(&recording)
+            Vec::new()
         };
+        let report = tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        serde_json::to_string_pretty(&report)
+            .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
+    }
+
+    /// Pairwise profile-collision analysis over a profile directory -
+    /// every pair's minimum achievable max deviation over same-size
+    /// contact subsets, classified as Safe/Partial/Exact risk.
+    async fn analyze_similarity(&self, profiles_dir: &str) -> fdo::Result<String> {
+        let dir = if profiles_dir.is_empty() {
+            "profiles"
+        } else {
+            profiles_dir
+        };
+        let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
+            .into_patterns();
+        if patterns.is_empty() {
+            return Err(fdo::Error::InvalidArgs(format!(
+                "no profiles loaded from {dir}"
+            )));
+        }
+        let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
         serde_json::to_string_pretty(&report)
             .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
     }

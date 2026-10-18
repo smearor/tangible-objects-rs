@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
@@ -16,7 +17,7 @@ use crate::Recording;
 pub const DEFAULT_SAFETY_FACTOR: f64 = 1.25;
 
 /// Per-pair tolerance recommendations over a whole recording (TRAINING.md 2.2).
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ToleranceReport {
     /// Safety factor applied to p99.
     pub safety_factor: f64,

@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
@@ -29,7 +30,7 @@ const LIFETIME_EDGES: [FrameCount; 5] = [
 /// `frames_since_match` hysteresis (`tracked`). Per-pin attribution is not
 /// derivable from recordings - `touch_indices` is an unordered combination,
 /// not a pin mapping - so instability is reported per contact, not per pin.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct FlappyReport {
     /// Number of distinct tracking IDs observed.
     pub contacts: ContactCount,

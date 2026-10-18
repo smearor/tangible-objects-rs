@@ -1,3 +1,4 @@
+use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternTolerance;
 
@@ -5,7 +6,7 @@ use crate::Percentiles;
 
 /// One cell of the collision matrix: how well `pattern_name` explains the
 /// geometry of frames labeled `label` (TRAINING.md 2.4).
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct CollisionCell {
     /// Ground-truth label of the analyzed frames (the placed figure).
     pub label: String,

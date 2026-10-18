@@ -2,7 +2,7 @@
 ///
 /// `None`-safe via [`Percentiles::of`] returning `Option` - empty samples
 /// produce no report line rather than a degenerate row of zeros.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
 pub struct Percentiles {
     /// Number of samples.
     pub count: usize,
