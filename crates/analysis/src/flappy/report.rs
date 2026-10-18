@@ -4,6 +4,7 @@ use std::fmt::Display;
 use tangible_objects_model::CandidateCount;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::PatternName;
 
 use super::LifetimeBucket;
 use super::PartialShare;
@@ -96,16 +97,16 @@ impl FlappyReport {
         }
 
         // Partial-match share per pattern.
-        let mut share: BTreeMap<String, PartialShare> = BTreeMap::new();
+        let mut share: BTreeMap<PatternName, PartialShare> = BTreeMap::new();
         for frame in recording.frames() {
             for candidate in &frame.candidates {
                 if !candidate.matched {
                     continue;
                 }
                 let entry = share
-                    .entry(candidate.pattern_name.as_str().to_string())
+                    .entry(candidate.pattern_name.clone())
                     .or_insert_with(|| PartialShare {
-                        pattern_name: candidate.pattern_name.as_str().to_string(),
+                        pattern_name: candidate.pattern_name.clone(),
                         partial_matches: CandidateCount::new(0),
                         matched_total: CandidateCount::new(0),
                     });

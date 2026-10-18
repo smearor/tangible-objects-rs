@@ -1,4 +1,5 @@
 use tangible_objects_model::CandidateCount;
+use tangible_objects_model::PatternName;
 
 /// Partial-match share of one pattern (TRAINING.md 2.3).
 ///
@@ -8,7 +9,7 @@ use tangible_objects_model::CandidateCount;
 #[derive(Debug)]
 pub struct PartialShare {
     /// Name of the figure profile.
-    pub pattern_name: String,
+    pub pattern_name: PatternName,
     /// Matched partial candidates.
     pub partial_matches: CandidateCount,
     /// All matched candidates (full + partial).
