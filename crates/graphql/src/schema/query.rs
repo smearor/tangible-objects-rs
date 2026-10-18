@@ -1,6 +1,7 @@
 use async_graphql::Context;
 use async_graphql::Object;
 use async_graphql::Result;
+use std::path::Path;
 use std::path::PathBuf;
 use tangible_objects_analysis::AnalysisReport;
 use tangible_objects_analysis::Recording;
@@ -8,6 +9,7 @@ use tangible_objects_analysis::SimilarityReport;
 use tangible_objects_model::AnalysisMode;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::Owner;
+use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::TangibleSetState;
@@ -113,12 +115,12 @@ impl QueryRoot {
         mode: Option<AnalysisMode>,
         profiles_dir: Option<String>,
     ) -> Result<String> {
-        let recording = Recording::load(std::path::Path::new(&path))
+        let recording = Recording::load(Path::new(&path))
             .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
         let mode = mode.unwrap_or_default();
         let patterns = if mode == AnalysisMode::Contacts {
             let dir = profiles_dir.as_deref().unwrap_or("profiles");
-            let patterns = ProfileFile::load_dir(std::path::Path::new(dir)).into_patterns();
+            let patterns = ProfileFile::load_dir(Path::new(dir)).into_patterns();
             if patterns.is_empty() {
                 return Err(async_graphql::Error::new(format!(
                     "no profiles loaded from {dir}"
@@ -126,9 +128,9 @@ impl QueryRoot {
             }
             patterns
         } else {
-            Vec::new()
+            PatternBuf::default()
         };
-        let report = AnalysisReport::analyze(&recording, mode, &patterns);
+        let report = AnalysisReport::analyze(&recording, mode, (&patterns).into());
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }
@@ -138,13 +140,13 @@ impl QueryRoot {
     /// contact subsets, classified as Safe/Partial/Exact risk.
     async fn analyze_similarity(&self, profiles_dir: Option<String>) -> Result<String> {
         let dir = profiles_dir.as_deref().unwrap_or("profiles");
-        let patterns = ProfileFile::load_dir(std::path::Path::new(dir)).into_patterns();
+        let patterns = ProfileFile::load_dir(Path::new(dir)).into_patterns();
         if patterns.is_empty() {
             return Err(async_graphql::Error::new(format!(
                 "no profiles loaded from {dir}"
             )));
         }
-        let report = SimilarityReport::analyze(&patterns);
+        let report = SimilarityReport::analyze((&patterns).into());
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }

@@ -1,6 +1,6 @@
 use serde::Serialize;
 use tangible_objects_model::AnalysisMode;
-use tangible_objects_model::TangiblePattern;
+use tangible_objects_model::PatternSet;
 
 use crate::CollisionReport;
 use crate::DeviationReport;
@@ -36,11 +36,7 @@ pub struct AnalysisReport {
 impl AnalysisReport {
     /// Runs every recording-based report; `mode` selects the deviation
     /// pass (`Contacts` needs `patterns` for the fingerprints).
-    pub fn analyze(
-        recording: &Recording,
-        mode: AnalysisMode,
-        patterns: &[TangiblePattern],
-    ) -> Self {
+    pub fn analyze(recording: &Recording, mode: AnalysisMode, patterns: PatternSet<'_>) -> Self {
         let deviation = match mode {
             AnalysisMode::Candidates => DeviationReport::analyze(recording),
             AnalysisMode::Contacts => DeviationReport::analyze_contacts(recording, patterns),

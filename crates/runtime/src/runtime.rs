@@ -182,8 +182,12 @@ impl EngineRuntime {
             .events
             .iter()
             .any(|e| matches!(e, tangible_objects_engine::EngineEvent::TouchPointsUpdated));
-        self.metrics
-            .record(&frame.touches, &frame.matches, tracked, touches_changed);
+        self.metrics.record(
+            (&frame.touches).into(),
+            &frame.matches,
+            tracked,
+            touches_changed,
+        );
         self.snapshot.send_replace(EngineSnapshot {
             tracked: tracked.to_vec(),
             touches: frame.touches.clone(),

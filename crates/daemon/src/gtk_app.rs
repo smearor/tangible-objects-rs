@@ -30,12 +30,14 @@ use tangible_objects_model::Calibration;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
+use tangible_objects_model::PatternBuf;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::Pixels;
 use tangible_objects_model::ProfileFile;
-use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchSet;
+
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::EngineRuntime;
@@ -175,7 +177,7 @@ fn mode_is_live(state: &Arc<Mutex<SharedState>>) -> bool {
 
 fn evdev_thread(
     device_path: String,
-    patterns: Vec<TangiblePattern>,
+    patterns: PatternBuf,
     state: Arc<Mutex<SharedState>>,
     config: DetectionConfig,
     device_profiles: Option<Arc<PathBuf>>,
@@ -542,9 +544,9 @@ fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mutex<Sh
     };
 
     if mode == GuiMode::Training {
-        draw_training(cr, w, h, touches, &to_screen, &s);
+        draw_training(cr, w, h, touches.into(), &to_screen, &s);
     } else {
-        draw_live(cr, w, h, touches, matches, &s.tracked, &to_screen);
+        draw_live(cr, w, h, touches.into(), matches, &s.tracked, &to_screen);
     }
 }
 
@@ -552,7 +554,7 @@ fn draw_training(
     cr: &cairo::Context,
     _w: f64,
     _h: f64,
-    touches: &[TouchPoint],
+    touches: TouchSet<'_>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
     s: &SharedState,
 ) {
@@ -628,7 +630,7 @@ fn draw_live(
     cr: &cairo::Context,
     _w: f64,
     _h: f64,
-    touches: &[TouchPoint],
+    touches: TouchSet<'_>,
     matches: &[PatternMatch],
     tracked: &[TrackedTangible],
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,

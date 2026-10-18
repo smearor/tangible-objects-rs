@@ -2,6 +2,8 @@ use tangible_objects_model::ContactCount;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchSet;
+
 use tangible_objects_model::Vec2;
 use tracing::warn;
 
@@ -97,7 +99,7 @@ impl FieldTracker {
     /// withheld from the very first frame it appears inside a field.
     pub fn suppressed_slots(
         &self,
-        touches: &[TouchPoint],
+        touches: TouchSet<'_>,
     ) -> std::collections::HashSet<tangible_objects_model::TouchPointSlot> {
         touches
             .iter()
@@ -116,7 +118,7 @@ impl FieldTracker {
 
     /// Evaluates a frame's touches against all fields and returns the
     /// debounced occupancy events.
-    pub fn update(&mut self, touches: &[TouchPoint]) -> Vec<EngineEvent> {
+    pub fn update(&mut self, touches: TouchSet<'_>) -> Vec<EngineEvent> {
         let mut events = Vec::new();
         for (set, cells) in self.sets.iter().zip(self.states.iter_mut()) {
             for (field, cell) in set.fields.iter().zip(cells.iter_mut()) {
@@ -236,10 +238,10 @@ mod tests {
         tracker.set_fields(vec![set()]);
 
         // First frame with a contact: still debouncing.
-        let events = tracker.update(&[touch(0, 50.0, 50.0)]);
+        let events = tracker.update((&[touch(0, 50.0, 50.0)]).into());
         assert!(event_names(&events).is_empty());
         // Second consecutive frame: placed fires.
-        let events = tracker.update(&[touch(0, 50.0, 50.0)]);
+        let events = tracker.update((&[touch(0, 50.0, 50.0)]).into());
         assert!(event_names(&events).contains("placed"));
     }
 
@@ -247,14 +249,14 @@ mod tests {
     fn single_frame_dropout_keeps_occupancy() {
         let mut tracker = FieldTracker::new();
         tracker.set_fields(vec![set()]);
-        tracker.update(&[touch(0, 50.0, 50.0)]);
-        tracker.update(&[touch(0, 50.0, 50.0)]); // placed
+        tracker.update((&[touch(0, 50.0, 50.0)]).into());
+        tracker.update((&[touch(0, 50.0, 50.0)]).into()); // placed
 
         // One empty frame - not enough to lift.
-        let events = tracker.update(&[]);
+        let events = tracker.update((&[]).into());
         assert!(!event_names(&events).contains("lifted"));
         // Second empty frame: lifted fires.
-        let events = tracker.update(&[]);
+        let events = tracker.update((&[]).into());
         assert!(event_names(&events).contains("lifted"));
     }
 
@@ -263,8 +265,8 @@ mod tests {
         let mut tracker = FieldTracker::new();
         tracker.set_fields(vec![set()]);
         let two = [touch(0, 50.0, 50.0), touch(1, 60.0, 60.0)];
-        tracker.update(&two);
-        let events = tracker.update(&two);
+        tracker.update((&two).into());
+        let events = tracker.update((&two).into());
         assert!(events.iter().any(|e| matches!(
             e,
             EngineEvent::FieldCountChanged { count, .. } if count.as_u32() == 2
@@ -275,9 +277,9 @@ mod tests {
     fn touches_outside_fields_are_ignored() {
         let mut tracker = FieldTracker::new();
         tracker.set_fields(vec![set()]);
-        let events = tracker.update(&[touch(0, 500.0, 500.0)]);
+        let events = tracker.update((&[touch(0, 500.0, 500.0)]).into());
         assert!(events.is_empty());
-        let events = tracker.update(&[touch(0, 500.0, 500.0)]);
+        let events = tracker.update((&[touch(0, 500.0, 500.0)]).into());
         assert!(events.is_empty());
     }
 }

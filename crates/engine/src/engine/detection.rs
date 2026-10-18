@@ -9,13 +9,15 @@ use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
+use tangible_objects_model::PatternBuf;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::PatternSet;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
-use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
+use tangible_objects_model::TouchSet;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::TrackingId;
 use tangible_objects_model::Vec2;
@@ -48,7 +50,7 @@ pub struct Engine {
     /// contacts between `SYN_REPORT` boundaries.
     touch_state: TouchState,
     /// Loaded figure patterns evaluated against every frame's touches.
-    patterns: Vec<TangiblePattern>,
+    patterns: PatternBuf,
     /// Frame-to-frame tracker: nearest-neighbor association, EMA
     /// smoothing, slot bindings and expiry hysteresis.
     tracker: Tracker,
@@ -82,7 +84,8 @@ pub struct Engine {
 impl Engine {
     /// Creates an engine with the given figure patterns and default
     /// tracker parameters.
-    pub fn new(patterns: Vec<TangiblePattern>) -> Self {
+    pub fn new(patterns: impl Into<PatternBuf>) -> Self {
+        let patterns: PatternBuf = patterns.into();
         let next_pattern_id = patterns
             .iter()
             .map(|pattern| pattern.id.as_u32())
@@ -276,9 +279,9 @@ impl Engine {
     /// proxy's suppression set in `--filter` mode.
     pub fn field_suppressed_slots(
         &self,
-        touches: &[TouchPoint],
+        touches: TouchSet<'_>,
     ) -> std::collections::HashSet<tangible_objects_model::TouchPointSlot> {
-        self.fields.suppressed_slots(touches)
+        self.fields.suppressed_slots(touches.into())
     }
 
     /// Sets the edge margin: touches closer than `margin` to the surface
@@ -319,8 +322,8 @@ impl Engine {
     }
 
     /// The loaded figure patterns.
-    pub fn patterns(&self) -> &[TangiblePattern] {
-        &self.patterns
+    pub fn patterns(&self) -> PatternSet<'_> {
+        (&self.patterns).into()
     }
 
     /// All currently active touch points.
@@ -345,8 +348,8 @@ impl Engine {
 
     /// Finds all pattern matches in a given set of touch points without
     /// touching engine state.
-    pub fn find_matches(&self, touches: &[TouchPoint]) -> Vec<PatternMatch> {
-        matching::find_matches(touches, &self.patterns)
+    pub fn find_matches(&self, touches: TouchSet<'_>) -> Vec<PatternMatch> {
+        matching::find_matches(touches.into(), (&self.patterns).into())
     }
 
     /// Feeds one raw event into the engine.
@@ -423,7 +426,12 @@ impl Engine {
                 .map(|(index, _)| index)
                 .collect();
             let affinity_match = if indices.len() == pattern.num_points {
-                matching::try_pattern(pattern, &indices, &touches, &self.completion)
+                matching::try_pattern(
+                    pattern,
+                    (&indices).into(),
+                    (&touches).into(),
+                    &self.completion,
+                )
             } else if indices.len() + self.completion.max_missing as usize >= pattern.num_points
                 && pattern.num_points >= 4
             {
@@ -450,7 +458,13 @@ impl Engine {
                     .filter(|(index, _)| !reserved.contains(index) || own_reserved.contains(index))
                     .map(|(index, _)| index)
                     .collect();
-                matching::try_partial(pattern, &indices, &touches, &self.completion, &pool)
+                matching::try_partial(
+                    pattern,
+                    (&indices).into(),
+                    (&touches).into(),
+                    &self.completion,
+                    (&pool).into(),
+                )
             } else {
                 None
             };
@@ -461,15 +475,15 @@ impl Engine {
 
         let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
             Some(out) => matching::find_matches_with_diagnostics(
-                &touches,
-                &self.patterns,
+                (&touches).into(),
+                (&self.patterns).into(),
                 &mut **out,
                 &reserved,
                 &self.completion,
             ),
             None => matching::find_matches_excluding(
-                &touches,
-                &self.patterns,
+                (&touches).into(),
+                (&self.patterns).into(),
                 &reserved,
                 &self.completion,
             ),
@@ -478,8 +492,8 @@ impl Engine {
 
         let mut events = self
             .tracker
-            .update(&matches, &touches, self.completion.persist);
-        events.extend(self.fields.update(&touches));
+            .update(&matches, (&touches).into(), self.completion.persist);
+        events.extend(self.fields.update((&touches).into()));
         if touches != self.prev_touches {
             self.prev_touches.clone_from(&touches);
             events.push(EngineEvent::TouchPointsUpdated);

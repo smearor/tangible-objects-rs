@@ -209,7 +209,7 @@ fn main() -> Result<()> {
             let patterns = modes::load_patterns(profiles_dir.as_deref());
             modes::run_replay(
                 Path::new(&path),
-                &patterns,
+                (&patterns).into(),
                 record_base.as_deref().map(Path::new),
                 record_label.map(RecordLabel::new),
             )
@@ -237,14 +237,14 @@ fn main() -> Result<()> {
                     &path,
                     Path::new(&base),
                     record_label.map(RecordLabel::new),
-                    &patterns,
+                    (&patterns).into(),
                     interfaces,
                     config,
                     device_profiles.as_deref().map(Path::new),
                 ),
                 None => modes::run_live(
                     &path,
-                    &patterns,
+                    (&patterns).into(),
                     interfaces,
                     config,
                     device_profiles.as_deref().map(Path::new),
@@ -272,7 +272,7 @@ fn main() -> Result<()> {
             )?;
             modes::run_filter(
                 &dev,
-                &patterns,
+                (&patterns).into(),
                 interfaces,
                 stability.map(tangible_objects_model::FrameCount::new),
                 legacy_mode,

@@ -5,8 +5,8 @@ use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternSet;
 use tangible_objects_model::PointSet;
-use tangible_objects_model::TangiblePattern;
 
 use super::DistanceStats;
 use super::PatternAcc;
@@ -74,7 +74,7 @@ impl DeviationReport {
     /// regardless of whether the frame produced a generic candidate.
     /// Covers the incumbent-tracked majority of frames that
     /// [`Self::analyze`] cannot see.
-    pub fn analyze_contacts(recording: &Recording, patterns: &[TangiblePattern]) -> Self {
+    pub fn analyze_contacts(recording: &Recording, patterns: PatternSet<'_>) -> Self {
         let mut acc: BTreeMap<PatternId, PatternAcc> = BTreeMap::new();
 
         for frame in recording.frames() {

@@ -6,7 +6,8 @@ use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RotationRad;
 use tangible_objects_model::TangibleId;
-use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchSet;
+
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
@@ -102,7 +103,7 @@ impl Tracker {
     pub fn update(
         &mut self,
         matches: &[PatternMatch],
-        touches: &[TouchPoint],
+        touches: TouchSet<'_>,
         bind_claimed: bool,
     ) -> Vec<EngineEvent> {
         let mut events = Vec::new();
@@ -240,7 +241,7 @@ impl Tracker {
 /// - the genuine-match set used for incumbent re-matching.
 fn matched_slots_of(
     pattern_match: &PatternMatch,
-    touches: &[TouchPoint],
+    touches: TouchSet<'_>,
 ) -> HashSet<TouchPointSlot> {
     pattern_match
         .touch_indices
@@ -253,7 +254,7 @@ fn matched_slots_of(
 /// `bind_claimed`) to the slots of the touched points.
 fn slots_of(
     pattern_match: &PatternMatch,
-    touches: &[TouchPoint],
+    touches: TouchSet<'_>,
     bind_claimed: bool,
 ) -> HashSet<TouchPointSlot> {
     let indices = pattern_match.touch_indices.iter();
@@ -311,7 +312,7 @@ mod tests {
     #[test]
     fn new_match_creates_tracked_tangible() {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
-        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
+        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
         assert_eq!(tracker.active().len(), 1);
         assert_eq!(tracker.active()[0].pattern_id, PatternId::new(1));
         assert!(matches!(events.as_slice(), [EngineEvent::TangibleAdded(_)]));
@@ -320,8 +321,8 @@ mod tests {
     #[test]
     fn nearby_match_associates_and_smooths() {
         let mut tracker = Tracker::new(0.5, 200.0, FrameCount::new(30));
-        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
-        tracker.update(&[pattern_match(1, 20.0, 20.0)], &touches(), true);
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
+        tracker.update(&[pattern_match(1, 20.0, 20.0)], (&touches()).into(), true);
         // EMA(0.5) of 10 and 20 → 15.
         assert!((tracker.active()[0].center.x - 15.0).abs() < 1e-9);
     }
@@ -329,18 +330,18 @@ mod tests {
     #[test]
     fn distant_match_creates_second_tangible() {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
-        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
-        tracker.update(&[pattern_match(1, 500.0, 500.0)], &touches(), true);
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
+        tracker.update(&[pattern_match(1, 500.0, 500.0)], (&touches()).into(), true);
         assert_eq!(tracker.active().len(), 2);
     }
 
     #[test]
     fn tangible_expires_after_max_frames() {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(2));
-        tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
-        tracker.update(&[], &touches(), true);
-        tracker.update(&[], &touches(), true);
-        let events = tracker.update(&[], &touches(), true);
+        tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
+        tracker.update(&[], (&touches()).into(), true);
+        tracker.update(&[], (&touches()).into(), true);
+        let events = tracker.update(&[], (&touches()).into(), true);
         assert!(tracker.active().is_empty());
         assert!(matches!(
             events.as_slice(),
@@ -356,20 +357,20 @@ mod tests {
         partial.spawn_stability = FrameCount::new(3);
 
         // A partial spawn emits no TangibleAdded - it stays pending.
-        let events = tracker.update(&[partial.clone()], &touches(), true);
+        let events = tracker.update(&[partial.clone()], (&touches()).into(), true);
         assert!(events.is_empty());
         assert!(tracker.active()[0].pending);
 
         // Held partial matches count toward the window.
-        let events = tracker.update(&[partial.clone()], &touches(), true);
+        let events = tracker.update(&[partial.clone()], (&touches()).into(), true);
         assert!(events.is_empty());
-        let events = tracker.update(&[partial.clone()], &touches(), true);
+        let events = tracker.update(&[partial.clone()], (&touches()).into(), true);
         assert!(matches!(
             events.as_slice(),
             [EngineEvent::TangibleAdded(t)] if !t.pending
         ));
         // After confirmation the tangible emits TangibleMoved again.
-        let events = tracker.update(&[partial.clone()], &touches(), true);
+        let events = tracker.update(&[partial.clone()], (&touches()).into(), true);
         assert!(matches!(events.as_slice(), [EngineEvent::TangibleMoved(_)]));
     }
 
@@ -379,11 +380,11 @@ mod tests {
         let mut partial = pattern_match(1, 10.0, 20.0);
         partial.partial = true;
         partial.spawn_stability = FrameCount::new(15);
-        tracker.update(&[partial], &touches(), true);
+        tracker.update(&[partial], (&touches()).into(), true);
         assert!(tracker.active()[0].pending);
 
         // An exact match on the same slot set confirms instantly.
-        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
+        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
         assert!(matches!(
             events.as_slice(),
             [EngineEvent::TangibleAdded(t)] if !t.pending
@@ -396,11 +397,11 @@ mod tests {
         let mut partial = pattern_match(1, 10.0, 20.0);
         partial.partial = true;
         partial.spawn_stability = FrameCount::new(2);
-        tracker.update(&[partial.clone()], &touches(), true);
-        tracker.update(&[], &touches(), true);
+        tracker.update(&[partial.clone()], (&touches()).into(), true);
+        tracker.update(&[], (&touches()).into(), true);
         // The miss reset the counter: one more held frame does not
         // confirm yet.
-        let events = tracker.update(&[partial.clone()], &touches(), true);
+        let events = tracker.update(&[partial.clone()], (&touches()).into(), true);
         assert!(events.is_empty());
         assert!(tracker.active()[0].pending);
     }

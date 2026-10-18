@@ -30,11 +30,12 @@ use tangible_objects_model::Lifetime;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::Owner;
+use tangible_objects_model::PatternBuf;
+use tangible_objects_model::PatternSet;
 use tangible_objects_model::PinCount;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
-use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
@@ -81,7 +82,7 @@ pub fn effective_calibration(
 }
 
 /// Loads figure patterns from a profile directory (default: `profiles/`).
-pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
+pub fn load_patterns(profiles_dir: Option<&str>) -> PatternBuf {
     let dir = profiles_dir.unwrap_or("profiles");
     let mut dir_result = ProfileFile::load_dir(Path::new(dir));
     // `Lifetime::Persistent` registrations live in the runtime store and
@@ -130,7 +131,7 @@ pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
 /// deterministic.
 pub fn run_replay(
     path: &Path,
-    patterns: &[TangiblePattern],
+    patterns: PatternSet<'_>,
     record_base: Option<&Path>,
     label: Option<RecordLabel>,
 ) -> Result<()> {
@@ -368,7 +369,7 @@ pub fn load_field_sets(path: Option<&str>) -> Vec<FieldSet> {
 /// threads (GraphQL HTTP/WebSocket, D-Bus session bus).
 pub fn run_live(
     path: &Path,
-    patterns: &[TangiblePattern],
+    patterns: PatternSet<'_>,
     interfaces: Interfaces,
     config: DetectionConfig,
     device_profiles: Option<&Path>,
@@ -788,7 +789,7 @@ pub(crate) fn apply_registration(
 /// the suppression policy live (off/immediate/gated/guarded).
 pub fn run_filter(
     path: &Path,
-    patterns: &[TangiblePattern],
+    patterns: PatternSet<'_>,
     interfaces: Interfaces,
     stability: Option<FrameCount>,
     legacy: Option<LegacyMode>,
@@ -912,7 +913,7 @@ pub fn run_filter(
                 .collect();
             // Contacts inside `suppress`-enabled field sets never reach
             // the OS either (SINGLE_CONTACT_FIELD.md).
-            suppressed.extend(engine.field_suppressed_slots(&engine_frame.touches));
+            suppressed.extend(engine.field_suppressed_slots((&engine_frame.touches).into()));
 
             let out = proxy.finish(&suppressed);
             virtual_device.emit(&out).into_diagnostic()?;
@@ -974,7 +975,7 @@ pub fn run_record(
     path: &Path,
     base: &Path,
     label: Option<RecordLabel>,
-    patterns: &[TangiblePattern],
+    patterns: PatternSet<'_>,
     interfaces: Interfaces,
     config: DetectionConfig,
     device_profiles: Option<&Path>,
@@ -1454,7 +1455,10 @@ pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
         "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
         tangible_objects_analysis::UtilizationReport::analyze(&recording),
         tangible_objects_analysis::DeviationReport::analyze(&recording),
-        tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns),
+        tangible_objects_analysis::DeviationReport::analyze_contacts(
+            &recording,
+            (&patterns).into()
+        ),
         tangible_objects_analysis::ToleranceReport::analyze(&recording),
         tangible_objects_analysis::FlappyReport::analyze(&recording),
         tangible_objects_analysis::CollisionReport::analyze(&recording),
@@ -1473,7 +1477,7 @@ pub fn run_similarity(dir: &Path, json_out: Option<&Path>) -> Result<()> {
         eprintln!("{}: {error}", file.display());
     }
     let patterns = loaded.into_patterns();
-    let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
+    let report = tangible_objects_analysis::SimilarityReport::analyze((&patterns).into());
     println!(
         "Aehnlichkeits-Analyse: {} ({} Profile)\n",
         dir.display(),

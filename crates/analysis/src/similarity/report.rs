@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use serde::Serialize;
-use tangible_objects_model::TangiblePattern;
+use tangible_objects_model::PatternSet;
 
 use super::SimilarityPair;
 
@@ -25,7 +25,7 @@ impl SimilarityReport {
     /// Patterns without `ref_points` only participate in the exact
     /// comparison - partial fingerprints cannot be derived from sorted
     /// distances alone.
-    pub fn analyze(patterns: &[TangiblePattern]) -> Self {
+    pub fn analyze(patterns: PatternSet<'_>) -> Self {
         let mut pairs: Vec<SimilarityPair> = patterns
             .iter()
             .enumerate()

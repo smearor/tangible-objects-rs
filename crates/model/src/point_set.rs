@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use crate::Millimeters;
+use crate::PointBuf;
 use crate::Vec2;
 
 /// Measured contact positions of one frame - a borrowed view, not an
@@ -30,6 +31,16 @@ impl<'a> PointSet<'a> {
     }
 }
 
+impl<'a> IntoIterator for PointSet<'a> {
+    type Item = &'a Vec2<Millimeters>;
+    type IntoIter = std::slice::Iter<'a, Vec2<Millimeters>>;
+
+    /// Iterating a set is iterating its slice.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 impl<'a> From<&'a [Vec2<Millimeters>]> for PointSet<'a> {
     fn from(points: &'a [Vec2<Millimeters>]) -> Self {
         Self(points)
@@ -45,6 +56,13 @@ impl<'a, const N: usize> From<&'a [Vec2<Millimeters>; N]> for PointSet<'a> {
 impl<'a> From<&'a Vec<Vec2<Millimeters>>> for PointSet<'a> {
     fn from(points: &'a Vec<Vec2<Millimeters>>) -> Self {
         Self(points)
+    }
+}
+
+impl<'a> From<&'a PointBuf> for PointSet<'a> {
+    /// Borrowed view of an owned point set.
+    fn from(points: &'a PointBuf) -> Self {
+        Self(&points.0)
     }
 }
 

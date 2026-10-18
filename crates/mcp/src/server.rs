@@ -17,11 +17,17 @@ use rmcp::service::RoleServer;
 use rmcp::tool;
 use rmcp::tool_handler;
 use rmcp::tool_router;
+use std::path::Path;
 use std::path::PathBuf;
-
+use tangible_objects_analysis::AnalysisReport;
+use tangible_objects_analysis::Recording;
+use tangible_objects_analysis::SimilarityReport;
+use tangible_objects_model::AnalysisMode;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::Owner;
+use tangible_objects_model::PatternBuf;
+use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
 use tangible_objects_model::TangibleId;
@@ -236,14 +242,12 @@ impl EngineMcp {
         &self,
         Parameters(args): Parameters<AnalyzeArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(
-            &args.path,
-        ))
-        .map_err(|e| ErrorData::invalid_params(format!("recording unreadable: {e}"), None))?;
+        let recording = Recording::load(Path::new(&args.path))
+            .map_err(|e| ErrorData::invalid_params(format!("recording unreadable: {e}"), None))?;
         let mode = args.mode.unwrap_or_default();
-        let patterns = if mode == tangible_objects_model::AnalysisMode::Contacts {
+        let patterns = if mode == AnalysisMode::Contacts {
             let dir = args.profiles_dir.as_deref().unwrap_or("profiles");
-            let loaded = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir));
+            let loaded = ProfileFile::load_dir(Path::new(dir));
             let patterns = loaded.into_patterns();
             if patterns.is_empty() {
                 return Err(ErrorData::invalid_params(
@@ -253,10 +257,9 @@ impl EngineMcp {
             }
             patterns
         } else {
-            Vec::new()
+            PatternBuf::default()
         };
-        let report =
-            tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        let report = AnalysisReport::analyze(&recording, mode, (&patterns).into());
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,
@@ -272,7 +275,7 @@ impl EngineMcp {
         Parameters(args): Parameters<SimilarityArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         let dir = args.profiles_dir.as_deref().unwrap_or("profiles");
-        let loaded = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir));
+        let loaded = ProfileFile::load_dir(Path::new(dir));
         let patterns = loaded.into_patterns();
         if patterns.is_empty() {
             return Err(ErrorData::invalid_params(
@@ -280,7 +283,7 @@ impl EngineMcp {
                 None,
             ));
         }
-        let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
+        let report = SimilarityReport::analyze((&patterns).into());
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,

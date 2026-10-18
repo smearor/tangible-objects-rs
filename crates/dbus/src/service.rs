@@ -4,13 +4,25 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use tangible_objects_analysis::AnalysisReport;
+use tangible_objects_analysis::SimilarityReport;
+use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::CompletionMode;
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Lifetime;
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
+use tangible_objects_model::PatternBuf;
+use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternTolerance;
+use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::Registration;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::ProfileInfo;
@@ -273,9 +285,6 @@ impl EngineService {
         affinity: f64,
         smoothing: f64,
     ) -> fdo::Result<()> {
-        use tangible_objects_model::CompletionConfig;
-        use tangible_objects_model::CompletionMode;
-
         let mode = mode.parse::<CompletionMode>().map_err(|_| {
             fdo::Error::InvalidArgs("mode must be one of: match, exact".to_string())
         })?;
@@ -322,8 +331,7 @@ impl EngineService {
             } else {
                 profiles_dir
             };
-            let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
-                .into_patterns();
+            let patterns = ProfileFile::load_dir(std::path::Path::new(dir)).into_patterns();
             if patterns.is_empty() {
                 return Err(fdo::Error::InvalidArgs(format!(
                     "no profiles loaded from {dir}"
@@ -331,10 +339,9 @@ impl EngineService {
             }
             patterns
         } else {
-            Vec::new()
+            PatternBuf::default()
         };
-        let report =
-            tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        let report = AnalysisReport::analyze(&recording, mode, (&patterns).into());
         serde_json::to_string_pretty(&report)
             .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
     }
@@ -348,14 +355,13 @@ impl EngineService {
         } else {
             profiles_dir
         };
-        let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
-            .into_patterns();
+        let patterns = ProfileFile::load_dir(std::path::Path::new(dir)).into_patterns();
         if patterns.is_empty() {
             return Err(fdo::Error::InvalidArgs(format!(
                 "no profiles loaded from {dir}"
             )));
         }
-        let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
+        let report = SimilarityReport::analyze((&patterns).into());
         serde_json::to_string_pretty(&report)
             .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
     }
@@ -401,12 +407,6 @@ impl EngineService {
         spawn_stability: u64,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<()> {
-        use tangible_objects_model::Millimeters;
-        use tangible_objects_model::PatternTolerance;
-        use tangible_objects_model::ProfileFile;
-        use tangible_objects_model::Registration;
-        use tangible_objects_model::Vec2;
-
         if !points.len().is_multiple_of(2) || points.is_empty() {
             return Err(fdo::Error::InvalidArgs(
                 "points must be a non-empty even-length flat list".to_string(),
@@ -445,12 +445,6 @@ impl EngineService {
         spawn_on_partial: bool,
         spawn_stability: u64,
     ) -> fdo::Result<()> {
-        use tangible_objects_model::Millimeters;
-        use tangible_objects_model::PatternId;
-        use tangible_objects_model::PatternTolerance;
-        use tangible_objects_model::ProfileFile;
-        use tangible_objects_model::Vec2;
-
         if !points.len().is_multiple_of(2) || points.is_empty() {
             return Err(fdo::Error::InvalidArgs(
                 "points must be a non-empty even-length flat list".to_string(),
@@ -476,8 +470,6 @@ impl EngineService {
 
     /// Removes a dynamically registered pattern by ID.
     async fn unregister_pattern(&self, id: u32) -> fdo::Result<()> {
-        use tangible_objects_model::PatternId;
-
         self.handle
             .send_command(ControlCommand::UnregisterPattern {
                 id: PatternId::new(id),
@@ -495,9 +487,6 @@ impl EngineService {
         persistent: bool,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<()> {
-        use tangible_objects_model::FieldSet;
-        use tangible_objects_model::Registration;
-
         let set = toml::from_str::<FieldSet>(toml_str)
             .map_err(|e| fdo::Error::InvalidArgs(format!("invalid field set TOML: {e}")))?;
         self.handle

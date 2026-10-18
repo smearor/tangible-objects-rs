@@ -8,7 +8,8 @@ use crate::FrameCount;
 use crate::PatternMatch;
 use crate::TangibleCount;
 use crate::TangibleId;
-use crate::TouchPoint;
+use crate::TouchSet;
+
 use crate::TouchPointSlot;
 use crate::TrackedTangible;
 use crate::TrackingId;
@@ -59,7 +60,7 @@ impl SessionMetrics {
     /// free of engine-event dependencies).
     pub fn record(
         &mut self,
-        touches: &[TouchPoint],
+        touches: TouchSet<'_>,
         matches: &[PatternMatch],
         tracked: &[TrackedTangible],
         touches_changed: bool,
@@ -176,9 +177,19 @@ mod tests {
     #[test]
     fn accumulates_uptime_churn_and_matches() {
         let mut metrics = SessionMetrics::default();
-        metrics.record(&[touch(0, 1)], &[matcher(false)], &[tracked(0)], true);
-        metrics.record(&[touch(0, 9)], &[matcher(true)], &[tracked(0)], true);
-        metrics.record(&[], &[], &[], false);
+        metrics.record(
+            (&[touch(0, 1)]).into(),
+            &[matcher(false)],
+            &[tracked(0)],
+            true,
+        );
+        metrics.record(
+            (&[touch(0, 9)]).into(),
+            &[matcher(true)],
+            &[tracked(0)],
+            true,
+        );
+        metrics.record((&[]).into(), &[], &[], false);
 
         assert_eq!(metrics.frames, FrameCount::new(3));
         assert_eq!(metrics.tracked_frames, FrameCount::new(2));

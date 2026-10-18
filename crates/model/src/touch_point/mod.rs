@@ -6,8 +6,10 @@
 
 mod point;
 mod slot;
+mod touch_set;
 mod tracking_id;
 
 pub use point::TouchPoint;
 pub use slot::TouchPointSlot;
+pub use touch_set::TouchSet;
 pub use tracking_id::TrackingId;
