@@ -1,9 +1,9 @@
 name = "Holzklotz3"
 num_points = 3
 tolerance = 3.0
-# Per-index tolerances from ILITEK recording analysis (p99 × 1.25 over
-# labeled-frame best candidates - matched-only sampling underestimates).
-tolerances = [3.68, 3.66, 7.81]
+# Per-index tolerances recalibrated on the SiS panel (11.3k-sample
+# contact-level deviation analysis, ~p99 × 1.2 headroom).
+tolerances = [3.7, 4.0, 5.8]
 sorted_sides = [
     54.344620504496824,
     56.544220649761264,
