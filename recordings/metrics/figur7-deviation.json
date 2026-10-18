@@ -1,0 +1,24 @@
+{
+  "patterns": [
+    {"pattern_id": 1, "pattern_name": "Figur10", "matched_frames": 0, "missed_frames": 13, "distances": [
+      {"index": 0, "samples": 13, "mean": 36.50, "max": 41.61, "p99": 41.61, "over_tolerance": 13, "sole_blocker": 0, "blocker": 13},
+      {"index": 1, "samples": 13, "mean": 37.40, "max": 47.41, "p99": 47.41, "over_tolerance": 13, "sole_blocker": 0, "blocker": 13},
+      {"index": 2, "samples": 13, "mean": 65.74, "max": 67.51, "p99": 67.51, "over_tolerance": 13, "sole_blocker": 0, "blocker": 13}
+    ]},
+    {"pattern_id": 2, "pattern_name": "Figur7", "matched_frames": 4, "missed_frames": 9, "distances": [
+      {"index": 0, "samples": 13, "mean": 3.62, "max": 7.81, "p99": 7.81, "over_tolerance": 6, "sole_blocker": 4, "blocker": 6},
+      {"index": 1, "samples": 13, "mean": 3.47, "max": 12.33, "p99": 12.33, "over_tolerance": 4, "sole_blocker": 3, "blocker": 4},
+      {"index": 2, "samples": 13, "mean": 1.85, "max": 3.55, "p99": 3.55, "over_tolerance": 1, "sole_blocker": 0, "blocker": 1}
+    ]},
+    {"pattern_id": 5, "pattern_name": "Holzklotz3", "matched_frames": 0, "missed_frames": 9, "distances": [
+      {"index": 0, "samples": 9, "mean": 15.49, "max": 21.12, "p99": 21.12, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9},
+      {"index": 1, "samples": 9, "mean": 20.49, "max": 29.56, "p99": 29.56, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9},
+      {"index": 2, "samples": 9, "mean": 25.43, "max": 26.86, "p99": 26.86, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9}
+    ]},
+    {"pattern_id": 6, "pattern_name": "Holzklotz4", "matched_frames": 0, "missed_frames": 9, "distances": [
+      {"index": 0, "samples": 9, "mean": 16.18, "max": 21.81, "p99": 21.81, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9},
+      {"index": 1, "samples": 9, "mean": 19.21, "max": 28.28, "p99": 28.28, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9},
+      {"index": 2, "samples": 9, "mean": 40.21, "max": 41.64, "p99": 41.64, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9}
+    ]}
+  ]
+}

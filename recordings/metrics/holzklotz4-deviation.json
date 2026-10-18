@@ -1,0 +1,24 @@
+{
+  "patterns": [
+    {"pattern_id": 1, "pattern_name": "Figur10", "matched_frames": 0, "missed_frames": 7, "distances": [
+      {"index": 0, "samples": 7, "mean": 19.13, "max": 19.13, "p99": 19.13, "over_tolerance": 7, "sole_blocker": 0, "blocker": 7},
+      {"index": 1, "samples": 7, "mean": 18.77, "max": 20.48, "p99": 20.48, "over_tolerance": 7, "sole_blocker": 0, "blocker": 7},
+      {"index": 2, "samples": 7, "mean": 29.32, "max": 30.04, "p99": 30.04, "over_tolerance": 7, "sole_blocker": 0, "blocker": 7}
+    ]},
+    {"pattern_id": 2, "pattern_name": "Figur7", "matched_frames": 0, "missed_frames": 7, "distances": [
+      {"index": 0, "samples": 7, "mean": 18.89, "max": 18.89, "p99": 18.89, "over_tolerance": 7, "sole_blocker": 0, "blocker": 7},
+      {"index": 1, "samples": 7, "mean": 16.31, "max": 17.64, "p99": 17.64, "over_tolerance": 7, "sole_blocker": 0, "blocker": 7},
+      {"index": 2, "samples": 7, "mean": 34.63, "max": 35.17, "p99": 35.17, "over_tolerance": 7, "sole_blocker": 0, "blocker": 7}
+    ]},
+    {"pattern_id": 5, "pattern_name": "Holzklotz3", "matched_frames": 0, "missed_frames": 7, "distances": [
+      {"index": 0, "samples": 7, "mean": 1.36, "max": 1.36, "p99": 1.36, "over_tolerance": 0, "sole_blocker": 0, "blocker": 0},
+      {"index": 1, "samples": 7, "mean": 1.05, "max": 2.63, "p99": 2.63, "over_tolerance": 0, "sole_blocker": 0, "blocker": 0},
+      {"index": 2, "samples": 7, "mean": 11.32, "max": 11.86, "p99": 11.86, "over_tolerance": 7, "sole_blocker": 7, "blocker": 7}
+    ]},
+    {"pattern_id": 6, "pattern_name": "Holzklotz4", "matched_frames": 1, "missed_frames": 6, "distances": [
+      {"index": 0, "samples": 7, "mean": 0.68, "max": 0.68, "p99": 0.68, "over_tolerance": 0, "sole_blocker": 0, "blocker": 0},
+      {"index": 1, "samples": 7, "mean": 0.95, "max": 1.69, "p99": 1.69, "over_tolerance": 0, "sole_blocker": 0, "blocker": 0},
+      {"index": 2, "samples": 7, "mean": 3.45, "max": 4.17, "p99": 4.17, "over_tolerance": 6, "sole_blocker": 6, "blocker": 6}
+    ]}
+  ]
+}

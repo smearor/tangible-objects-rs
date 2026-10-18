@@ -1,0 +1,25 @@
+{
+  "frames": 808,
+  "tracked_frames": 779,
+  "contacts": 3589,
+  "active_frames": 764,
+  "slot_churn": {
+    "1": 7,
+    "0": 4,
+    "3": 6,
+    "5": 1,
+    "2": 3,
+    "4": 7
+  },
+  "patterns": {
+    "FM4 (partial)": {
+      "tracked_frames": 779,
+      "tangible_count": 4,
+      "exact_match_frames": 0,
+      "partial_match_frames": 611,
+      "claimed_pins": 42,
+      "max_match_deviation": null
+    }
+  },
+  "tangible_count": 4
+}

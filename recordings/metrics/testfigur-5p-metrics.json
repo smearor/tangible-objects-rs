@@ -1,0 +1,23 @@
+{
+  "frames": 3121,
+  "tracked_frames": 3104,
+  "contacts": 12384,
+  "active_frames": 3097,
+  "slot_churn": {
+    "2": 3,
+    "1": 5,
+    "0": 1,
+    "3": 1
+  },
+  "patterns": {
+    "TestFigur-5P": {
+      "tracked_frames": 5219,
+      "tangible_count": 5,
+      "exact_match_frames": 5045,
+      "partial_match_frames": 0,
+      "claimed_pins": 0,
+      "max_match_deviation": null
+    }
+  },
+  "tangible_count": 5
+}

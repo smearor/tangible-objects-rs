@@ -1,0 +1,26 @@
+{
+  "figure": "TestFigur-5P",
+  "pairs": [
+    {
+      "a": "Holzklotz2",
+      "b": "TestFigur-5P",
+      "contact_count": 4,
+      "min_max_deviation": 9.592010837791662,
+      "risk": "Safe"
+    },
+    {
+      "a": "FM4",
+      "b": "TestFigur-5P",
+      "contact_count": 4,
+      "min_max_deviation": 29.769214025249767,
+      "risk": "Safe"
+    },
+    {
+      "a": "TestFigur-4P",
+      "b": "TestFigur-5P",
+      "contact_count": 4,
+      "min_max_deviation": 33.39,
+      "risk": "Safe"
+    }
+  ]
+}

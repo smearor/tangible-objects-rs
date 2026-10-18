@@ -1,0 +1,22 @@
+{
+  "frames": 3298,
+  "tracked_frames": 3194,
+  "contacts": 9878,
+  "active_frames": 3248,
+  "slot_churn": {
+    "0": 1,
+    "1": 2,
+    "2": 1
+  },
+  "patterns": {
+    "Figur10": {
+      "tracked_frames": 3194,
+      "tangible_count": 1,
+      "exact_match_frames": 3099,
+      "partial_match_frames": 0,
+      "claimed_pins": 0,
+      "max_match_deviation": null
+    }
+  },
+  "tangible_count": 1
+}

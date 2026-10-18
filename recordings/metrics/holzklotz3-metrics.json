@@ -1,0 +1,23 @@
+{
+  "frames": 7374,
+  "tracked_frames": 7246,
+  "contacts": 22253,
+  "active_frames": 3864,
+  "slot_churn": {
+    "3": 10,
+    "1": 1,
+    "0": 1,
+    "2": 1
+  },
+  "patterns": {
+    "Holzklotz3": {
+      "tracked_frames": 7246,
+      "tangible_count": 1,
+      "exact_match_frames": 7243,
+      "partial_match_frames": 0,
+      "claimed_pins": 0,
+      "max_match_deviation": null
+    }
+  },
+  "tangible_count": 1
+}

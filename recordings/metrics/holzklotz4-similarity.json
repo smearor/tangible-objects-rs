@@ -1,0 +1,26 @@
+{
+  "figure": "Holzklotz4",
+  "pairs": [
+    {
+      "a": "Holzklotz3",
+      "b": "Holzklotz4",
+      "contact_count": 3,
+      "min_max_deviation": 14.773017843656149,
+      "risk": "Safe"
+    },
+    {
+      "a": "Figur10",
+      "b": "Holzklotz4",
+      "contact_count": 3,
+      "min_max_deviation": 25.87356390287426,
+      "risk": "Safe"
+    },
+    {
+      "a": "Figur7",
+      "b": "Holzklotz4",
+      "contact_count": 3,
+      "min_max_deviation": 38.082400010606946,
+      "risk": "Safe"
+    }
+  ]
+}

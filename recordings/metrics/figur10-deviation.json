@@ -1,0 +1,24 @@
+{
+  "patterns": [
+    {"pattern_id": 1, "pattern_name": "Figur10", "matched_frames": 1, "missed_frames": 102, "distances": [
+      {"index": 0, "samples": 103, "mean": 6.29, "max": 6.58, "p99": 6.42, "over_tolerance": 102, "sole_blocker": 71, "blocker": 102},
+      {"index": 1, "samples": 103, "mean": 2.25, "max": 4.21, "p99": 4.21, "over_tolerance": 31, "sole_blocker": 0, "blocker": 31},
+      {"index": 2, "samples": 103, "mean": 2.88, "max": 3.66, "p99": 3.66, "over_tolerance": 31, "sole_blocker": 0, "blocker": 31}
+    ]},
+    {"pattern_id": 2, "pattern_name": "Figur7", "matched_frames": 0, "missed_frames": 102, "distances": [
+      {"index": 0, "samples": 102, "mean": 44.34, "max": 44.59, "p99": 44.43, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102},
+      {"index": 1, "samples": 102, "mean": 35.59, "max": 39.30, "p99": 39.30, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102},
+      {"index": 2, "samples": 102, "mean": 63.41, "max": 67.62, "p99": 67.62, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102}
+    ]},
+    {"pattern_id": 5, "pattern_name": "Holzklotz3", "matched_frames": 0, "missed_frames": 102, "distances": [
+      {"index": 0, "samples": 102, "mean": 26.82, "max": 27.07, "p99": 26.91, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102},
+      {"index": 1, "samples": 102, "mean": 18.35, "max": 22.06, "p99": 22.06, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102},
+      {"index": 2, "samples": 102, "mean": 40.11, "max": 44.31, "p99": 44.31, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102}
+    ]},
+    {"pattern_id": 6, "pattern_name": "Holzklotz4", "matched_frames": 0, "missed_frames": 102, "distances": [
+      {"index": 0, "samples": 102, "mean": 26.13, "max": 26.38, "p99": 26.22, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102},
+      {"index": 1, "samples": 102, "mean": 19.64, "max": 23.35, "p99": 23.35, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102},
+      {"index": 2, "samples": 102, "mean": 25.33, "max": 29.54, "p99": 29.54, "over_tolerance": 102, "sole_blocker": 0, "blocker": 102}
+    ]}
+  ]
+}

@@ -1,35 +1,3 @@
-➜  devin sudo evtest
-[sudo: authenticate] Passwort:
-No device specified, trying to scan all of /dev/input/event*
-Available devices:
-/dev/input/event0:	Power Button
-/dev/input/event1:	Power Button
-/dev/input/event10:	Razer Razer BlackWidow V3 Tenkeyless
-/dev/input/event11:	Razer Razer BlackWidow V3 Tenkeyless
-/dev/input/event12:	Razer Razer BlackWidow V3 Tenkeyless
-/dev/input/event13:	Razer Razer BlackWidow V3 Tenkeyless
-/dev/input/event14:	Yubico YubiKey OTP+FIDO+CCID
-/dev/input/event15:	Eee PC WMI hotkeys
-/dev/input/event16:	HDA ATI HDMI HDMI/DP,pcm=3
-/dev/input/event17:	HD-Audio Generic HDMI/DP,pcm=3
-/dev/input/event18:	HDA ATI HDMI HDMI/DP,pcm=7
-/dev/input/event19:	HD-Audio Generic HDMI/DP,pcm=7
-/dev/input/event2:	Video Bus
-/dev/input/event20:	HDA ATI HDMI HDMI/DP,pcm=8
-/dev/input/event21:	HD-Audio Generic HDMI/DP,pcm=8
-/dev/input/event22:	HDA ATI HDMI HDMI/DP,pcm=9
-/dev/input/event23:	DP-3
-/dev/input/event24:	DP-1
-/dev/input/event25:	Yubico YubiKey OTP+FIDO+CCID
-/dev/input/event26:	ydotoold virtual device
-/dev/input/event3:	Razer Razer BlackWidow V4
-/dev/input/event4:	ILITEK       ILITEK-TOUCH
-/dev/input/event5:	Razer Razer BlackWidow V4
-/dev/input/event6:	Razer Razer BlackWidow V4
-/dev/input/event7:	Razer Razer Basilisk X HyperSpeed
-/dev/input/event8:	Razer Razer Basilisk X HyperSpeed
-/dev/input/event9:	Razer Razer Basilisk X HyperSpeed
-Select the device event number [0-26]: 4
 Input driver version is 1.0.1
 Input device ID: bus 0x3 vendor 0x222a product 0x1 version 0x110
 Input device name: "ILITEK       ILITEK-TOUCH                                                    "

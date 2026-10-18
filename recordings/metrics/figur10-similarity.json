@@ -1,0 +1,33 @@
+{
+  "figure": "Figur10",
+  "pairs": [
+    {
+      "a": "Figur10",
+      "b": "Holzklotz4",
+      "contact_count": 3,
+      "min_max_deviation": 25.87356390287426,
+      "risk": "Safe"
+    },
+    {
+      "a": "Figur10",
+      "b": "Holzklotz3",
+      "contact_count": 3,
+      "min_max_deviation": 40.64658174653041,
+      "risk": "Safe"
+    },
+    {
+      "a": "Figur10",
+      "b": "FM4",
+      "contact_count": 3,
+      "min_max_deviation": 42.08578168781907,
+      "risk": "Safe"
+    },
+    {
+      "a": "Figur10",
+      "b": "Figur7",
+      "contact_count": 3,
+      "min_max_deviation": 63.955963913481206,
+      "risk": "Safe"
+    }
+  ]
+}

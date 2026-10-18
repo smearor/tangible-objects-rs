@@ -1,0 +1,49 @@
+{
+  "note": "matched_frames counts generic full-candidate matches only; tracked frames mostly run via the incumbent path and produce no full candidates",
+  "patterns": [
+    {"pattern_id": 1, "pattern_name": "Figur10", "matched_frames": 0, "missed_frames": 660, "distances": [
+      {"index": 0, "samples": 660, "mean": 3.31, "max": 9.71, "p99": 7.00, "over_tolerance": 353, "sole_blocker": 0, "blocker": 353},
+      {"index": 1, "samples": 660, "mean": 9.39, "max": 12.46, "p99": 12.27, "over_tolerance": 660, "sole_blocker": 0, "blocker": 660},
+      {"index": 2, "samples": 660, "mean": 21.86, "max": 23.93, "p99": 23.66, "over_tolerance": 660, "sole_blocker": 0, "blocker": 660}
+    ]},
+    {"pattern_id": 2, "pattern_name": "Figur7", "matched_frames": 0, "missed_frames": 660, "distances": [
+      {"index": 0, "samples": 660, "mean": 34.73, "max": 38.82, "p99": 38.46, "over_tolerance": 660, "sole_blocker": 0, "blocker": 660},
+      {"index": 1, "samples": 660, "mean": 25.69, "max": 29.03, "p99": 28.95, "over_tolerance": 660, "sole_blocker": 0, "blocker": 660},
+      {"index": 2, "samples": 660, "mean": 42.10, "max": 44.48, "p99": 44.32, "over_tolerance": 660, "sole_blocker": 0, "blocker": 660}
+    ]},
+    {"pattern_id": 3, "pattern_name": "FM4", "matched_frames": 0, "missed_frames": 151, "distances": [
+      {"index": 0, "samples": 151, "mean": 6.30, "max": 7.90, "p99": 7.83, "over_tolerance": 151, "sole_blocker": 0, "blocker": 151},
+      {"index": 1, "samples": 151, "mean": 6.15, "max": 8.37, "p99": 8.26, "over_tolerance": 150, "sole_blocker": 0, "blocker": 150},
+      {"index": 2, "samples": 151, "mean": 23.32, "max": 24.69, "p99": 24.69, "over_tolerance": 151, "sole_blocker": 0, "blocker": 151},
+      {"index": 3, "samples": 151, "mean": 19.48, "max": 21.69, "p99": 21.69, "over_tolerance": 151, "sole_blocker": 0, "blocker": 151},
+      {"index": 4, "samples": 151, "mean": 21.31, "max": 22.61, "p99": 22.53, "over_tolerance": 151, "sole_blocker": 0, "blocker": 151},
+      {"index": 5, "samples": 151, "mean": 21.13, "max": 23.14, "p99": 23.01, "over_tolerance": 151, "sole_blocker": 0, "blocker": 151}
+    ]},
+    {"pattern_id": 4, "pattern_name": "Holzklotz2", "matched_frames": 1, "missed_frames": 150, "distances": [
+      {"index": 0, "samples": 151, "mean": 2.83, "max": 4.44, "p99": 4.37, "over_tolerance": 55, "sole_blocker": 0, "blocker": 55},
+      {"index": 1, "samples": 151, "mean": 3.45, "max": 5.65, "p99": 5.54, "over_tolerance": 112, "sole_blocker": 0, "blocker": 112},
+      {"index": 2, "samples": 151, "mean": 1.44, "max": 2.81, "p99": 2.80, "over_tolerance": 0, "sole_blocker": 0, "blocker": 0},
+      {"index": 3, "samples": 151, "mean": 1.12, "max": 3.33, "p99": 3.33, "over_tolerance": 4, "sole_blocker": 0, "blocker": 4},
+      {"index": 4, "samples": 151, "mean": 1.81, "max": 3.09, "p99": 3.01, "over_tolerance": 2, "sole_blocker": 0, "blocker": 2},
+      {"index": 5, "samples": 151, "mean": 4.04, "max": 6.05, "p99": 5.92, "over_tolerance": 150, "sole_blocker": 24, "blocker": 150}
+    ]},
+    {"pattern_id": 5, "pattern_name": "Holzklotz3", "matched_frames": 0, "missed_frames": 656, "distances": [
+      {"index": 0, "samples": 656, "mean": 17.22, "max": 21.30, "p99": 20.94, "over_tolerance": 656, "sole_blocker": 0, "blocker": 656},
+      {"index": 1, "samples": 656, "mean": 8.46, "max": 11.80, "p99": 11.72, "over_tolerance": 656, "sole_blocker": 0, "blocker": 656},
+      {"index": 2, "samples": 656, "mean": 18.80, "max": 21.17, "p99": 21.01, "over_tolerance": 656, "sole_blocker": 0, "blocker": 656}
+    ]},
+    {"pattern_id": 6, "pattern_name": "Holzklotz4", "matched_frames": 0, "missed_frames": 656, "distances": [
+      {"index": 0, "samples": 656, "mean": 16.53, "max": 20.61, "p99": 20.25, "over_tolerance": 656, "sole_blocker": 0, "blocker": 656},
+      {"index": 1, "samples": 656, "mean": 9.75, "max": 13.08, "p99": 13.00, "over_tolerance": 656, "sole_blocker": 0, "blocker": 656},
+      {"index": 2, "samples": 656, "mean": 4.03, "max": 6.39, "p99": 6.24, "over_tolerance": 483, "sole_blocker": 0, "blocker": 483}
+    ]},
+    {"pattern_id": 7, "pattern_name": "TestFigur-5P", "matched_frames": 0, "missed_frames": 150, "distances": [
+      {"index": 0, "samples": 150, "mean": 0.45, "max": 1.93, "p99": 1.86, "over_tolerance": 0, "sole_blocker": 0, "blocker": 0},
+      {"index": 1, "samples": 150, "mean": 1.91, "max": 3.55, "p99": 3.55, "over_tolerance": 9, "sole_blocker": 0, "blocker": 9},
+      {"index": 2, "samples": 150, "mean": 6.44, "max": 8.04, "p99": 7.95, "over_tolerance": 150, "sole_blocker": 0, "blocker": 150},
+      {"index": 3, "samples": 150, "mean": 5.26, "max": 6.32, "p99": 6.27, "over_tolerance": 150, "sole_blocker": 0, "blocker": 150},
+      {"index": 4, "samples": 150, "mean": 5.19, "max": 6.58, "p99": 6.53, "over_tolerance": 150, "sole_blocker": 0, "blocker": 150},
+      {"index": 5, "samples": 150, "mean": 5.54, "max": 6.54, "p99": 6.51, "over_tolerance": 150, "sole_blocker": 0, "blocker": 150}
+    ]}
+  ]
+}
