@@ -348,36 +348,68 @@ impl Engine {
 
         // Slot affinity (TRACKING_STABILIZATION.md): every tracked
         // tangible re-matches on the slots it owned in the previous
-        // frame, before generic matching runs. Its slots are reserved
-        // either way - a phantom candidate composed of "stolen" points
-        // cannot claim them while the owner is alive.
+        // frame, before generic matching runs.
+        //
+        // Pass 1 reserves *all* bound slots first - otherwise an
+        // incumbent processed early could complete-claim slots that a
+        // later incumbent owns (the claim pool must exclude every
+        // tracked tangible's bindings, not just the ones already seen).
         let mut matches = Vec::new();
         let mut reserved: HashSet<usize> = HashSet::new();
+        for tangible in self.tracker.active() {
+            if let Some(slot_set) = self.tracker.slot_set(tangible.id) {
+                reserved.extend(
+                    touches
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, touch)| slot_set.contains(&touch.slot))
+                        .map(|(index, _)| index),
+                );
+            }
+        }
+
+        // Pass 2: incumbent re-match on the genuinely matched slots only
+        // (`match_set` excludes claimed pins - a wrong claim stays
+        // reserved but can never make the incumbent fail to match).
         for tangible in self.tracker.active() {
             let Some(pattern) = self.patterns.iter().find(|p| p.id == tangible.pattern_id) else {
                 continue;
             };
-            let Some(slot_set) = self.tracker.slot_set(tangible.id) else {
+            let Some(match_set) = self.tracker.match_set(tangible.id) else {
                 continue;
             };
             let indices: Vec<usize> = touches
                 .iter()
                 .enumerate()
-                .filter(|(_, touch)| slot_set.contains(&touch.slot))
+                .filter(|(_, touch)| match_set.contains(&touch.slot))
                 .map(|(index, _)| index)
                 .collect();
-            reserved.extend(indices.iter().copied());
             let affinity_match = if indices.len() == pattern.num_points {
                 matching::try_pattern(pattern, &indices, &touches)
             } else if indices.len() + self.completion.max_missing as usize >= pattern.num_points
                 && pattern.num_points >= 4
             {
-                // Claim pool: touches neither reserved nor already part
-                // of this incumbent's slot set.
+                // Claim pool: every non-reserved touch PLUS this
+                // incumbent's own bound-but-unmatched slots - a slot
+                // this figure claimed last frame must stay claimable
+                // for it (reserving it from others must not unclaim it
+                // for its owner, otherwise the binding would oscillate).
+                let own_reserved: HashSet<usize> = self
+                    .tracker
+                    .slot_set(tangible.id)
+                    .map(|slot_set| {
+                        touches
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, touch)| slot_set.contains(&touch.slot))
+                            .map(|(index, _)| index)
+                            .collect()
+                    })
+                    .unwrap_or_default();
                 let pool: Vec<usize> = touches
                     .iter()
                     .enumerate()
-                    .filter(|(index, _)| !reserved.contains(index) && !indices.contains(index))
+                    .filter(|(index, _)| !reserved.contains(index) || own_reserved.contains(index))
                     .map(|(index, _)| index)
                     .collect();
                 matching::try_partial(pattern, &indices, &touches, &self.completion, &pool)
@@ -752,5 +784,66 @@ mod tests {
         let (patterns, _) = engine.remove_by_owner(&"game".into());
         assert!(patterns.is_empty());
         assert_eq!(engine.patterns().len(), 1);
+    }
+
+    fn quad_pattern(id: u32, name: &str) -> TangiblePattern {
+        TangiblePattern::from_points(
+            id,
+            name,
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(100.0, 0.0),
+                Vec2::new(0.0, 100.0),
+                Vec2::new(100.0, 100.0),
+            ],
+            5.0,
+        )
+    }
+
+    #[test]
+    fn completion_never_claims_another_incumbent() {
+        // A's missing-pin prediction lands within claim radius of B's
+        // pin - the claim pool must still exclude B's bound slots.
+        let mut engine = Engine::new(vec![quad_pattern(1, "a"), quad_pattern(2, "b")]);
+        // A square at (100..200): slots 0-3.
+        contact(&mut engine, 0, 10, 100, 100);
+        contact(&mut engine, 1, 11, 200, 100);
+        contact(&mut engine, 2, 12, 100, 200);
+        contact(&mut engine, 3, 13, 200, 200);
+        // B square next to it; slot 7 sits ~7mm from A's predicted
+        // missing pin (200,200) - inside claim radius 10mm.
+        contact(&mut engine, 4, 14, 205, 105);
+        contact(&mut engine, 5, 15, 305, 105);
+        contact(&mut engine, 6, 16, 205, 205);
+        contact(&mut engine, 7, 17, 305, 205);
+        let frame = syn(&mut engine).expect("frame");
+        assert_eq!(engine.tracked().len(), 2);
+        assert_eq!(frame.matches.len(), 2);
+
+        lift(&mut engine, 3);
+        let frame = syn(&mut engine).expect("frame");
+
+        let match_a = frame
+            .matches
+            .iter()
+            .find(|m| m.pattern_id == PatternId::new(1))
+            .expect("a still partially matches");
+        // Slot 6 (B's pin at 205,205) must not have been claimed by A.
+        let b_pin = frame
+            .touches
+            .iter()
+            .position(|t| t.slot.as_u32() == 6)
+            .expect("b pin present");
+        assert!(
+            !match_a.claimed_indices.contains(&b_pin),
+            "A must not claim an incumbent-owned slot"
+        );
+        // B still matches on all four of its slots.
+        let match_b = frame
+            .matches
+            .iter()
+            .find(|m| m.pattern_id == PatternId::new(2))
+            .expect("b still matches");
+        assert_eq!(match_b.all_indices().count(), 4);
     }
 }

@@ -30,8 +30,14 @@ pub struct Tracker {
     /// Currently alive tangibles with EMA-smoothed pose and
     /// `frames_since_match` age.
     tracked: Vec<TrackedTangible>,
-    /// Slot bindings per tangible ID - the slots of its last match.
+    /// Slot bindings per tangible ID - the slots of its last match,
+    /// including persistent completion claims (the *reservation* set).
     slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
+    /// Only the genuinely matched slots (no claimed pins) - the
+    /// candidate set the incumbent re-match is verified against. A
+    /// wrongly claimed contact is reserved but can never make a
+    /// re-match fail.
+    matched_slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
     /// Smoothing factor of the exponential moving average applied to
     /// center and rotation on every associated match (`0..1`; higher =
     /// faster, more jitter).
@@ -60,6 +66,7 @@ impl Tracker {
         Self {
             tracked: Vec::new(),
             slots: HashMap::new(),
+            matched_slots: HashMap::new(),
             ema_alpha,
             max_center_distance: max_center_distance.into(),
             max_frames_without_match: max_frames_without_match.into(),
@@ -67,9 +74,17 @@ impl Tracker {
         }
     }
 
-    /// The slots bound to a tangible by its last match, if any.
+    /// The slots bound to a tangible by its last match, if any
+    /// (reservation set - includes persistent claims).
     pub fn slot_set(&self, id: TangibleId) -> Option<&HashSet<TouchPointSlot>> {
         self.slots.get(&id)
+    }
+
+    /// Only the genuinely matched slots of the last match - the
+    /// candidate set for incumbent re-matching. Claimed pins are
+    /// reserved but not required to re-match.
+    pub fn match_set(&self, id: TangibleId) -> Option<&HashSet<TouchPointSlot>> {
+        self.matched_slots.get(&id)
     }
 
     /// All slots currently bound to any tracked tangible - the reserved
@@ -128,6 +143,8 @@ impl Tracker {
                     self.ema_alpha,
                 ));
                 tangible.frames_since_match = 0;
+                self.matched_slots
+                    .insert(tangible.id, matched_slots_of(pattern_match, touches));
                 self.slots
                     .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
                 events.push(EngineEvent::TangibleMoved(tangible.clone()));
@@ -146,6 +163,8 @@ impl Tracker {
                     frames_since_match: 0,
                 };
                 self.next_tangible_id = TangibleId::new(self.next_tangible_id.as_u32() + 1);
+                self.matched_slots
+                    .insert(tangible.id, matched_slots_of(pattern_match, touches));
                 self.slots
                     .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
                 debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
@@ -164,6 +183,7 @@ impl Tracker {
         for tangible in removed {
             debug!(pattern = %tangible.pattern_name, "tangible removed");
             self.slots.remove(&tangible.id);
+            self.matched_slots.remove(&tangible.id);
             events.push(EngineEvent::TangibleRemoved(tangible));
         }
         events
@@ -178,7 +198,21 @@ impl Tracker {
     pub fn clear(&mut self) {
         self.tracked.clear();
         self.slots.clear();
+        self.matched_slots.clear();
     }
+}
+
+/// Resolves a match's `touch_indices` to the slots of the touched points
+/// - the genuine-match set used for incumbent re-matching.
+fn matched_slots_of(
+    pattern_match: &PatternMatch,
+    touches: &[TouchPoint],
+) -> HashSet<TouchPointSlot> {
+    pattern_match
+        .touch_indices
+        .iter()
+        .map(|&index| touches[index].slot)
+        .collect()
 }
 
 /// Resolves a match's `touch_indices` (plus `claimed_indices` when
