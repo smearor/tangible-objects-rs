@@ -18,9 +18,11 @@ pub struct ProfileDir {
 impl ProfileDir {
     /// Converts all loaded profiles into matchable [`TangiblePattern`]s with
     /// sequential IDs starting at 1 (deterministic, sorted by filename).
+    /// Disabled profiles (`enabled = false`) are skipped.
     pub fn into_patterns(self) -> Vec<TangiblePattern> {
         self.profiles
             .iter()
+            .filter(|(_, profile)| profile.enabled)
             .enumerate()
             .map(|(index, (_, profile))| profile.to_pattern(PatternId::new(index as u32 + 1)))
             .collect()

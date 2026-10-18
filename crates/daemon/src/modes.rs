@@ -93,12 +93,16 @@ pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
         dir_result.errors.append(&mut stored.errors);
     }
     for (_, profile) in &dir_result.profiles {
-        println!(
-            "Profil geladen: {} ({} Punkte, {} Abstände)",
-            profile.name,
-            profile.num_points,
-            profile.sorted_sides.len()
-        );
+        if profile.enabled {
+            println!(
+                "Profil geladen: {} ({} Punkte, {} Abstände)",
+                profile.name,
+                profile.num_points,
+                profile.sorted_sides.len()
+            );
+        } else {
+            println!("Profil deaktiviert: {}", profile.name);
+        }
     }
     for (path, error) in &dir_result.errors {
         eprintln!(
@@ -638,6 +642,34 @@ pub(crate) fn apply_registration(
                                 "\nProfil registriert: {} (id {}, owner {:?}, {})",
                                 profile.name, id, owner, lifetime
                             );
+                            // Warn when the new profile's fingerprint is
+                            // geometrically close to an existing one - the
+                            // phantom surface for partial spawns.
+                            if let Some(new_pattern) = engine.patterns().iter().find(|p| p.id == id)
+                            {
+                                for existing in engine.patterns() {
+                                    if existing.id == id {
+                                        continue;
+                                    }
+                                    if let Some(pair) =
+                                        tangible_objects_analysis::SimilarityPair::closest(
+                                            new_pattern,
+                                            existing,
+                                        )
+                                        && pair.risk != tangible_objects_analysis::MatchRisk::Safe
+                                    {
+                                        println!(
+                                            "\nWarnung: {} kollidiert mit {} \
+                                             (k={}, min-dev {:.2}mm, {:?})",
+                                            pair.a.as_str(),
+                                            pair.b.as_str(),
+                                            pair.contact_count,
+                                            pair.min_max_deviation.as_f64(),
+                                            pair.risk
+                                        );
+                                    }
+                                }
+                            }
                             runtime.add_profile(ProfileInfo {
                                 pattern_id: id,
                                 name: profile.name.clone(),

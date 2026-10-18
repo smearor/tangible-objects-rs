@@ -22,6 +22,10 @@ use crate::Vec2;
 pub struct ProfileFile {
     /// Human-readable figure name.
     pub name: crate::PatternName,
+    /// Whether the profile is enabled - a disabled profile is skipped at
+    /// startup (`enabled = false` keeps the file without registering).
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
     /// Number of contact pins.
     pub num_points: usize,
     /// Matching tolerance for the distance fingerprint.
@@ -48,6 +52,11 @@ pub struct ProfileFile {
     pub regions: Vec<Region>,
 }
 
+/// Default enabled state for profile files (`enabled = true`).
+fn default_enabled() -> bool {
+    true
+}
+
 impl ProfileFile {
     /// Creates a profile from measured contact positions.
     ///
@@ -67,6 +76,7 @@ impl ProfileFile {
         distances.sort_by(Millimeters::total_cmp);
         Self {
             name: name.into(),
+            enabled: true,
             num_points: points.len(),
             tolerance,
             tolerances: Vec::new(),
