@@ -149,4 +149,70 @@ mod tests {
             })
         ));
     }
+
+    #[tokio::test]
+    async fn event_stream_rejects_an_empty_kinds_filter() {
+        use tokio_stream::StreamExt;
+
+        let (_runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
+        let schema = build_schema(handle);
+
+        let mut stream = schema.execute_stream("subscription { eventStream(kinds: []) { kind } }");
+        let response = tokio::time::timeout(std::time::Duration::from_secs(2), stream.next())
+            .await
+            .expect("response within timeout")
+            .expect("a response item");
+        assert!(
+            response.errors.iter().any(|e| e.message.contains("kinds")),
+            "expected kinds validation error, got: {:?}",
+            response.errors
+        );
+    }
+
+    #[tokio::test]
+    async fn event_stream_yields_subscribed_kinds_only() {
+        use tangible_objects_runtime::LifecycleEvent;
+        use tokio_stream::StreamExt;
+
+        let (mut runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
+        let schema = build_schema(handle);
+
+        let mut stream = schema.execute_stream(
+            "subscription { eventStream(kinds: [PROFILE_REGISTERED]) { kind name } }",
+        );
+
+        // Broadcast receivers only exist once the subscription stream is
+        // polled - publish in a loop so the event lands after it registers.
+        let publisher = tokio::spawn(async move {
+            loop {
+                runtime.publish(
+                    &EngineFrame {
+                        matches: Vec::new(),
+                        touches: Vec::new(),
+                        events: vec![EngineEvent::TouchPointsUpdated],
+                        candidates: Vec::new(),
+                    },
+                    (&[]).into(),
+                );
+                runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
+                    pattern_id: PatternId::new(3),
+                    name: "fig".into(),
+                    owner: None,
+                });
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        });
+
+        let response = tokio::time::timeout(std::time::Duration::from_secs(2), stream.next())
+            .await
+            .expect("event within timeout")
+            .expect("a response item");
+        publisher.abort();
+
+        // only the requested kind arrives - TouchPointsUpdated was filtered
+        assert!(response.errors.is_empty(), "errors: {:?}", response.errors);
+        let data = response.data.into_json().expect("data as json");
+        assert_eq!(data["eventStream"]["kind"], "PROFILE_REGISTERED");
+        assert_eq!(data["eventStream"]["name"], "fig");
+    }
 }

@@ -18,6 +18,7 @@ use tangible_objects_model::TouchPointSlot;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
+use tangible_objects_runtime::LifecycleEvent;
 use tangible_objects_runtime::ProfileInfo;
 
 use super::control::apply_registration;
@@ -97,11 +98,13 @@ pub fn run_filter(
             match command {
                 ControlCommand::SetFilterMode { mode, stability } => {
                     proxy.set_mode(mode, stability);
+                    runtime.emit_lifecycle(LifecycleEvent::FilterModeChanged(mode));
                     println!("\nFilter-Modus: {mode}");
                 }
                 ControlCommand::SetCompletion(config) => {
                     engine.set_completion(config);
                     runtime.set_completion(config);
+                    runtime.emit_lifecycle(LifecycleEvent::CompletionChanged(config));
                     println!(
                         "\nCompletion: mode={} radius={} max-missing={} persist={}",
                         config.mode, config.radius_factor, config.max_missing, config.persist

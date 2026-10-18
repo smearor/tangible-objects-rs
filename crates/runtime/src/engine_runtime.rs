@@ -21,6 +21,7 @@ use super::DeviceInfo;
 use super::DomainEvent;
 use super::EngineHandle;
 use super::EngineSnapshot;
+use super::LifecycleEvent;
 use super::ProfileInfo;
 use super::RecordingStatus;
 
@@ -235,6 +236,15 @@ impl EngineRuntime {
     /// synchronous device loop.
     pub fn try_recv_command(&mut self) -> Result<ControlCommand, TryRecvError> {
         self.commands.try_recv()
+    }
+
+    /// Emits a [`LifecycleEvent`] to all domain-event subscribers.
+    ///
+    /// Called by the device loop when a control command *applies* - the
+    /// event means "this actually took effect", so emit it only after the
+    /// engine accepted the change (SUBSCRIPTIONS.md).
+    pub fn emit_lifecycle(&self, event: LifecycleEvent) {
+        self.broadcast(DomainEvent::Lifecycle(event));
     }
 
     /// Broadcasts a domain event to all subscribers.

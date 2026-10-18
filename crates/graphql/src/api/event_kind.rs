@@ -1,7 +1,7 @@
 use async_graphql::Enum;
 
 /// Discriminator for [`super::TangibleEvent`] payloads.
-#[derive(Debug, Enum, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Enum, Copy, Clone, Eq, Hash, PartialEq)]
 pub enum EventKind {
     /// The set of active touch points changed.
     TouchPointsUpdated,
@@ -27,4 +27,25 @@ pub enum EventKind {
     FieldLifted,
     /// An occupancy field's debounced contact count changed.
     FieldCountChanged,
+    /// A pattern was registered or replaced at runtime.
+    ProfileRegistered,
+    /// A registered pattern was removed.
+    ProfileUnregistered,
+    /// A field set was registered at runtime.
+    FieldSetRegistered,
+    /// A field set was removed.
+    FieldSetUnregistered,
+    /// The completion configuration changed.
+    CompletionChanged,
+    /// The filter-proxy suppression policy changed.
+    FilterModeChanged,
+    /// A recording session started.
+    RecordingStarted,
+    /// A recording session stopped (`count` carries the frames written).
+    RecordingStopped,
+    /// A file-triggered config reload took effect.
+    ConfigReloaded,
+    /// Events were skipped because this subscription lagged - a control
+    /// event, never requestable via `kinds`; `skipped` carries the count.
+    Lagged,
 }

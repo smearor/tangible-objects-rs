@@ -141,6 +141,9 @@ async fn emit_signal(emitter: &SignalEmitter<'_>, event: &DomainEvent) {
             .await
         }
         DomainEvent::Set(action) => emit_set_action(emitter, action).await,
+        // Lifecycle events flow only to GraphQL subscriptions - no D-Bus
+        // signal counterparts (SUBSCRIPTIONS.md scope).
+        DomainEvent::Lifecycle(_) => Ok(()),
     };
     if let Err(err) = result {
         warn!(%err, "failed to emit D-Bus signal");

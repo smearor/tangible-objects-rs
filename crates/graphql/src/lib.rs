@@ -15,6 +15,7 @@ mod schema;
 mod serve;
 
 pub use api::EventKind;
+pub use api::StreamEvent;
 pub use api::TangibleEvent;
 pub use schema::EngineSchema;
 pub use schema::MutationRoot;

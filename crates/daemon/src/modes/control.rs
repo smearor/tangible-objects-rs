@@ -4,12 +4,12 @@
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_model::Lifetime;
-use tangible_objects_model::Owner;
 use tangible_objects_model::PinCount;
 use tangible_objects_model::Registration;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::EngineRuntime;
+use tangible_objects_runtime::LifecycleEvent;
 use tangible_objects_runtime::ProfileInfo;
 use tangible_objects_runtime::RecordingStatus;
 use tracing::warn;
@@ -51,6 +51,7 @@ pub(crate) fn drain_control_commands(
                         Ok(started) => {
                             println!("\nAufzeichnung gestartet: {}", started.base_path.display());
                             *recording = Some(started);
+                            runtime.emit_lifecycle(LifecycleEvent::RecordingStarted);
                         }
                         Err(e) => warn!(error = %e, "recording could not be started"),
                     }
@@ -62,6 +63,7 @@ pub(crate) fn drain_control_commands(
                     if let Err(e) = stopped.finish() {
                         warn!(error = %e, "recording flush failed");
                     }
+                    runtime.emit_lifecycle(LifecycleEvent::RecordingStopped { frames: recorded });
                     println!("\nAufzeichnung gestoppt: {recorded} Frames");
                 }
                 None => warn!("no recording active - StopRecording ignored"),
@@ -73,6 +75,7 @@ pub(crate) fn drain_control_commands(
             ControlCommand::SetCompletion(config) => {
                 engine.set_completion(config);
                 runtime.set_completion(config);
+                runtime.emit_lifecycle(LifecycleEvent::CompletionChanged(config));
                 println!(
                     "\nCompletion: mode={} radius={} max-missing={} persist={}",
                     config.mode, config.radius_factor, config.max_missing, config.persist
@@ -143,9 +146,14 @@ pub(crate) fn apply_registration(
                                 pattern_id: id,
                                 name: profile.name.clone(),
                                 num_points: PinCount::new(profile.num_points),
-                                owner,
+                                owner: owner.clone(),
                                 spawn_on_partial: profile.spawn_on_partial,
                                 spawn_stability: profile.spawn_stability,
+                            });
+                            runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
+                                pattern_id: id,
+                                name: profile.name.clone(),
+                                owner,
                             });
                         }
                         Err(reason) => {
@@ -162,6 +170,10 @@ pub(crate) fn apply_registration(
                                 "\nFeld-Set registriert: {name} (owner {owner:?}, {lifetime})"
                             );
                             runtime.set_field_sets(engine.field_sets().to_vec());
+                            runtime.emit_lifecycle(LifecycleEvent::FieldSetRegistered {
+                                name: name.clone(),
+                                owner: owner.clone(),
+                            });
                         }
                         Err(reason) => {
                             println!("\nFeld-Set abgelehnt: {reason}");
@@ -178,6 +190,7 @@ pub(crate) fn apply_registration(
             match engine.update_pattern(id, &profile) {
                 Ok(()) => {
                     println!("\nProfil aktualisiert: {id} -> {}", profile.name);
+                    let owner = engine.pattern_owner(id).cloned();
                     runtime.remove_profile(id);
                     runtime.add_profile(ProfileInfo {
                         pattern_id: id,
@@ -185,10 +198,12 @@ pub(crate) fn apply_registration(
                         num_points: PinCount::new(profile.num_points),
                         spawn_on_partial: profile.spawn_on_partial,
                         spawn_stability: profile.spawn_stability,
-                        owner: engine
-                            .pattern_owner(id)
-                            .map(Owner::to_string)
-                            .map(Owner::new),
+                        owner: owner.clone(),
+                    });
+                    runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
+                        pattern_id: id,
+                        name: profile.name.clone(),
+                        owner,
                     });
                 }
                 Err(reason) => println!("\nProfil-Update abgelehnt: {reason}"),
@@ -205,6 +220,7 @@ pub(crate) fn apply_registration(
                 if let Some(name) = name {
                     unpersist("profiles.d", name.as_str());
                 }
+                runtime.emit_lifecycle(LifecycleEvent::ProfileUnregistered { pattern_id: id });
                 println!("\nProfil entfernt: {id}");
             } else {
                 println!("\nProfil {id} nicht gefunden");
@@ -214,6 +230,9 @@ pub(crate) fn apply_registration(
             if engine.remove_field_set(&name) {
                 runtime.set_field_sets(engine.field_sets().to_vec());
                 unpersist("fields.d", &name);
+                runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered {
+                    name: name.clone().into(),
+                });
                 println!("\nFeld-Set entfernt: {name}");
             } else {
                 println!("\nFeld-Set {name} nicht gefunden");
@@ -224,9 +243,13 @@ pub(crate) fn apply_registration(
             for (id, name) in &patterns {
                 runtime.remove_profile(*id);
                 unpersist("profiles.d", name);
+                runtime.emit_lifecycle(LifecycleEvent::ProfileUnregistered { pattern_id: *id });
             }
             for name in &field_sets {
                 unpersist("fields.d", name);
+                runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered {
+                    name: name.clone().into(),
+                });
             }
             runtime.set_field_sets(engine.field_sets().to_vec());
             println!(

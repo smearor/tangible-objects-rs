@@ -17,6 +17,7 @@ use tangible_objects_model::RecordLabel;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
+use tangible_objects_runtime::LifecycleEvent;
 use tangible_objects_runtime::ProfileInfo;
 use tracing::warn;
 
@@ -140,13 +141,18 @@ pub fn run_record(
                 ControlCommand::StartRecording { .. } => {
                     warn!("already recording - StartRecording ignored");
                 }
-                ControlCommand::StopRecording => break 'recording,
+                ControlCommand::StopRecording => {
+                    let recorded = session.recorded_frames();
+                    runtime.emit_lifecycle(LifecycleEvent::RecordingStopped { frames: recorded });
+                    break 'recording;
+                }
                 ControlCommand::SetRecordLabel(new_label) => {
                     session.set_label(new_label);
                 }
                 ControlCommand::SetCompletion(config) => {
                     engine.set_completion(config);
                     runtime.set_completion(config);
+                    runtime.emit_lifecycle(LifecycleEvent::CompletionChanged(config));
                     println!(
                         "\nCompletion: mode={} radius={} max-missing={} persist={}",
                         config.mode, config.radius_factor, config.max_missing, config.persist

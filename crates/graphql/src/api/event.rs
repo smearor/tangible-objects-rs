@@ -1,17 +1,20 @@
 use async_graphql::SimpleObject;
 use tangible_objects_engine::EngineEvent;
+use tangible_objects_model::PatternId;
 use tangible_objects_model::SetAction;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::DomainEvent;
+use tangible_objects_runtime::LifecycleEvent;
 
 use super::EventKind;
 
-/// Flattened domain event delivered by the `events` subscription.
+/// Flattened domain event delivered by the event subscriptions.
 ///
 /// `kind` discriminates the payload: `tangible` carries the affected object
 /// for `TANGIBLE_*`/`OBJECT_*` kinds, `setId` for `SET_*`/`OBJECT_*` kinds,
-/// `field`/`fieldSet`/`count` for `FIELD_*` kinds.
+/// `field`/`fieldSet`/`count` for `FIELD_*` kinds. Lifecycle kinds use
+/// `patternId`/`name`/`owner`/`detail`; `LAGGED` uses `skipped`.
 #[derive(Debug, Clone, SimpleObject)]
 pub struct TangibleEvent {
     /// What happened.
@@ -24,8 +27,49 @@ pub struct TangibleEvent {
     pub field_set: Option<String>,
     /// Field name for `FIELD_*` events.
     pub field: Option<String>,
-    /// Debounced contact count for `FIELD_COUNT_CHANGED` events.
+    /// Debounced contact count for `FIELD_COUNT_CHANGED` events; recorded
+    /// frame count for `RECORDING_STOPPED`.
     pub count: Option<i32>,
+    /// Affected pattern for `PROFILE_*` lifecycle events.
+    pub pattern_id: Option<PatternId>,
+    /// Profile or field-set name for lifecycle events.
+    pub name: Option<String>,
+    /// Owning application for registration events.
+    pub owner: Option<String>,
+    /// Applied value for config events (`COMPLETION_CHANGED` =
+    /// `mode radius max_missing persist`, `FILTER_MODE_CHANGED` = mode).
+    pub detail: Option<String>,
+    /// Events dropped because the subscription lagged (`LAGGED` kind).
+    pub skipped: Option<i32>,
+}
+
+impl TangibleEvent {
+    /// Empty payload for `kind` - the `From` impls fill in what applies.
+    fn blank(kind: EventKind) -> Self {
+        Self {
+            kind,
+            tangible: None,
+            set_id: None,
+            field_set: None,
+            field: None,
+            count: None,
+            pattern_id: None,
+            name: None,
+            owner: None,
+            detail: None,
+            skipped: None,
+        }
+    }
+
+    /// `LAGGED` control event: `skipped` events were dropped because this
+    /// subscription lagged - the client's recovery is `snapshot` +
+    /// resubscribe (SUBSCRIPTIONS.md reconnect semantics).
+    pub(crate) fn lagged(skipped: u64) -> Self {
+        Self {
+            skipped: Some(skipped as i32),
+            ..Self::blank(EventKind::Lagged)
+        }
+    }
 }
 
 impl From<&EngineEvent> for TangibleEvent {
@@ -78,12 +122,11 @@ impl From<&EngineEvent> for TangibleEvent {
             ),
         };
         Self {
-            kind,
             tangible,
-            set_id: None,
             field_set,
             field,
             count,
+            ..Self::blank(kind)
         }
     }
 }
@@ -100,13 +143,61 @@ impl From<&SetAction> for TangibleEvent {
             SetAction::ObjectMoved(id, tangible) => (EventKind::ObjectMoved, *id, Some(tangible)),
         };
         Self {
-            kind,
             set_id: Some(set_id),
             tangible: tangible.cloned(),
-            field_set: None,
-            field: None,
-            count: None,
+            ..Self::blank(kind)
         }
+    }
+}
+
+impl From<&LifecycleEvent> for TangibleEvent {
+    fn from(event: &LifecycleEvent) -> Self {
+        let mut event_out = Self::blank(match event {
+            LifecycleEvent::ProfileRegistered { .. } => EventKind::ProfileRegistered,
+            LifecycleEvent::ProfileUnregistered { .. } => EventKind::ProfileUnregistered,
+            LifecycleEvent::FieldSetRegistered { .. } => EventKind::FieldSetRegistered,
+            LifecycleEvent::FieldSetUnregistered { .. } => EventKind::FieldSetUnregistered,
+            LifecycleEvent::CompletionChanged(_) => EventKind::CompletionChanged,
+            LifecycleEvent::FilterModeChanged(_) => EventKind::FilterModeChanged,
+            LifecycleEvent::RecordingStarted => EventKind::RecordingStarted,
+            LifecycleEvent::RecordingStopped { .. } => EventKind::RecordingStopped,
+            LifecycleEvent::ConfigReloaded => EventKind::ConfigReloaded,
+        });
+        match event {
+            LifecycleEvent::ProfileRegistered {
+                pattern_id,
+                name,
+                owner,
+            } => {
+                event_out.pattern_id = Some(*pattern_id);
+                event_out.name = Some(name.to_string());
+                event_out.owner = owner.as_ref().map(|o| o.to_string());
+            }
+            LifecycleEvent::ProfileUnregistered { pattern_id } => {
+                event_out.pattern_id = Some(*pattern_id);
+            }
+            LifecycleEvent::FieldSetRegistered { name, owner } => {
+                event_out.name = Some(name.to_string());
+                event_out.owner = owner.as_ref().map(|o| o.to_string());
+            }
+            LifecycleEvent::FieldSetUnregistered { name } => {
+                event_out.name = Some(name.to_string());
+            }
+            LifecycleEvent::CompletionChanged(config) => {
+                event_out.detail = Some(format!(
+                    "mode={} radius={} max_missing={} persist={}",
+                    config.mode, config.radius_factor, config.max_missing, config.persist
+                ));
+            }
+            LifecycleEvent::FilterModeChanged(mode) => {
+                event_out.detail = Some(mode.to_string());
+            }
+            LifecycleEvent::RecordingStopped { frames } => {
+                event_out.count = Some(frames.as_u64() as i32);
+            }
+            _ => {}
+        }
+        event_out
     }
 }
 
@@ -115,6 +206,7 @@ impl From<&DomainEvent> for TangibleEvent {
         match event {
             DomainEvent::Engine(engine_event) => engine_event.into(),
             DomainEvent::Set(action) => action.into(),
+            DomainEvent::Lifecycle(lifecycle) => lifecycle.into(),
         }
     }
 }
