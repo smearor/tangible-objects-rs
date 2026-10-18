@@ -34,6 +34,12 @@ use tangible_objects_model::ProfileFile;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::Vec2;
+use tangible_objects_runtime::ControlCommand;
+use tangible_objects_runtime::EngineRuntime;
+use tangible_objects_runtime::ProfileInfo;
+
+use crate::modes::DetectionConfig;
+use crate::modes::Interfaces;
 
 const STABLE_THRESHOLD: u32 = 10;
 const DEFAULT_TOLERANCE: PatternTolerance = PatternTolerance::new(3.0);
@@ -59,7 +65,8 @@ pub fn run_gui(
     device_path: &str,
     profiles_dir: Option<&str>,
     device_profiles: Option<PathBuf>,
-    edge: Option<Millimeters>,
+    config: DetectionConfig,
+    interfaces: Interfaces,
 ) {
     let app = Application::builder()
         .application_id("org.tangibleobjects.gui")
@@ -92,13 +99,16 @@ pub fn run_gui(
         let patterns_thread = patterns.clone();
         let dev_path_thread = device_path.clone();
         let device_profiles_thread = device_profiles.clone();
+        let config_thread = config.clone();
+        let interfaces_thread = interfaces.clone();
         std::thread::spawn(move || {
             evdev_thread(
                 dev_path_thread,
                 patterns_thread,
                 state_thread,
-                edge,
+                config_thread,
                 device_profiles_thread,
+                interfaces_thread,
             );
         });
 
@@ -156,8 +166,9 @@ fn evdev_thread(
     device_path: String,
     patterns: Vec<TangiblePattern>,
     state: Arc<Mutex<SharedState>>,
-    edge: Option<Millimeters>,
+    config: DetectionConfig,
     device_profiles: Option<Arc<PathBuf>>,
+    interfaces: Interfaces,
 ) {
     let mut device = match TouchDevice::open(std::path::Path::new(&device_path)) {
         Ok(d) => d,
@@ -170,9 +181,25 @@ fn evdev_thread(
     };
 
     let mut engine = Engine::new(patterns);
-    if let Some(mm) = edge {
+    if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
     }
+    engine.set_fields(config.fields);
+    engine.set_completion(config.completion);
+
+    // Event hub for interface crates (GraphQL/D-Bus/MCP) - the GUI runs
+    // its own device loop, so it owns the runtime side like the
+    // headless modes do.
+    let profiles: Vec<ProfileInfo> = engine.patterns().iter().map(ProfileInfo::from).collect();
+    let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+    runtime.set_completion(config.completion);
+    runtime.set_field_sets(engine.field_sets().to_vec());
+    crate::modes::spawn_interfaces(&handle, &interfaces);
+    runtime.set_device_info(tangible_objects_runtime::DeviceInfo::of(
+        device.name(),
+        device.calibration().as_ref(),
+    ));
+
     let mut touch_state = TouchState::new();
     if let Some(cal) = crate::modes::effective_calibration(
         &device,
@@ -187,8 +214,36 @@ fn evdev_thread(
 
     let mut stable_count: Option<usize> = None;
     let mut stable_frames: u32 = 0;
+    let device_fd = device.as_raw_fd();
 
-    while let Ok(events) = device.fetch_events() {
+    loop {
+        // Periodic wake for queued control commands even without input.
+        let mut pfd = libc::pollfd {
+            fd: device_fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let ready = unsafe { libc::poll(&mut pfd, 1, 250) };
+        if ready < 0 {
+            if unsafe { *libc::__errno_location() } == libc::EINTR {
+                continue;
+            }
+            eprintln!("poll Fehler");
+            break;
+        }
+        if ready == 0 {
+            drain_gui_commands(&mut runtime, &mut engine);
+            runtime.publish_snapshot(engine.touches(), engine.tracked());
+            continue;
+        }
+
+        let events = match device.fetch_events() {
+            Ok(events) => events,
+            Err(e) => {
+                eprintln!("Lesefehler: {e}");
+                break;
+            }
+        };
         for raw in events {
             touch_state.process(&raw);
 
@@ -200,6 +255,10 @@ fn evdev_thread(
             } else {
                 None
             };
+            if let Some(ref frame) = frame {
+                runtime.publish(frame, engine.tracked());
+                drain_gui_commands(&mut runtime, &mut engine);
+            }
 
             if raw.is_syn_report() {
                 // In live mode the frame's own touch list is authoritative:
@@ -228,6 +287,21 @@ fn evdev_thread(
                     s.stable = stable_frames >= STABLE_THRESHOLD && count >= 3;
                 }
             }
+        }
+    }
+}
+
+/// Applies pending control commands in GUI mode: completion +
+/// registrations (same as the headless drains); recording/filter
+/// commands are GUI-local and ignored.
+fn drain_gui_commands(runtime: &mut EngineRuntime, engine: &mut Engine) {
+    while let Ok(command) = runtime.try_recv_command() {
+        match command {
+            ControlCommand::SetCompletion(config) => {
+                engine.set_completion(config);
+                runtime.set_completion(config);
+            }
+            other => crate::modes::apply_registration(runtime, engine, other),
         }
     }
 }

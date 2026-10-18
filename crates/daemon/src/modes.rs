@@ -240,7 +240,7 @@ pub fn run_replay(
 }
 
 /// Optional interface endpoints for the live mode.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Interfaces {
     /// GraphQL listen address, if the HTTP/WebSocket API is enabled.
     pub graphql_addr: Option<SocketAddr>,
@@ -251,7 +251,7 @@ pub struct Interfaces {
 }
 
 /// Optional detection settings bundled for the run_* modes.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DetectionConfig {
     /// Edge ghost margin in millimeters (`--edge-filter-mm`).
     pub edge: Option<Millimeters>,
@@ -612,7 +612,11 @@ fn unpersist(store_kind: &str, name: &str) {
 
 /// Applies `Register`/`Unregister*`/`UpdateProfile` control commands to
 /// engine and runtime; unrelated commands are logged and ignored.
-fn apply_registration(runtime: &mut EngineRuntime, engine: &mut Engine, command: ControlCommand) {
+pub(crate) fn apply_registration(
+    runtime: &mut EngineRuntime,
+    engine: &mut Engine,
+    command: ControlCommand,
+) {
     match command {
         ControlCommand::Register {
             registration,
@@ -887,7 +891,7 @@ fn status_of_session(session: &RecordingSession) -> RecordingStatus {
     }
 }
 
-fn spawn_interfaces(handle: &EngineHandle, interfaces: &Interfaces) {
+pub(crate) fn spawn_interfaces(handle: &EngineHandle, interfaces: &Interfaces) {
     if let Some(addr) = interfaces.graphql_addr {
         tangible_objects_graphql::spawn(handle.clone(), addr);
         println!("GraphQL: http://{addr}/ (Endpoint: /graphql)");

@@ -310,11 +310,23 @@ fn main() -> Result<()> {
             let dev = device.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --gui --device /dev/input/eventX")
             })?;
+            let interfaces = parse_interfaces(graphql_listen, mcp_listen, dbus)?;
+            let config = modes::DetectionConfig {
+                edge,
+                fields: modes::load_field_sets(fields_path.as_deref()),
+                completion: parse_completion(
+                    completion_mode,
+                    completion_radius,
+                    completion_missing,
+                    completion_no_persist,
+                )?,
+            };
             run_gui_mode(
                 &dev,
                 profiles_dir.as_deref(),
                 device_profiles.as_deref().map(PathBuf::from),
-                edge,
+                config,
+                interfaces,
             )
         }
         _ => {
@@ -447,9 +459,10 @@ fn run_gui_mode(
     dev: &str,
     profiles_dir: Option<&str>,
     device_profiles: Option<PathBuf>,
-    edge: Option<Millimeters>,
+    config: modes::DetectionConfig,
+    interfaces: modes::Interfaces,
 ) -> Result<()> {
-    gtk_app::run_gui(dev, profiles_dir, device_profiles, edge);
+    gtk_app::run_gui(dev, profiles_dir, device_profiles, config, interfaces);
     Ok(())
 }
 
@@ -459,7 +472,8 @@ fn run_gui_mode(
     _dev: &str,
     _profiles_dir: Option<&str>,
     _device_profiles: Option<PathBuf>,
-    _edge: Option<Millimeters>,
+    _config: modes::DetectionConfig,
+    _interfaces: modes::Interfaces,
 ) -> Result<()> {
     eprintln!("GUI-Modus nicht kompiliert. Baue mit: cargo build --features gui");
     std::process::exit(1);
