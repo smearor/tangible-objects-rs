@@ -90,7 +90,7 @@ impl FlappyReport {
         let mut runs: BTreeMap<u32, u64> = BTreeMap::new();
         for frame in recording.frames() {
             for tracked in &frame.tracked {
-                if tracked.frames_since_match > 0 {
+                if tracked.frames_since_match > FrameCount::new(0) {
                     *runs.entry(tracked.id.0).or_insert(0) += 1;
                 } else if let Some(length) = runs.remove(&tracked.id.0) {
                     dropout_events += 1;

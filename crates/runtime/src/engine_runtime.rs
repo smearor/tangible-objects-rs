@@ -255,6 +255,7 @@ mod tests {
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
+    use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::RotationRad;
     use tangible_objects_model::SetAction;
@@ -272,9 +273,9 @@ mod tests {
             center: Vec2::new(0.0, 0.0),
             rotation_rad: RotationRad::new(0.0),
             pending: false,
-            pending_frames: 0,
+            pending_frames: FrameCount::new(0),
             spawn_stability: DEFAULT_SPAWN_STABILITY,
-            frames_since_match: 0,
+            frames_since_match: FrameCount::new(0),
         }
     }
 

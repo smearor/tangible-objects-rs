@@ -145,7 +145,7 @@ impl Tracker {
                     pattern_match.rotation_rad.as_f64(),
                     self.ema_alpha,
                 ));
-                tangible.frames_since_match = 0;
+                tangible.frames_since_match = FrameCount::new(0);
                 self.matched_slots
                     .insert(tangible.id, pattern_match.matched_slots(touches));
                 self.slots
@@ -158,7 +158,7 @@ impl Tracker {
                         tangible.pending = false;
                     } else {
                         tangible.pending_frames += 1;
-                        if tangible.pending_frames >= tangible.spawn_stability.as_u64() as u32 {
+                        if tangible.pending_frames >= tangible.spawn_stability {
                             tangible.pending = false;
                         }
                     }
@@ -185,9 +185,13 @@ impl Tracker {
                     rotation_rad: pattern_match.rotation_rad,
                     pending,
                     // The spawn frame itself is the first held frame.
-                    pending_frames: if pending { 1 } else { 0 },
+                    pending_frames: if pending {
+                        FrameCount::new(1)
+                    } else {
+                        FrameCount::new(0)
+                    },
                     spawn_stability: pattern_match.spawn_stability,
-                    frames_since_match: 0,
+                    frames_since_match: FrameCount::new(0),
                 };
                 self.next_tangible_id = TangibleId::new(self.next_tangible_id.as_u32() + 1);
                 self.matched_slots
@@ -205,8 +209,8 @@ impl Tracker {
         // A missed frame resets the pending confirmation counter - the
         // partial spawn must hold for consecutive frames.
         for tangible in self.tracked.0.iter_mut() {
-            if tangible.pending && tangible.frames_since_match > 0 {
-                tangible.pending_frames = 0;
+            if tangible.pending && tangible.frames_since_match > FrameCount::new(0) {
+                tangible.pending_frames = FrameCount::new(0);
             }
         }
 
@@ -215,7 +219,7 @@ impl Tracker {
         let (kept, removed): (Vec<_>, Vec<_>) = self
             .tracked
             .drain(..)
-            .partition(|t| FrameCount::from(t.frames_since_match) <= self.max_frames_without_match);
+            .partition(|t| t.frames_since_match <= self.max_frames_without_match);
         self.tracked = kept.into();
         for tangible in removed {
             debug!(pattern = %tangible.pattern_name, "tangible removed");

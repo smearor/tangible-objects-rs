@@ -39,7 +39,7 @@ pub struct TrackedTangible {
     /// Consecutive match frames the pending spawn has held so far;
     /// internal bookkeeping, not exposed on interfaces.
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub pending_frames: u32,
+    pub pending_frames: FrameCount,
     /// Confirmation threshold carried from the pattern; internal
     /// bookkeeping, not exposed on interfaces.
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
@@ -48,7 +48,7 @@ pub struct TrackedTangible {
     /// Used for expiry hysteresis; internal bookkeeping, not exposed on
     /// interfaces.
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub frames_since_match: u32,
+    pub frames_since_match: FrameCount,
 }
 
 impl Serialize for TrackedTangible {

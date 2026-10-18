@@ -148,6 +148,7 @@ impl SetTracker {
 mod tests {
     use super::SetTracker;
     use crate::DEFAULT_SPAWN_STABILITY;
+    use crate::FrameCount;
     use crate::PatternId;
     use crate::RotationRad;
     use crate::SetAction;
@@ -165,9 +166,9 @@ mod tests {
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
             pending: false,
-            pending_frames: 0,
+            pending_frames: FrameCount::new(0),
             spawn_stability: DEFAULT_SPAWN_STABILITY,
-            frames_since_match: 0,
+            frames_since_match: FrameCount::new(0),
         }
     }
 

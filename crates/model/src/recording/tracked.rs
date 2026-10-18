@@ -4,8 +4,10 @@ use serde::Serialize;
 use serde::Serializer;
 use serde::ser::SerializeStruct;
 
+use crate::FrameCount;
 use crate::Millimeters;
 use crate::PatternId;
+use crate::PatternName;
 use crate::RotationRad;
 use crate::TangibleId;
 use crate::TrackedTangible;
@@ -24,14 +26,14 @@ pub struct TrackedRecord {
     /// ID of the matched pattern.
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
-    pub pattern_name: crate::PatternName,
+    pub pattern_name: PatternName,
     /// Smoothed centroid position.
     pub center: Vec2<Millimeters>,
     /// Smoothed orientation in radians; serialized in degrees as
     /// `rotation_deg`.
     pub rotation_rad: RotationRad,
     /// Consecutive frames without a match for this tangible.
-    pub frames_since_match: u32,
+    pub frames_since_match: FrameCount,
     /// Whether this tangible is an unconfirmed partial spawn
     /// (SPAWN_AS_PARTIAL.md). `#[serde(default)]` keeps older recordings
     /// loadable - recorded before pending existed, they show `false`.
@@ -75,7 +77,7 @@ impl<'de> Deserialize<'de> for TrackedRecord {
             pattern_name: String,
             center: Vec2<Millimeters>,
             rotation_deg: f64,
-            frames_since_match: u32,
+            frames_since_match: FrameCount,
             #[serde(default)]
             pending: bool,
         }
@@ -96,6 +98,7 @@ impl<'de> Deserialize<'de> for TrackedRecord {
 mod tests {
     use super::TrackedRecord;
     use crate::DEFAULT_SPAWN_STABILITY;
+    use crate::FrameCount;
     use crate::RotationRad;
     use crate::TangibleId;
     use crate::TrackedTangible;
@@ -109,9 +112,9 @@ mod tests {
             center: Vec2::new(171.94, 80.84),
             rotation_rad: RotationRad::new(std::f64::consts::PI),
             pending: false,
-            pending_frames: 0,
+            pending_frames: FrameCount::new(0),
             spawn_stability: DEFAULT_SPAWN_STABILITY,
-            frames_since_match: 3,
+            frames_since_match: FrameCount::new(3),
         }
     }
 
