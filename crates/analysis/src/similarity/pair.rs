@@ -53,17 +53,14 @@ impl SimilarityPair {
     ///
     /// `contact_count == num_points` means even the exact fingerprints
     /// nearly collide.
-    fn closest_collision(
-        a: &TangiblePattern,
-        b: &TangiblePattern,
-    ) -> Option<SubsetCollision> {
+    fn closest_collision(a: &TangiblePattern, b: &TangiblePattern) -> Option<SubsetCollision> {
         if let (Some(points_a), Some(points_b)) = (a.ref_points.as_ref(), b.ref_points.as_ref()) {
-            let max_k = a.num_points.min(b.num_points);
+            let max_k = a.num_points.min(b.num_points).as_usize();
             let mut best: Option<SubsetCollision> = None;
             for k in (3..=max_k).rev() {
-                for keep_a in combinations(a.num_points, k) {
+                for keep_a in combinations(a.num_points.as_usize(), k) {
                     let fp_a = subset_fingerprint(a, points_a, &keep_a);
-                    for keep_b in combinations(b.num_points, k) {
+                    for keep_b in combinations(b.num_points.as_usize(), k) {
                         let fp_b = subset_fingerprint(b, points_b, &keep_b);
                         let deviation = Millimeters::max_deviation(&fp_a, &fp_b);
                         if best
@@ -85,7 +82,7 @@ impl SimilarityPair {
         // both patterns carry the same number of distances.
         if a.sorted_distances.len() == b.sorted_distances.len() {
             return Some(SubsetCollision {
-                contact_count: ContactCount::new(a.num_points.max(b.num_points) as u32),
+                contact_count: ContactCount::new(a.num_points.max(b.num_points).as_u32()),
                 min_max_deviation: Millimeters::max_deviation(
                     &a.sorted_distances,
                     &b.sorted_distances,

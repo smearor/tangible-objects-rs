@@ -10,6 +10,7 @@ use super::ProfileError;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternTolerance;
+use crate::PinCount;
 use crate::Region;
 use crate::TangiblePattern;
 use crate::Vec2;
@@ -113,7 +114,7 @@ impl ProfileFile {
             name: self.name.clone(),
             spawn_on_partial: self.spawn_on_partial,
             spawn_stability: self.spawn_stability,
-            num_points: self.num_points,
+            num_points: PinCount::new(self.num_points),
             sorted_distances: self.sorted_sides.clone(),
             tolerance: self.tolerance,
             tolerances: self.tolerances.clone(),

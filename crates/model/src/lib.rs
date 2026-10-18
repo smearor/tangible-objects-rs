@@ -65,6 +65,7 @@ pub use pattern::PatternId;
 pub use pattern::PatternMatch;
 pub use pattern::PatternName;
 pub use pattern::PatternTolerance;
+pub use pattern::PinCount;
 pub use pattern::TangiblePattern;
 pub use pixels::Pixels;
 pub use profile::ProfileDir;

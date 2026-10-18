@@ -1,0 +1,93 @@
+use serde::Deserialize;
+use serde::Serialize;
+use std::fmt::Display;
+use std::ops::Sub;
+
+/// Number of contact pins a figure must have - a structural property of
+/// the pattern, not a measured observation.
+///
+/// Kept distinct from [`crate::ContactCount`]: `num_points` describes
+/// what the figure *is*, `ContactCount` counts what the screen *sees*.
+/// `Ord` derives `min`/`max` for subset-size arithmetic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct PinCount(pub usize);
+
+impl PinCount {
+    /// Creates a pin count.
+    pub const fn new(count: usize) -> Self {
+        Self(count)
+    }
+
+    /// The raw count as `usize`.
+    pub const fn as_usize(self) -> usize {
+        self.0
+    }
+
+    /// The raw count as `u32` (wire-facing fields like
+    /// `ProfileInfo::num_points` in the runtime crate).
+    pub const fn as_u32(self) -> u32 {
+        self.0 as u32
+    }
+}
+
+impl From<usize> for PinCount {
+    fn from(count: usize) -> Self {
+        Self(count)
+    }
+}
+
+impl From<PinCount> for usize {
+    fn from(count: PinCount) -> Self {
+        count.0
+    }
+}
+
+impl PartialEq<usize> for PinCount {
+    fn eq(&self, other: &usize) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialOrd<usize> for PinCount {
+    fn partial_cmp(&self, other: &usize) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
+impl PartialEq<PinCount> for usize {
+    fn eq(&self, other: &PinCount) -> bool {
+        *self == other.0
+    }
+}
+
+impl PartialOrd<PinCount> for usize {
+    fn partial_cmp(&self, other: &PinCount) -> Option<std::cmp::Ordering> {
+        self.partial_cmp(&other.0)
+    }
+}
+
+impl Sub<usize> for PinCount {
+    type Output = usize;
+
+    /// A pin count minus pins to skip yields a plain index-space count.
+    fn sub(self, rhs: usize) -> usize {
+        self.0 - rhs
+    }
+}
+
+impl Display for PinCount {
+    /// Writes the raw pin count.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for PinCount {
+    /// Marshals as `u64` like the backing `usize`.
+    const SIGNATURE: &'static zvariant::Signature = <u64 as zvariant::Type>::SIGNATURE;
+}
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(PinCount);

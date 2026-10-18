@@ -3,6 +3,8 @@ use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
+use tangible_objects_model::PinCount;
 use tangible_objects_model::TangiblePattern;
 
 /// Static info about a loaded figure profile for query-style responses.
@@ -15,9 +17,9 @@ pub struct ProfileInfo {
     /// Runtime pattern ID assigned when the profile was loaded.
     pub pattern_id: PatternId,
     /// Human-readable figure name from the profile file.
-    pub name: tangible_objects_model::PatternName,
+    pub name: PatternName,
     /// Number of contact pins the figure must have.
-    pub num_points: u32,
+    pub num_points: PinCount,
     /// Owning application for runtime registrations; `None` for
     /// statically loaded profiles.
     pub owner: Option<Owner>,
@@ -30,7 +32,7 @@ pub struct ProfileInfo {
 
 #[cfg(feature = "zbus")]
 impl zvariant::Type for ProfileInfo {
-    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(ususbt)");
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(ustsbt)");
 }
 
 impl From<&TangiblePattern> for ProfileInfo {
@@ -38,7 +40,7 @@ impl From<&TangiblePattern> for ProfileInfo {
         Self {
             pattern_id: pattern.id,
             name: pattern.name.clone(),
-            num_points: pattern.num_points as u32,
+            num_points: pattern.num_points,
             owner: None,
             spawn_on_partial: pattern.spawn_on_partial,
             spawn_stability: pattern.spawn_stability,

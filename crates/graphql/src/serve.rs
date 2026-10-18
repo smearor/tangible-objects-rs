@@ -67,11 +67,15 @@ mod tests {
     use super::build_schema;
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
+    use tangible_objects_model::FilterMode;
+    use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
+    use tangible_objects_model::PinCount;
     use tangible_objects_model::RotationRad;
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TrackedTangible;
     use tangible_objects_model::Vec2;
+    use tangible_objects_runtime::ControlCommand;
     use tangible_objects_runtime::EngineRuntime;
     use tangible_objects_runtime::ProfileInfo;
 
@@ -96,10 +100,10 @@ mod tests {
             vec![ProfileInfo {
                 pattern_id: PatternId::new(1),
                 name: "triangle".into(),
-                num_points: 3,
+                num_points: PinCount::new(3),
                 owner: None,
                 spawn_on_partial: false,
-                spawn_stability: tangible_objects_model::FrameCount::new(15),
+                spawn_stability: FrameCount::new(15),
             }],
         );
         let schema = build_schema(handle);
@@ -138,8 +142,8 @@ mod tests {
 
         assert!(matches!(
             runtime.try_recv_command(),
-            Ok(tangible_objects_runtime::ControlCommand::SetFilterMode {
-                mode: tangible_objects_model::FilterMode::Guarded,
+            Ok(ControlCommand::SetFilterMode {
+                mode: FilterMode::Guarded,
                 stability: Some(_),
             })
         ));

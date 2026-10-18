@@ -89,7 +89,7 @@ pub(crate) fn try_partial(
     pool: &[usize],
 ) -> Option<PatternMatch> {
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
-    let missing = pattern.num_points.checked_sub(combo.len())?;
+    let missing = pattern.num_points.as_usize().checked_sub(combo.len())?;
     pattern
         .matches_partial_missing_scaled(&points, missing, completion.affinity_factor.as_f64())
         .filter(|_| pattern.accepts(&points))
@@ -140,7 +140,7 @@ fn find_matches_inner(
 
         let mut best: Option<(PatternMatch, f64)> = None;
 
-        for combo in combinations(&available, pattern.num_points) {
+        for combo in combinations(&available, pattern.num_points.as_usize()) {
             let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
 
             let matched = pattern.matches(&points) && pattern.accepts(&points);
@@ -234,7 +234,7 @@ fn claim_missing(
     let radius = pattern.tolerance.as_f64() * completion.radius_factor;
     let mut claimed = Vec::new();
     let mut taken: HashSet<usize> = combo.iter().copied().collect();
-    for missing in (0..pattern.num_points).filter(|index| !kept_refs.contains(index)) {
+    for missing in (0..pattern.num_points.as_usize()).filter(|index| !kept_refs.contains(index)) {
         let Some(predicted) = pattern.predict_missing(kept_refs, points, missing) else {
             continue;
         };
@@ -296,7 +296,7 @@ fn partial_report(
     matched: bool,
 ) -> CandidateReport {
     let measured_distances = TangiblePattern::distances_of(points);
-    let (deviations, match_error) = (0..pattern.num_points)
+    let (deviations, match_error) = (0..pattern.num_points.as_usize())
         .filter_map(|skip| pattern.partial_reference(skip))
         .map(|(_indices, reference)| {
             let deviations = TangiblePattern::deviations(&measured_distances, &reference);

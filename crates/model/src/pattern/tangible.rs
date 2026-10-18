@@ -1,5 +1,6 @@
 use super::PatternId;
 use super::PatternTolerance;
+use super::PinCount;
 use crate::Millimeters;
 use crate::Region;
 use crate::Vec2;
@@ -23,7 +24,7 @@ pub struct TangiblePattern {
     /// pending state.
     pub spawn_stability: crate::FrameCount,
     /// Number of contact pins the figure must have.
-    pub num_points: usize,
+    pub num_points: PinCount,
     /// Sorted pairwise distances of the reference point set (the fingerprint).
     pub sorted_distances: Vec<Millimeters>,
     /// Maximum allowed deviation per distance during matching.
@@ -54,7 +55,7 @@ impl TangiblePattern {
             name: name.into(),
             spawn_on_partial: false,
             spawn_stability: crate::FrameCount::new(15),
-            num_points: points.len(),
+            num_points: PinCount::new(points.len()),
             sorted_distances: sorted_pairwise_distances(points),
             tolerance: tolerance.into(),
             tolerances: Vec::new(),
@@ -180,7 +181,7 @@ impl TangiblePattern {
             .filter(|(index, _)| !skips.contains(index))
             .map(|(_, point)| *point)
             .collect();
-        let indices = (0..self.num_points)
+        let indices = (0..self.num_points.as_usize())
             .filter(|index| !skips.contains(index))
             .collect();
         Some((indices, sorted_pairwise_distances(&subset)))
@@ -236,7 +237,7 @@ impl TangiblePattern {
         let measured = sorted_pairwise_distances(points);
         let mut best: Option<(Vec<usize>, Millimeters)> = None;
 
-        for skips in skip_combinations(self.num_points, missing) {
+        for skips in skip_combinations(self.num_points.as_usize(), missing) {
             let Some((all_indices, ref_dists)) = self.partial_reference_multi(&skips) else {
                 continue;
             };

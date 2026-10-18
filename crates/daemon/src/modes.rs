@@ -30,6 +30,7 @@ use tangible_objects_model::Lifetime;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::Owner;
+use tangible_objects_model::PinCount;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
@@ -673,7 +674,7 @@ pub(crate) fn apply_registration(
                             runtime.add_profile(ProfileInfo {
                                 pattern_id: id,
                                 name: profile.name.clone(),
-                                num_points: profile.num_points as u32,
+                                num_points: PinCount::new(profile.num_points),
                                 owner,
                                 spawn_on_partial: profile.spawn_on_partial,
                                 spawn_stability: profile.spawn_stability,
@@ -713,7 +714,7 @@ pub(crate) fn apply_registration(
                     runtime.add_profile(ProfileInfo {
                         pattern_id: id,
                         name: profile.name.clone(),
-                        num_points: profile.num_points as u32,
+                        num_points: PinCount::new(profile.num_points),
                         spawn_on_partial: profile.spawn_on_partial,
                         spawn_stability: profile.spawn_stability,
                         owner: engine
