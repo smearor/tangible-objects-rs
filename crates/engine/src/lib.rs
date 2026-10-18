@@ -20,6 +20,7 @@ pub use engine::Engine;
 pub use engine::EngineError;
 pub use engine::EngineEvent;
 pub use engine::EngineFrame;
+pub use engine::RegistrationError;
 pub use engine::TouchState;
 pub use engine::Tracker;
 pub use proxy::FilterProxy;

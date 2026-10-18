@@ -29,6 +29,7 @@ use super::FieldTracker;
 use super::TouchState;
 use super::Tracker;
 use super::matching;
+use super::registration_error::RegistrationError;
 
 /// Default EMA smoothing factor for tracked poses.
 pub const DEFAULT_EMA_ALPHA: f64 = 0.4;
@@ -154,7 +155,7 @@ impl Engine {
         &mut self,
         profile: &ProfileFile,
         owner: Option<Owner>,
-    ) -> Result<PatternId, String> {
+    ) -> Result<PatternId, RegistrationError> {
         self.check_pattern_collision(profile, None)?;
         let id = self.next_pattern_id;
         self.next_pattern_id = PatternId::new(id.as_u32() + 1);
@@ -167,9 +168,13 @@ impl Engine {
     /// ID (`UpdateProfile`). The collision check excludes the pattern
     /// itself; already-tracked tangibles keep their recorded pose - the
     /// update applies to new matches.
-    pub fn update_pattern(&mut self, id: PatternId, profile: &ProfileFile) -> Result<(), String> {
+    pub fn update_pattern(
+        &mut self,
+        id: PatternId,
+        profile: &ProfileFile,
+    ) -> Result<(), RegistrationError> {
         if !self.patterns.iter().any(|pattern| pattern.id == id) {
-            return Err(format!("pattern {id} not found"));
+            return Err(RegistrationError::PatternNotFound(id));
         }
         self.check_pattern_collision(profile, Some(id))?;
         if let Some(pattern) = self.patterns.iter_mut().find(|pattern| pattern.id == id) {
@@ -184,7 +189,7 @@ impl Engine {
         &self,
         profile: &ProfileFile,
         except: Option<PatternId>,
-    ) -> Result<(), String> {
+    ) -> Result<(), RegistrationError> {
         let pattern = profile.to_pattern(PatternId::new(0));
         if let Some(points) = pattern.ref_points.as_deref()
             && let Some(existing) = self
@@ -193,9 +198,8 @@ impl Engine {
                 .filter(|existing| Some(existing.id) != except)
                 .find(|existing| existing.matches(points.into()))
         {
-            return Err(format!(
-                "fingerprint collides with registered profile '{}'",
-                existing.name
+            return Err(RegistrationError::FingerprintCollision(
+                existing.name.clone(),
             ));
         }
         Ok(())
@@ -247,9 +251,13 @@ impl Engine {
 
     /// Adds an occupancy field set at runtime; rejected on overlapping
     /// fields or duplicate set name.
-    pub fn add_field_set(&mut self, set: FieldSet, owner: Option<Owner>) -> Result<(), String> {
+    pub fn add_field_set(
+        &mut self,
+        set: FieldSet,
+        owner: Option<Owner>,
+    ) -> Result<(), RegistrationError> {
         if !set.is_disjoint() {
-            return Err(format!("field set '{}' has overlapping fields", set.name));
+            return Err(RegistrationError::FieldsOverlap(set.name.clone()));
         }
         if self
             .fields
@@ -257,7 +265,7 @@ impl Engine {
             .iter()
             .any(|existing| existing.name == set.name)
         {
-            return Err(format!("field set '{}' already registered", set.name));
+            return Err(RegistrationError::DuplicateFieldSet(set.name.clone()));
         }
         self.field_set_owners.insert(set.name.clone(), owner);
         self.fields.add_set(set);

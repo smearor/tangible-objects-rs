@@ -14,6 +14,7 @@ mod event;
 mod fields;
 mod frame;
 mod matching;
+mod registration_error;
 mod touch_state;
 mod tracker;
 
@@ -22,5 +23,6 @@ pub use error::EngineError;
 pub use event::EngineEvent;
 pub use fields::FieldTracker;
 pub use frame::EngineFrame;
+pub use registration_error::RegistrationError;
 pub use touch_state::TouchState;
 pub use tracker::Tracker;

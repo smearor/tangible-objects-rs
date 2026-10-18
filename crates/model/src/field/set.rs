@@ -8,7 +8,6 @@ use super::Field;
 use super::FieldSetName;
 use super::WindowAnchor;
 use crate::FrameCount;
-use crate::Region;
 
 /// Default debounce stability for field sets (2 frames).
 pub fn default_stability() -> FrameCount {
