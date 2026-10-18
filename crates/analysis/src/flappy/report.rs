@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 
 use tangible_objects_model::CandidateCount;
+use tangible_objects_model::ContactCount;
+use tangible_objects_model::FrameCount;
 
 use super::LifetimeBucket;
 use super::PartialShare;
@@ -9,7 +11,13 @@ use crate::Percentiles;
 use crate::Recording;
 
 /// Histogram bucket edges for contact lifetimes (in frames).
-const LIFETIME_EDGES: [u64; 5] = [1, 5, 15, 60, 120];
+const LIFETIME_EDGES: [FrameCount; 5] = [
+    FrameCount::new(1),
+    FrameCount::new(5),
+    FrameCount::new(15),
+    FrameCount::new(60),
+    FrameCount::new(120),
+];
 
 /// Contact-lifetime and dropout statistics of a recording (TRAINING.md 2.3).
 ///
@@ -53,19 +61,19 @@ impl FlappyReport {
             .iter()
             .map(|edge| LifetimeBucket {
                 upper_bound: Some(*edge),
-                count: 0,
+                count: ContactCount::new(0),
             })
             .collect();
         lifetime_buckets.push(LifetimeBucket {
             upper_bound: None,
-            count: 0,
+            count: ContactCount::new(0),
         });
         for &lifetime in lifetimes.values() {
             let index = LIFETIME_EDGES
                 .iter()
-                .position(|edge| lifetime <= *edge)
+                .position(|edge| lifetime <= edge.as_u64())
                 .unwrap_or(LIFETIME_EDGES.len());
-            lifetime_buckets[index].count += 1;
+            lifetime_buckets[index].count += ContactCount::new(1);
         }
 
         // Dropout runs inside each tracked tangible's lifetime.

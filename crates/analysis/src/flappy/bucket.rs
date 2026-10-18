@@ -1,9 +1,12 @@
+use tangible_objects_model::ContactCount;
+use tangible_objects_model::FrameCount;
+
 /// One bucket of the contact-lifetime histogram.
 #[derive(Debug)]
 pub struct LifetimeBucket {
     /// Inclusive upper bound in frames; `None` marks the open-ended top
     /// bucket (`> last edge`).
-    pub upper_bound: Option<u64>,
+    pub upper_bound: Option<FrameCount>,
     /// Contacts whose lifetime fell into this bucket.
-    pub count: usize,
+    pub count: ContactCount,
 }
