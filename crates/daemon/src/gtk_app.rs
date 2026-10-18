@@ -23,10 +23,13 @@ use gtk4::glib::ControlFlow;
 use gtk4::glib::Propagation;
 use gtk4::prelude::*;
 use tangible_objects_engine::Engine;
+use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::TouchState;
 use tangible_objects_model::Calibration;
+use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Millimeters;
+use tangible_objects_model::Milliseconds;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::Pixels;
@@ -34,12 +37,13 @@ use tangible_objects_model::ProfileFile;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::Vec2;
-use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::ProfileInfo;
 
 use crate::modes::DetectionConfig;
 use crate::modes::Interfaces;
+use crate::modes::drain_control_commands;
+use crate::modes::status_of_session;
 
 const STABLE_THRESHOLD: u32 = 10;
 const DEFAULT_TOLERANCE: PatternTolerance = PatternTolerance::new(3.0);
@@ -215,6 +219,9 @@ fn evdev_thread(
     let mut stable_count: Option<usize> = None;
     let mut stable_frames: u32 = 0;
     let device_fd = device.as_raw_fd();
+    let session_start = std::time::Instant::now();
+    let mut frame_no = 0u64;
+    let mut recording: Option<RecordingSession> = None;
 
     loop {
         // Periodic wake for queued control commands even without input.
@@ -232,7 +239,8 @@ fn evdev_thread(
             break;
         }
         if ready == 0 {
-            drain_gui_commands(&mut runtime, &mut engine);
+            drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
+            runtime.set_recording_status(recording.as_ref().map(status_of_session));
             runtime.publish_snapshot(engine.touches(), engine.tracked());
             continue;
         }
@@ -245,19 +253,36 @@ fn evdev_thread(
             }
         };
         for raw in events {
+            if let Some(session) = &recording {
+                session.record_event(&raw, session_start.elapsed().as_secs_f64());
+            }
             touch_state.process(&raw);
 
             // The engine builds its own touch state from every event —
             // feeding it only SYN_REPORTs leaves that state empty and no
             // figure ever matches.
             let frame = if mode_is_live(&state) {
-                engine.process(&raw)
+                if recording.is_some() {
+                    engine.process_with_diagnostics(&raw)
+                } else {
+                    engine.process(&raw)
+                }
             } else {
                 None
             };
             if let Some(ref frame) = frame {
+                frame_no += 1;
                 runtime.publish(frame, engine.tracked());
-                drain_gui_commands(&mut runtime, &mut engine);
+                drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
+                runtime.set_recording_status(recording.as_ref().map(status_of_session));
+                if let Some(session) = &mut recording {
+                    session.record_frame(
+                        FrameNumber::new(frame_no),
+                        Milliseconds::from(session_start.elapsed()),
+                        frame,
+                        engine.tracked(),
+                    );
+                }
             }
 
             if raw.is_syn_report() {
@@ -287,21 +312,6 @@ fn evdev_thread(
                     s.stable = stable_frames >= STABLE_THRESHOLD && count >= 3;
                 }
             }
-        }
-    }
-}
-
-/// Applies pending control commands in GUI mode: completion +
-/// registrations (same as the headless drains); recording/filter
-/// commands are GUI-local and ignored.
-fn drain_gui_commands(runtime: &mut EngineRuntime, engine: &mut Engine) {
-    while let Ok(command) = runtime.try_recv_command() {
-        match command {
-            ControlCommand::SetCompletion(config) => {
-                engine.set_completion(config);
-                runtime.set_completion(config);
-            }
-            other => crate::modes::apply_registration(runtime, engine, other),
         }
     }
 }

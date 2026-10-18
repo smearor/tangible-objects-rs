@@ -500,7 +500,7 @@ pub fn run_live(
 /// Called both on device frames and on poll-timeouts so commands are
 /// processed while the screen is idle - a queued `StopRecording` flushes the
 /// writers immediately instead of waiting for the next touch.
-fn drain_control_commands(
+pub(crate) fn drain_control_commands(
     runtime: &mut EngineRuntime,
     recording: &mut Option<RecordingSession>,
     engine: &mut Engine,
@@ -881,7 +881,7 @@ pub fn run_filter(
 }
 
 /// Live snapshot of a recording session for the interface-facing status.
-fn status_of_session(session: &RecordingSession) -> RecordingStatus {
+pub(crate) fn status_of_session(session: &RecordingSession) -> RecordingStatus {
     RecordingStatus {
         active: true,
         label: session.label().cloned(),
