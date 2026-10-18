@@ -81,11 +81,7 @@ impl FieldTracker {
 
     /// Removes a field set by name. Returns `true` when removed.
     pub fn remove_set(&mut self, name: &str) -> bool {
-        let Some(index) = self
-            .sets
-            .iter()
-            .position(|set| set.name.as_str() == name)
-        else {
+        let Some(index) = self.sets.iter().position(|set| set.name.as_str() == name) else {
             return false;
         };
         self.sets.remove(index);

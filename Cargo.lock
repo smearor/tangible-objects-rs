@@ -2278,6 +2278,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "tangible-objects-analysis",
  "tangible-objects-model",
  "tangible-objects-runtime",
  "tokio",

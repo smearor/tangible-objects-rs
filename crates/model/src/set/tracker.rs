@@ -22,7 +22,10 @@ struct SetState {
 /// hysteresis: a set activates when **all** mandatory members are present
 /// and deactivates only when **no** mandatory member remains.
 pub struct SetTracker {
+    /// The registered set definitions to track.
     sets: Vec<TangibleSet>,
+    /// Per-set live state (active flag + the current member tangibles)
+    /// keyed by set ID; mirrors `sets` one-to-one.
     states: HashMap<TangibleSetId, SetState>,
 }
 

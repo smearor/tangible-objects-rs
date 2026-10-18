@@ -8,6 +8,7 @@
 
 mod collision;
 mod dataset;
+mod deviation;
 mod error;
 mod flappy;
 mod ml;
@@ -21,6 +22,9 @@ pub use collision::CollisionCell;
 pub use collision::CollisionReport;
 pub use dataset::Dataset;
 pub use dataset::DatasetRow;
+pub use deviation::DeviationReport;
+pub use deviation::DistanceStats;
+pub use deviation::PatternDeviation;
 pub use error::AnalysisError;
 pub use flappy::FlappyReport;
 pub use flappy::LifetimeBucket;

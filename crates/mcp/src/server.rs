@@ -223,6 +223,25 @@ impl EngineMcp {
         )]))
     }
 
+    /// Runs the offline deviation analysis over a recording artifact.
+    #[tool(
+        description = "Analyze a recording (.jsonl): per-pattern per-distance deviation statistics - mean/p99/max deviation, over-tolerance counts and which pin pair most often blocked the match."
+    )]
+    async fn analyze_recording(
+        &self,
+        Parameters(args): Parameters<RecordingArtifactArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(
+            &args.path,
+        ))
+        .map_err(|e| ErrorData::invalid_params(format!("recording unreadable: {e}"), None))?;
+        let report = tangible_objects_analysis::DeviationReport::analyze(&recording);
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            serde_json::to_string_pretty(&report)
+                .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,
+        )]))
+    }
+
     /// Registers a figure profile at runtime.
     #[tool(
         description = "Register a figure profile by name, flat pin coordinates [x0,y0,...] mm and tolerance mm. Fingerprint collisions with loaded profiles are rejected by the daemon."

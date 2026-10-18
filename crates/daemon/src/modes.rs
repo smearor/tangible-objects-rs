@@ -1413,8 +1413,9 @@ pub fn run_analyze(path: &Path) -> Result<()> {
         recording.frames().len()
     );
     print!(
-        "{}\n{}\n{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}\n{}",
         tangible_objects_analysis::UtilizationReport::analyze(&recording),
+        tangible_objects_analysis::DeviationReport::analyze(&recording),
         tangible_objects_analysis::ToleranceReport::analyze(&recording),
         tangible_objects_analysis::FlappyReport::analyze(&recording),
         tangible_objects_analysis::CollisionReport::analyze(&recording),
