@@ -29,6 +29,15 @@ impl Region {
             && point.y >= self.y_min.as_f64()
             && point.y <= self.y_max.as_f64()
     }
+
+    /// Whether this region overlaps `other` - two rectangles overlap
+    /// when neither lies completely beside or above the other.
+    pub fn overlaps(&self, other: &Region) -> bool {
+        self.x_min < other.x_max
+            && self.x_max > other.x_min
+            && self.y_min < other.y_max
+            && self.y_max > other.y_min
+    }
 }
 
 #[cfg(test)]

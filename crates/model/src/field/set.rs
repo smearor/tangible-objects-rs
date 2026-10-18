@@ -63,7 +63,7 @@ impl FieldSet {
     pub fn is_disjoint(&self) -> bool {
         for (i, a) in self.fields.iter().enumerate() {
             for b in &self.fields[i + 1..] {
-                if regions_overlap(&a.region, &b.region) {
+                if a.region.overlaps(&b.region) {
                     return false;
                 }
             }
@@ -101,12 +101,6 @@ impl FieldSet {
         }
         (sets, errors)
     }
-}
-
-/// Two rectangles overlap when neither lies completely beside/above the
-/// other.
-fn regions_overlap(a: &Region, b: &Region) -> bool {
-    a.x_min < b.x_max && a.x_max > b.x_min && a.y_min < b.y_max && a.y_max > b.y_min
 }
 
 #[cfg(test)]
