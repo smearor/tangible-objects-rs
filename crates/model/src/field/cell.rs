@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::FieldName;
 use crate::Region;
 
 /// A single occupancy cell of a [`crate::FieldSet`]: a named region whose
@@ -11,7 +12,7 @@ use crate::Region;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Field {
     /// Cell name (e.g. `"a1"` on a chess board).
-    pub name: crate::FieldName,
+    pub name: FieldName,
     /// Cell bounds in the set's coordinate space (screen mm, or
     /// window-relative / normalized when the set has an anchor).
     #[serde(flatten)]
