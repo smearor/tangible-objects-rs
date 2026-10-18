@@ -1,5 +1,5 @@
 use super::TangibleId;
-use crate::Millimeters;
+use crate::{FrameCount, Millimeters, PatternName};
 use crate::PatternId;
 use crate::RotationRad;
 use crate::Vec2;
@@ -24,7 +24,7 @@ pub struct TrackedTangible {
     /// ID of the matched pattern.
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
-    pub pattern_name: crate::PatternName,
+    pub pattern_name: PatternName,
     /// Smoothed centroid position.
     pub center: Vec2<Millimeters>,
     /// Smoothed orientation in radians.
@@ -41,7 +41,7 @@ pub struct TrackedTangible {
     /// Confirmation threshold carried from the pattern; internal
     /// bookkeeping, not exposed on interfaces.
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub spawn_stability: crate::FrameCount,
+    pub spawn_stability: FrameCount,
     /// Number of consecutive frames without a match for this tangible.
     /// Used for expiry hysteresis; internal bookkeeping, not exposed on
     /// interfaces.
