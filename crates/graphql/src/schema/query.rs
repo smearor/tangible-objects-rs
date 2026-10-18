@@ -1,12 +1,14 @@
 use async_graphql::Context;
 use async_graphql::Object;
 use async_graphql::Result;
-use tangible_objects_model::Owner;
+use std::path::PathBuf;
+use tangible_objects_analysis::{AnalysisReport, Recording, SimilarityReport};
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
-use tangible_objects_runtime::EngineHandle;
+use tangible_objects_model::{AnalysisMode, CompletionConfig, Owner, ProfileFile, SessionMetrics};
 use tangible_objects_runtime::ProfileInfo;
+use tangible_objects_runtime::{DeviceInfo, EngineHandle, RecordingStatus};
 
 /// Read access to the detection state.
 pub struct QueryRoot;
@@ -60,37 +62,25 @@ impl QueryRoot {
     /// Attached input device - name and axis calibration. Needed by remote
     /// clients before converting this host's raw recordings (TRAINING.md
     /// device profiles).
-    async fn device_info(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<tangible_objects_runtime::DeviceInfo>> {
+    async fn device_info(&self, ctx: &Context<'_>) -> Result<Option<DeviceInfo>> {
         Ok(ctx.data::<EngineHandle>()?.snapshot().device)
     }
 
     /// Live status of the recording session; `null` while nothing records.
-    async fn recording_status(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<tangible_objects_runtime::RecordingStatus>> {
+    async fn recording_status(&self, ctx: &Context<'_>) -> Result<Option<RecordingStatus>> {
         Ok(ctx.data::<EngineHandle>()?.snapshot().recording)
     }
 
     /// Active missing-pin completion configuration
     /// (TRACKING_STABILIZATION.md) - `null` when the device loop has not
     /// published one yet.
-    async fn completion(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Option<tangible_objects_model::CompletionConfig>> {
+    async fn completion(&self, ctx: &Context<'_>) -> Result<Option<CompletionConfig>> {
         Ok(ctx.data::<EngineHandle>()?.snapshot().completion)
     }
 
     /// Accumulated session recognition metrics: uptime, re-ID churn,
     /// match quality, per-slot contact stability.
-    async fn metrics(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<async_graphql::Json<tangible_objects_runtime::SessionMetrics>> {
+    async fn metrics(&self, ctx: &Context<'_>) -> Result<async_graphql::Json<SessionMetrics>> {
         Ok(async_graphql::Json(
             ctx.data::<EngineHandle>()?.snapshot().metrics.clone(),
         ))
@@ -112,16 +102,15 @@ impl QueryRoot {
     async fn analyze_recording(
         &self,
         path: String,
-        mode: Option<tangible_objects_model::AnalysisMode>,
+        mode: Option<AnalysisMode>,
         profiles_dir: Option<String>,
     ) -> Result<String> {
-        let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(&path))
+        let recording = Recording::load(std::path::Path::new(&path))
             .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
         let mode = mode.unwrap_or_default();
-        let patterns = if mode == tangible_objects_model::AnalysisMode::Contacts {
+        let patterns = if mode == AnalysisMode::Contacts {
             let dir = profiles_dir.as_deref().unwrap_or("profiles");
-            let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
-                .into_patterns();
+            let patterns = ProfileFile::load_dir(std::path::Path::new(dir)).into_patterns();
             if patterns.is_empty() {
                 return Err(async_graphql::Error::new(format!(
                     "no profiles loaded from {dir}"
@@ -131,7 +120,7 @@ impl QueryRoot {
         } else {
             Vec::new()
         };
-        let report = tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        let report = AnalysisReport::analyze(&recording, mode, &patterns);
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }
@@ -141,20 +130,19 @@ impl QueryRoot {
     /// contact subsets, classified as Safe/Partial/Exact risk.
     async fn analyze_similarity(&self, profiles_dir: Option<String>) -> Result<String> {
         let dir = profiles_dir.as_deref().unwrap_or("profiles");
-        let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
-            .into_patterns();
+        let patterns = ProfileFile::load_dir(std::path::Path::new(dir)).into_patterns();
         if patterns.is_empty() {
             return Err(async_graphql::Error::new(format!(
                 "no profiles loaded from {dir}"
             )));
         }
-        let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
+        let report = SimilarityReport::analyze(&patterns);
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }
 
     async fn recording_artifact(&self, path: String) -> Result<String> {
-        let path = std::path::PathBuf::from(&path);
+        let path = PathBuf::from(&path);
         let valid_ext = path
             .extension()
             .and_then(|e| e.to_str())

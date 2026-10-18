@@ -333,7 +333,8 @@ impl EngineService {
         } else {
             Vec::new()
         };
-        let report = tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        let report =
+            tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
         serde_json::to_string_pretty(&report)
             .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
     }

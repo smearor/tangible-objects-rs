@@ -43,9 +43,7 @@ impl AnalysisReport {
     ) -> Self {
         let deviation = match mode {
             AnalysisMode::Candidates => DeviationReport::analyze(recording),
-            AnalysisMode::Contacts => {
-                DeviationReport::analyze_contacts(recording, patterns)
-            }
+            AnalysisMode::Contacts => DeviationReport::analyze_contacts(recording, patterns),
         };
         Self {
             utilization: UtilizationReport::analyze(recording),

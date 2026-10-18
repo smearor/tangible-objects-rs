@@ -64,8 +64,7 @@ impl FlappyReport {
             }
         }
 
-        let lifetime_values: Vec<f64> =
-            lifetimes.values().map(|v| v.as_u64() as f64).collect();
+        let lifetime_values: Vec<f64> = lifetimes.values().map(|v| v.as_u64() as f64).collect();
         let mut lifetime_buckets: Vec<LifetimeBucket> = LIFETIME_EDGES
             .iter()
             .map(|edge| LifetimeBucket {

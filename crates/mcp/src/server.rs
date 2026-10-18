@@ -27,7 +27,6 @@ use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::AnalyzeArgs;
-use super::tool_args::SimilarityArgs;
 use super::tool_args::GetPoseArgs;
 use super::tool_args::RecordingArtifactArgs;
 use super::tool_args::RegisterFieldSetArgs;
@@ -36,6 +35,7 @@ use super::tool_args::SetCompletionArgs;
 use super::tool_args::SetFilterModeArgs;
 use super::tool_args::SetRecordLabelArgs;
 use super::tool_args::ShowMessageArgs;
+use super::tool_args::SimilarityArgs;
 use super::tool_args::StartRecordingArgs;
 use super::tool_args::TrainProfileArgs;
 use super::tool_args::UnregisterFieldSetArgs;
@@ -252,7 +252,8 @@ impl EngineMcp {
         } else {
             Vec::new()
         };
-        let report = tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
+        let report =
+            tangible_objects_analysis::AnalysisReport::analyze(&recording, mode, &patterns);
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,
