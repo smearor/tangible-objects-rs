@@ -2,13 +2,14 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternTolerance;
+use tangible_objects_model::PatternTolerances;
 
 use super::ToleranceSuggestion;
 use crate::Percentiles;
 use crate::Recording;
+use crate::deviation_samples::DeviationSamples;
 
 /// Multiplier applied to the p99 deviation for tolerance suggestions.
 ///
@@ -43,7 +44,7 @@ impl ToleranceReport {
     /// clamped to at least 0.1 mm so a perfect measurement does not
     /// collapse the tolerance to zero.
     pub fn analyze_with_safety(recording: &Recording, safety_factor: f64) -> Self {
-        let mut deviations: BTreeMap<PatternId, Vec<Vec<Millimeters>>> = BTreeMap::new();
+        let mut deviations: BTreeMap<PatternId, Vec<DeviationSamples>> = BTreeMap::new();
         let mut tolerance: BTreeMap<PatternId, PatternTolerance> = BTreeMap::new();
         let mut names: BTreeMap<PatternId, String> = BTreeMap::new();
 
@@ -63,9 +64,9 @@ impl ToleranceReport {
                 let slots = deviations.entry(candidate.pattern_id).or_default();
                 for (index, deviation) in candidate.deviations.iter().enumerate() {
                     if slots.len() <= index {
-                        slots.resize_with(index + 1, Vec::new);
+                        slots.resize_with(index + 1, Default::default);
                     }
-                    slots[index].push(deviation.as_millimeters());
+                    slots[index].push(*deviation);
                 }
             }
         }
@@ -73,9 +74,11 @@ impl ToleranceReport {
         let suggestions = deviations
             .into_iter()
             .filter_map(|(pattern_id, per_index)| {
-                let suggested_tolerances: Vec<PatternTolerance> = per_index
+                let suggested_tolerances: PatternTolerances = per_index
                     .iter()
-                    .filter_map(|samples| Percentiles::of(samples.iter().copied()))
+                    .filter_map(|samples| {
+                        Percentiles::of(samples.iter().map(|sample| sample.as_f64()))
+                    })
                     .map(|stats| PatternTolerance::new((stats.p99 * safety_factor).max(0.1)))
                     .collect();
                 if suggested_tolerances.is_empty() {
@@ -85,7 +88,7 @@ impl ToleranceReport {
                     .iter()
                     .copied()
                     .max_by(|a, b| a.as_f64().total_cmp(&b.as_f64()))
-                    .unwrap_or_else(|| PatternTolerance::new(0.0));
+                    .unwrap_or_default();
                 Some(ToleranceSuggestion {
                     current_tolerance: tolerance
                         .get(&pattern_id)

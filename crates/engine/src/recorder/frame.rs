@@ -141,7 +141,9 @@ mod tests {
     use super::FrameContext;
     use super::FrameRecorder;
     use crate::EngineFrame;
-    use tangible_objects_model::{CandidateReport, Deviation, EventCount};
+    use tangible_objects_model::CandidateReport;
+    use tangible_objects_model::Deviation;
+    use tangible_objects_model::EventCount;
     use tangible_objects_model::Millimeters;
     use tangible_objects_model::Milliseconds;
     use tangible_objects_model::PatternId;
@@ -173,10 +175,7 @@ mod tests {
                 matched: true,
                 partial: false,
                 measured_distances: vec![Millimeters::new(34.15)].into(),
-                deviations: vec![Deviation::from(Millimeters::new(
-                    0.83,
-                ))]
-                .into(),
+                deviations: vec![Deviation::from(Millimeters::new(0.83))].into(),
                 tolerance: PatternTolerance::new(3.0),
                 tolerances: Default::default(),
                 score: None,

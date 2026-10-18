@@ -32,6 +32,13 @@ impl PatternTolerances {
     }
 }
 
+impl FromIterator<PatternTolerance> for PatternTolerances {
+    /// Collecting tolerances yields the tolerance set.
+    fn from_iter<T: IntoIterator<Item = PatternTolerance>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
 impl From<Vec<PatternTolerance>> for PatternTolerances {
     /// A tolerance vector IS a pattern-tolerance set.
     fn from(tolerances: Vec<PatternTolerance>) -> Self {

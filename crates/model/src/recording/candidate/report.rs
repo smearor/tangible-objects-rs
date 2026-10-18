@@ -3,7 +3,9 @@ use serde::Serialize;
 
 use super::MatchScore;
 use crate::CombinationBuf;
+use crate::Deviation;
 use crate::Distances;
+use crate::MatchError;
 use crate::PatternId;
 use crate::PatternName;
 use crate::PatternTolerance;
@@ -52,7 +54,7 @@ pub struct CandidateReport {
     /// Total absolute deviation across all distances (lower is better).
     /// Recorded for rejected candidates too - near-misses feed the
     /// collision analysis.
-    pub match_error: crate::MatchError,
+    pub match_error: MatchError,
 }
 
 impl CandidateReport {
@@ -66,7 +68,7 @@ impl CandidateReport {
         self.deviations
             .iter()
             .copied()
-            .max_by(crate::Deviation::total_cmp)
+            .max_by(Deviation::total_cmp)
             .map(|deviation| deviation.as_millimeters().into())
             .unwrap_or_default()
     }

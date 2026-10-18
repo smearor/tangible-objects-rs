@@ -1,5 +1,6 @@
 use serde::Serialize;
 use tangible_objects_model::PatternTolerance;
+use tangible_objects_model::PatternTolerances;
 
 /// Suggested tolerances for one pattern (TRAINING.md 2.2).
 #[derive(Debug, Serialize)]
@@ -13,7 +14,7 @@ pub struct ToleranceSuggestion {
     pub suggested_scalar: PatternTolerance,
     /// Per-distance-index suggestion (`tolerances[i]` parallel to
     /// `sorted_distances[i]`): `p99[i] × safety factor`.
-    pub suggested_tolerances: Vec<PatternTolerance>,
+    pub suggested_tolerances: PatternTolerances,
 }
 
 impl ToleranceSuggestion {
