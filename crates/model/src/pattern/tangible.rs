@@ -1,6 +1,8 @@
+use super::PartialReference;
 use super::PatternId;
 use super::PatternTolerance;
 use super::PinCount;
+use crate::FrameCount;
 use crate::Millimeters;
 use crate::Region;
 use crate::Vec2;
@@ -54,7 +56,7 @@ impl TangiblePattern {
             id: id.into(),
             name: name.into(),
             spawn_on_partial: false,
-            spawn_stability: crate::FrameCount::new(15),
+            spawn_stability: FrameCount::new(15),
             num_points: PinCount::new(points.len()),
             sorted_distances: sorted_pairwise_distances(points),
             tolerance: tolerance.into(),
@@ -158,7 +160,7 @@ impl TangiblePattern {
     /// Returns the kept reference indices and their sorted pairwise
     /// distances; `None` when no reference points are stored, their count
     /// differs from `num_points` or `skip` is out of range.
-    pub fn partial_reference(&self, skip: usize) -> Option<(Vec<usize>, Vec<Millimeters>)> {
+    pub fn partial_reference(&self, skip: usize) -> Option<PartialReference> {
         self.partial_reference_multi(&[skip])
     }
 
@@ -167,7 +169,7 @@ impl TangiblePattern {
     pub fn partial_reference_multi(
         &self,
         skips: &[usize],
-    ) -> Option<(Vec<usize>, Vec<Millimeters>)> {
+    ) -> Option<PartialReference> {
         let ref_points = self.ref_points.as_ref()?;
         if ref_points.len() != self.num_points
             || skips.iter().any(|skip| *skip >= self.num_points)
@@ -184,7 +186,10 @@ impl TangiblePattern {
         let indices = (0..self.num_points.as_usize())
             .filter(|index| !skips.contains(index))
             .collect();
-        Some((indices, sorted_pairwise_distances(&subset)))
+        Some(PartialReference {
+            kept_indices: indices,
+            distances: sorted_pairwise_distances(&subset),
+        })
     }
 
     /// Partial match: tests whether `points` (`num_points - 1` contacts) fit a
@@ -238,18 +243,20 @@ impl TangiblePattern {
         let mut best: Option<(Vec<usize>, Millimeters)> = None;
 
         for skips in skip_combinations(self.num_points.as_usize(), missing) {
-            let Some((all_indices, ref_dists)) = self.partial_reference_multi(&skips) else {
+            let Some(reference) = self.partial_reference_multi(&skips) else {
                 continue;
             };
 
-            let deviations = Self::deviations(&measured, &ref_dists);
-            if deviations.len() == ref_dists.len()
+            let deviations = Self::deviations(&measured, &reference.distances);
+            if deviations.len() == reference.distances.len()
                 && deviations.iter().all(|d| *d <= partial_tolerance)
             {
                 let error: Millimeters = deviations.iter().copied().sum();
                 match &best {
-                    None => best = Some((all_indices, error)),
-                    Some((_, best_err)) if error < *best_err => best = Some((all_indices, error)),
+                    None => best = Some((reference.kept_indices, error)),
+                    Some((_, best_err)) if error < *best_err => {
+                        best = Some((reference.kept_indices, error));
+                    }
                     _ => {}
                 }
             }

@@ -298,8 +298,9 @@ fn partial_report(
     let measured_distances = TangiblePattern::distances_of(points);
     let (deviations, match_error) = (0..pattern.num_points.as_usize())
         .filter_map(|skip| pattern.partial_reference(skip))
-        .map(|(_indices, reference)| {
-            let deviations = TangiblePattern::deviations(&measured_distances, &reference);
+        .map(|reference| {
+            let deviations =
+                TangiblePattern::deviations(&measured_distances, &reference.distances);
             let error: Millimeters = deviations.iter().copied().sum();
             (deviations, error)
         })
