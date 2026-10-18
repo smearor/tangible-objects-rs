@@ -291,7 +291,7 @@ mod tests {
             ("figure-tracking-5.txt", 572, 524),
         ];
         for (name, want_frames, want_detected) in cases {
-            let mut replay = EvtestReplay::open(&root.join("research").join(name))
+            let mut replay = EvtestReplay::open(&root.join("tests").join("fixtures").join(name))
                 .unwrap_or_else(|e| panic!("open {name}: {e}"));
             let mut engine = Engine::new(patterns.clone());
             if let Some(calibration) = replay.calibration() {

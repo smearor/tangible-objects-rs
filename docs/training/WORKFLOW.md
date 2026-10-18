@@ -41,7 +41,7 @@ tangible-objects --record recordings/session1 --device /dev/input/eventX \
 # empty line / `q` stops cleanly.
 
 # Deterministic replay recording (also usable without hardware)
-tangible-objects --replay --file research/figure-tracking-4.txt \
+tangible-objects --replay --file tests/fixtures/figure-tracking-4.txt \
     --record recordings/replay4 --profiles profiles
 ```
 

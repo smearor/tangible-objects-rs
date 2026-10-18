@@ -1,5 +1,5 @@
 # Silicon Integrated System SiS HID Touch Controller - the panel the
-# research fixtures (research/figure-tracking-*.txt) were recorded on.
+# research fixtures (tests/fixtures/figure-tracking-*.txt) were recorded on.
 name = "SiS HID Touch Controller"
 vendor = 0x457
 product = 0x11dc

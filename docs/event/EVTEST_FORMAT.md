@@ -1,7 +1,7 @@
 # evtest Format
 
 The `.evtest` text format used by the raw recording artifact
-(`<base>.evtest`) and all `research/figure-tracking-*.txt` fixtures.
+(`<base>.evtest`) and all `tests/fixtures/figure-tracking-*.txt` fixtures.
 
 `evtest` is the Linux input-subsystem debugging tool
 (`evtest /dev/input/eventX`): it dumps the device's capability header and
