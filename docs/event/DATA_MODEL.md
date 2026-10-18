@@ -14,6 +14,8 @@ crates/model/src/event/
 ├── mod.rs    - module docs + re-exports
 ├── type.rs   → EventType
 ├── code.rs   → EventCode
+├── count.rs  → EventCount
+├── named.rs  → NamedEventCode
 ├── input.rs  → SYN_REPORT, ABS_MT_* constants
 └── raw.rs    → RawEvent
 ```
@@ -67,6 +69,13 @@ One raw input event as `(type, code, value)` triple - `Copy`, `Eq`, no serde.
 `RawEvent::new(event_type, code, value)` accepts `impl Into<…>` so raw `u16`
 codes/types convert implicitly. `is_syn_report()` is the frame boundary check
 (`EventType::Syn && code == SYN_REPORT`).
+
+## NamedEventCode & EventCount
+
+| Type              | Wraps                          | Purpose |
+|-------------------|--------------------------------|---------|
+| `NamedEventCode`  | `(EventType, EventCode)`       | A code *paired with* its type - code namespaces are per event type (`code 0` = `SYN_REPORT` under `EV_SYN`, `ABS_X` under `EV_ABS`), so only the pair can be looked up for an `evtest`-style name |
+| `EventCount`      | `u64`                          | Raw evdev event count - conversion stats, recording drop counters; distinct from `FrameCount` (SYN_REPORT-delimited frames) |
 
 ## Design Rules
 

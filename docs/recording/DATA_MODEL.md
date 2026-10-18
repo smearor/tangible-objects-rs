@@ -1,7 +1,7 @@
 # Recording Data Model
 
 Data model for the frame recording pipeline described in
-[`concepts/planned/TRAINING.md`](../../concepts/planned/TRAINING.md). It defines
+[`concepts/done/TRAINING.md`](../../concepts/done/TRAINING.md). It defines
 the JSONL frame schema (`"v": 1`), the newtypes that carry it, and the control
 commands that steer a recording session. The raw wire format - field-by-field
 with JSON examples - lives in [`JSONL_FORMAT.md`](JSONL_FORMAT.md).
@@ -79,24 +79,25 @@ production path) emits a `CandidateReport` for **all** of them so rejected
 near-misses feed the collision analysis. Reports land in
 `EngineFrame::candidates`.
 
-| Field                | Rust type           | Notes |
-|----------------------|---------------------|-------|
-| `pattern_id`         | `PatternId`         | Pattern under test |
-| `pattern_name`       | `String`            | Denormalized for readable analysis output |
-| `touch_indices`      | `Vec<usize>`        | Indices into the frame's `touches` |
-| `matched`            | `bool`              | Combination passed the tolerance check |
-| `partial`            | `bool`              | `num_points - 1` attempt (one pin missing) - compares against a subset fingerprint |
-| `measured_distances` | `Vec<Millimeters>`  | Sorted pairwise distances; index `i` ↔ `sorted_distances[i]` |
-| `deviations`         | `Vec<Millimeters>`  | `\|measured[i] − reference[i]\|`, parallel to `measured_distances` - the raw basis for per-pair analysis |
-| `tolerance`          | `PatternTolerance`  | Scalar tolerance applied during the test (also the fallback for partial candidates - pin-drop re-indexes the fingerprint) |
-| `tolerances`         | `Vec<Millimeters>`  | Per-index tolerances when the pattern configures them; **absent** (not `null`) when scalar-only - `#[serde(default)]` keeps older recordings loadable |
-| `score`              | `Option<MatchScore>`| Normalized `max_i dev[i]/tol[i]` score; `None` in older recordings - `normalized_score()` recomputes it from `deviations`/`tolerances` |
-| `match_error`        | `Millimeters`       | Total absolute deviation; recorded for rejected candidates too |
+| Field                | Rust type            | Notes |
+|----------------------|----------------------|-------|
+| `pattern_id`         | `PatternId`          | Pattern under test |
+| `pattern_name`       | `PatternName`        | Denormalized for readable analysis output |
+| `touch_indices`      | `CombinationBuf`     | Indices into the frame's `touches` - the selected combination |
+| `matched`            | `bool`               | Combination passed the tolerance check |
+| `partial`            | `bool`               | `num_points - 1` attempt (one pin missing) - compares against a subset fingerprint |
+| `measured_distances` | `Distances`          | Sorted pairwise distances; index `i` ↔ `sorted_distances[i]` |
+| `deviations`         | `Deviations`         | `\|measured[i] − reference[i]\|`, parallel to `measured_distances` - the raw basis for per-pair analysis |
+| `tolerance`          | `PatternTolerance`   | Scalar tolerance applied during the test (also the fallback for partial candidates - pin-drop re-indexes the fingerprint) |
+| `tolerances`         | `PatternTolerances`  | Per-index tolerances when the pattern configures them; **absent** (not `null`) when scalar-only - `#[serde(default)]` keeps older recordings loadable |
+| `score`              | `Option<MatchScore>` | Normalized `max_i dev[i]/tol[i]` score; `None` in older recordings - `normalized_score()` recomputes it from `deviations`/`tolerances` |
+| `match_error`        | `MatchError`         | Total absolute deviation; recorded for rejected candidates too |
 
-Derived helpers on `CandidateReport`: `required_tolerance()`
-(`max(deviations)` - tolerance at which the candidate would have matched),
-`tolerance_at(i)` (effective per-index tolerance), `normalized_score()`
-(stored score or recomputed), `matches_label()` (name or numeric id).
+Derived helpers on `CandidateReport`: `required_tolerance()` →
+`PatternTolerance` (`max(deviations)` - the tolerance at which the candidate
+would have matched), `tolerance_at(i)` (effective per-index tolerance),
+`normalized_score()` (stored score or recomputed), `matches_label()` (name or
+numeric id).
 
 ## TrackedRecord
 
@@ -109,10 +110,11 @@ matches from stably tracked objects.
 |-----------------------|-----------------------|-----------------|
 | `id`                  | `TangibleId`          | `10`            |
 | `pattern_id`          | `PatternId`           | `5`             |
-| `pattern_name`        | `String`              | `"TestFigur-5P"`|
+| `pattern_name`        | `PatternName`         | `"TestFigur-5P"`|
 | `center`              | `Vec2<Millimeters>`   | `{"x":…,"y":…}` |
 | `rotation_rad`        | `RotationRad`         | `"rotation_deg": -143.73` (degrees) |
-| `frames_since_match`  | `u32`                 | `0`             |
+| `frames_since_match`  | `FrameCount`          | `0`             |
+| `pending`             | `bool`                | `false`         |
 
 `TrackedRecord` implements `From<&TrackedTangible>` and a manual `Serialize`
 mirroring `TrackedTangible`'s convention (`rotation_deg` in degrees, `center`
@@ -134,6 +136,13 @@ conversions, `Display`.
 | `MatchScore`          | `f64`    | Normalized deviation ratio; `≤ 1.0` ⟺ matched |
 | `RecordLabel`         | `String` | Ground-truth tag (`--record-label`, keypress, API) |
 
+The geometric fields borrow the pattern module's newtypes - deviation ≠
+distance ≠ score: `Distances`, `Deviation`/`Deviations`, `MatchError` and
+`PatternTolerance(s)` are documented in
+[`../pattern/DATA_MODEL.md`](../pattern/DATA_MODEL.md). Index collections are
+typed too: `CombinationBuf` for the selected candidate, `ClaimedIndices` for
+completion-claimed pins, `Combinations` for the C(n,k) enumeration.
+
 ## Units & Markers
 
 - All spatial quantities are `Millimeters` - the same domain as
@@ -152,18 +161,30 @@ interfaces through `ControlCommand` (`crates/runtime/src/command.rs`):
 
 ```rust
 enum ControlCommand {
-    SetFilterMode(bool),
+    SetFilterMode { mode: FilterMode, stability: Option<FrameCount> },
     TrainProfile(String),
     StartRecording { base_path: PathBuf, label: Option<RecordLabel> },
     StopRecording,
     SetRecordLabel(Option<RecordLabel>),
+    SetCompletion(CompletionConfig),
+    ResetMetrics,
+    ShowMessage(String),
+    Register { registration: Box<Registration>, owner: Option<Owner>, lifetime: Lifetime },
+    UpdateProfile { id: PatternId, profile: Box<ProfileFile> },
+    UnregisterPattern { id: PatternId },
+    UnregisterFieldSet { name: String },
+    UnregisterOwner { owner: Owner },
 }
 ```
 
 `StartRecording` carries the artifact base path (`<base>.jsonl` +
 `<base>.evtest`); `SetRecordLabel` re-tags subsequent frames - the API
-counterpart of the stdin keypress. GraphQL mutations, D-Bus methods and MCP
-tools map onto these variants (task 1.5).
+counterpart of the stdin keypress. The `Register`/`Unregister*`/`UpdateProfile`
+family implements dynamic profile and field-set registration
+(DYNAMIC_PROFILES.md); GraphQL mutations, D-Bus methods and MCP tools map
+onto these variants. Registration failures surface as `RegistrationError`
+(`engine`) - `PatternNotFound`, `FingerprintCollision`, `FieldsOverlap`,
+`DuplicateFieldSet`.
 
 ## Design Rules
 

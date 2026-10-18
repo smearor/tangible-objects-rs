@@ -102,5 +102,5 @@ Counters of one `.evtest` device conversion - every field is an
 
 | Type              | Fields | Notes |
 |-------------------|--------|-------|
-| `DeviceInfo`      | `name` + flat `Option<f64>` axis values (`x_res`…`y_max`) | Set once per session; GraphQL `SimpleObject`, MCP `Serialize` |
+| `DeviceInfo`      | `name` + `Option<UnitsPerMm>` (`x_res`/`y_res`) and `Option<RawAxisValue>` (`x_min`…`y_max`) | Set once per session; GraphQL `SimpleObject`, MCP `Serialize` - same unit types as `Calibration`, so raw axis values cannot be misread as millimeters |
 | `RecordingStatus` | `active`, `label: Option<RecordLabel>`, `recorded_frames`/`dropped_frames: FrameCount`, `dropped_events: EventCount` | Updated per frame; `None` = no session |
