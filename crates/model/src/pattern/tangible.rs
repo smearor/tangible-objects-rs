@@ -1,3 +1,4 @@
+use super::PartialMatch;
 use super::PartialReference;
 use super::PatternId;
 use super::PatternTolerance;
@@ -203,7 +204,7 @@ impl TangiblePattern {
     pub fn matches_partial(
         &self,
         points: &[Vec2<Millimeters>],
-    ) -> Option<(Vec<usize>, Millimeters)> {
+    ) -> Option<PartialMatch> {
         self.matches_partial_missing(points, 1)
     }
 
@@ -215,7 +216,7 @@ impl TangiblePattern {
         &self,
         points: &[Vec2<Millimeters>],
         missing: usize,
-    ) -> Option<(Vec<usize>, Millimeters)> {
+    ) -> Option<PartialMatch> {
         let ref_pts = self.ref_points.as_ref()?;
         if self.num_points == 0
             || missing == 0
@@ -236,11 +237,11 @@ impl TangiblePattern {
         points: &[Vec2<Millimeters>],
         missing: usize,
         tol_scale: f64,
-    ) -> Option<(Vec<usize>, Millimeters)> {
+    ) -> Option<PartialMatch> {
         self.ref_points.as_ref()?;
         let partial_tolerance = self.tolerance.0 * 1.5 * tol_scale;
         let measured = sorted_pairwise_distances(points);
-        let mut best: Option<(Vec<usize>, Millimeters)> = None;
+        let mut best: Option<PartialMatch> = None;
 
         for skips in skip_combinations(self.num_points.as_usize(), missing) {
             let Some(reference) = self.partial_reference_multi(&skips) else {
@@ -252,12 +253,15 @@ impl TangiblePattern {
                 && deviations.iter().all(|d| *d <= partial_tolerance)
             {
                 let error: Millimeters = deviations.iter().copied().sum();
-                match &best {
-                    None => best = Some((reference.kept_indices, error)),
-                    Some((_, best_err)) if error < *best_err => {
-                        best = Some((reference.kept_indices, error));
-                    }
-                    _ => {}
+                let candidate = PartialMatch {
+                    kept_indices: reference.kept_indices,
+                    match_error: error,
+                };
+                if best
+                    .as_ref()
+                    .is_none_or(|b| candidate.match_error < b.match_error)
+                {
+                    best = Some(candidate);
                 }
             }
         }

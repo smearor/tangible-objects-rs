@@ -7,12 +7,14 @@
 mod id;
 mod r#match;
 mod name;
+mod partial_match;
 mod partial_reference;
 mod pin_count;
 mod tangible;
 mod tolerance;
 
 pub use id::PatternId;
+pub use partial_match::PartialMatch;
 pub use partial_reference::PartialReference;
 pub use r#match::PatternMatch;
 pub use name::PatternName;

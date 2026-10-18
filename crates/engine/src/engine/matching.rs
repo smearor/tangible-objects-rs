@@ -93,9 +93,9 @@ pub(crate) fn try_partial(
     pattern
         .matches_partial_missing_scaled(&points, missing, completion.affinity_factor.as_f64())
         .filter(|_| pattern.accepts(&points))
-        .map(|(kept_refs, _)| {
+        .map(|matched| {
             let claimed = claim_missing(
-                pattern, &kept_refs, &points, combo, pool, touches, completion,
+                pattern, &matched.kept_indices, &points, combo, pool, touches, completion,
             );
             build_match(pattern, &points, combo, true, claimed)
         })
@@ -182,18 +182,20 @@ fn find_matches_inner(
                         .filter(|_| pattern.accepts(&points));
                     diagnostics
                         .report(|| partial_report(pattern, &points, &combo, result.is_some()));
-                    if let Some((kept_refs, error)) = result {
+                    if let Some(matched) = result {
                         // Partial candidates share the same (scalar × 1.5)
                         // scale - ranking by error is ranking by
                         // normalized score here.
-                        let score = error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
+                        let score =
+                            matched.match_error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
                         let free: Vec<usize> = available
                             .iter()
                             .copied()
                             .filter(|index| !combo.contains(index))
                             .collect();
                         let claimed = claim_missing(
-                            pattern, &kept_refs, &points, &combo, &free, touches, completion,
+                            pattern, &matched.kept_indices, &points, &combo, &free, touches,
+                            completion,
                         );
                         let candidate = build_match(pattern, &points, &combo, true, claimed);
                         consider(&mut best, candidate, score);

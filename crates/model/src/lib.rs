@@ -61,6 +61,7 @@ pub use metrics::PatternMetrics;
 pub use metrics::SessionMetrics;
 pub use millimeters::Millimeters;
 pub use milliseconds::Milliseconds;
+pub use pattern::PartialMatch;
 pub use pattern::PartialReference;
 pub use pattern::PatternId;
 pub use pattern::PatternMatch;
