@@ -4,9 +4,12 @@
 //! [`PatternMatch`] a successful detection within a frame, [`PatternId`]
 //! the runtime identifier and [`PatternTolerance`] the matching tolerance.
 
+mod deviation;
+mod deviations;
 mod distances;
 mod id;
 mod r#match;
+mod match_error;
 mod name;
 mod partial_match;
 mod partial_reference;
@@ -17,9 +20,12 @@ mod tangible;
 mod tolerance;
 mod tolerances;
 
+pub use deviation::Deviation;
+pub use deviations::Deviations;
 pub use distances::Distances;
 pub use id::PatternId;
 pub use r#match::PatternMatch;
+pub use match_error::MatchError;
 pub use name::PatternName;
 pub use partial_match::PartialMatch;
 pub use partial_reference::PartialReference;

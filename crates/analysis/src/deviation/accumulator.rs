@@ -1,6 +1,6 @@
-use tangible_objects_model::{FrameCount, PatternTolerance};
-use tangible_objects_model::Millimeters;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternName;
+use tangible_objects_model::PatternTolerance;
 
 /// Accumulator for one pattern while folding deviation samples.
 ///
@@ -47,7 +47,7 @@ impl PatternAcc {
     /// tolerance (per-index list, else the scalar).
     pub(crate) fn push(
         &mut self,
-        deviations: &[Millimeters],
+        deviations: &tangible_objects_model::Deviations,
         matched: bool,
         tolerance_at: impl Fn(usize) -> PatternTolerance,
     ) {
@@ -60,7 +60,9 @@ impl PatternAcc {
         let blockers: Vec<usize> = deviations
             .iter()
             .enumerate()
-            .filter(|(index, deviation)| **deviation > tolerance_at(*index).as_millimeters())
+            .filter(|(index, deviation)| {
+                deviation.as_millimeters() > tolerance_at(*index).as_millimeters()
+            })
             .map(|(index, _)| index)
             .collect();
 
@@ -72,7 +74,7 @@ impl PatternAcc {
                 self.blocker.resize(index + 1, FrameCount::new(0));
             }
             self.deviations[index].push(deviation.as_f64());
-            if *deviation > tolerance_at(index).as_millimeters() {
+            if deviation.as_millimeters() > tolerance_at(index).as_millimeters() {
                 self.over[index] += 1;
             }
             if blockers.len() == 1 && blockers[0] == index {

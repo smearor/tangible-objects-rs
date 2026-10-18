@@ -81,10 +81,12 @@ impl UtilizationReport {
                         })
                         .1;
                     for (index, deviation) in candidate.deviations.iter().enumerate() {
-                        if entry.deviations.len() <= index {
-                            entry.deviations.resize_with(index + 1, Vec::new);
+                        if entry.deviation_samples.len() <= index {
+                            entry
+                                .deviation_samples
+                                .resize_with(index + 1, Default::default);
                         }
-                        entry.deviations[index].push(*deviation);
+                        entry.deviation_samples[index].push(*deviation);
                     }
                     // The score is already the per-index normalized
                     // deviation (max_i dev_i / tolerance_at(i)) - using the
@@ -93,16 +95,7 @@ impl UtilizationReport {
                     if ratio >= 1.0 {
                         entry.over_tolerance_frames += 1;
                     } else {
-                        let band = if ratio < 0.25 {
-                            0
-                        } else if ratio < 0.5 {
-                            1
-                        } else if ratio < 0.75 {
-                            2
-                        } else {
-                            3
-                        };
-                        entry.bands[band] += 1;
+                        entry.bands.record(ratio);
                     }
                 }
             }
@@ -198,9 +191,9 @@ impl From<(Option<PatternId>, String, Accumulator)> for PatternUtilization {
             labeled_frames: entry.labeled_frames,
             false_negative_frames: entry.false_negative_frames,
             per_distance: entry
-                .deviations
+                .deviation_samples
                 .iter()
-                .filter_map(|samples| Percentiles::of(samples.iter().copied()))
+                .filter_map(|samples| Percentiles::of(samples.iter().map(|sample| sample.as_f64())))
                 .collect(),
             bands: entry.bands,
             over_tolerance_frames: entry.over_tolerance_frames,
@@ -239,12 +232,8 @@ impl Display for UtilizationReport {
             }
             writeln!(
                 f,
-                "    bands: <25%={} | 25-50%={} | 50-75%={} | 75-100%={} | >100% (missed)={}",
-                pattern.bands[0],
-                pattern.bands[1],
-                pattern.bands[2],
-                pattern.bands[3],
-                pattern.over_tolerance_frames
+                "    bands: {} | >100% (missed)={}",
+                pattern.bands, pattern.over_tolerance_frames
             )?;
         }
         Ok(())

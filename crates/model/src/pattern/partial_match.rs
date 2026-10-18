@@ -1,4 +1,4 @@
-use crate::Millimeters;
+use crate::MatchError;
 
 /// Result of a partial match: the reference subset that fit the reduced
 /// contact set plus the total deviation it scored.
@@ -12,5 +12,5 @@ pub struct PartialMatch {
     pub kept_indices: Vec<usize>,
     /// Sum of absolute distance deviations between measured and
     /// reference fingerprint.
-    pub match_error: Millimeters,
+    pub match_error: MatchError,
 }

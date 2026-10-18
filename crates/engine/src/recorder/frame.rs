@@ -141,7 +141,7 @@ mod tests {
     use super::FrameContext;
     use super::FrameRecorder;
     use crate::EngineFrame;
-    use tangible_objects_model::CandidateReport;
+    use tangible_objects_model::{CandidateReport, Deviation, EventCount};
     use tangible_objects_model::Millimeters;
     use tangible_objects_model::Milliseconds;
     use tangible_objects_model::PatternId;
@@ -173,11 +173,14 @@ mod tests {
                 matched: true,
                 partial: false,
                 measured_distances: vec![Millimeters::new(34.15)].into(),
-                deviations: vec![Millimeters::new(0.83)],
+                deviations: vec![Deviation::from(Millimeters::new(
+                    0.83,
+                ))]
+                .into(),
                 tolerance: PatternTolerance::new(3.0),
                 tolerances: Default::default(),
                 score: None,
-                match_error: Millimeters::new(5.69),
+                match_error: Millimeters::new(5.69).into(),
             }],
         };
 
@@ -186,7 +189,7 @@ mod tests {
             let context = FrameContext {
                 label: None,
                 calibration: None,
-                raw_dropped: tangible_objects_model::EventCount::default(),
+                raw_dropped: EventCount::default(),
             };
             recorder.record(7.into(), Milliseconds::new(0), &frame, &[], &context);
             recorder.record(8.into(), Milliseconds::new(16), &frame, &[], &context);

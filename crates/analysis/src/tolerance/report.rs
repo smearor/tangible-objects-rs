@@ -65,7 +65,7 @@ impl ToleranceReport {
                     if slots.len() <= index {
                         slots.resize_with(index + 1, Vec::new);
                     }
-                    slots[index].push(*deviation);
+                    slots[index].push(deviation.as_millimeters());
                 }
             }
         }

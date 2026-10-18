@@ -1,3 +1,4 @@
+use crate::CombinationBuf;
 use std::ops::Deref;
 
 /// Touch indices selected as one candidate combination - the contacts
@@ -19,6 +20,13 @@ impl<'a> Combination<'a> {
     /// The wrapped slice.
     pub const fn as_slice(self) -> &'a [usize] {
         self.0
+    }
+}
+
+impl<'a> From<&'a CombinationBuf> for Combination<'a> {
+    /// Borrowed view of an owned combination.
+    fn from(indices: &'a crate::CombinationBuf) -> Self {
+        Self(&indices.0)
     }
 }
 

@@ -41,7 +41,9 @@ impl CollisionReport {
                 if best.matched {
                     entry.collided_frames += 1;
                 }
-                entry.required.push(best.required_tolerance());
+                entry
+                    .required
+                    .push(best.required_tolerance().as_millimeters());
             }
         }
 

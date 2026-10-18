@@ -3,6 +3,7 @@ use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternId;
 
 use crate::Percentiles;
+use crate::utilization::RatioBands;
 
 /// Utilization statistics of one pattern across the recording.
 #[derive(Debug, Serialize)]
@@ -28,7 +29,7 @@ pub struct PatternUtilization {
     pub per_distance: Vec<Percentiles>,
     /// Labeled presence frames binned by `required_tolerance / tolerance`:
     /// `[<25 %, 25–50 %, 50–75 %, 75–100 %]`.
-    pub bands: [FrameCount; 4],
+    pub bands: RatioBands,
     /// Labeled presence frames whose best candidate exceeds the configured
     /// tolerance (ratio `>= 1.0`) - counted separately because the bands
     /// only cover `< 1.0`.

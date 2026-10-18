@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 
 use serde::Serialize;
+use tangible_objects_model::CombinationBuf;
+use tangible_objects_model::Combinations;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
@@ -11,6 +13,7 @@ use tangible_objects_model::PointSet;
 use super::DistanceStats;
 use super::PatternAcc;
 use super::PatternDeviation;
+use super::best_subset::BestSubset;
 use crate::Percentiles;
 use crate::Recording;
 
@@ -83,22 +86,20 @@ impl DeviationReport {
                 // Only the best-fitting subset counts per frame - foreign
                 // contacts (hands, other objects) would otherwise inflate
                 // the deviation statistics with non-figure geometry.
-                let mut best: Option<(Vec<Millimeters>, f64)> = None;
+                let mut best = BestSubset::default();
                 for subset in Self::combinations(touches.len(), pattern.num_points.as_usize()) {
                     let points: Vec<_> = subset.iter().map(|&index| touches[index]).collect();
                     let deviations = PointSet::new(&points)
                         .distances()
                         .deviations(&pattern.sorted_distances);
                     let score = pattern.score_of(&deviations);
-                    if best.as_ref().is_none_or(|(_, s)| score < *s) {
-                        best = Some((deviations, score));
-                    }
+                    best.consider(deviations, score);
                 }
-                if let Some((deviations, score)) = best {
+                if let Some((deviations, score)) = best.into_eval() {
                     let entry = acc
                         .entry(pattern.id)
                         .or_insert_with(|| PatternAcc::new(pattern.name.clone()));
-                    entry.push(&deviations, score <= 1.0, |index| {
+                    entry.push(&deviations, score.as_f64() <= 1.0, |index| {
                         pattern.tolerance_at(index)
                     });
                 }
@@ -116,9 +117,9 @@ impl DeviationReport {
     /// All k-element index subsets of `n` items, in lexicographic
     /// order - used by `analyze_contacts` to enumerate same-size
     /// contact subsets per frame.
-    fn combinations(n: usize, k: usize) -> Vec<Vec<usize>> {
+    fn combinations(n: usize, k: usize) -> Combinations {
         if k == 0 || k > n {
-            return Vec::new();
+            return Default::default();
         }
         let mut result = Vec::new();
         let mut current = Vec::with_capacity(k);
@@ -127,10 +128,10 @@ impl DeviationReport {
             n: usize,
             k: usize,
             current: &mut Vec<usize>,
-            result: &mut Vec<Vec<usize>>,
+            result: &mut Vec<CombinationBuf>,
         ) {
             if current.len() == k {
-                result.push(current.clone());
+                result.push(current.clone().into());
                 return;
             }
             for index in start..=n - (k - current.len()) {
@@ -140,7 +141,7 @@ impl DeviationReport {
             }
         }
         visit(0, n, k, &mut current, &mut result);
-        result
+        result.into()
     }
 
     fn finish(pattern_id: PatternId, data: PatternAcc) -> PatternDeviation {

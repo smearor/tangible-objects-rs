@@ -5,7 +5,10 @@ use super::PatternId;
 use super::PatternTolerance;
 use super::PatternTolerances;
 use super::PinCount;
+use crate::{CombinationBuf, Combinations, Deviations};
 use crate::FrameCount;
+use crate::MatchError;
+use crate::MatchScore;
 use crate::Millimeters;
 use crate::PatternName;
 use crate::PointSet;
@@ -115,34 +118,33 @@ impl TangiblePattern {
     /// set - but the score additionally ranks candidates (lower is closer)
     /// and quantifies near-misses, which the score-based matcher and the
     /// offline analysis use.
-    pub fn match_score(&self, points: PointSet<'_>) -> f64 {
+    pub fn match_score(&self, points: PointSet<'_>) -> MatchScore {
         self.score_of(&points.distances().deviations(&self.sorted_distances))
     }
 
     /// Score of an already-computed deviation vector - `max_i dev[i] /
     /// tolerance_at(i)`; 0.0 for empty or length-mismatched input.
-    pub fn score_of(&self, deviations: &[Millimeters]) -> f64 {
+    pub fn score_of(&self, deviations: &Deviations) -> MatchScore {
         deviations
             .iter()
             .enumerate()
             .map(|(i, dev)| dev.as_f64() / self.tolerance_at(i).as_f64())
             .reduce(f64::max)
             .unwrap_or(0.0)
+            .into()
     }
 
     /// Total absolute deviation across all distances (lower is better).
-    pub fn match_error(&self, points: PointSet<'_>) -> Millimeters {
+    pub fn match_error(&self, points: PointSet<'_>) -> MatchError {
         points
             .distances()
             .deviations(&self.sorted_distances)
-            .iter()
-            .copied()
-            .sum()
+            .total()
     }
 
     /// Absolute per-index deviation between a measured and a reference
     /// fingerprint; empty when the lengths differ.
-    pub fn deviations(measured: &Distances, reference: &Distances) -> Vec<Millimeters> {
+    pub fn deviations(measured: &Distances, reference: &Distances) -> Deviations {
         measured.deviations(reference)
     }
 
@@ -234,12 +236,13 @@ impl TangiblePattern {
 
             let deviations = Self::deviations(&measured, &reference.distances);
             if deviations.len() == reference.distances.len()
-                && deviations.iter().all(|d| *d <= partial_tolerance)
+                && deviations
+                    .iter()
+                    .all(|d| d.as_f64() <= partial_tolerance.as_f64())
             {
-                let error: Millimeters = deviations.iter().copied().sum();
                 let candidate = PartialMatch {
                     kept_indices: reference.kept_indices,
-                    match_error: error,
+                    match_error: deviations.total(),
                 };
                 if best
                     .as_ref()
@@ -311,7 +314,7 @@ impl TangiblePattern {
 }
 
 /// All `missing`-element index combinations of `0..n` (the pins to skip).
-fn skip_combinations(n: usize, missing: usize) -> Vec<Vec<usize>> {
+fn skip_combinations(n: usize, missing: usize) -> Combinations {
     let mut result = Vec::new();
     let mut combo = Vec::with_capacity(missing);
     fn go(
@@ -319,10 +322,10 @@ fn skip_combinations(n: usize, missing: usize) -> Vec<Vec<usize>> {
         missing: usize,
         start: usize,
         combo: &mut Vec<usize>,
-        out: &mut Vec<Vec<usize>>,
+        out: &mut Vec<CombinationBuf>,
     ) {
         if combo.len() == missing {
-            out.push(combo.clone());
+            out.push(combo.clone().into());
             return;
         }
         for i in start..n {
@@ -332,7 +335,7 @@ fn skip_combinations(n: usize, missing: usize) -> Vec<Vec<usize>> {
         }
     }
     go(n, missing, 0, &mut combo, &mut result);
-    result
+    result.into()
 }
 
 /// Sorted distance multiset of one point to all others in the set.
@@ -572,7 +575,7 @@ mod tests {
     #[test]
     fn match_score_marks_boundary_and_near_misses() {
         let pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
-        assert_eq!(pattern.match_score((&triangle()).into()), 0.0);
+        assert_eq!(pattern.match_score((&triangle()).into()).as_f64(), 0.0);
         // A 2.5 mm deviation on one edge is score 0.5 with scalar 5.0.
         let slightly_off = vec![
             Vec2::new(0.0, 0.0),
@@ -580,7 +583,7 @@ mod tests {
             Vec2::new(0.0, 50.0),
         ];
         let score = pattern.match_score((&slightly_off).into());
-        assert!(score > 0.4 && score < 0.6);
+        assert!(score.as_f64() > 0.4 && score.as_f64() < 0.6);
     }
 
     #[test]

@@ -13,7 +13,7 @@ use std::ops::Sub;
 /// device units or screen pixels. Also serves as the unit marker for
 /// `Vec2<Millimeters>`. Serializes as a bare number so profile files stay
 /// compatible.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Millimeters(pub f64);
 

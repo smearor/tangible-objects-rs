@@ -1,5 +1,5 @@
 use tangible_objects_model::ContactCount;
-use tangible_objects_model::Millimeters;
+use tangible_objects_model::Deviation;
 
 /// The closest same-size fingerprint collision found between two
 /// patterns - the geometric phantom surface of the pair.
@@ -11,5 +11,5 @@ pub(crate) struct SubsetCollision {
     /// Number of contacts kept in the closest subset pairing.
     pub(crate) contact_count: ContactCount,
     /// Smallest achievable maximum deviation across subset pairings.
-    pub(crate) min_max_deviation: Millimeters,
+    pub(crate) min_max_deviation: Deviation,
 }

@@ -4,6 +4,7 @@ use tangible_objects_model::CandidateReport;
 use tangible_objects_model::ClaimPool;
 use tangible_objects_model::ClaimedIndices;
 use tangible_objects_model::Combination;
+use tangible_objects_model::Combinations;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::MatchScore;
 use tangible_objects_model::Millimeters;
@@ -14,6 +15,7 @@ use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::Vec2;
 
+use super::best_match::BestMatch;
 use super::diagnostics::CandidateDiagnostics;
 use super::diagnostics::NoDiagnostics;
 
@@ -75,7 +77,7 @@ pub(crate) fn try_pattern(
     completion: &CompletionConfig,
 ) -> Option<PatternMatch> {
     let points = touches.positions_of(combo.as_slice());
-    (pattern.match_score((&points).into()) <= completion.affinity_factor.as_f64()
+    (pattern.match_score((&points).into()).as_f64() <= completion.affinity_factor.as_f64()
         && pattern.accepts((&points).into()))
     .then(|| {
         build_match(
@@ -158,7 +160,7 @@ fn find_matches_inner(
             continue;
         }
 
-        let mut best: Option<(PatternMatch, f64)> = None;
+        let mut best = BestMatch::default();
 
         for combo in combinations(&available, pattern.num_points.as_usize()) {
             let points = touches.positions_of(&combo);
@@ -178,7 +180,7 @@ fn find_matches_inner(
                     false,
                     Default::default(),
                 );
-                consider(&mut best, candidate, score);
+                best.consider(candidate, score);
             }
         }
 
@@ -218,8 +220,9 @@ fn find_matches_inner(
                         // Partial candidates share the same (scalar × 1.5)
                         // scale - ranking by error is ranking by
                         // normalized score here.
-                        let score =
-                            matched.match_error.as_f64() / (pattern.tolerance.as_f64() * 1.5);
+                        let score: MatchScore = (matched.match_error.as_f64()
+                            / (pattern.tolerance.as_f64() * 1.5))
+                            .into();
                         let free: Vec<usize> = available
                             .iter()
                             .copied()
@@ -241,13 +244,13 @@ fn find_matches_inner(
                             true,
                             claimed,
                         );
-                        consider(&mut best, candidate, score);
+                        best.consider(candidate, score);
                     }
                 }
             }
         }
 
-        if let Some((pattern_match, _)) = best {
+        if let Some(pattern_match) = best.into_match() {
             // Matched pins and completion-claimed pins are both consumed -
             // a claimed point belongs to this figure this frame even when
             // `persist` is off (persistence only governs future binding).
@@ -317,8 +320,8 @@ fn exact_report(
         touch_indices: combo.into(),
         matched,
         partial: false,
-        match_error: deviations.iter().copied().sum(),
-        score: Some(MatchScore::new(pattern.score_of(&deviations))),
+        match_error: deviations.total(),
+        score: Some(pattern.score_of(&deviations)),
         tolerances: pattern.tolerances.clone(),
         measured_distances,
         deviations,
@@ -341,11 +344,11 @@ fn partial_report(
         .filter_map(|skip| pattern.partial_reference(skip))
         .map(|reference| {
             let deviations = TangiblePattern::deviations(&measured_distances, &reference.distances);
-            let error: Millimeters = deviations.iter().copied().sum();
+            let error = deviations.total();
             (deviations, error)
         })
         .min_by(|a, b| a.1.total_cmp(&b.1))
-        .unwrap_or_else(|| (Vec::new(), Millimeters::new(0.0)));
+        .unwrap_or_else(|| (Default::default(), Millimeters::new(0.0).into()));
 
     let partial_tolerance = pattern.tolerance.as_f64() * 1.5;
     let score = deviations
@@ -395,31 +398,21 @@ fn build_match(
     }
 }
 
-/// Keeps the better of two candidates - lowest normalized score wins
-/// (TRAINING.md 3.2 score-based ranking).
-fn consider(best: &mut Option<(PatternMatch, f64)>, candidate: PatternMatch, score: f64) {
-    match best {
-        None => *best = Some((candidate, score)),
-        Some((_, best_score)) if score < *best_score => *best = Some((candidate, score)),
-        _ => {}
-    }
-}
-
 /// Generates all k-element index combinations of `items`.
-fn combinations(items: &[usize], k: usize) -> Vec<Vec<usize>> {
+fn combinations(items: &[usize], k: usize) -> Combinations {
     if k == 0 {
-        return vec![vec![]];
+        return Combinations::one_empty();
     }
     if items.is_empty() || items.len() < k {
-        return vec![];
+        return Combinations::default();
     }
 
-    let mut result = Vec::new();
+    let mut result = Combinations::new();
     let head = items[0];
     let tail = &items[1..];
 
     for mut combo in combinations(tail, k - 1) {
-        combo.insert(0, head);
+        combo.0.insert(0, head);
         result.push(combo);
     }
     result.extend(combinations(tail, k));

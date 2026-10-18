@@ -9,6 +9,7 @@
 mod collision;
 mod dataset;
 mod deviation;
+mod deviation_samples;
 mod error;
 mod flappy;
 mod ml;

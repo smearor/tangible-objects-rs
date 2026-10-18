@@ -1,5 +1,7 @@
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
+
+use crate::deviation_samples::DeviationSamples;
+use crate::utilization::RatioBands;
 
 /// Per-pattern accumulation state of the utilization report.
 pub(crate) struct Accumulator {
@@ -13,10 +15,10 @@ pub(crate) struct Accumulator {
     pub false_negative_frames: FrameCount,
     /// Deviation samples per distance index - from the labeled pattern's
     /// best candidate per labeled frame, matched or not.
-    pub deviations: Vec<Vec<Millimeters>>,
+    pub deviation_samples: Vec<DeviationSamples>,
     /// Labeled presence frames binned by `required_tolerance / tolerance`
     /// ratio (`< 1.0` - within the configured tolerance).
-    pub bands: [FrameCount; 4],
+    pub bands: RatioBands,
     /// Labeled presence frames whose best candidate would have needed a
     /// tolerance above the configured one (ratio `>= 1.0`) - the misses
     /// the bands cannot represent.
@@ -30,8 +32,8 @@ impl Default for Accumulator {
             partial_matched_frames: FrameCount::new(0),
             labeled_frames: FrameCount::new(0),
             false_negative_frames: FrameCount::new(0),
-            deviations: Vec::new(),
-            bands: [FrameCount::new(0); 4],
+            deviation_samples: Vec::new(),
+            bands: Default::default(),
             over_tolerance_frames: FrameCount::new(0),
         }
     }

@@ -10,7 +10,7 @@ use crate::Millimeters;
 /// Maximum allowed deviation per pairwise distance during fingerprint
 /// matching. Serializes as a bare number so existing profile files stay
 /// compatible.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PatternTolerance(pub Millimeters);
 

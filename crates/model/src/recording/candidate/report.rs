@@ -4,7 +4,6 @@ use serde::Serialize;
 use super::MatchScore;
 use crate::CombinationBuf;
 use crate::Distances;
-use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
 use crate::PatternTolerance;
@@ -35,7 +34,7 @@ pub struct CandidateReport {
     pub measured_distances: Distances,
     /// Absolute deviation `|measured[i] - reference[i]|` per distance index,
     /// parallel to `measured_distances`.
-    pub deviations: Vec<Millimeters>,
+    pub deviations: crate::Deviations,
     /// Scalar tolerance applied during the test (also the fallback for
     /// partial candidates, whose re-indexed fingerprint cannot use
     /// per-index tolerances).
@@ -53,7 +52,7 @@ pub struct CandidateReport {
     /// Total absolute deviation across all distances (lower is better).
     /// Recorded for rejected candidates too - near-misses feed the
     /// collision analysis.
-    pub match_error: Millimeters,
+    pub match_error: crate::MatchError,
 }
 
 impl CandidateReport {
@@ -63,12 +62,13 @@ impl CandidateReport {
     /// Basis of the collision analysis - for a rejected candidate it is the
     /// tolerance at which it would have become a false positive. An empty
     /// deviation vector (degenerate candidate) needs zero tolerance.
-    pub fn required_tolerance(&self) -> Millimeters {
+    pub fn required_tolerance(&self) -> PatternTolerance {
         self.deviations
             .iter()
             .copied()
-            .max_by(Millimeters::total_cmp)
-            .unwrap_or(Millimeters::new(0.0))
+            .max_by(crate::Deviation::total_cmp)
+            .map(|deviation| deviation.as_millimeters().into())
+            .unwrap_or_default()
     }
 
     /// Effective tolerance for distance index `i` - the recorded per-index

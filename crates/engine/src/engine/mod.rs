@@ -6,6 +6,7 @@
 //! `SYN_REPORT` that carries domain [`EngineEvent`]s (touch changes, tangible
 //! added/moved/removed) for interface crates.
 
+mod best_match;
 mod detection;
 mod diagnostics;
 mod error;

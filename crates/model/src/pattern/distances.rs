@@ -2,6 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::ops::Deref;
 
+use crate::Deviations;
 use crate::Millimeters;
 use crate::PointSet;
 
@@ -32,27 +33,29 @@ impl Distances {
     /// Largest absolute per-index deviation against another fingerprint.
     /// Returns [`f64::MAX`] millimeters for empty or length-mismatched
     /// fingerprints - a maximal, never-matching collision distance.
-    pub fn max_deviation(&self, other: &Self) -> Millimeters {
+    pub fn max_deviation(&self, other: &Self) -> crate::Deviation {
         if self.len() != other.len() || self.is_empty() {
-            return Millimeters::new(f64::MAX);
+            return Millimeters::new(f64::MAX).into();
         }
         self.iter()
             .zip(other.iter())
             .map(|(a, b)| (*a - *b).abs())
-            .max_by(Millimeters::total_cmp)
-            .unwrap_or(Millimeters::new(f64::MAX))
+            .map(crate::Deviation::from)
+            .max_by(|a, b| a.total_cmp(b))
+            .unwrap_or(Millimeters::new(f64::MAX).into())
     }
 
     /// Absolute per-index deviations against another fingerprint;
     /// empty when the lengths differ.
-    pub fn deviations(&self, other: &Self) -> Vec<Millimeters> {
+    pub fn deviations(&self, other: &Self) -> Deviations {
         if self.len() != other.len() {
-            return Vec::new();
+            return Deviations::default();
         }
         self.iter()
             .zip(other.iter())
-            .map(|(a, b)| (*a - *b).abs())
-            .collect()
+            .map(|(a, b)| (*a - *b).abs().into())
+            .collect::<Vec<crate::Deviation>>()
+            .into()
     }
 }
 

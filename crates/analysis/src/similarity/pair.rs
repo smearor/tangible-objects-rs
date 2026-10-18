@@ -1,5 +1,6 @@
 use serde::Serialize;
 use tangible_objects_model::ContactCount;
+use tangible_objects_model::Deviation;
 use tangible_objects_model::Distances;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
@@ -27,7 +28,7 @@ pub struct SimilarityPair {
     /// the exact fingerprints collide.
     pub contact_count: ContactCount,
     /// Smallest achievable maximum deviation across subset pairings.
-    pub min_max_deviation: Millimeters,
+    pub min_max_deviation: Deviation,
     /// Risk classification derived from `min_max_deviation` and the
     /// pair's tolerances.
     pub risk: MatchRisk,
@@ -94,7 +95,7 @@ impl SimilarityPair {
     /// Classifies the risk: `Exact` within the stricter tolerance, else
     /// `Partial` within 1.5x tolerance, else `Safe`.
     fn risk_of(
-        deviation: Millimeters,
+        deviation: Deviation,
         tol_a: PatternTolerance,
         tol_b: PatternTolerance,
     ) -> MatchRisk {
