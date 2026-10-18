@@ -25,6 +25,27 @@ crates/engine/src/
     └── stats.rs             → ConvertStats
 ```
 
+## Type relationships
+
+```mermaid
+flowchart LR
+    TOML["devices/*.toml<br/>+ --device-profiles dir"] --> DR["DeviceRegistry<br/>profiles + errors"]
+    DR --> DP["DeviceProfile"]
+    DP -->|calibration| CAL["Calibration<br/>x/y_res · x/y_min/max"]
+    DE["DeviceEntry<br/>/dev/input/eventX"] -->|open/detect| TD["TouchDevice"]
+    DR -.->|find_by_ids<br/>vendor:product| DE
+    CAL -->|raw ÷ res| MM["Millimeters"]
+    DP -->|resolution_override| CAL
+
+    EV["in.evtest"] --> DC["DeviceConverter<br/>(target DeviceProfile)"]
+    DP --> DC
+    DC --> OUT["*.to-&lt;profile&gt;.evtest"]
+    DC --> CS["ConvertStats<br/>events · kept · clamped · dropped"]
+
+    CAL -->|DeviceInfo.of| DI["DeviceInfo<br/>UnitsPerMm · RawAxisValue"]
+    DI --> ES["EngineSnapshot → interfaces"]
+```
+
 ## DeviceProfile
 
 TOML-serializable device profile - the persistent form of a touchscreen's

@@ -13,6 +13,30 @@ crates/model/src/profile/
 └── error.rs    → ProfileError
 ```
 
+## Lifecycle
+
+```mermaid
+flowchart LR
+    subgraph Disk
+        TOML["profiles/*.toml"]
+        STORE["profiles.d/<br/>persistent registrations"]
+    end
+
+    TOML & STORE -->|load_dir sorted by filename| PD["ProfileDir<br/>profiles + errors"]
+    PD -->|into_patterns<br/>sequential PatternId 1..n| PB["PatternBuf → PatternSet"]
+    PB --> TP["TangiblePattern<br/>runtime matching"]
+
+    TRAIN["--train capture<br/>measured contacts"] -->|from_points| PF["ProfileFile"]
+    TP -.->|to_pattern inverse| PF
+    PF -->|save pretty TOML| TOML
+
+    REG["ControlCommand::Register<br/>Lifetime::Persistent"] -->|persist_registration| STORE
+```
+
+One profile file round-trips losslessly: `load` → `ProfileFile` → `to_pattern`
+→ matching, and `from_points` → `save` writes the same shape back. Runtime
+registrations reuse the identical TOML form in the daemon's store.
+
 ## ProfileFile
 
 The TOML-serializable figure profile - the on-disk representation of a

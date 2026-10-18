@@ -65,6 +65,35 @@ Invoked via `tangible-objects --analyze <recording.jsonl>`,
 `--export-dataset <recording.jsonl>` and `--similarity <profiles-dir>`
 (`crates/daemon/src/modes/analysis.rs`).
 
+## Data flow
+
+```mermaid
+flowchart LR
+    subgraph Input
+        JSONL["&lt;base&gt;.jsonl"] -->|Recording::load| FR["FrameRecord[]<br/>model types"]
+        DIR["profiles/"] -->|ProfileFile::load_dir| PB["PatternBuf → PatternSet"]
+    end
+
+    FR --> U["UtilizationReport"]
+    FR --> D["DeviationReport"]
+    FR --> T["ToleranceReport"]
+    FR --> F["FlappyReport"]
+    FR --> C["CollisionReport"]
+    FR --> S["ScoringReport"]
+    FR --> M["MlReport"]
+    FR --> DS["Dataset → *.dataset.jsonl"]
+    PB --> D
+    PB --> SIM["SimilarityReport<br/>(profiles only)"]
+
+    U & D & T & F & C & S & M --> AR["AnalysisReport<br/>analyze_recording"]
+    AR -->|"GraphQL / D-Bus / MCP"| IF["Interfaces"]
+```
+
+`DeviationReport` runs one of two passes selected by `AnalysisMode`:
+`Candidates` folds the recorded `candidates[]`, `Contacts` re-evaluates the
+best-fitting same-size subset of every frame against `PatternSet` - which is
+why contacts mode needs the loaded profiles.
+
 ## Loading (`Recording`)
 
 `Recording::load(path)` parses one `FrameRecord` per line, checks

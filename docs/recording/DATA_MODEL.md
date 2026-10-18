@@ -16,6 +16,36 @@ A recording session produces **two artifacts**:
 The `.evtest` file preserves full reproducibility: replaying it via `--replay`
 must regenerate the same frame stream deterministically.
 
+## Pipeline & record shape
+
+```mermaid
+flowchart LR
+    subgraph Engine
+        EV["RawEvent stream"] --> EF["EngineFrame<br/>touches · matches · events · candidates"]
+        EF --> PM["PatternMatch<br/>touch_indices · claimed_indices"]
+        EF --> TR["TrackedTangible<br/>frames_since_match"]
+    end
+
+    EF -->|"record_frame (diagnostics on)"| FR["FrameRecorder"]
+    EV --> RR["RawRecorder"]
+
+    FR --> J["&lt;base&gt;.jsonl<br/>FrameRecord v1"]
+    RR --> E["&lt;base&gt;.evtest<br/>raw events + calibration header"]
+
+    J --> FR2["FrameRecord"]
+    FR2 --> CR["CandidateReport[]<br/>matched AND rejected"]
+    FR2 --> TRC["TrackedRecord[]"]
+    PM -.->|wrapped| CR
+    TR -.->|From + pending| TRC
+
+    CC["ControlCommand<br/>Start/StopRecording · SetRecordLabel ·<br/>SetCompletion · Register/Unregister*"] -.->|device loop| FR
+    J --> AN["analysis::Recording::load<br/>version gate v"]
+    E --> REPLAY["--replay<br/>deterministic round-trip"]
+```
+
+One `.jsonl` line is one `SYN_REPORT` frame; the sibling `.evtest` holds the
+unprocessed raw stream so a replay regenerates the same frame sequence.
+
 ## Module Layout
 
 The record types live in `tangible-objects-model` so the engine, the daemon

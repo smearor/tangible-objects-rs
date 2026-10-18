@@ -20,6 +20,49 @@ crates/model/src/event/
 └── raw.rs    → RawEvent
 ```
 
+## Type relationships
+
+```mermaid
+classDiagram
+    class RawEvent {
+        +EventType event_type
+        +EventCode code
+        +i32 value
+        +is_syn_report() bool
+    }
+    class EventType {
+        <<enum>>
+        Syn = 0x00
+        Key = 0x01
+        Abs = 0x03
+        Other(u16)
+    }
+    class EventCode {
+        <<newtype>> u16
+    }
+    class NamedEventCode {
+        +EventType event_type
+        +EventCode code
+    }
+    class EventCount {
+        <<newtype>> u64
+    }
+
+    RawEvent --> EventType
+    RawEvent --> EventCode
+    NamedEventCode --> EventType
+    NamedEventCode --> EventCode
+
+    RawEvent ..> input : SYN_REPORT · ABS_MT_* constants
+    Engine ..> RawEvent : process() one per call
+    EvtestReplay ..> RawEvent : parse
+    FrameRecorder ..> EventCount : raw_dropped
+```
+
+`EventType::Syn` + `EventCode == SYN_REPORT` is the only predicate the engine
+itself evaluates - each `SYN_REPORT`-terminated run of `RawEvent`s forms one
+frame.
+
 ## EventType
 
 Linux input event type - only the variants the pipeline interprets have named

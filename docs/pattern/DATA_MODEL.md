@@ -25,6 +25,40 @@ crates/model/src/pattern/
 └── pattern_buf.rs       → PatternBuf        (owned registry)
 ```
 
+## Matching pipeline
+
+```mermaid
+flowchart LR
+    subgraph Frame
+        TS["TouchSet<br/>frame contacts"]
+    end
+    subgraph Candidate
+        CB["CombinationBuf<br/>selected indices"]
+        CP["ClaimPool<br/>claimable remainder"]
+    end
+    TS -->|positions_of| PB["PointBuf → PointSet<br/>measured positions"]
+    CB --> PB
+
+    PB -->|distances| DIST["Distances<br/>sorted fingerprint"]
+    TP["TangiblePattern<br/>sorted_distances · tolerance(s)"]
+    DIST -->|deviations| DEV["Deviations<br/>per-index Δ"]
+    TP --> DEV
+    DEV -->|total| ME["MatchError<br/>ΣΔ - ranking"]
+    DEV -->|score_of| MS["MatchScore<br/>max dev/tol ≤1 accepts"]
+    TP -->|tolerances| MS
+
+    MS & ME --> PM["PatternMatch<br/>touch_indices + claimed_indices"]
+    CP -->|predict_missing claims| CI["ClaimedIndices"]
+    CI --> PM
+
+    Patterns["PatternBuf → PatternSet"] --> TP
+```
+
+The three `Millimeters`-shaped vectors stay distinct all the way down:
+`Distances` (sorted, fingerprint), `Deviations` (fingerprint-index-parallel
+delta), `PatternTolerances` (per-index slots). A match folds them into
+`MatchError` (ranking) or `MatchScore` (acceptance).
+
 ## TangiblePattern
 
 Runtime pattern loaded from a [`ProfileFile`](../profile/DATA_MODEL.md). For
