@@ -1,4 +1,5 @@
 name = "fm4-2"
+enabled = false
 num_points = 4
 tolerance = 3.0
 sorted_sides = [
