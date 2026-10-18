@@ -3,8 +3,11 @@ use std::fmt::Display;
 
 use tangible_objects_model::CandidateCount;
 use tangible_objects_model::ContactCount;
+use tangible_objects_model::EventCount;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::FrameNumber;
 use tangible_objects_model::PatternName;
+use tangible_objects_model::TrackingId;
 
 use super::LifetimeBucket;
 use super::PartialShare;
@@ -29,14 +32,14 @@ const LIFETIME_EDGES: [FrameCount; 5] = [
 #[derive(Debug)]
 pub struct FlappyReport {
     /// Number of distinct tracking IDs observed.
-    pub contacts: usize,
+    pub contacts: ContactCount,
     /// Percentiles of contact lifetimes in frames (first→last appearance).
     pub lifetimes: Option<Percentiles>,
     /// Lifetime histogram; the last bucket is open-ended.
     pub lifetime_buckets: Vec<LifetimeBucket>,
     /// Dropout events: runs of `frames_since_match > 0` inside a tracked
     /// tangible's lifetime - the figure lost its match but stayed tracked.
-    pub dropout_events: u64,
+    pub dropout_events: EventCount,
     /// Percentiles of dropout run lengths in frames.
     pub dropout_lengths: Option<Percentiles>,
     /// Partial-match share per pattern.
@@ -47,17 +50,21 @@ impl FlappyReport {
     /// Computes the flappy-contact report for a loaded recording.
     pub fn analyze(recording: &Recording) -> Self {
         // Contact lifetimes from the tracking_id time series.
-        let mut first_seen: BTreeMap<i32, u64> = BTreeMap::new();
-        let mut lifetimes: BTreeMap<i32, u64> = BTreeMap::new();
+        let mut first_seen: BTreeMap<TrackingId, FrameNumber> = BTreeMap::new();
+        let mut lifetimes: BTreeMap<TrackingId, FrameCount> = BTreeMap::new();
         for frame in recording.frames() {
             for touch in &frame.touches {
-                let id = touch.tracking_id.0;
-                let first = first_seen.entry(id).or_insert(frame.frame.as_u64());
-                lifetimes.insert(id, frame.frame.as_u64() - *first + 1);
+                let id = touch.tracking_id;
+                let first = first_seen.entry(id).or_insert(frame.frame);
+                lifetimes.insert(
+                    id,
+                    FrameCount::new(frame.frame.as_u64() - first.as_u64() + 1),
+                );
             }
         }
 
-        let lifetime_values: Vec<f64> = lifetimes.values().map(|v| *v as f64).collect();
+        let lifetime_values: Vec<f64> =
+            lifetimes.values().map(|v| v.as_u64() as f64).collect();
         let mut lifetime_buckets: Vec<LifetimeBucket> = LIFETIME_EDGES
             .iter()
             .map(|edge| LifetimeBucket {
@@ -72,13 +79,13 @@ impl FlappyReport {
         for &lifetime in lifetimes.values() {
             let index = LIFETIME_EDGES
                 .iter()
-                .position(|edge| lifetime <= edge.as_u64())
+                .position(|edge| lifetime <= *edge)
                 .unwrap_or(LIFETIME_EDGES.len());
             lifetime_buckets[index].count += ContactCount::new(1);
         }
 
         // Dropout runs inside each tracked tangible's lifetime.
-        let mut dropout_events = 0u64;
+        let mut dropout_events = EventCount::new(0);
         let mut dropout_lengths = Vec::new();
         let mut runs: BTreeMap<u32, u64> = BTreeMap::new();
         for frame in recording.frames() {
@@ -118,7 +125,7 @@ impl FlappyReport {
         }
 
         Self {
-            contacts: lifetimes.len(),
+            contacts: ContactCount::new(lifetimes.len() as u32),
             lifetimes: Percentiles::of(lifetime_values.iter().copied()),
             lifetime_buckets,
             dropout_events,
