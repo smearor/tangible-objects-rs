@@ -1,20 +1,28 @@
+use std::sync::Arc;
+use std::sync::RwLock;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::error::TryRecvError;
-use tokio::sync::mpsc::error::TrySendError;
 use tokio::sync::watch;
 
+use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
+use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::FieldSet;
+use tangible_objects_model::PatternId;
+use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::SetTracker;
 use tangible_objects_model::TangibleSet;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedSet;
 
 use super::ControlCommand;
+use super::DeviceInfo;
 use super::DomainEvent;
+use super::EngineHandle;
 use super::EngineSnapshot;
 use super::ProfileInfo;
+use super::RecordingStatus;
 
 /// Default capacity of the broadcast event channel.
 ///
@@ -45,43 +53,22 @@ pub struct EngineRuntime {
     commands: mpsc::Receiver<ControlCommand>,
     /// Device info embedded in every snapshot; set once at session
     /// start.
-    device: Option<crate::DeviceInfo>,
+    device: Option<DeviceInfo>,
     /// Recording status embedded in every snapshot while a session is
     /// or was active.
-    recording: Option<crate::RecordingStatus>,
+    recording: Option<RecordingStatus>,
     /// Active completion configuration embedded in every snapshot.
-    completion: Option<tangible_objects_model::CompletionConfig>,
+    completion: Option<CompletionConfig>,
     /// Active field sets (static + dynamically registered) embedded in
     /// every snapshot.
-    field_sets: Vec<tangible_objects_model::FieldSet>,
+    field_sets: Vec<FieldSet>,
     /// Profile list shared with the handle - registrations at runtime
     /// must be visible to interface readers (`RwLock`, not `watch`).
-    profiles: std::sync::Arc<std::sync::RwLock<Vec<ProfileInfo>>>,
+    profiles: Arc<RwLock<Vec<ProfileInfo>>>,
     /// Accumulated session recognition metrics.
-    metrics: crate::SessionMetrics,
+    metrics: SessionMetrics,
     /// User-facing message shown by the GUI (`ShowMessage` command).
     message: Option<String>,
-}
-
-/// Cloneable consumer-side handle for interface crates.
-///
-/// Provides event subscription, snapshot access and the control channel -
-/// everything an interface needs without engine access.
-#[derive(Clone)]
-pub struct EngineHandle {
-    /// Broadcast sender for subscribing to the domain event stream.
-    events: broadcast::Sender<DomainEvent>,
-    /// Watch receiver for the latest snapshot (`snapshot()`,
-    /// `watch_snapshot()`).
-    snapshot: watch::Receiver<EngineSnapshot>,
-    /// Sending half of the control channel - interface commands reach
-    /// the device loop through it.
-    commands: mpsc::Sender<ControlCommand>,
-    /// Static Tangible Object Set definitions loaded at session start.
-    sets: std::sync::Arc<Vec<TangibleSet>>,
-    /// Profile list shared with the runtime - dynamic registrations are
-    /// published through it.
-    profiles: std::sync::Arc<std::sync::RwLock<Vec<ProfileInfo>>>,
 }
 
 impl EngineRuntime {
@@ -109,7 +96,7 @@ impl EngineRuntime {
         let (events, _) = broadcast::channel(event_capacity);
         let (snapshot_tx, snapshot_rx) = watch::channel(EngineSnapshot::default());
         let (command_tx, commands) = mpsc::channel(command_capacity);
-        let profiles = std::sync::Arc::new(std::sync::RwLock::new(profiles));
+        let profiles = Arc::new(RwLock::new(profiles));
         let runtime = Self {
             set_tracker: SetTracker::new(sets.clone()),
             events: events.clone(),
@@ -120,42 +107,36 @@ impl EngineRuntime {
             completion: None,
             field_sets: Vec::new(),
             profiles: profiles.clone(),
-            metrics: crate::SessionMetrics::default(),
+            metrics: SessionMetrics::default(),
             message: None,
         };
-        let handle = EngineHandle {
-            events,
-            snapshot: snapshot_rx,
-            commands: command_tx,
-            sets: std::sync::Arc::new(sets),
-            profiles,
-        };
+        let handle = EngineHandle::new(events, snapshot_rx, command_tx, Arc::new(sets), profiles);
         (runtime, handle)
     }
 
     /// Sets the device info published in every subsequent snapshot.
     ///
     /// Call once at session start - the device does not change mid-session.
-    pub fn set_device_info(&mut self, info: crate::DeviceInfo) {
+    pub fn set_device_info(&mut self, info: DeviceInfo) {
         self.device = Some(info);
     }
 
     /// Updates the recording status published in every subsequent snapshot;
     /// `None` clears it (no session).
-    pub fn set_recording_status(&mut self, status: Option<crate::RecordingStatus>) {
+    pub fn set_recording_status(&mut self, status: Option<RecordingStatus>) {
         self.recording = status;
     }
 
     /// Publishes the active completion configuration in subsequent
     /// snapshots. Set at session start and after each applied
     /// `SetCompletion` command.
-    pub fn set_completion(&mut self, config: tangible_objects_model::CompletionConfig) {
+    pub fn set_completion(&mut self, config: CompletionConfig) {
         self.completion = Some(config);
     }
 
     /// Publishes the active field sets (static plus dynamically
     /// registered) in subsequent snapshots.
-    pub fn set_field_sets(&mut self, field_sets: Vec<tangible_objects_model::FieldSet>) {
+    pub fn set_field_sets(&mut self, field_sets: Vec<FieldSet>) {
         self.field_sets = field_sets;
     }
 
@@ -168,7 +149,7 @@ impl EngineRuntime {
     }
 
     /// Removes a profile from the shared list by pattern ID.
-    pub fn remove_profile(&mut self, id: tangible_objects_model::PatternId) {
+    pub fn remove_profile(&mut self, id: PatternId) {
         if let Ok(mut profiles) = self.profiles.write() {
             profiles.retain(|info| info.pattern_id != id);
         }
@@ -181,7 +162,7 @@ impl EngineRuntime {
         let touches_changed = frame
             .events
             .iter()
-            .any(|e| matches!(e, tangible_objects_engine::EngineEvent::TouchPointsUpdated));
+            .any(|e| matches!(e, EngineEvent::TouchPointsUpdated));
         self.metrics.record(
             (&frame.touches).into(),
             &frame.matches,
@@ -229,7 +210,7 @@ impl EngineRuntime {
     }
 
     /// Accumulated session metrics (live view).
-    pub fn metrics(&self) -> &crate::SessionMetrics {
+    pub fn metrics(&self) -> &SessionMetrics {
         &self.metrics
     }
 
@@ -263,55 +244,6 @@ impl EngineRuntime {
     /// receivers but never blocks the device loop.
     fn broadcast(&self, event: DomainEvent) {
         let _ = self.events.send(event);
-    }
-}
-
-impl EngineHandle {
-    /// Subscribes to the domain event stream.
-    ///
-    /// Each call returns an independent receiver; lagging receivers drop
-    /// the oldest events.
-    pub fn subscribe(&self) -> broadcast::Receiver<DomainEvent> {
-        self.events.subscribe()
-    }
-
-    /// The latest published snapshot.
-    pub fn snapshot(&self) -> EngineSnapshot {
-        self.snapshot.borrow().clone()
-    }
-
-    /// Watches the snapshot for change notifications.
-    pub fn watch_snapshot(&self) -> watch::Receiver<EngineSnapshot> {
-        self.snapshot.clone()
-    }
-
-    /// The configured Tangible Object Set definitions.
-    pub fn sets(&self) -> &[TangibleSet] {
-        &self.sets
-    }
-
-    /// Info of the loaded plus dynamically registered figure profiles.
-    pub fn profiles(&self) -> Vec<ProfileInfo> {
-        self.profiles
-            .read()
-            .map(|profiles| profiles.clone())
-            .unwrap_or_default()
-    }
-
-    /// Sends a control command to the daemon's device loop.
-    pub async fn send_command(
-        &self,
-        command: ControlCommand,
-    ) -> Result<(), SendError<ControlCommand>> {
-        self.commands.send(command).await
-    }
-
-    /// Non-blocking variant of [`Self::send_command`].
-    pub fn try_send_command(
-        &self,
-        command: ControlCommand,
-    ) -> Result<(), TrySendError<ControlCommand>> {
-        self.commands.try_send(command)
     }
 }
 

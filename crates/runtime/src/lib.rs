@@ -9,10 +9,11 @@
 
 mod command;
 mod device_info;
+mod engine_handle;
+mod engine_runtime;
 mod domain_event;
 mod profile_info;
 mod recording_status;
-mod runtime;
 mod snapshot;
 
 pub use command::ControlCommand;
@@ -20,10 +21,10 @@ pub use device_info::DeviceInfo;
 pub use domain_event::DomainEvent;
 pub use profile_info::ProfileInfo;
 pub use recording_status::RecordingStatus;
-pub use runtime::COMMAND_CHANNEL_CAPACITY;
-pub use runtime::EVENT_CHANNEL_CAPACITY;
-pub use runtime::EngineHandle;
-pub use runtime::EngineRuntime;
+pub use engine_handle::EngineHandle;
+pub use engine_runtime::COMMAND_CHANNEL_CAPACITY;
+pub use engine_runtime::EVENT_CHANNEL_CAPACITY;
+pub use engine_runtime::EngineRuntime;
 pub use snapshot::EngineSnapshot;
 pub use tangible_objects_model::PatternMetrics;
 pub use tangible_objects_model::SessionMetrics;
