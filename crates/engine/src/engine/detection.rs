@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 use tangible_objects_model::Calibration;
@@ -13,7 +14,10 @@ use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::TrackingId;
+use tangible_objects_model::Vec2;
 use tracing::debug;
 
 use super::EngineEvent;
@@ -69,6 +73,9 @@ pub struct Engine {
     /// Edge margin in millimeters — touches inside it are treated as ghost
     /// contacts and excluded from the frame before matching.
     edge_margin: Millimeters,
+    /// Last smoothed position per slot, keyed with the tracking ID so a
+    /// new contact on the same slot restarts at its raw position.
+    smoothed: HashMap<TouchPointSlot, (TrackingId, Vec2<Millimeters>)>,
 }
 
 impl Engine {
@@ -96,6 +103,7 @@ impl Engine {
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
+            smoothed: HashMap::new(),
         }
     }
 
@@ -277,6 +285,34 @@ impl Engine {
     /// panels at `x=0`/`y=0` or the max bounds). `0` disables the filter.
     /// Needs a calibration — without mm bounds there is nothing to filter
     /// against.
+    /// EMA-smooths every touch position per slot
+    /// (`CompletionConfig::smoothing_alpha`). A contact whose tracking ID
+    /// changed restarts at its raw position; dead slots are dropped so
+    /// stale smoothed state can never leak into a new contact.
+    fn smooth_touches(&mut self, touches: &mut [TouchPoint]) {
+        let alpha = self.completion.smoothing_alpha.as_f64();
+        if alpha <= 0.0 || alpha >= 1.0 {
+            return;
+        }
+        self.smoothed.retain(|slot, (id, _)| {
+            touches
+                .iter()
+                .any(|t| t.slot == *slot && t.tracking_id == *id)
+        });
+        for touch in touches.iter_mut() {
+            let smoothed = match self.smoothed.get(&touch.slot) {
+                Some((id, prev)) if *id == touch.tracking_id => Vec2::new(
+                    alpha * touch.pos.x + (1.0 - alpha) * prev.x,
+                    alpha * touch.pos.y + (1.0 - alpha) * prev.y,
+                ),
+                _ => Vec2::new(touch.pos.x, touch.pos.y),
+            };
+            self.smoothed
+                .insert(touch.slot, (touch.tracking_id, smoothed));
+            touch.pos = smoothed;
+        }
+    }
+
     pub fn set_edge_margin(&mut self, margin: Millimeters) {
         self.edge_margin = margin;
     }
@@ -345,6 +381,7 @@ impl Engine {
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
         touches.retain(|touch| !self.is_edge_ghost(touch));
+        self.smooth_touches(&mut touches);
 
         // Slot affinity (TRACKING_STABILIZATION.md): every tracked
         // tangible re-matches on the slots it owned in the previous
@@ -385,7 +422,7 @@ impl Engine {
                 .map(|(index, _)| index)
                 .collect();
             let affinity_match = if indices.len() == pattern.num_points {
-                matching::try_pattern(pattern, &indices, &touches)
+                matching::try_pattern(pattern, &indices, &touches, &self.completion)
             } else if indices.len() + self.completion.max_missing as usize >= pattern.num_points
                 && pattern.num_points >= 4
             {
@@ -845,5 +882,47 @@ mod tests {
             .find(|m| m.pattern_id == PatternId::new(2))
             .expect("b still matches");
         assert_eq!(match_b.all_indices().count(), 4);
+    }
+
+    #[test]
+    fn incumbent_survives_widened_deviation() {
+        // A bound tangible keeps its match when one pin deviates beyond
+        // the pattern tolerance but inside `affinity_factor` - motion
+        // distortion must not expire a tracked figure.
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        contact(&mut engine, 0, 10, 0, 0);
+        contact(&mut engine, 1, 11, 50, 0);
+        contact(&mut engine, 2, 12, 0, 50);
+        syn(&mut engine);
+        assert_eq!(engine.tracked().len(), 1);
+
+        // Drag pin 1 out 7mm: deviation 7 > tolerance 5, but score
+        // 7/5 = 1.4 <= 2.0 keeps the incumbent match.
+        contact(&mut engine, 1, 13, 57, 0);
+        let frame = syn(&mut engine).expect("frame");
+        assert_eq!(
+            frame.matches.len(),
+            1,
+            "incumbent must survive widened deviation"
+        );
+        assert_eq!(engine.tracked().len(), 1);
+
+        // With widening disabled the same deviation loses the match.
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        let strict = tangible_objects_model::CompletionConfig {
+            affinity_factor: 1.0.into(),
+            ..Default::default()
+        };
+        engine.set_completion(strict);
+        contact(&mut engine, 0, 20, 0, 0);
+        contact(&mut engine, 1, 21, 50, 0);
+        contact(&mut engine, 2, 22, 0, 50);
+        syn(&mut engine);
+        contact(&mut engine, 1, 23, 57, 0);
+        let frame = syn(&mut engine).expect("frame");
+        assert!(
+            frame.matches.is_empty(),
+            "strict matching must reject the deviation"
+        );
     }
 }

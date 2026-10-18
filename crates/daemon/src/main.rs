@@ -46,6 +46,8 @@ fn main() -> Result<()> {
     let mut stability: Option<u64> = None;
     let mut legacy: Option<String> = None;
     let mut fields_path: Option<String> = None;
+    let mut affinity_factor: Option<f64> = None;
+    let mut smoothing_alpha: Option<f64> = None;
     let mut completion_mode: Option<String> = None;
     let mut completion_radius: Option<f64> = None;
     let mut completion_missing: Option<u32> = None;
@@ -161,6 +163,14 @@ fn main() -> Result<()> {
             "--completion-no-persist" => {
                 completion_no_persist = true;
             }
+            "--affinity-factor" => {
+                affinity_factor = args.get(i + 1).and_then(|s| s.parse().ok());
+                i += 1;
+            }
+            "--smoothing-alpha" => {
+                smoothing_alpha = args.get(i + 1).and_then(|s| s.parse().ok());
+                i += 1;
+            }
             "--help" | "-h" => {
                 mode = Some("--help");
             }
@@ -208,6 +218,8 @@ fn main() -> Result<()> {
                     completion_radius,
                     completion_missing,
                     completion_no_persist,
+                    affinity_factor,
+                    smoothing_alpha,
                 )?,
             };
             match record_base {
@@ -245,6 +257,8 @@ fn main() -> Result<()> {
                 completion_radius,
                 completion_missing,
                 completion_no_persist,
+                affinity_factor,
+                smoothing_alpha,
             )?;
             modes::run_filter(
                 &dev,
@@ -319,6 +333,8 @@ fn main() -> Result<()> {
                     completion_radius,
                     completion_missing,
                     completion_no_persist,
+                    affinity_factor,
+                    smoothing_alpha,
                 )?,
             };
             run_gui_mode(
@@ -344,6 +360,8 @@ fn parse_completion(
     radius: Option<f64>,
     max_missing: Option<u32>,
     no_persist: bool,
+    affinity: Option<f64>,
+    smoothing: Option<f64>,
 ) -> Result<tangible_objects_model::CompletionConfig> {
     use tangible_objects_model::CompletionMode;
 
@@ -364,6 +382,12 @@ fn parse_completion(
     }
     if no_persist {
         config.persist = false;
+    }
+    if let Some(factor) = affinity {
+        config.affinity_factor = factor.into();
+    }
+    if let Some(alpha) = smoothing {
+        config.smoothing_alpha = alpha.into();
     }
     Ok(config)
 }
@@ -435,6 +459,8 @@ fn print_help() {
     eprintln!(
         "  --edge-filter-mm <mm>  Geister-Kontakte am Rand verwerfen (--live/--record/--gui)"
     );
+    eprintln!("  --affinity-factor <f>  Incumbent-Toleranz-Faktor (Default 2.0, 1.0 = aus)");
+    eprintln!("  --smoothing-alpha <a>  Kontakt-Positionsglättung EMA (Default 0.6, 0 = aus)");
     eprintln!("  --fields <file|dir>       Occupancy-Feld-Sets laden (TOML)");
     eprintln!("  --completion-mode <m>     match|exact (Default: match)");
     eprintln!("  --completion-radius <f>   Claim-Radius × Toleranz (Default: 2.0)");

@@ -1,7 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::AffinityFactor;
 use super::CompletionMode;
+use super::SmoothingAlpha;
 
 /// Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
 ///
@@ -12,6 +14,7 @@ use super::CompletionMode;
 /// Loadable from `~/.config/tangible-objects/completion.toml` and
 /// changeable at runtime via the interfaces (GraphQL/MCP/D-Bus).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 #[cfg_attr(
     feature = "async-graphql",
     derive(async_graphql::SimpleObject, async_graphql::InputObject),
@@ -30,6 +33,11 @@ pub struct CompletionConfig {
     /// Whether a completed partial counts as a match only or as exact for
     /// suppression. Default [`CompletionMode::Match`].
     pub mode: CompletionMode,
+    /// Incumbent re-match tolerance widening (`match_score <= factor`);
+    /// `1.0` disables. Default 2.0.
+    pub affinity_factor: AffinityFactor,
+    /// Per-slot position smoothing alpha; `0.0` disables. Default 0.6.
+    pub smoothing_alpha: SmoothingAlpha,
 }
 
 impl Default for CompletionConfig {
@@ -39,6 +47,8 @@ impl Default for CompletionConfig {
             max_missing: 1,
             persist: true,
             mode: CompletionMode::Match,
+            affinity_factor: AffinityFactor::default(),
+            smoothing_alpha: SmoothingAlpha::default(),
         }
     }
 }

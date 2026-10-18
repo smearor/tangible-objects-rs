@@ -48,6 +48,11 @@ pub struct SetCompletionArgs {
     pub max_missing: Option<u32>,
     /// Whether claimed slots enter the tangible's slot binding.
     pub persist: Option<bool>,
+    /// Incumbent re-match tolerance widening (`match_score <= factor`,
+    /// `1.0` disables).
+    pub affinity_factor: Option<f64>,
+    /// Per-slot position smoothing alpha (`0.0` disables).
+    pub smoothing_alpha: Option<f64>,
 }
 
 /// Arguments for the `register_pattern` tool.

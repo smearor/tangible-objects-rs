@@ -211,7 +211,20 @@ impl TangiblePattern {
         {
             return None;
         }
-        let partial_tolerance = self.tolerance.0 * 1.5;
+        self.matches_partial_missing_scaled(points, missing, 1.0)
+    }
+
+    /// Like [`Self::matches_partial_missing`], with the partial tolerance
+    /// scaled by `tol_scale` - incumbent re-matching relaxes the threshold
+    /// (slot binding already proves identity); `1.0` keeps the default.
+    pub fn matches_partial_missing_scaled(
+        &self,
+        points: &[Vec2<Millimeters>],
+        missing: usize,
+        tol_scale: f64,
+    ) -> Option<(Vec<usize>, Millimeters)> {
+        self.ref_points.as_ref()?;
+        let partial_tolerance = self.tolerance.0 * 1.5 * tol_scale;
         let measured = sorted_pairwise_distances(points);
         let mut best: Option<(Vec<usize>, Millimeters)> = None;
 

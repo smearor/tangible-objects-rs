@@ -160,13 +160,24 @@ impl EngineMcp {
         if let Some(persist) = args.persist {
             config.persist = persist;
         }
+        if let Some(factor) = args.affinity_factor {
+            config.affinity_factor = factor.into();
+        }
+        if let Some(alpha) = args.smoothing_alpha {
+            config.smoothing_alpha = alpha.into();
+        }
         self.handle
             .send_command(ControlCommand::SetCompletion(config))
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-            "completion set: mode={} radius_factor={} max_missing={} persist={}",
-            config.mode, config.radius_factor, config.max_missing, config.persist
+            "completion set: mode={} radius_factor={} max_missing={} persist={} affinity={} smoothing={}",
+            config.mode,
+            config.radius_factor,
+            config.max_missing,
+            config.persist,
+            config.affinity_factor,
+            config.smoothing_alpha
         ))]))
     }
 

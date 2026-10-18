@@ -65,6 +65,29 @@ mode = "match"        # "match" | "exact"
 | `match` (default) | bound to the tangible, excluded from matching - but **not** suppressed |
 | `exact` | a completed partial suppresses matched *and* claimed slots like an exact match |
 
+## Motion distortion: smoothing + widened incumbent tolerance
+
+Real panels report each contact with its own latency, so a moving
+figure's measured geometry is *distorted* - single distances deviate
+3-5 mm beyond the profile tolerance while the figure itself is rigid.
+Two complementary countermeasures:
+
+- **Per-slot position smoothing** (`--smoothing-alpha` /
+  `smoothing_alpha` in `completion.toml`, default `0.6`, `0` = off):
+  EMA over consecutive frames per slot. The differential latency is
+  averaged out, deviations roughly halve; a new tracking ID on a slot
+  restarts at its raw position. Costs ~0.5 frame of latency.
+- **Widened incumbent tolerance** (`--affinity-factor` /
+  `affinity_factor` in `completion.toml`, default `2.0`, `1.0` = off):
+  the slot-bound re-match accepts `match_score <= factor` (per-index
+  tolerances included, partials scale the same). Only incumbents
+  benefit - new matches stay strict, so phantom risk does not grow.
+  The slot binding already proves identity; distortion must not lose it.
+
+Both knobs are part of `CompletionConfig` - the same runtime surface as
+the completion settings: `completion`/`setCompletion` (GraphQL),
+`get`/`set_completion` (MCP), `completion`/`set_completion` (D-Bus).
+
 ## Interaction
 
 - **Regions** (`[[regions]]` in profiles) restrict where a pattern may

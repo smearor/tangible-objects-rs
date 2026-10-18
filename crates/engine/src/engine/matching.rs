@@ -63,14 +63,19 @@ pub(crate) fn find_matches_with_diagnostics(
 /// Used for incumbent re-matching in slot-affinity tracking
 /// (TRACKING_STABILIZATION.md): a tracked tangible re-matches on the
 /// slots it owned in the previous frame before generic matching runs.
+/// `CompletionConfig::affinity_factor` widens the acceptance threshold
+/// (`match_score <= factor`) - the slot binding already proves identity,
+/// so motion distortion must not lose the match.
 pub(crate) fn try_pattern(
     pattern: &TangiblePattern,
     combo: &[usize],
     touches: &[TouchPoint],
+    completion: &CompletionConfig,
 ) -> Option<PatternMatch> {
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
-    (pattern.matches(&points) && pattern.accepts(&points))
-        .then(|| build_match(pattern, &points, combo, false, Vec::new()))
+    (pattern.match_score(&points) <= completion.affinity_factor.as_f64()
+        && pattern.accepts(&points))
+    .then(|| build_match(pattern, &points, combo, false, Vec::new()))
 }
 
 /// Like [`try_pattern`] for a partial (`num_points - 1`) combination;
@@ -86,7 +91,7 @@ pub(crate) fn try_partial(
     let points: Vec<Vec2<Millimeters>> = combo.iter().map(|&i| touches[i].pos).collect();
     let missing = pattern.num_points.checked_sub(combo.len())?;
     pattern
-        .matches_partial_missing(&points, missing)
+        .matches_partial_missing_scaled(&points, missing, completion.affinity_factor.as_f64())
         .filter(|_| pattern.accepts(&points))
         .map(|(kept_refs, _)| {
             let claimed = claim_missing(
