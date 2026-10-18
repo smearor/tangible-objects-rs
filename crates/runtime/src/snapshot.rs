@@ -25,4 +25,7 @@ pub struct EngineSnapshot {
     /// Active missing-pin completion configuration - read-only view for
     /// interfaces (`set_completion` commands go through the device loop).
     pub completion: Option<tangible_objects_model::CompletionConfig>,
+    /// Active occupancy field sets - static (`--fields`) plus dynamically
+    /// registered ones.
+    pub field_sets: Vec<tangible_objects_model::FieldSet>,
 }

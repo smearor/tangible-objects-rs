@@ -10,6 +10,8 @@ debounced over `stability` consecutive frames in both directions.
 ```toml
 name = "chess"
 stability = 2            # optional, default 2 frames
+suppress = false         # optional: contacts inside fields never reach
+                         # the OS (filter-proxy suppression)
 
 [window]                 # optional: fields become window-relative
 x_offset = 50.0          # window's top-left corner, screen mm
@@ -30,6 +32,17 @@ y_max = 100.0
 - Without `[window]` field coordinates are screen-absolute millimeters.
 - With `[window]` they are relative to `x_offset`/`y_offset`; with
   `width`/`height` additionally normalized (`0.0..=1.0` of the window).
+- `suppress = true` merges the field's contacts into the proxy's
+  suppression set in `--filter` mode - a chess marker no longer taps the
+  UI. Suppression is immediate (not debounced).
+
+## Runtime registration
+
+Field sets register like profiles (DYNAMIC_PROFILES.md): GraphQL
+`registerFieldSet`, MCP `register_field_set` (TOML string), D-Bus
+`register_field_set` - with `owner`, `lifetime` (`persistent` writes to
+`~/.config/tangible-objects/fields.d/` and reloads on startup) and
+`unregister_field_set`/`unregister_owner` removal.
 
 ## Usage
 

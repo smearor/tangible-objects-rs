@@ -3,7 +3,12 @@ use std::path::PathBuf;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::Lifetime;
+use tangible_objects_model::Owner;
+use tangible_objects_model::PatternId;
+use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::Registration;
 
 /// Control command sent by an interface back to the daemon's device loop.
 ///
@@ -41,4 +46,46 @@ pub enum ControlCommand {
     /// (TRACKING_STABILIZATION.md). Applies to matching and suppression in
     /// all modes from the next frame on.
     SetCompletion(CompletionConfig),
+    /// Register a profile or field set at runtime (DYNAMIC_PROFILES.md).
+    /// Registrations whose fingerprint collides with an already-loaded
+    /// profile are rejected in the device loop.
+    Register {
+        /// What to register - boxed: `ProfileFile` makes this variant
+        /// large; boxing keeps `ControlCommand` small for the channel.
+        registration: Box<Registration>,
+        /// Optional application name the registration belongs to -
+        /// `UnregisterOwner` removes every registration of an owner;
+        /// D-Bus binds registrations to the caller's unique name for
+        /// automatic disconnect cleanup.
+        owner: Option<Owner>,
+        /// `Session` (default) or `Persistent` - persistent registrations
+        /// are written to the daemon's runtime store on apply.
+        lifetime: Lifetime,
+    },
+    /// Replace a registered pattern's geometry/name while keeping its
+    /// ID (`UpdateProfile`). Applies to new matches; tracked tangibles
+    /// keep their recorded pose.
+    UpdateProfile {
+        /// Pattern to replace.
+        id: PatternId,
+        /// New profile definition - boxed like `Register`.
+        profile: Box<ProfileFile>,
+    },
+    /// Remove a dynamically registered pattern by its pattern ID. The ID
+    /// is never reused.
+    UnregisterPattern {
+        /// Pattern to remove.
+        id: PatternId,
+    },
+    /// Remove a field set by name.
+    UnregisterFieldSet {
+        /// Field set to remove.
+        name: String,
+    },
+    /// Remove every pattern and field set owned by `owner` - used for
+    /// explicit app cleanup and D-Bus disconnect handling.
+    UnregisterOwner {
+        /// Owner name (or the caller's unique bus name on D-Bus).
+        owner: Owner,
+    },
 }

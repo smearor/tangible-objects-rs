@@ -26,10 +26,13 @@ use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::FrameNumber;
+use tangible_objects_model::Lifetime;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Milliseconds;
+use tangible_objects_model::Owner;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::Registration;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::Vec2;
@@ -79,7 +82,16 @@ pub fn effective_calibration(
 /// Loads figure patterns from a profile directory (default: `profiles/`).
 pub fn load_patterns(profiles_dir: Option<&str>) -> Vec<TangiblePattern> {
     let dir = profiles_dir.unwrap_or("profiles");
-    let dir_result = ProfileFile::load_dir(Path::new(dir));
+    let mut dir_result = ProfileFile::load_dir(Path::new(dir));
+    // `Lifetime::Persistent` registrations live in the runtime store and
+    // reload with the static set.
+    if let Some(store) = runtime_store_dir("profiles.d")
+        && store.is_dir()
+    {
+        let mut stored = ProfileFile::load_dir(&store);
+        dir_result.profiles.append(&mut stored.profiles);
+        dir_result.errors.append(&mut stored.errors);
+    }
     for (_, profile) in &dir_result.profiles {
         println!(
             "Profil geladen: {} ({} Punkte, {} Abstände)",
@@ -294,17 +306,34 @@ pub fn load_completion() -> CompletionConfig {
 /// A `.toml` file loads one set, a directory loads all sets inside.
 /// Invalid files are reported and skipped.
 pub fn load_field_sets(path: Option<&str>) -> Vec<FieldSet> {
-    let Some(path) = path else { return Vec::new() };
-    let path = Path::new(path);
-    let sets = if path.is_dir() {
-        let (sets, errors) = FieldSet::load_dir(path);
+    let mut sets = Vec::new();
+    // Persisted field sets (`Lifetime::Persistent`) reload with the
+    // static `--fields` set.
+    if let Some(store) = runtime_store_dir("fields.d")
+        && store.is_dir()
+    {
+        let (stored, errors) = FieldSet::load_dir(&store);
         for (file, error) in &errors {
             eprintln!(
                 "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
                 file.display()
             );
         }
-        sets
+        sets.extend(stored);
+    }
+    let Some(path) = path else {
+        return sets;
+    };
+    let path = Path::new(path);
+    let file_sets = if path.is_dir() {
+        let (file_sets, errors) = FieldSet::load_dir(path);
+        for (file, error) in &errors {
+            eprintln!(
+                "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
+                file.display()
+            );
+        }
+        file_sets
     } else {
         match FieldSet::load(path) {
             Ok(set) => vec![set],
@@ -317,6 +346,7 @@ pub fn load_field_sets(path: Option<&str>) -> Vec<FieldSet> {
             }
         }
     };
+    sets.extend(file_sets);
     for set in &sets {
         println!(
             "Feld-Set geladen: {} ({} Felder)",
@@ -370,6 +400,7 @@ pub fn run_live(
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     runtime.set_completion(config.completion);
+    runtime.set_field_sets(engine.field_sets().to_vec());
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
@@ -523,7 +554,172 @@ fn drain_control_commands(
                     config.mode, config.radius_factor, config.max_missing, config.persist
                 );
             }
+            other => apply_registration(runtime, engine, other),
         }
+    }
+}
+
+/// Runtime store for `Lifetime::Persistent` registrations:
+/// `~/.config/tangible-objects/profiles.d/` resp. `fields.d/`.
+fn runtime_store_dir(kind: &str) -> Option<PathBuf> {
+    completion_config_path()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .map(|base| base.join(kind))
+}
+
+/// Persists a registered profile/field set into the runtime store.
+fn persist_registration(registration: &Registration) {
+    let Some(store) = runtime_store_dir(match registration {
+        Registration::Pattern(_) => "profiles.d",
+        Registration::FieldSet(_) => "fields.d",
+    }) else {
+        return;
+    };
+    let (name, result) = match registration {
+        Registration::Pattern(profile) => (
+            profile.name.clone(),
+            std::fs::create_dir_all(&store).and_then(|_| {
+                profile
+                    .save(&store.join(format!("{}.toml", profile.name)))
+                    .map_err(std::io::Error::other)
+            }),
+        ),
+        Registration::FieldSet(set) => (
+            set.name.clone(),
+            std::fs::create_dir_all(&store).and_then(|_| {
+                std::fs::write(
+                    store.join(format!("{}.toml", set.name)),
+                    toml::to_string_pretty(set).unwrap_or_default(),
+                )
+            }),
+        ),
+    };
+    match result {
+        Ok(()) => println!("\nGespeichert: {name}"),
+        Err(e) => warn!(error = %e, name, "persist failed"),
+    }
+}
+
+/// Deletes a persisted registration file, if it exists.
+fn unpersist(store_kind: &str, name: &str) {
+    if let Some(path) = runtime_store_dir(store_kind).map(|dir| dir.join(format!("{name}.toml")))
+        && path.exists()
+        && let Err(e) = std::fs::remove_file(&path)
+    {
+        warn!(error = %e, path = %path.display(), "unpersist failed");
+    }
+}
+
+/// Applies `Register`/`Unregister*`/`UpdateProfile` control commands to
+/// engine and runtime; unrelated commands are logged and ignored.
+fn apply_registration(runtime: &mut EngineRuntime, engine: &mut Engine, command: ControlCommand) {
+    match command {
+        ControlCommand::Register {
+            registration,
+            owner,
+            lifetime,
+        } => {
+            match *registration {
+                Registration::Pattern(ref profile) => {
+                    match engine.add_pattern(profile, owner.clone()) {
+                        Ok(id) => {
+                            println!(
+                                "\nProfil registriert: {} (id {}, owner {:?}, {})",
+                                profile.name, id, owner, lifetime
+                            );
+                            runtime.add_profile(ProfileInfo {
+                                pattern_id: id,
+                                name: profile.name.clone(),
+                                num_points: profile.num_points as u32,
+                                owner,
+                            });
+                        }
+                        Err(reason) => {
+                            println!("\nProfil-Registrierung abgelehnt: {reason}");
+                            return;
+                        }
+                    }
+                }
+                Registration::FieldSet(ref set) => {
+                    let name = set.name.clone();
+                    match engine.add_field_set(set.clone(), owner.clone()) {
+                        Ok(()) => {
+                            println!(
+                                "\nFeld-Set registriert: {name} (owner {owner:?}, {lifetime})"
+                            );
+                            runtime.set_field_sets(engine.field_sets().to_vec());
+                        }
+                        Err(reason) => {
+                            println!("\nFeld-Set abgelehnt: {reason}");
+                            return;
+                        }
+                    }
+                }
+            }
+            if lifetime == Lifetime::Persistent {
+                persist_registration(&registration);
+            }
+        }
+        ControlCommand::UpdateProfile { id, profile } => {
+            match engine.update_pattern(id, &profile) {
+                Ok(()) => {
+                    println!("\nProfil aktualisiert: {id} -> {}", profile.name);
+                    runtime.remove_profile(id);
+                    runtime.add_profile(ProfileInfo {
+                        pattern_id: id,
+                        name: profile.name.clone(),
+                        num_points: profile.num_points as u32,
+                        owner: engine
+                            .pattern_owner(id)
+                            .map(Owner::to_string)
+                            .map(Owner::new),
+                    });
+                }
+                Err(reason) => println!("\nProfil-Update abgelehnt: {reason}"),
+            }
+        }
+        ControlCommand::UnregisterPattern { id } => {
+            let name = engine
+                .patterns()
+                .iter()
+                .find(|pattern| pattern.id == id)
+                .map(|pattern| pattern.name.clone());
+            if engine.remove_pattern(id) {
+                runtime.remove_profile(id);
+                if let Some(name) = name {
+                    unpersist("profiles.d", &name);
+                }
+                println!("\nProfil entfernt: {id}");
+            } else {
+                println!("\nProfil {id} nicht gefunden");
+            }
+        }
+        ControlCommand::UnregisterFieldSet { name } => {
+            if engine.remove_field_set(&name) {
+                runtime.set_field_sets(engine.field_sets().to_vec());
+                unpersist("fields.d", &name);
+                println!("\nFeld-Set entfernt: {name}");
+            } else {
+                println!("\nFeld-Set {name} nicht gefunden");
+            }
+        }
+        ControlCommand::UnregisterOwner { owner } => {
+            let (patterns, field_sets) = engine.remove_by_owner(&owner);
+            for (id, name) in &patterns {
+                runtime.remove_profile(*id);
+                unpersist("profiles.d", name);
+            }
+            for name in &field_sets {
+                unpersist("fields.d", name);
+            }
+            runtime.set_field_sets(engine.field_sets().to_vec());
+            println!(
+                "\nOwner {owner} bereinigt: {} Profile, {} Feld-Sets entfernt",
+                patterns.len(),
+                field_sets.len()
+            );
+        }
+        other => warn!(?other, "command ignored"),
     }
 }
 
@@ -576,6 +772,7 @@ pub fn run_filter(
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     runtime.set_completion(config.completion);
+    runtime.set_field_sets(engine.field_sets().to_vec());
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
@@ -607,7 +804,7 @@ pub fn run_filter(
                         config.mode, config.radius_factor, config.max_missing, config.persist
                     );
                 }
-                other => warn!(?other, "command ignored in filter mode"),
+                other => apply_registration(&mut runtime, &mut engine, other),
             }
         }
 
@@ -646,7 +843,7 @@ pub fn run_filter(
             // Exact matches always suppress; under CompletionMode::Exact a
             // completed partial suppresses its matched *and* claimed slots.
             let completion_exact = engine.completion().mode == CompletionMode::Exact;
-            let suppressed: HashSet<TouchPointSlot> = engine_frame
+            let mut suppressed: HashSet<TouchPointSlot> = engine_frame
                 .matches
                 .iter()
                 .flat_map(|matched| {
@@ -660,6 +857,9 @@ pub fn run_filter(
                 })
                 .map(|index| engine_frame.touches[index].slot)
                 .collect();
+            // Contacts inside `suppress`-enabled field sets never reach
+            // the OS either (SINGLE_CONTACT_FIELD.md).
+            suppressed.extend(engine.field_suppressed_slots(&engine_frame.touches));
 
             let out = proxy.finish(&suppressed);
             virtual_device.emit(&out).into_diagnostic()?;
@@ -771,6 +971,7 @@ pub fn run_record(
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     runtime.set_completion(config.completion);
+    runtime.set_field_sets(engine.field_sets().to_vec());
     spawn_interfaces(&handle, &interfaces);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
@@ -830,6 +1031,7 @@ pub fn run_record(
                         config.mode, config.radius_factor, config.max_missing, config.persist
                     );
                 }
+                other => apply_registration(&mut runtime, &mut engine, other),
             }
         }
 

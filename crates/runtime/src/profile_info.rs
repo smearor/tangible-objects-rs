@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
+use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::TangiblePattern;
 
@@ -16,11 +17,14 @@ pub struct ProfileInfo {
     pub name: String,
     /// Number of contact pins the figure must have.
     pub num_points: u32,
+    /// Owning application for runtime registrations; `None` for
+    /// statically loaded profiles.
+    pub owner: Option<Owner>,
 }
 
 #[cfg(feature = "zbus")]
 impl zvariant::Type for ProfileInfo {
-    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(usu)");
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(usus)");
 }
 
 impl From<&TangiblePattern> for ProfileInfo {
@@ -29,6 +33,7 @@ impl From<&TangiblePattern> for ProfileInfo {
             pattern_id: pattern.id,
             name: pattern.name.clone(),
             num_points: pattern.num_points as u32,
+            owner: None,
         }
     }
 }

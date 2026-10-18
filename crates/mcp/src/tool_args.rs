@@ -50,6 +50,71 @@ pub struct SetCompletionArgs {
     pub persist: Option<bool>,
 }
 
+/// Arguments for the `register_pattern` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RegisterPatternArgs {
+    /// Figure name.
+    pub name: String,
+    /// Flat pin coordinates `[x0, y0, x1, y1, ...]` in millimeters.
+    pub points: Vec<f64>,
+    /// Scalar matching tolerance in millimeters.
+    pub tolerance: f64,
+    /// Optional owner/application name.
+    pub owner: Option<String>,
+    /// `session` (default) or `persistent` (written to the runtime
+    /// store).
+    pub lifetime: Option<String>,
+}
+
+/// Arguments for the `update_profile` tool - replaces a registered
+/// pattern's geometry while keeping its ID.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UpdateProfileArgs {
+    /// Pattern ID from `list_profiles`.
+    pub pattern_id: u32,
+    /// Figure name.
+    pub name: String,
+    /// Flat pin coordinates `[x0, y0, x1, y1, ...]` in millimeters.
+    pub points: Vec<f64>,
+    /// Scalar matching tolerance in millimeters.
+    pub tolerance: f64,
+}
+
+/// Arguments for the `register_field_set` tool - the set is given as TOML
+/// in the same shape as `--fields` files.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RegisterFieldSetArgs {
+    /// Field set as TOML (`name`, optional `stability`/`[window]`,
+    /// `[[fields]]` cells).
+    pub toml: String,
+    /// Optional owner/application name.
+    pub owner: Option<String>,
+    /// `session` (default) or `persistent` (written to the runtime
+    /// store).
+    pub lifetime: Option<String>,
+}
+
+/// Arguments for the `unregister_pattern` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UnregisterPatternArgs {
+    /// Pattern ID from `list_profiles`.
+    pub pattern_id: u32,
+}
+
+/// Arguments for the `unregister_field_set` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UnregisterFieldSetArgs {
+    /// Field-set name.
+    pub name: String,
+}
+
+/// Arguments for the `unregister_owner` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UnregisterOwnerArgs {
+    /// Owner name whose registrations are removed.
+    pub owner: String,
+}
+
 /// Arguments for the `set_record_label` tool.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SetRecordLabelArgs {

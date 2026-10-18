@@ -9,7 +9,8 @@ use super::WindowAnchor;
 use crate::FrameCount;
 use crate::Region;
 
-fn default_stability() -> FrameCount {
+/// Default debounce stability for field sets (2 frames).
+pub fn default_stability() -> FrameCount {
     FrameCount::new(2)
 }
 
@@ -48,6 +49,11 @@ pub struct FieldSet {
     /// see [`Self::is_disjoint`].
     #[serde(rename = "fields")]
     pub fields: Vec<Field>,
+    /// Whether contacts inside this set's fields are suppressed by the
+    /// filter proxy (they never reach the OS). Default `false` -
+    /// occupancy is informational only.
+    #[serde(default)]
+    pub suppress: bool,
 }
 
 impl FieldSet {

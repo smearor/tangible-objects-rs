@@ -2,6 +2,7 @@ use std::future::pending;
 
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_model::SetAction;
+use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DomainEvent;
 use tangible_objects_runtime::EngineHandle;
 use tokio::sync::broadcast::error::RecvError;
@@ -12,6 +13,7 @@ use zbus::connection;
 use zbus::object_server::SignalEmitter;
 
 use super::EngineService;
+use super::OwnerSessions;
 
 /// Well-known bus name of the daemon's D-Bus service.
 pub const BUS_NAME: &str = "org.tangibleobjects.Engine";
@@ -22,9 +24,13 @@ pub const OBJECT_PATH: &str = "/org/tangibleobjects/Engine";
 /// Serves the D-Bus interface on the session bus and forwards domain
 /// events as signals until the device loop stops.
 pub async fn serve(handle: EngineHandle) -> zbus::Result<()> {
+    let owner_sessions: OwnerSessions = Default::default();
     let connection = connection::Builder::session()?
         .name(BUS_NAME)?
-        .serve_at(OBJECT_PATH, EngineService::new(handle.clone()))?
+        .serve_at(
+            OBJECT_PATH,
+            EngineService::new(handle.clone(), owner_sessions.clone()),
+        )?
         .build()
         .await?;
     info!(
@@ -32,6 +38,43 @@ pub async fn serve(handle: EngineHandle) -> zbus::Result<()> {
         path = OBJECT_PATH,
         "D-Bus service listening"
     );
+
+    // Disconnect cleanup: when a caller's unique bus name vanishes,
+    // unregister everything that name had registered (session-scoped).
+    let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
+    let mut owner_changes = proxy.receive_name_owner_changed().await?;
+    let cleanup_handle = handle.clone();
+    tokio::spawn(async move {
+        use futures_lite::StreamExt;
+
+        while let Some(signal) = owner_changes.next().await {
+            let Ok(args) = signal.args() else {
+                continue;
+            };
+            if args.new_owner().is_some() {
+                continue;
+            }
+            let name = args.name().to_string();
+            let owners: Vec<String> = owner_sessions
+                .lock()
+                .map(|mut sessions| {
+                    sessions
+                        .remove(&name)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .collect()
+                })
+                .unwrap_or_default();
+            for owner in owners {
+                info!(%owner, %name, "D-Bus caller vanished - unregistering");
+                let _ = cleanup_handle
+                    .send_command(ControlCommand::UnregisterOwner {
+                        owner: owner.into(),
+                    })
+                    .await;
+            }
+        }
+    });
 
     let emitter = SignalEmitter::new(&connection, OBJECT_PATH)?;
     let mut events = handle.subscribe();

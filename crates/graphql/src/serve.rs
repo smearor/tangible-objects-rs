@@ -94,6 +94,7 @@ mod tests {
                 pattern_id: PatternId::new(1),
                 name: "triangle".to_string(),
                 num_points: 3,
+                owner: None,
             }],
         );
         let schema = build_schema(handle);

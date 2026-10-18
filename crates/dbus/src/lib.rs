@@ -16,3 +16,4 @@ pub use serve::OBJECT_PATH;
 pub use serve::serve;
 pub use serve::spawn;
 pub use service::EngineService;
+pub use service::OwnerSessions;

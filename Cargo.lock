@@ -2230,10 +2230,12 @@ dependencies = [
 name = "tangible-objects-dbus"
 version = "0.1.0"
 dependencies = [
+ "futures-lite",
  "tangible-objects-engine",
  "tangible-objects-model",
  "tangible-objects-runtime",
  "tokio",
+ "toml 0.8.23",
  "tracing",
  "zbus",
 ]
@@ -2278,6 +2280,7 @@ dependencies = [
  "tangible-objects-model",
  "tangible-objects-runtime",
  "tokio",
+ "toml 0.8.23",
  "tracing",
 ]
 

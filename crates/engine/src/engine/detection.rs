@@ -6,7 +6,10 @@ use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
+use tangible_objects_model::Owner;
+use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
@@ -53,6 +56,13 @@ pub struct Engine {
     /// Missing-pin completion configuration (claim radius, max missing
     /// pins, persistence, suppression mode).
     completion: CompletionConfig,
+    /// Next free pattern ID for dynamic registrations - monotonic, freed
+    /// IDs are never reused (DYNAMIC_PROFILES.md decision).
+    next_pattern_id: PatternId,
+    /// Owner (registering application) per dynamically added pattern.
+    pattern_owners: std::collections::HashMap<PatternId, Option<Owner>>,
+    /// Owner per dynamically added field set, keyed by set name.
+    field_set_owners: std::collections::HashMap<String, Option<Owner>>,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -65,6 +75,11 @@ impl Engine {
     /// Creates an engine with the given figure patterns and default
     /// tracker parameters.
     pub fn new(patterns: Vec<TangiblePattern>) -> Self {
+        let next_pattern_id = patterns
+            .iter()
+            .map(|pattern| pattern.id.as_u32())
+            .max()
+            .map_or(PatternId::new(0), |max| PatternId::new(max + 1));
         Self {
             touch_state: TouchState::new(),
             patterns,
@@ -75,6 +90,9 @@ impl Engine {
             ),
             fields: FieldTracker::new(),
             completion: CompletionConfig::default(),
+            next_pattern_id,
+            pattern_owners: std::collections::HashMap::new(),
+            field_set_owners: std::collections::HashMap::new(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -112,6 +130,146 @@ impl Engine {
     /// The active completion configuration.
     pub fn completion(&self) -> CompletionConfig {
         self.completion
+    }
+
+    /// Registers a pattern at runtime (DYNAMIC_PROFILES.md).
+    ///
+    /// The new pattern gets a fresh monotonic [`PatternId`]; its
+    /// fingerprint is collision-checked against every existing pattern -
+    /// on collision the registration is rejected and nothing changes.
+    /// Returns the assigned `PatternId`.
+    pub fn add_pattern(
+        &mut self,
+        profile: &ProfileFile,
+        owner: Option<Owner>,
+    ) -> Result<PatternId, String> {
+        self.check_pattern_collision(profile, None)?;
+        let id = self.next_pattern_id;
+        self.next_pattern_id = PatternId::new(id.as_u32() + 1);
+        self.pattern_owners.insert(id, owner);
+        self.patterns.push(profile.to_pattern(id));
+        Ok(id)
+    }
+
+    /// Replaces a registered pattern's geometry/name while keeping its
+    /// ID (`UpdateProfile`). The collision check excludes the pattern
+    /// itself; already-tracked tangibles keep their recorded pose - the
+    /// update applies to new matches.
+    pub fn update_pattern(&mut self, id: PatternId, profile: &ProfileFile) -> Result<(), String> {
+        if !self.patterns.iter().any(|pattern| pattern.id == id) {
+            return Err(format!("pattern {id} not found"));
+        }
+        self.check_pattern_collision(profile, Some(id))?;
+        if let Some(pattern) = self.patterns.iter_mut().find(|pattern| pattern.id == id) {
+            *pattern = profile.to_pattern(id);
+        }
+        Ok(())
+    }
+
+    /// Fingerprint check of `profile` against all patterns except
+    /// `except` (used by add/update).
+    fn check_pattern_collision(
+        &self,
+        profile: &ProfileFile,
+        except: Option<PatternId>,
+    ) -> Result<(), String> {
+        let pattern = profile.to_pattern(PatternId::new(0));
+        if let Some(points) = pattern.ref_points.as_deref()
+            && let Some(existing) = self
+                .patterns
+                .iter()
+                .filter(|existing| Some(existing.id) != except)
+                .find(|existing| existing.matches(points))
+        {
+            return Err(format!(
+                "fingerprint collides with registered profile '{}'",
+                existing.name
+            ));
+        }
+        Ok(())
+    }
+
+    /// Removes a pattern by ID (dynamic unregister). Its ID is never
+    /// reused. Returns `true` when a pattern was removed.
+    pub fn remove_pattern(&mut self, id: PatternId) -> bool {
+        self.pattern_owners.remove(&id);
+        let before = self.patterns.len();
+        self.patterns.retain(|pattern| pattern.id != id);
+        self.patterns.len() != before
+    }
+
+    /// Owner recorded for a pattern, if any.
+    pub fn pattern_owner(&self, id: PatternId) -> Option<&Owner> {
+        self.pattern_owners.get(&id).and_then(Option::as_ref)
+    }
+
+    /// Removes every pattern and field set owned by `owner` (disconnect
+    /// cleanup). Returns `(id, name)` pairs for patterns and names for
+    /// field sets - names let the caller remove persisted files too.
+    pub fn remove_by_owner(&mut self, owner: &Owner) -> (Vec<(PatternId, String)>, Vec<String>) {
+        let patterns: Vec<(PatternId, String)> = self
+            .pattern_owners
+            .iter()
+            .filter(|(_, o)| o.as_ref() == Some(owner))
+            .filter_map(|(id, _)| {
+                self.patterns
+                    .iter()
+                    .find(|pattern| pattern.id == *id)
+                    .map(|pattern| (*id, pattern.name.clone()))
+            })
+            .collect();
+        for (id, _) in &patterns {
+            self.remove_pattern(*id);
+        }
+        let set_names: Vec<String> = self
+            .field_set_owners
+            .iter()
+            .filter(|(_, o)| o.as_ref() == Some(owner))
+            .map(|(name, _)| name.clone())
+            .collect();
+        for name in &set_names {
+            self.remove_field_set(name);
+        }
+        (patterns, set_names)
+    }
+
+    /// Adds an occupancy field set at runtime; rejected on overlapping
+    /// fields or duplicate set name.
+    pub fn add_field_set(&mut self, set: FieldSet, owner: Option<Owner>) -> Result<(), String> {
+        if !set.is_disjoint() {
+            return Err(format!("field set '{}' has overlapping fields", set.name));
+        }
+        if self
+            .fields
+            .sets()
+            .iter()
+            .any(|existing| existing.name == set.name)
+        {
+            return Err(format!("field set '{}' already registered", set.name));
+        }
+        self.field_set_owners.insert(set.name.clone(), owner);
+        self.fields.add_set(set);
+        Ok(())
+    }
+
+    /// Removes a field set by name. Returns `true` when removed.
+    pub fn remove_field_set(&mut self, name: &str) -> bool {
+        self.field_set_owners.remove(name);
+        self.fields.remove_set(name)
+    }
+
+    /// All active field sets (static plus dynamically registered).
+    pub fn field_sets(&self) -> &[FieldSet] {
+        self.fields.sets()
+    }
+
+    /// Slots inside fields of `suppress`-enabled sets - merged into the
+    /// proxy's suppression set in `--filter` mode.
+    pub fn field_suppressed_slots(
+        &self,
+        touches: &[TouchPoint],
+    ) -> std::collections::HashSet<tangible_objects_model::TouchPointSlot> {
+        self.fields.suppressed_slots(touches)
     }
 
     /// Sets the edge margin: touches closer than `margin` to the surface
@@ -306,6 +464,10 @@ mod tests {
     use tangible_objects_model::ABS_MT_SLOT;
     use tangible_objects_model::ABS_MT_TRACKING_ID;
     use tangible_objects_model::EventType;
+    use tangible_objects_model::FieldSet;
+    use tangible_objects_model::Owner;
+    use tangible_objects_model::PatternId;
+    use tangible_objects_model::ProfileFile;
     use tangible_objects_model::RawEvent;
     use tangible_objects_model::SYN_REPORT;
     use tangible_objects_model::TangiblePattern;
@@ -467,5 +629,128 @@ mod tests {
 
         assert_eq!(engine.tracked().len(), 1);
         assert_eq!(engine.tracked()[0].id, id);
+    }
+
+    #[test]
+    fn add_pattern_rejects_colliding_fingerprint() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        // Same geometry as the loaded triangle - collides.
+        let colliding = ProfileFile::from_points(
+            "clone",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(50.0, 0.0),
+                Vec2::new(0.0, 50.0),
+            ],
+            5.0,
+        );
+        assert!(engine.add_pattern(&colliding, None).is_err());
+
+        // A different geometry registers with a fresh monotonic ID.
+        let fresh = ProfileFile::from_points(
+            "big",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(80.0, 0.0),
+                Vec2::new(0.0, 80.0),
+            ],
+            5.0,
+        );
+        let id = engine.add_pattern(&fresh, None).expect("register pattern");
+        assert_eq!(id, PatternId::new(2)); // triangle took id 1
+    }
+
+    #[test]
+    fn unregister_never_reuses_pattern_ids() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        let square = ProfileFile::from_points(
+            "big",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(80.0, 0.0),
+                Vec2::new(0.0, 80.0),
+            ],
+            5.0,
+        );
+        let first = engine.add_pattern(&square, None).expect("register pattern");
+        assert!(engine.remove_pattern(first));
+        // A second registration gets a fresh ID, not the freed one.
+        let second = engine
+            .add_pattern(&square, None)
+            .expect("register pattern again");
+        assert!(second.as_u32() > first.as_u32());
+    }
+
+    #[test]
+    fn update_pattern_keeps_id_and_owner() {
+        let mut engine = Engine::new(vec![]);
+        let small = ProfileFile::from_points(
+            "pawn",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(30.0, 0.0),
+                Vec2::new(0.0, 30.0),
+            ],
+            5.0,
+        );
+        let id = engine
+            .add_pattern(&small, Some("chess".into()))
+            .expect("register");
+        let bigger = ProfileFile::from_points(
+            "pawn-v2",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(80.0, 0.0),
+                Vec2::new(0.0, 80.0),
+            ],
+            5.0,
+        );
+        engine.update_pattern(id, &bigger).expect("update");
+        assert_eq!(engine.patterns()[0].id, id);
+        assert_eq!(engine.patterns()[0].name, "pawn-v2");
+        assert_eq!(engine.pattern_owner(id).map(Owner::as_str), Some("chess"));
+        // Update must not collide with itself.
+        assert!(engine.update_pattern(id, &bigger).is_ok());
+    }
+
+    #[test]
+    fn remove_by_owner_clears_every_registration() {
+        let mut engine = Engine::new(vec![]);
+        let shape = ProfileFile::from_points(
+            "shape",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(30.0, 0.0),
+                Vec2::new(0.0, 30.0),
+            ],
+            5.0,
+        );
+        engine
+            .add_pattern(&shape, Some("game".into()))
+            .expect("register");
+        engine
+            .add_field_set(
+                FieldSet {
+                    name: "grid".to_string(),
+                    window: None,
+                    stability: tangible_objects_model::default_stability(),
+                    fields: Vec::new(),
+                    suppress: false,
+                },
+                Some("game".into()),
+            )
+            .expect("register field set");
+        let (patterns, sets) = engine.remove_by_owner(&"game".into());
+        assert_eq!(patterns.len(), 1);
+        assert_eq!(sets, vec!["grid".to_string()]);
+        assert!(engine.patterns().is_empty());
+        assert!(engine.field_sets().is_empty());
+        // Other owners stay untouched.
+        engine
+            .add_pattern(&shape, Some("other".into()))
+            .expect("register");
+        let (patterns, _) = engine.remove_by_owner(&"game".into());
+        assert!(patterns.is_empty());
+        assert_eq!(engine.patterns().len(), 1);
     }
 }

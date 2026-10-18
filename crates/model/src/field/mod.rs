@@ -11,3 +11,4 @@ mod set;
 pub use anchor::WindowAnchor;
 pub use cell::Field;
 pub use set::FieldSet;
+pub use set::default_stability;

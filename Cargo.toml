@@ -31,6 +31,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # engine
 evdev = "0.12"
 libc = "0.2"
+futures-lite = "2"
 tokio = { version = "1", features = ["full"] }
 # interfaces (planned for Phase 2)
 async-graphql = "7"

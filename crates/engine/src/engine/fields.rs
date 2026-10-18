@@ -65,6 +65,55 @@ impl FieldTracker {
         !self.sets.is_empty()
     }
 
+    /// The loaded field sets.
+    pub fn sets(&self) -> &[FieldSet] {
+        &self.sets
+    }
+
+    /// Adds one field set at runtime (dynamic registration). The caller
+    /// validates disjointness and name uniqueness; the set's cell states
+    /// start empty.
+    pub fn add_set(&mut self, set: FieldSet) {
+        self.states
+            .push(vec![CellState::default(); set.fields.len()]);
+        self.sets.push(set);
+    }
+
+    /// Removes a field set by name. Returns `true` when removed.
+    pub fn remove_set(&mut self, name: &str) -> bool {
+        let Some(index) = self.sets.iter().position(|set| set.name == name) else {
+            return false;
+        };
+        self.sets.remove(index);
+        self.states.remove(index);
+        true
+    }
+
+    /// Slots whose touches sit inside a field of a `suppress`-enabled
+    /// set - merged into the proxy's suppression set so marker contacts
+    /// never reach the OS (SINGLE_CONTACT_FIELD.md).
+    ///
+    /// Suppression is immediate, not debounced: a marker contact is
+    /// withheld from the very first frame it appears inside a field.
+    pub fn suppressed_slots(
+        &self,
+        touches: &[TouchPoint],
+    ) -> std::collections::HashSet<tangible_objects_model::TouchPointSlot> {
+        touches
+            .iter()
+            .filter(|touch| {
+                self.sets.iter().any(|set| {
+                    set.suppress
+                        && set
+                            .fields
+                            .iter()
+                            .any(|field| field_contains(set, field, touch))
+                })
+            })
+            .map(|touch| touch.slot)
+            .collect()
+    }
+
     /// Evaluates a frame's touches against all fields and returns the
     /// debounced occupancy events.
     pub fn update(&mut self, touches: &[TouchPoint]) -> Vec<EngineEvent> {
@@ -74,13 +123,7 @@ impl FieldTracker {
                 let raw = ContactCount::from(
                     touches
                         .iter()
-                        .filter(|touch| {
-                            let local = match &set.window {
-                                Some(anchor) => anchor.to_local(&touch.pos),
-                                None => Vec2::new(touch.pos.x, touch.pos.y),
-                            };
-                            field.region.contains(&local)
-                        })
+                        .filter(|touch| field_contains(set, field, touch))
                         .count(),
                 );
 
@@ -119,6 +162,20 @@ impl FieldTracker {
     }
 }
 
+/// Containment check in the field's coordinate space (window-relative
+/// when the set carries an anchor).
+fn field_contains(
+    set: &FieldSet,
+    field: &tangible_objects_model::Field,
+    touch: &TouchPoint,
+) -> bool {
+    let local = match &set.window {
+        Some(anchor) => anchor.to_local(&touch.pos),
+        None => Vec2::new(touch.pos.x, touch.pos.y),
+    };
+    field.region.contains(&local)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -148,6 +205,7 @@ mod tests {
             name: "board".to_string(),
             window: None,
             stability: FrameCount::new(2),
+            suppress: false,
             fields: vec![Field {
                 name: "a1".to_string(),
                 region: Region {

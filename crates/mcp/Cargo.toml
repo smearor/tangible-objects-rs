@@ -18,4 +18,5 @@ serde_json.workspace = true
 tangible-objects-model.workspace = true
 tangible-objects-runtime.workspace = true
 tokio.workspace = true
+toml.workspace = true
 tracing.workspace = true

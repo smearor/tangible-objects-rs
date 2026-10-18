@@ -1,6 +1,7 @@
 use async_graphql::Context;
 use async_graphql::Object;
 use async_graphql::Result;
+use tangible_objects_model::Owner;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
@@ -35,10 +36,25 @@ impl QueryRoot {
             .collect())
     }
 
-    /// Loaded figure profiles.
-    async fn profiles(&self, ctx: &Context<'_>) -> Result<Vec<ProfileInfo>> {
+    /// Loaded plus dynamically registered figure profiles. `owner`
+    /// filters to the registrations of one application; `staticOnly`
+    /// filters to profiles without an owner (loaded at startup).
+    async fn profiles(
+        &self,
+        ctx: &Context<'_>,
+        owner: Option<String>,
+        static_only: Option<bool>,
+    ) -> Result<Vec<ProfileInfo>> {
         let handle = ctx.data::<EngineHandle>()?;
-        Ok(handle.profiles().to_vec())
+        Ok(handle
+            .profiles()
+            .into_iter()
+            .filter(|info| match &owner {
+                Some(owner) => info.owner.as_ref().map(Owner::as_str) == Some(owner.as_str()),
+                None => true,
+            })
+            .filter(|info| !(static_only.unwrap_or(false) && info.owner.is_some()))
+            .collect())
     }
 
     /// Attached input device - name and axis calibration. Needed by remote

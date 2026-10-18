@@ -18,7 +18,9 @@ use std::path::PathBuf;
 
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FilterMode;
+use tangible_objects_model::Owner;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::Registration;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_runtime::ControlCommand;
@@ -26,11 +28,17 @@ use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::GetPoseArgs;
 use super::tool_args::RecordingArtifactArgs;
+use super::tool_args::RegisterFieldSetArgs;
+use super::tool_args::RegisterPatternArgs;
 use super::tool_args::SetCompletionArgs;
 use super::tool_args::SetFilterModeArgs;
 use super::tool_args::SetRecordLabelArgs;
 use super::tool_args::StartRecordingArgs;
 use super::tool_args::TrainProfileArgs;
+use super::tool_args::UnregisterFieldSetArgs;
+use super::tool_args::UnregisterOwnerArgs;
+use super::tool_args::UnregisterPatternArgs;
+use super::tool_args::UpdateProfileArgs;
 
 /// Resource URI listing the currently tracked tangibles.
 pub const URI_TANGIBLES: &str = "tangible://tangibles";
@@ -86,7 +94,7 @@ impl EngineMcp {
     #[tool(description = "List the loaded figure profiles.")]
     async fn list_profiles(&self) -> Result<CallToolResult, ErrorData> {
         Ok(CallToolResult::success(vec![ContentBlock::text(
-            json_pretty(self.handle.profiles())?,
+            json_pretty(&self.handle.profiles())?,
         )]))
     }
 
@@ -159,6 +167,163 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "completion set: mode={} radius_factor={} max_missing={} persist={}",
             config.mode, config.radius_factor, config.max_missing, config.persist
+        ))]))
+    }
+
+    /// Registers a figure profile at runtime.
+    #[tool(
+        description = "Register a figure profile by name, flat pin coordinates [x0,y0,...] mm and tolerance mm. Fingerprint collisions with loaded profiles are rejected by the daemon."
+    )]
+    async fn register_pattern(
+        &self,
+        Parameters(args): Parameters<RegisterPatternArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        use tangible_objects_model::Millimeters;
+        use tangible_objects_model::PatternTolerance;
+        use tangible_objects_model::ProfileFile;
+        use tangible_objects_model::Vec2;
+
+        if !args.points.len().is_multiple_of(2) || args.points.is_empty() {
+            return Err(ErrorData::invalid_params(
+                "points must be a non-empty even-length flat list",
+                None,
+            ));
+        }
+        let points: Vec<Vec2<Millimeters>> = args
+            .points
+            .chunks_exact(2)
+            .map(|pair| Vec2::new(pair[0], pair[1]))
+            .collect();
+        let profile =
+            ProfileFile::from_points(&args.name, &points, PatternTolerance::new(args.tolerance));
+        self.handle
+            .send_command(ControlCommand::Register {
+                registration: Box::new(Registration::Pattern(profile)),
+                owner: args.owner.map(Owner::new),
+                lifetime: parse_lifetime(&args.lifetime)?,
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "registration queued: {}",
+            args.name
+        ))]))
+    }
+
+    /// Removes a dynamically registered pattern.
+    #[tool(description = "Unregister a dynamically registered pattern by pattern ID.")]
+    async fn unregister_pattern(
+        &self,
+        Parameters(args): Parameters<UnregisterPatternArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::UnregisterPattern {
+                id: tangible_objects_model::PatternId::new(args.pattern_id),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "unregistered pattern {}",
+            args.pattern_id
+        ))]))
+    }
+
+    /// Registers an occupancy field set from TOML.
+    #[tool(
+        description = "Register an occupancy field set from TOML (name, optional stability/[window], [[fields]] cells)."
+    )]
+    async fn register_field_set(
+        &self,
+        Parameters(args): Parameters<RegisterFieldSetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let set = toml::from_str::<tangible_objects_model::FieldSet>(&args.toml)
+            .map_err(|e| ErrorData::invalid_params(format!("invalid field set TOML: {e}"), None))?;
+        self.handle
+            .send_command(ControlCommand::Register {
+                registration: Box::new(Registration::FieldSet(set)),
+                owner: args.owner.map(Owner::new),
+                lifetime: parse_lifetime(&args.lifetime)?,
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            "field set registration queued",
+        )]))
+    }
+
+    /// Replaces a registered pattern's geometry while keeping its ID.
+    #[tool(
+        description = "Replace a registered pattern's geometry (name, points, tolerance) while keeping its pattern ID. Applies to new matches."
+    )]
+    async fn update_profile(
+        &self,
+        Parameters(args): Parameters<UpdateProfileArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        use tangible_objects_model::Millimeters;
+        use tangible_objects_model::PatternId;
+        use tangible_objects_model::PatternTolerance;
+        use tangible_objects_model::ProfileFile;
+        use tangible_objects_model::Vec2;
+
+        if !args.points.len().is_multiple_of(2) || args.points.is_empty() {
+            return Err(ErrorData::invalid_params(
+                "points must be a non-empty even-length flat list",
+                None,
+            ));
+        }
+        let points: Vec<Vec2<Millimeters>> = args
+            .points
+            .chunks_exact(2)
+            .map(|pair| Vec2::new(pair[0], pair[1]))
+            .collect();
+        let profile =
+            ProfileFile::from_points(&args.name, &points, PatternTolerance::new(args.tolerance));
+        self.handle
+            .send_command(ControlCommand::UpdateProfile {
+                id: PatternId::new(args.pattern_id),
+                profile: Box::new(profile),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "updated pattern {}",
+            args.pattern_id
+        ))]))
+    }
+
+    /// Removes every registration of an owner (app cleanup).
+    #[tool(description = "Remove every pattern and field set owned by the given owner.")]
+    async fn unregister_owner(
+        &self,
+        Parameters(args): Parameters<UnregisterOwnerArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::UnregisterOwner {
+                owner: Owner::new(args.owner.clone()),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "removed all registrations of {}",
+            args.owner
+        ))]))
+    }
+
+    /// Removes a field set by name.
+    #[tool(description = "Unregister a field set by name.")]
+    async fn unregister_field_set(
+        &self,
+        Parameters(args): Parameters<UnregisterFieldSetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::UnregisterFieldSet {
+                name: args.name.clone(),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "unregistered field set {}",
+            args.name
         ))]))
     }
 
@@ -344,7 +509,7 @@ impl ServerHandler for EngineMcp {
                             .collect::<Vec<_>>(),
                     )?
                 }
-                URI_PROFILES => json_pretty(handle.profiles())?,
+                URI_PROFILES => json_pretty(&handle.profiles())?,
                 uri => {
                     return Err(ErrorData::resource_not_found(
                         format!("unknown resource: {uri}"),
@@ -361,6 +526,18 @@ impl ServerHandler for EngineMcp {
 }
 
 /// Serializes a value to pretty JSON for tool/resource output.
+/// Parses the optional `lifetime` tool argument (`session`/`persistent`).
+fn parse_lifetime(
+    lifetime: &Option<String>,
+) -> Result<tangible_objects_model::Lifetime, ErrorData> {
+    lifetime
+        .as_deref()
+        .map(str::parse)
+        .transpose()
+        .map(|parsed| parsed.unwrap_or_default())
+        .map_err(|_| ErrorData::invalid_params("lifetime must be 'session' or 'persistent'", None))
+}
+
 fn json_pretty<T: serde::Serialize + ?Sized>(value: &T) -> Result<String, ErrorData> {
     serde_json::to_string_pretty(value)
         .map_err(|err| ErrorData::internal_error(format!("serialization failed: {err}"), None))

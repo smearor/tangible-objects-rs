@@ -31,13 +31,32 @@ pub const COMMAND_CHANNEL_CAPACITY: usize = 32;
 /// Created once per detection session; the cloneable [`EngineHandle`] is
 /// handed to interface servers.
 pub struct EngineRuntime {
+    /// Tangible Object Set tracker - computes set/object transitions
+    /// from each published frame's tracked tangibles.
     set_tracker: SetTracker,
+    /// Broadcast channel for `DomainEvent`s (engine + set events);
+    /// lagging receivers lose the oldest events.
     events: broadcast::Sender<DomainEvent>,
+    /// Watch channel carrying the latest snapshot for query-style
+    /// interface requests.
     snapshot: watch::Sender<EngineSnapshot>,
+    /// Receiving half of the control channel - drained by the device
+    /// loop once per frame/timeout.
     commands: mpsc::Receiver<ControlCommand>,
+    /// Device info embedded in every snapshot; set once at session
+    /// start.
     device: Option<crate::DeviceInfo>,
+    /// Recording status embedded in every snapshot while a session is
+    /// or was active.
     recording: Option<crate::RecordingStatus>,
+    /// Active completion configuration embedded in every snapshot.
     completion: Option<tangible_objects_model::CompletionConfig>,
+    /// Active field sets (static + dynamically registered) embedded in
+    /// every snapshot.
+    field_sets: Vec<tangible_objects_model::FieldSet>,
+    /// Profile list shared with the handle - registrations at runtime
+    /// must be visible to interface readers (`RwLock`, not `watch`).
+    profiles: std::sync::Arc<std::sync::RwLock<Vec<ProfileInfo>>>,
 }
 
 /// Cloneable consumer-side handle for interface crates.
@@ -46,11 +65,19 @@ pub struct EngineRuntime {
 /// everything an interface needs without engine access.
 #[derive(Clone)]
 pub struct EngineHandle {
+    /// Broadcast sender for subscribing to the domain event stream.
     events: broadcast::Sender<DomainEvent>,
+    /// Watch receiver for the latest snapshot (`snapshot()`,
+    /// `watch_snapshot()`).
     snapshot: watch::Receiver<EngineSnapshot>,
+    /// Sending half of the control channel - interface commands reach
+    /// the device loop through it.
     commands: mpsc::Sender<ControlCommand>,
+    /// Static Tangible Object Set definitions loaded at session start.
     sets: std::sync::Arc<Vec<TangibleSet>>,
-    profiles: std::sync::Arc<Vec<ProfileInfo>>,
+    /// Profile list shared with the runtime - dynamic registrations are
+    /// published through it.
+    profiles: std::sync::Arc<std::sync::RwLock<Vec<ProfileInfo>>>,
 }
 
 impl EngineRuntime {
@@ -78,6 +105,7 @@ impl EngineRuntime {
         let (events, _) = broadcast::channel(event_capacity);
         let (snapshot_tx, snapshot_rx) = watch::channel(EngineSnapshot::default());
         let (command_tx, commands) = mpsc::channel(command_capacity);
+        let profiles = std::sync::Arc::new(std::sync::RwLock::new(profiles));
         let runtime = Self {
             set_tracker: SetTracker::new(sets.clone()),
             events: events.clone(),
@@ -86,13 +114,15 @@ impl EngineRuntime {
             device: None,
             recording: None,
             completion: None,
+            field_sets: Vec::new(),
+            profiles: profiles.clone(),
         };
         let handle = EngineHandle {
             events,
             snapshot: snapshot_rx,
             commands: command_tx,
             sets: std::sync::Arc::new(sets),
-            profiles: std::sync::Arc::new(profiles),
+            profiles,
         };
         (runtime, handle)
     }
@@ -117,6 +147,27 @@ impl EngineRuntime {
         self.completion = Some(config);
     }
 
+    /// Publishes the active field sets (static plus dynamically
+    /// registered) in subsequent snapshots.
+    pub fn set_field_sets(&mut self, field_sets: Vec<tangible_objects_model::FieldSet>) {
+        self.field_sets = field_sets;
+    }
+
+    /// Adds a registered profile to the shared profile list visible to
+    /// interface readers.
+    pub fn add_profile(&mut self, info: ProfileInfo) {
+        if let Ok(mut profiles) = self.profiles.write() {
+            profiles.push(info);
+        }
+    }
+
+    /// Removes a profile from the shared list by pattern ID.
+    pub fn remove_profile(&mut self, id: tangible_objects_model::PatternId) {
+        if let Ok(mut profiles) = self.profiles.write() {
+            profiles.retain(|info| info.pattern_id != id);
+        }
+    }
+
     /// Publishes a processed frame: runs the set tracker, updates the
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: &[TrackedTangible]) {
@@ -128,6 +179,7 @@ impl EngineRuntime {
             device: self.device.clone(),
             recording: self.recording.clone(),
             completion: self.completion,
+            field_sets: self.field_sets.clone(),
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -149,6 +201,7 @@ impl EngineRuntime {
             device: self.device.clone(),
             recording: self.recording.clone(),
             completion: self.completion,
+            field_sets: self.field_sets.clone(),
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
@@ -197,9 +250,12 @@ impl EngineHandle {
         &self.sets
     }
 
-    /// Static info of the loaded figure profiles.
-    pub fn profiles(&self) -> &[ProfileInfo] {
-        &self.profiles
+    /// Info of the loaded plus dynamically registered figure profiles.
+    pub fn profiles(&self) -> Vec<ProfileInfo> {
+        self.profiles
+            .read()
+            .map(|profiles| profiles.clone())
+            .unwrap_or_default()
     }
 
     /// Sends a control command to the daemon's device loop.
