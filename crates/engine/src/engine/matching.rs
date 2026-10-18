@@ -319,11 +319,7 @@ fn exact_report(
         partial: false,
         match_error: deviations.iter().copied().sum(),
         score: Some(MatchScore::new(pattern.score_of(&deviations))),
-        tolerances: pattern
-            .tolerances
-            .iter()
-            .map(|tol| tol.as_millimeters())
-            .collect(),
+        tolerances: pattern.tolerances.clone(),
         measured_distances,
         deviations,
         tolerance: pattern.tolerance,
@@ -367,7 +363,7 @@ fn partial_report(
         measured_distances,
         deviations,
         tolerance: pattern.tolerance,
-        tolerances: Vec::new(),
+        tolerances: Default::default(),
         score: Some(MatchScore::new(score)),
         match_error,
     }

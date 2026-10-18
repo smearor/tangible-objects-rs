@@ -54,7 +54,7 @@ impl DeviationReport {
                         .tolerances
                         .get(index)
                         .copied()
-                        .unwrap_or_else(|| candidate.tolerance.as_millimeters())
+                        .unwrap_or(candidate.tolerance)
                 };
                 entry.push(&candidate.deviations, candidate.matched, tolerance_at);
             }
@@ -99,7 +99,7 @@ impl DeviationReport {
                         .entry(pattern.id)
                         .or_insert_with(|| PatternAcc::new(pattern.name.clone()));
                     entry.push(&deviations, score <= 1.0, |index| {
-                        pattern.tolerance_at(index).as_millimeters()
+                        pattern.tolerance_at(index)
                     });
                 }
             }

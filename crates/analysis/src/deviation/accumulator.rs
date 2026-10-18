@@ -1,4 +1,4 @@
-use tangible_objects_model::FrameCount;
+use tangible_objects_model::{FrameCount, PatternTolerance};
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
 
@@ -49,7 +49,7 @@ impl PatternAcc {
         &mut self,
         deviations: &[Millimeters],
         matched: bool,
-        tolerance_at: impl Fn(usize) -> Millimeters,
+        tolerance_at: impl Fn(usize) -> PatternTolerance,
     ) {
         if matched {
             self.matched += 1;
@@ -60,7 +60,7 @@ impl PatternAcc {
         let blockers: Vec<usize> = deviations
             .iter()
             .enumerate()
-            .filter(|(index, deviation)| **deviation > tolerance_at(*index))
+            .filter(|(index, deviation)| **deviation > tolerance_at(*index).as_millimeters())
             .map(|(index, _)| index)
             .collect();
 
@@ -72,7 +72,7 @@ impl PatternAcc {
                 self.blocker.resize(index + 1, FrameCount::new(0));
             }
             self.deviations[index].push(deviation.as_f64());
-            if *deviation > tolerance_at(index) {
+            if *deviation > tolerance_at(index).as_millimeters() {
                 self.over[index] += 1;
             }
             if blockers.len() == 1 && blockers[0] == index {

@@ -11,6 +11,7 @@ use crate::Distances;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternTolerance;
+use crate::PatternTolerances;
 use crate::PinCount;
 use crate::Region;
 use crate::TangiblePattern;
@@ -50,8 +51,8 @@ pub struct ProfileFile {
     /// Optional per-distance tolerances, parallel to `sorted_sides`.
     /// Omitted when empty; the analysis `--analyze` tolerance suggestions
     /// render in exactly this format (`tolerances = [...]`).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tolerances: Vec<PatternTolerance>,
+    #[serde(default, skip_serializing_if = "PatternTolerances::is_empty")]
+    pub tolerances: PatternTolerances,
     /// Sorted pairwise distances of the reference geometry (the fingerprint).
     pub sorted_sides: Distances,
     /// Original contact positions - enables partial matching when one
@@ -101,7 +102,7 @@ impl ProfileFile {
             spawn_stability: default_spawn_stability(),
             num_points: points.len(),
             tolerance,
-            tolerances: Vec::new(),
+            tolerances: PatternTolerances::default(),
             sorted_sides: Distances(distances),
             points: points.to_vec(),
             regions: Vec::new(),

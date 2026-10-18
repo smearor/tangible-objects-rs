@@ -8,6 +8,7 @@ use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
 use crate::PatternTolerance;
+use crate::PatternTolerances;
 use crate::RecordLabel;
 
 /// Diagnostic record of one tested point combination against a pattern.
@@ -42,8 +43,8 @@ pub struct CandidateReport {
     /// Per-index tolerances applied during the test - only present when the
     /// pattern configured `tolerances`; absent means `tolerance` applied to
     /// every index. `#[serde(default)]` keeps older recordings loadable.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tolerances: Vec<Millimeters>,
+    #[serde(default, skip_serializing_if = "PatternTolerances::is_empty")]
+    pub tolerances: PatternTolerances,
     /// Normalized deviation score (`max_i dev[i] / tolerance[i]`), recorded
     /// for matched and rejected candidates. `None` in older recordings - the
     /// analysis recomputes it from `deviations` and `tolerances`.
@@ -76,7 +77,6 @@ impl CandidateReport {
         self.tolerances
             .get(index)
             .copied()
-            .map(PatternTolerance::from)
             .unwrap_or(self.tolerance)
     }
 

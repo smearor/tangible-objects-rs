@@ -15,6 +15,7 @@ mod pattern_set;
 mod pin_count;
 mod tangible;
 mod tolerance;
+mod tolerances;
 
 pub use distances::Distances;
 pub use id::PatternId;
@@ -27,3 +28,4 @@ pub use pattern_set::PatternSet;
 pub use pin_count::PinCount;
 pub use tangible::TangiblePattern;
 pub use tolerance::PatternTolerance;
+pub use tolerances::PatternTolerances;

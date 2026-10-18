@@ -80,6 +80,7 @@ pub use pattern::PatternMatch;
 pub use pattern::PatternName;
 pub use pattern::PatternSet;
 pub use pattern::PatternTolerance;
+pub use pattern::PatternTolerances;
 pub use pattern::PinCount;
 pub use pattern::TangiblePattern;
 pub use pixels::Pixels;

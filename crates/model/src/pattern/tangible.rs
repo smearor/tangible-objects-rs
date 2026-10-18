@@ -3,6 +3,7 @@ use super::PartialMatch;
 use super::PartialReference;
 use super::PatternId;
 use super::PatternTolerance;
+use super::PatternTolerances;
 use super::PinCount;
 use crate::FrameCount;
 use crate::Millimeters;
@@ -39,7 +40,7 @@ pub struct TangiblePattern {
     /// When empty (or length-mismatched), the scalar `tolerance` applies to
     /// every index - the recorded `p99` suggestions from the analysis crate
     /// are written here.
-    pub tolerances: Vec<PatternTolerance>,
+    pub tolerances: PatternTolerances,
     /// Original reference point positions, if stored in the profile.
     /// Required for partial matching when one contact pin is missing.
     pub ref_points: Option<Vec<Vec2<Millimeters>>>,
@@ -64,7 +65,7 @@ impl TangiblePattern {
             num_points: PinCount::new(points.len()),
             sorted_distances: points.distances(),
             tolerance: tolerance.into(),
-            tolerances: Vec::new(),
+            tolerances: PatternTolerances::default(),
             ref_points: Some(points.to_vec()),
             regions: Vec::new(),
         }
@@ -527,7 +528,7 @@ mod tests {
     fn per_index_tolerances_refine_scalar() {
         // Fingerprint [50, 50, ~70.7]; indices 1–2 generous, index 0 strict.
         let mut pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 1.0);
-        pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
+        pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()].into();
         // Stretched third contact: deviations [0, ~15, ~11] - the shortest
         // edge is exact, the longer ones sit inside their 20 mm budget.
         // Rejected under scalar 1.0, accepted per-index.
@@ -544,7 +545,7 @@ mod tests {
     #[test]
     fn per_index_tolerances_still_reject_short_edges() {
         let mut pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 1.0);
-        pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()];
+        pattern.tolerances = vec![1.0.into(), 20.0.into(), 20.0.into()].into();
         // The shortest edge shrinks (45 vs 50): index 0 deviates by 5 mm and
         // exceeds its strict 1 mm budget even though indices 1–2 would allow
         // the deformation.
@@ -559,7 +560,7 @@ mod tests {
     #[test]
     fn mismatched_tolerances_length_falls_back_to_scalar() {
         let mut pattern = TangiblePattern::from_points(1, "triangle", (&triangle()).into(), 5.0);
-        pattern.tolerances = vec![0.1.into()]; // too few - must not apply
+        pattern.tolerances = vec![0.1.into()].into(); // too few - must not apply
         let slightly_off = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(53.0, 0.0),
