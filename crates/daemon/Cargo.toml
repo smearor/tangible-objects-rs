@@ -13,6 +13,7 @@ description = "Daemon for tangible object detection on multitouch surfaces."
 gui = ["dep:gtk4", "dep:cairo-rs"]
 
 [dependencies]
+clap.workspace = true
 libc.workspace = true
 miette.workspace = true
 serde_json.workspace = true
