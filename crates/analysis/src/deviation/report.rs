@@ -84,8 +84,7 @@ impl DeviationReport {
                 // the deviation statistics with non-figure geometry.
                 let mut best: Option<(Vec<Millimeters>, f64)> = None;
                 for subset in Self::combinations(touches.len(), pattern.num_points) {
-                    let points: Vec<_> =
-                        subset.iter().map(|&index| touches[index]).collect();
+                    let points: Vec<_> = subset.iter().map(|&index| touches[index]).collect();
                     let deviations = TangiblePattern::deviations(
                         &TangiblePattern::distances_of(&points),
                         &pattern.sorted_distances,

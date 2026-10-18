@@ -115,9 +115,8 @@ impl QueryRoot {
         mode: Option<tangible_objects_model::AnalysisMode>,
         profiles_dir: Option<String>,
     ) -> Result<String> {
-        let recording =
-            tangible_objects_analysis::Recording::load(std::path::Path::new(&path))
-                .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
+        let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(&path))
+            .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
         let report = if mode == Some(tangible_objects_model::AnalysisMode::Contacts) {
             let dir = profiles_dir.as_deref().unwrap_or("profiles");
             let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))

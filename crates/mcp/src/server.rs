@@ -26,8 +26,8 @@ use tangible_objects_model::TangibleSetState;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
-use super::tool_args::GetPoseArgs;
 use super::tool_args::AnalyzeArgs;
+use super::tool_args::GetPoseArgs;
 use super::tool_args::RecordingArtifactArgs;
 use super::tool_args::RegisterFieldSetArgs;
 use super::tool_args::RegisterPatternArgs;
@@ -242,7 +242,9 @@ impl EngineMcp {
             let patterns = loaded.into_patterns();
             if patterns.is_empty() {
                 return Err(ErrorData::invalid_params(
-                    format!("no profiles loaded from {dir}"), None));
+                    format!("no profiles loaded from {dir}"),
+                    None,
+                ));
             }
             tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
         } else {

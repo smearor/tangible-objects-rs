@@ -317,11 +317,17 @@ impl EngineService {
                 .map_err(fdo::Error::InvalidArgs)?
         };
         let report = if mode == tangible_objects_model::AnalysisMode::Contacts {
-            let dir = if profiles_dir.is_empty() { "profiles" } else { profiles_dir };
+            let dir = if profiles_dir.is_empty() {
+                "profiles"
+            } else {
+                profiles_dir
+            };
             let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
                 .into_patterns();
             if patterns.is_empty() {
-                return Err(fdo::Error::InvalidArgs(format!("no profiles loaded from {dir}")));
+                return Err(fdo::Error::InvalidArgs(format!(
+                    "no profiles loaded from {dir}"
+                )));
             }
             tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
         } else {

@@ -4,13 +4,13 @@
 //! geometry, device calibration, geometric figure patterns, TOML profiles and
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
+mod analysis_mode;
 mod calibration;
 mod completion;
 mod contact_count;
 mod device;
 mod event;
 mod field;
-mod analysis_mode;
 mod filter_mode;
 mod metrics;
 mod millimeters;
