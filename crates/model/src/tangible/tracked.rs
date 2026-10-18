@@ -1,6 +1,8 @@
 use super::TangibleId;
-use crate::{FrameCount, Millimeters, PatternName};
+use crate::FrameCount;
+use crate::Millimeters;
 use crate::PatternId;
+use crate::PatternName;
 use crate::RotationRad;
 use crate::Vec2;
 use serde::Serialize;
