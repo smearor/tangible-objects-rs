@@ -6,9 +6,13 @@
 
 mod anchor;
 mod cell;
+mod field_name;
+mod name;
 mod set;
 
 pub use anchor::WindowAnchor;
 pub use cell::Field;
+pub use field_name::FieldName;
+pub use name::FieldSetName;
 pub use set::FieldSet;
 pub use set::default_stability;

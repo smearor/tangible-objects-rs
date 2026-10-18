@@ -9,7 +9,7 @@ pub struct PatternMatch {
     /// ID of the matched pattern (assigned at profile load time).
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
-    pub pattern_name: String,
+    pub pattern_name: crate::PatternName,
     /// Centroid of the matched touch points.
     pub center: Vec2<Millimeters>,
     /// Estimated figure orientation in radians.
@@ -125,7 +125,7 @@ mod tests {
     fn partial_flag_and_all_indices() {
         let mut pattern_match = PatternMatch {
             pattern_id: crate::PatternId::new(1),
-            pattern_name: "Figur8".to_string(),
+            pattern_name: "Figur8".into(),
             center: Vec2::new(0.0, 0.0),
             rotation_rad: crate::RotationRad::new(0.0),
             touch_indices: vec![0, 1, 2],

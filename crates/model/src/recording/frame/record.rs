@@ -64,7 +64,7 @@ impl FrameRecord {
                 None => true,
             };
             if replace {
-                best.insert(&candidate.pattern_name, candidate);
+                best.insert(candidate.pattern_name.as_str(), candidate);
             }
         }
         best
@@ -100,7 +100,7 @@ mod tests {
             }],
             candidates: vec![CandidateReport {
                 pattern_id: PatternId::new(5),
-                pattern_name: "TestFigur-5P".to_string(),
+                pattern_name: "TestFigur-5P".into(),
                 touch_indices: vec![0, 1, 2, 3],
                 matched: true,
                 partial: false,

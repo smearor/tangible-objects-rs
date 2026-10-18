@@ -24,7 +24,7 @@ pub struct TrackedRecord {
     /// ID of the matched pattern.
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
-    pub pattern_name: String,
+    pub pattern_name: crate::PatternName,
     /// Smoothed centroid position.
     pub center: Vec2<Millimeters>,
     /// Smoothed orientation in radians; serialized in degrees as
@@ -75,7 +75,7 @@ impl<'de> Deserialize<'de> for TrackedRecord {
         Ok(Self {
             id: helper.id,
             pattern_id: helper.pattern_id,
-            pattern_name: helper.pattern_name,
+            pattern_name: helper.pattern_name.into(),
             center: helper.center,
             rotation_rad: RotationRad::new(helper.rotation_deg.to_radians()),
             frames_since_match: helper.frames_since_match,
@@ -95,7 +95,7 @@ mod tests {
         TrackedTangible {
             id: TangibleId::new(10),
             pattern_id: 5.into(),
-            pattern_name: "TestFigur-5P".to_string(),
+            pattern_name: "TestFigur-5P".into(),
             center: Vec2::new(171.94, 80.84),
             rotation_rad: RotationRad::new(std::f64::consts::PI),
             frames_since_match: 3,

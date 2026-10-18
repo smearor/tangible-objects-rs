@@ -11,7 +11,7 @@ use crate::Region;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Field {
     /// Cell name (e.g. `"a1"` on a chess board).
-    pub name: String,
+    pub name: crate::FieldName,
     /// Cell bounds in the set's coordinate space (screen mm, or
     /// window-relative / normalized when the set has an anchor).
     #[serde(flatten)]

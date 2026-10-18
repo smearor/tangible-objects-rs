@@ -96,6 +96,26 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Resets the session metric counters - call between automated
+    /// test runs to isolate each series.
+    async fn reset_metrics(&self, ctx: &Context<'_>) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::ResetMetrics)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Shows a user-facing message in the GUI (test-series steering);
+    /// an empty string clears it.
+    async fn show_message(&self, ctx: &Context<'_>, text: String) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::ShowMessage(text))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
     /// Registers a figure profile at runtime (DYNAMIC_PROFILES.md).
     /// Queued to the device loop - fingerprint collisions are rejected
     /// there; verify via the `profiles` query.
@@ -228,7 +248,7 @@ impl RegisterFieldSetInput {
         use tangible_objects_model::Region;
 
         let set = FieldSet {
-            name: self.name.clone(),
+            name: self.name.clone().into(),
             window: self
                 .window
                 .as_ref()
@@ -247,7 +267,7 @@ impl RegisterFieldSetInput {
                 .fields
                 .iter()
                 .map(|f| Field {
-                    name: f.name.clone(),
+                    name: f.name.clone().into(),
                     region: Region {
                         x_min: Millimeters::new(f.x_min),
                         y_min: Millimeters::new(f.y_min),

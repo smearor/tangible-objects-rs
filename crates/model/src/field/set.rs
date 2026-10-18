@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::Field;
+use super::FieldSetName;
 use super::WindowAnchor;
 use crate::FrameCount;
 use crate::Region;
@@ -36,7 +37,7 @@ pub fn default_stability() -> FrameCount {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldSet {
     /// Human-readable set name - the namespace of its fields.
-    pub name: String,
+    pub name: FieldSetName,
     /// Optional window anchor: field coordinates are interpreted
     /// relative to the application window instead of screen-absolute.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -134,7 +135,7 @@ mod tests {
             y_max = 100.0
             "#,
         );
-        assert_eq!(set.name, "chess");
+        assert_eq!(set.name.as_str(), "chess");
         assert_eq!(set.stability.as_u64(), 2);
         assert!(set.window.is_none());
         assert_eq!(set.fields.len(), 1);

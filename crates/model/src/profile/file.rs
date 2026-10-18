@@ -21,7 +21,7 @@ use crate::Vec2;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileFile {
     /// Human-readable figure name.
-    pub name: String,
+    pub name: crate::PatternName,
     /// Number of contact pins.
     pub num_points: usize,
     /// Matching tolerance for the distance fingerprint.
@@ -66,7 +66,7 @@ impl ProfileFile {
         }
         distances.sort_by(Millimeters::total_cmp);
         Self {
-            name: name.to_string(),
+            name: name.into(),
             num_points: points.len(),
             tolerance,
             tolerances: Vec::new(),
@@ -202,7 +202,7 @@ mod tests {
             Err(_) => panic!("deserialization failed"),
         };
 
-        assert_eq!(loaded.name, "triangle");
+        assert_eq!(loaded.name.as_str(), "triangle");
         assert_eq!(loaded.num_points, 3);
         assert_eq!(loaded.tolerance.as_f64(), 5.0);
         assert_eq!(loaded.sorted_sides, profile.sorted_sides);
@@ -243,7 +243,7 @@ mod tests {
         let pattern = profile.to_pattern(PatternId::new(7));
 
         assert_eq!(pattern.id, PatternId::new(7));
-        assert_eq!(pattern.name, "triangle");
+        assert_eq!(pattern.name.as_str(), "triangle");
         assert_eq!(pattern.num_points, 3);
         assert_eq!(pattern.ref_points, Some(points));
     }

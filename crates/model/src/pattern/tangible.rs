@@ -15,7 +15,7 @@ pub struct TangiblePattern {
     /// Runtime ID assigned when the profile directory is loaded.
     pub id: PatternId,
     /// Human-readable figure name (from the profile file).
-    pub name: String,
+    pub name: crate::PatternName,
     /// Number of contact pins the figure must have.
     pub num_points: usize,
     /// Sorted pairwise distances of the reference point set (the fingerprint).
@@ -45,7 +45,7 @@ impl TangiblePattern {
     ) -> Self {
         Self {
             id: id.into(),
-            name: name.to_string(),
+            name: name.into(),
             num_points: points.len(),
             sorted_distances: sorted_pairwise_distances(points),
             tolerance: tolerance.into(),

@@ -57,6 +57,10 @@ pub struct EngineRuntime {
     /// Profile list shared with the handle - registrations at runtime
     /// must be visible to interface readers (`RwLock`, not `watch`).
     profiles: std::sync::Arc<std::sync::RwLock<Vec<ProfileInfo>>>,
+    /// Accumulated session recognition metrics.
+    metrics: crate::SessionMetrics,
+    /// User-facing message shown by the GUI (`ShowMessage` command).
+    message: Option<String>,
 }
 
 /// Cloneable consumer-side handle for interface crates.
@@ -116,6 +120,8 @@ impl EngineRuntime {
             completion: None,
             field_sets: Vec::new(),
             profiles: profiles.clone(),
+            metrics: crate::SessionMetrics::default(),
+            message: None,
         };
         let handle = EngineHandle {
             events,
@@ -172,6 +178,12 @@ impl EngineRuntime {
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: &[TrackedTangible]) {
         let actions = self.set_tracker.update(tracked);
+        let touches_changed = frame
+            .events
+            .iter()
+            .any(|e| matches!(e, tangible_objects_engine::EngineEvent::TouchPointsUpdated));
+        self.metrics
+            .record(&frame.touches, &frame.matches, tracked, touches_changed);
         self.snapshot.send_replace(EngineSnapshot {
             tracked: tracked.to_vec(),
             touches: frame.touches.clone(),
@@ -180,6 +192,8 @@ impl EngineRuntime {
             recording: self.recording.clone(),
             completion: self.completion,
             field_sets: self.field_sets.clone(),
+            metrics: self.metrics.clone(),
+            message: self.message.clone(),
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -202,10 +216,32 @@ impl EngineRuntime {
             recording: self.recording.clone(),
             completion: self.completion,
             field_sets: self.field_sets.clone(),
+            metrics: self.metrics.clone(),
+            message: self.message.clone(),
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
         }
+    }
+
+    /// Accumulated session metrics (live view).
+    pub fn metrics(&self) -> &crate::SessionMetrics {
+        &self.metrics
+    }
+
+    /// Resets the session metric counters.
+    pub fn reset_metrics(&mut self) {
+        self.metrics.reset();
+    }
+
+    /// Sets the user-facing message shown by the GUI; `None` clears it.
+    pub fn set_message(&mut self, message: Option<String>) {
+        self.message = message;
+    }
+
+    /// The current user-facing message, if any.
+    pub fn message(&self) -> Option<&str> {
+        self.message.as_deref()
     }
 
     /// Next pending control command from an interface, if any.
@@ -295,7 +331,7 @@ mod tests {
         TrackedTangible {
             id: TangibleId::new(id),
             pattern_id: PatternId::new(pattern),
-            pattern_name: format!("fig-{pattern}"),
+            pattern_name: format!("fig-{pattern}").into(),
             center: Vec2::new(0.0, 0.0),
             rotation_rad: RotationRad::new(0.0),
             frames_since_match: 0,

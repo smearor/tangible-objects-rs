@@ -55,7 +55,10 @@ impl ToleranceReport {
                     continue;
                 }
                 tolerance.insert(candidate.pattern_id, candidate.tolerance);
-                names.insert(candidate.pattern_id, candidate.pattern_name.clone());
+                names.insert(
+                    candidate.pattern_id,
+                    candidate.pattern_name.as_str().to_string(),
+                );
                 let slots = deviations.entry(candidate.pattern_id).or_default();
                 for (index, deviation) in candidate.deviations.iter().enumerate() {
                     if slots.len() <= index {

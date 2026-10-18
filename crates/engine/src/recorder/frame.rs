@@ -168,7 +168,7 @@ mod tests {
             events: Vec::new(),
             candidates: vec![CandidateReport {
                 pattern_id: PatternId::new(5),
-                pattern_name: "TestFigur-5P".to_string(),
+                pattern_name: "TestFigur-5P".into(),
                 touch_indices: vec![0],
                 matched: true,
                 partial: false,

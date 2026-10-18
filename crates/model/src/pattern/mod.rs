@@ -6,10 +6,12 @@
 
 mod id;
 mod r#match;
+mod name;
 mod tangible;
 mod tolerance;
 
 pub use id::PatternId;
 pub use r#match::PatternMatch;
+pub use name::PatternName;
 pub use tangible::TangiblePattern;
 pub use tolerance::PatternTolerance;

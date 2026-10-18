@@ -55,6 +55,13 @@ pub struct SetCompletionArgs {
     pub smoothing_alpha: Option<f64>,
 }
 
+/// Arguments for the `show_message` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ShowMessageArgs {
+    /// Text to display; empty clears the overlay.
+    pub text: String,
+}
+
 /// Arguments for the `register_pattern` tool.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegisterPatternArgs {

@@ -95,9 +95,9 @@ impl FlappyReport {
                     continue;
                 }
                 let entry = share
-                    .entry(candidate.pattern_name.clone())
+                    .entry(candidate.pattern_name.as_str().to_string())
                     .or_insert_with(|| PartialShare {
-                        pattern_name: candidate.pattern_name.clone(),
+                        pattern_name: candidate.pattern_name.as_str().to_string(),
                         partial_matches: CandidateCount::new(0),
                         matched_total: CandidateCount::new(0),
                     });

@@ -25,3 +25,5 @@ pub use runtime::EVENT_CHANNEL_CAPACITY;
 pub use runtime::EngineHandle;
 pub use runtime::EngineRuntime;
 pub use snapshot::EngineSnapshot;
+pub use tangible_objects_model::PatternMetrics;
+pub use tangible_objects_model::SessionMetrics;

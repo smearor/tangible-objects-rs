@@ -58,22 +58,22 @@ impl From<&EngineEvent> for TangibleEvent {
             EngineEvent::FieldPlaced { set, field } => (
                 EventKind::FieldPlaced,
                 None,
-                Some(set.clone()),
-                Some(field.clone()),
+                Some(set.as_str().to_string()),
+                Some(field.as_str().to_string()),
                 None,
             ),
             EngineEvent::FieldLifted { set, field } => (
                 EventKind::FieldLifted,
                 None,
-                Some(set.clone()),
-                Some(field.clone()),
+                Some(set.as_str().to_string()),
+                Some(field.as_str().to_string()),
                 None,
             ),
             EngineEvent::FieldCountChanged { set, field, count } => (
                 EventKind::FieldCountChanged,
                 None,
-                Some(set.clone()),
-                Some(field.clone()),
+                Some(set.as_str().to_string()),
+                Some(field.as_str().to_string()),
                 Some(count.as_u32() as i32),
             ),
         };

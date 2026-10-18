@@ -50,7 +50,12 @@ impl UtilizationReport {
                 } else {
                     matched_full.insert(candidate.pattern_id);
                     acc.entry(candidate.pattern_id)
-                        .or_insert_with(|| (candidate.pattern_name.clone(), Accumulator::default()))
+                        .or_insert_with(|| {
+                            (
+                                candidate.pattern_name.as_str().to_string(),
+                                Accumulator::default(),
+                            )
+                        })
                         .1
                         .matched_frames += 1;
                 }
@@ -67,7 +72,12 @@ impl UtilizationReport {
                     }
                     let entry = &mut acc
                         .entry(candidate.pattern_id)
-                        .or_insert_with(|| (candidate.pattern_name.clone(), Accumulator::default()))
+                        .or_insert_with(|| {
+                            (
+                                candidate.pattern_name.as_str().to_string(),
+                                Accumulator::default(),
+                            )
+                        })
                         .1;
                     for (index, deviation) in candidate.deviations.iter().enumerate() {
                         if entry.deviations.len() <= index {
@@ -103,7 +113,7 @@ impl UtilizationReport {
                             .candidates
                             .iter()
                             .find(|c| c.pattern_id == *pattern_id)
-                            .map(|c| c.pattern_name.clone())
+                            .map(|c| c.pattern_name.as_str().to_string())
                             .unwrap_or_default();
                         (name, Accumulator::default())
                     })
@@ -121,7 +131,12 @@ impl UtilizationReport {
                     label_seen = true;
                     let entry = &mut acc
                         .entry(candidate.pattern_id)
-                        .or_insert_with(|| (candidate.pattern_name.clone(), Accumulator::default()))
+                        .or_insert_with(|| {
+                            (
+                                candidate.pattern_name.as_str().to_string(),
+                                Accumulator::default(),
+                            )
+                        })
                         .1;
                     entry.labeled_frames += 1;
                     if !matched_full.contains(&candidate.pattern_id)

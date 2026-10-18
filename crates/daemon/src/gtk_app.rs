@@ -62,6 +62,8 @@ struct SharedState {
     stable: bool,
     mode: GuiMode,
     device_error: Option<String>,
+    /// User-facing message pushed via an interface (`ShowMessage`).
+    message: Option<String>,
 }
 
 /// Starts the fullscreen GUI on the given evdev device path.
@@ -96,6 +98,7 @@ pub fn run_gui(
             stable: false,
             mode: GuiMode::Live,
             device_error: None,
+            message: None,
         }));
 
         // Background thread reading evdev events.
@@ -241,6 +244,9 @@ fn evdev_thread(
         if ready == 0 {
             drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
             runtime.set_recording_status(recording.as_ref().map(status_of_session));
+            if let Ok(mut s) = state.lock() {
+                s.message = runtime.message().map(str::to_string);
+            }
             runtime.publish_snapshot(engine.touches(), engine.tracked());
             continue;
         }
@@ -275,6 +281,9 @@ fn evdev_thread(
                 runtime.publish(frame, engine.tracked());
                 drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
                 runtime.set_recording_status(recording.as_ref().map(status_of_session));
+                if let Ok(mut s) = state.lock() {
+                    s.message = runtime.message().map(str::to_string);
+                }
                 if let Some(session) = &mut recording {
                     session.record_frame(
                         FrameNumber::new(frame_no),
@@ -494,6 +503,18 @@ fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mutex<Sh
         return;
     }
 
+    // User-facing message pushed via an interface (ShowMessage).
+    if let Some(msg) = &s.message {
+        cr.set_source_rgb(1.0, 0.9, 0.2);
+        cr.set_font_size(42.0);
+        if let Ok(ext) = cr.text_extents(msg) {
+            cr.move_to((w - ext.width()) / 2.0, 64.0);
+        } else {
+            cr.move_to(20.0, 64.0);
+        }
+        let _ = cr.show_text(msg);
+    }
+
     let cal = match s.calibration {
         Some(c) => c,
         None => {
@@ -658,11 +679,11 @@ fn draw_live(
         cr.set_source_rgb(1.0, 1.0, 1.0);
         cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
         cr.set_font_size(22.0);
-        if let Ok(extents) = cr.text_extents(&m.pattern_name) {
+        if let Ok(extents) = cr.text_extents(m.pattern_name.as_str()) {
             let tx = cx - extents.width() / 2.0;
             let ty = (top_y - 28.0).max(extents.height() + 4.0);
             cr.move_to(tx, ty);
-            let _ = cr.show_text(&m.pattern_name);
+            let _ = cr.show_text(m.pattern_name.as_str());
         }
     }
 

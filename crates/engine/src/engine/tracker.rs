@@ -260,7 +260,7 @@ mod tests {
     fn pattern_match(id: u32, x: f64, y: f64) -> PatternMatch {
         PatternMatch {
             pattern_id: PatternId::new(id),
-            pattern_name: format!("fig-{id}"),
+            pattern_name: format!("fig-{id}").into(),
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
             touch_indices: Vec::new(),

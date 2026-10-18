@@ -14,7 +14,7 @@ pub struct ProfileInfo {
     /// Runtime pattern ID assigned when the profile was loaded.
     pub pattern_id: PatternId,
     /// Human-readable figure name from the profile file.
-    pub name: String,
+    pub name: tangible_objects_model::PatternName,
     /// Number of contact pins the figure must have.
     pub num_points: u32,
     /// Owning application for runtime registrations; `None` for

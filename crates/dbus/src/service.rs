@@ -298,6 +298,30 @@ impl EngineService {
             .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
     }
 
+    /// Session metrics as JSON (uptime, re-ID churn, match quality,
+    /// per-slot contact stability).
+    async fn metrics(&self) -> String {
+        serde_json::to_string_pretty(&self.handle.snapshot().metrics)
+            .unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Resets the session metric counters.
+    async fn reset_metrics(&self) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::ResetMetrics)
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
+    /// Shows a user-facing message in the GUI overlay; an empty string
+    /// clears it.
+    async fn show_message(&self, text: &str) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::ShowMessage(text.to_string()))
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
     /// Registers a figure profile at runtime: `points` is the flat pin
     /// list `[x0, y0, x1, y1, ...]` in mm. Queued to the device loop;
     /// fingerprint collisions are rejected there - verify via

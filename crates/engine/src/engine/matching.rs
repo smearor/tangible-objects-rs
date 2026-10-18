@@ -333,7 +333,7 @@ fn build_match(
 ) -> PatternMatch {
     let center = Vec2::centroid(points);
     let name = if partial {
-        format!("{} (partial)", pattern.name)
+        format!("{} (partial)", pattern.name).into()
     } else {
         pattern.name.clone()
     };
@@ -425,7 +425,7 @@ mod tests {
 
         let matches = find_matches(&touches, &patterns);
         assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0].pattern_name, "triangle");
+        assert_eq!(matches[0].pattern_name.as_str(), "triangle");
         assert_eq!(matches[0].touch_indices.len(), 3);
         assert!(!matches[0].touch_indices.contains(&3));
     }
@@ -553,7 +553,7 @@ mod tests {
         );
 
         assert_eq!(matches.len(), 1);
-        assert!(matches[0].pattern_name.ends_with("(partial)"));
+        assert!(matches[0].pattern_name.as_str().ends_with("(partial)"));
         // C(4,4) = 1 exact candidate + C(4,3) = 4 partial candidates.
         assert_eq!(reports.len(), 5);
         let partials: Vec<_> = reports.iter().filter(|report| report.partial).collect();
@@ -659,7 +659,7 @@ mod tests {
         );
 
         assert_eq!(matches.len(), 1);
-        assert!(matches[0].pattern_name.ends_with("(partial)"));
+        assert!(matches[0].pattern_name.as_str().ends_with("(partial)"));
         // No exact C(3,4) combos are possible - only the C(3,3) = 1 partial.
         assert_eq!(reports.len(), 1);
         assert!(reports[0].partial);

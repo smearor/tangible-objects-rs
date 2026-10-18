@@ -554,6 +554,13 @@ pub(crate) fn drain_control_commands(
                     config.mode, config.radius_factor, config.max_missing, config.persist
                 );
             }
+            ControlCommand::ResetMetrics => {
+                runtime.reset_metrics();
+            }
+            ControlCommand::ShowMessage(text) => {
+                println!("\n{}", text);
+                runtime.set_message((!text.is_empty()).then_some(text));
+            }
             other => apply_registration(runtime, engine, other),
         }
     }
@@ -577,7 +584,7 @@ fn persist_registration(registration: &Registration) {
     };
     let (name, result) = match registration {
         Registration::Pattern(profile) => (
-            profile.name.clone(),
+            profile.name.as_str().to_string(),
             std::fs::create_dir_all(&store).and_then(|_| {
                 profile
                     .save(&store.join(format!("{}.toml", profile.name)))
@@ -585,7 +592,7 @@ fn persist_registration(registration: &Registration) {
             }),
         ),
         Registration::FieldSet(set) => (
-            set.name.clone(),
+            set.name.as_str().to_string(),
             std::fs::create_dir_all(&store).and_then(|_| {
                 std::fs::write(
                     store.join(format!("{}.toml", set.name)),
@@ -691,7 +698,7 @@ pub(crate) fn apply_registration(
             if engine.remove_pattern(id) {
                 runtime.remove_profile(id);
                 if let Some(name) = name {
-                    unpersist("profiles.d", &name);
+                    unpersist("profiles.d", name.as_str());
                 }
                 println!("\nProfil entfernt: {id}");
             } else {
@@ -722,6 +729,11 @@ pub(crate) fn apply_registration(
                 patterns.len(),
                 field_sets.len()
             );
+        }
+        ControlCommand::ResetMetrics => runtime.reset_metrics(),
+        ControlCommand::ShowMessage(text) => {
+            println!("\n{}", text);
+            runtime.set_message((!text.is_empty()).then_some(text));
         }
         other => warn!(?other, "command ignored"),
     }

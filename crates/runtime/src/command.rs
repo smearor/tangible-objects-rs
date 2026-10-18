@@ -46,6 +46,13 @@ pub enum ControlCommand {
     /// (TRACKING_STABILIZATION.md). Applies to matching and suppression in
     /// all modes from the next frame on.
     SetCompletion(CompletionConfig),
+    /// Reset the accumulated [`crate::SessionMetrics`] counters - e.g.
+    /// between automated test runs.
+    ResetMetrics,
+    /// Display a user-facing message in the GUI ("Legen Sie Figur 10
+    /// auf") - interfaces steer the operator during test series.
+    /// `None`-equivalent empty string clears it.
+    ShowMessage(String),
     /// Register a profile or field set at runtime (DYNAMIC_PROFILES.md).
     /// Registrations whose fingerprint collides with an already-loaded
     /// profile are rejected in the device loop.

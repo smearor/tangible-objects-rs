@@ -2231,6 +2231,7 @@ name = "tangible-objects-dbus"
 version = "0.1.0"
 dependencies = [
  "futures-lite",
+ "serde_json",
  "tangible-objects-engine",
  "tangible-objects-model",
  "tangible-objects-runtime",

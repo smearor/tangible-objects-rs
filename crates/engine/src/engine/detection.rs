@@ -5,6 +5,7 @@ use tangible_objects_model::Calibration;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
@@ -66,7 +67,7 @@ pub struct Engine {
     /// Owner (registering application) per dynamically added pattern.
     pattern_owners: std::collections::HashMap<PatternId, Option<Owner>>,
     /// Owner per dynamically added field set, keyed by set name.
-    field_set_owners: std::collections::HashMap<String, Option<Owner>>,
+    field_set_owners: std::collections::HashMap<FieldSetName, Option<Owner>>,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -223,7 +224,7 @@ impl Engine {
                 self.patterns
                     .iter()
                     .find(|pattern| pattern.id == *id)
-                    .map(|pattern| (*id, pattern.name.clone()))
+                    .map(|pattern| (*id, pattern.name.as_str().to_string()))
             })
             .collect();
         for (id, _) in &patterns {
@@ -233,7 +234,7 @@ impl Engine {
             .field_set_owners
             .iter()
             .filter(|(_, o)| o.as_ref() == Some(owner))
-            .map(|(name, _)| name.clone())
+            .map(|(name, _)| name.as_str().to_string())
             .collect();
         for name in &set_names {
             self.remove_field_set(name);
@@ -592,7 +593,7 @@ mod tests {
 
         let frame = frame.expect("frame expected on SYN_REPORT");
         assert_eq!(frame.matches.len(), 1);
-        assert_eq!(frame.matches[0].pattern_name, "triangle");
+        assert_eq!(frame.matches[0].pattern_name.as_str(), "triangle");
         assert!(
             frame
                 .events
@@ -671,7 +672,7 @@ mod tests {
         let frame = frame.expect("frame expected");
         // Only B may match - A's remaining slots are reserved.
         assert_eq!(frame.matches.len(), 1);
-        assert_eq!(frame.matches[0].pattern_name, "big-triangle");
+        assert_eq!(frame.matches[0].pattern_name.as_str(), "big-triangle");
         let indices = &frame.matches[0].touch_indices;
         for &index in indices {
             let slot = frame.touches[index].slot;
@@ -776,7 +777,7 @@ mod tests {
         );
         engine.update_pattern(id, &bigger).expect("update");
         assert_eq!(engine.patterns()[0].id, id);
-        assert_eq!(engine.patterns()[0].name, "pawn-v2");
+        assert_eq!(engine.patterns()[0].name.as_str(), "pawn-v2");
         assert_eq!(engine.pattern_owner(id).map(Owner::as_str), Some("chess"));
         // Update must not collide with itself.
         assert!(engine.update_pattern(id, &bigger).is_ok());
@@ -800,7 +801,7 @@ mod tests {
         engine
             .add_field_set(
                 FieldSet {
-                    name: "grid".to_string(),
+                    name: "grid".into(),
                     window: None,
                     stability: tangible_objects_model::default_stability(),
                     fields: Vec::new(),

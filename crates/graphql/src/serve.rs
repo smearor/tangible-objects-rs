@@ -79,7 +79,7 @@ mod tests {
         vec![TrackedTangible {
             id: TangibleId::new(7),
             pattern_id: PatternId::new(1),
-            pattern_name: "triangle".to_string(),
+            pattern_name: "triangle".into(),
             center: Vec2::new(10.0, 20.0),
             rotation_rad: RotationRad::new(1.0),
             frames_since_match: 0,
@@ -92,7 +92,7 @@ mod tests {
             Vec::new(),
             vec![ProfileInfo {
                 pattern_id: PatternId::new(1),
-                name: "triangle".to_string(),
+                name: "triangle".into(),
                 num_points: 3,
                 owner: None,
             }],

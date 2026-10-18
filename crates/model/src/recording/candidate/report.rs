@@ -17,7 +17,7 @@ pub struct CandidateReport {
     /// Pattern the combination was tested against.
     pub pattern_id: PatternId,
     /// Name of the figure profile the combination was tested against.
-    pub pattern_name: String,
+    pub pattern_name: crate::PatternName,
     /// Indices into the frame's `touches` forming this combination.
     pub touch_indices: Vec<usize>,
     /// Whether the combination matched the pattern within `tolerance`.
@@ -102,6 +102,6 @@ impl CandidateReport {
     /// the interface APIs.
     pub fn matches_label(&self, label: &RecordLabel) -> bool {
         let label = label.as_str();
-        self.pattern_name == label || self.pattern_id.0.to_string() == label
+        self.pattern_name.as_str() == label || self.pattern_id.0.to_string() == label
     }
 }

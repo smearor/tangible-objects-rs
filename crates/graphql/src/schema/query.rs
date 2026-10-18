@@ -85,6 +85,22 @@ impl QueryRoot {
         Ok(ctx.data::<EngineHandle>()?.snapshot().completion)
     }
 
+    /// Accumulated session recognition metrics: uptime, re-ID churn,
+    /// match quality, per-slot contact stability.
+    async fn metrics(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<async_graphql::Json<tangible_objects_runtime::SessionMetrics>> {
+        Ok(async_graphql::Json(
+            ctx.data::<EngineHandle>()?.snapshot().metrics.clone(),
+        ))
+    }
+
+    /// User-facing message currently shown by the GUI.
+    async fn message(&self, ctx: &Context<'_>) -> Result<Option<String>> {
+        Ok(ctx.data::<EngineHandle>()?.snapshot().message)
+    }
+
     /// Reads a recording artifact produced by this daemon.
     ///
     /// Restricted to known recording extensions (`.jsonl`, `.evtest`,

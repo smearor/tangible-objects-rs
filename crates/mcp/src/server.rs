@@ -33,6 +33,7 @@ use super::tool_args::RegisterPatternArgs;
 use super::tool_args::SetCompletionArgs;
 use super::tool_args::SetFilterModeArgs;
 use super::tool_args::SetRecordLabelArgs;
+use super::tool_args::ShowMessageArgs;
 use super::tool_args::StartRecordingArgs;
 use super::tool_args::TrainProfileArgs;
 use super::tool_args::UnregisterFieldSetArgs;
@@ -179,6 +180,47 @@ impl EngineMcp {
             config.affinity_factor,
             config.smoothing_alpha
         ))]))
+    }
+
+    /// Returns the accumulated session metrics.
+    #[tool(
+        description = "Get session recognition metrics: frame uptime, tangible re-ID churn, exact/partial match frames, claimed pins, per-slot tracking-ID churn."
+    )]
+    async fn get_metrics(&self) -> Result<CallToolResult, ErrorData> {
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            json_pretty(&self.handle.snapshot().metrics)?,
+        )]))
+    }
+
+    /// Resets the session metric counters.
+    #[tool(
+        description = "Reset the accumulated session metrics - call between automated test runs to isolate each series."
+    )]
+    async fn reset_metrics(&self) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::ResetMetrics)
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            "metrics reset".to_string(),
+        )]))
+    }
+
+    /// Pushes a user-facing message into the GUI overlay.
+    #[tool(
+        description = "Show a user-facing message in the GUI overlay (e.g. 'Legen Sie Figur 10 auf'); an empty text clears it."
+    )]
+    async fn show_message(
+        &self,
+        Parameters(args): Parameters<ShowMessageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::ShowMessage(args.text))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            "message shown".to_string(),
+        )]))
     }
 
     /// Registers a figure profile at runtime.

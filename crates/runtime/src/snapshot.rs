@@ -28,4 +28,10 @@ pub struct EngineSnapshot {
     /// Active occupancy field sets - static (`--fields`) plus dynamically
     /// registered ones.
     pub field_sets: Vec<tangible_objects_model::FieldSet>,
+    /// Accumulated session recognition metrics - uptime, re-ID churn,
+    /// match quality, per-slot contact stability.
+    pub metrics: crate::SessionMetrics,
+    /// User-facing message currently displayed in the GUI
+    /// (`show_message` command).
+    pub message: Option<String>,
 }

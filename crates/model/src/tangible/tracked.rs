@@ -24,7 +24,7 @@ pub struct TrackedTangible {
     /// ID of the matched pattern.
     pub pattern_id: PatternId,
     /// Name of the matched figure profile.
-    pub pattern_name: String,
+    pub pattern_name: crate::PatternName,
     /// Smoothed centroid position.
     pub center: Vec2<Millimeters>,
     /// Smoothed orientation in radians.

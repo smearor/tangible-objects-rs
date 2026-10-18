@@ -156,7 +156,7 @@ mod tests {
         TrackedTangible {
             id: TangibleId::new(instance),
             pattern_id: PatternId::new(pattern),
-            pattern_name: format!("fig-{pattern}"),
+            pattern_name: format!("fig-{pattern}").into(),
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
             frames_since_match: 0,

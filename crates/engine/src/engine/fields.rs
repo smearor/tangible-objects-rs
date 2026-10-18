@@ -81,7 +81,11 @@ impl FieldTracker {
 
     /// Removes a field set by name. Returns `true` when removed.
     pub fn remove_set(&mut self, name: &str) -> bool {
-        let Some(index) = self.sets.iter().position(|set| set.name == name) else {
+        let Some(index) = self
+            .sets
+            .iter()
+            .position(|set| set.name.as_str() == name)
+        else {
             return false;
         };
         self.sets.remove(index);
@@ -202,12 +206,12 @@ mod tests {
 
     fn set() -> FieldSet {
         FieldSet {
-            name: "board".to_string(),
+            name: "board".into(),
             window: None,
             stability: FrameCount::new(2),
             suppress: false,
             fields: vec![Field {
-                name: "a1".to_string(),
+                name: "a1".into(),
                 region: Region {
                     x_min: Millimeters::new(0.0),
                     y_min: Millimeters::new(0.0),

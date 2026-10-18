@@ -16,5 +16,6 @@ tangible-objects-model = { workspace = true, features = ["zbus"] }
 tangible-objects-runtime = { workspace = true, features = ["zbus"] }
 tokio.workspace = true
 toml.workspace = true
+serde_json.workspace = true
 tracing.workspace = true
 zbus.workspace = true
