@@ -43,6 +43,7 @@ fn main() -> Result<()> {
     let mut convert_input: Option<String> = None;
     let mut convert_to: Option<String> = None;
     let mut edge: Option<Millimeters> = None;
+    let mut similarity_json: Option<String> = None;
     let mut stability: Option<u64> = None;
     let mut legacy: Option<String> = None;
     let mut fields_path: Option<String> = None;
@@ -99,6 +100,10 @@ fn main() -> Result<()> {
             "--similarity" => {
                 mode = Some("--similarity");
                 file = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--similarity-json" => {
+                similarity_json = args.get(i + 1).cloned();
                 i += 1;
             }
             "--export-dataset" => {
@@ -302,7 +307,7 @@ fn main() -> Result<()> {
             let dir = file.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --similarity <profiles-dir>")
             })?;
-            modes::run_similarity(Path::new(&dir))
+            modes::run_similarity(Path::new(&dir), similarity_json.as_deref().map(Path::new))
         }
         "--export-dataset" => {
             let path = file.ok_or_else(|| {

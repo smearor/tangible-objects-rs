@@ -1464,21 +1464,24 @@ pub fn run_analyze(path: &Path) -> Result<()> {
 /// Prints the pairwise profile-similarity report for a profile
 /// directory - the phantom-collision surface (which reduced contact
 /// sets of one figure can satisfy another figure's fingerprint).
-pub fn run_similarity(dir: &Path) -> Result<()> {
+pub fn run_similarity(dir: &Path, json_out: Option<&Path>) -> Result<()> {
     let loaded = tangible_objects_model::ProfileFile::load_dir(dir);
     for (file, error) in &loaded.errors {
         eprintln!("{}: {error}", file.display());
     }
     let patterns = loaded.into_patterns();
+    let report = tangible_objects_analysis::SimilarityReport::analyze(&patterns);
     println!(
         "Aehnlichkeits-Analyse: {} ({} Profile)\n",
         dir.display(),
         patterns.len()
     );
-    println!(
-        "{}",
-        tangible_objects_analysis::SimilarityReport::analyze(&patterns)
-    );
+    println!("{report}");
+    if let Some(path) = json_out {
+        let json = serde_json::to_string_pretty(&report).into_diagnostic()?;
+        std::fs::write(path, json).into_diagnostic()?;
+        println!("Report gespeichert: {}", path.display());
+    }
     Ok(())
 }
 

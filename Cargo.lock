@@ -2203,6 +2203,7 @@ dependencies = [
  "gtk4",
  "libc",
  "miette",
+ "serde_json",
  "tangible-objects-analysis",
  "tangible-objects-dbus",
  "tangible-objects-engine",
