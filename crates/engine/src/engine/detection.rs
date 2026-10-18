@@ -18,7 +18,7 @@ use tangible_objects_model::RawEvent;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
-use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::TrackedSet;
 use tangible_objects_model::TrackingId;
 use tangible_objects_model::Vec2;
 use tracing::debug;
@@ -342,7 +342,7 @@ impl Engine {
     }
 
     /// All currently tracked tangibles (EMA-smoothed).
-    pub fn tracked(&self) -> &[TrackedTangible] {
+    pub fn tracked(&self) -> TrackedSet<'_> {
         self.tracker.active()
     }
 

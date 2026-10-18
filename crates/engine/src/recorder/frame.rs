@@ -16,7 +16,7 @@ use tangible_objects_model::FrameRecord;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::RECORD_SCHEMA_VERSION;
 use tangible_objects_model::TrackedRecord;
-use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::TrackedSet;
 use tracing::warn;
 
 use super::FrameContext;
@@ -77,7 +77,7 @@ impl FrameRecorder {
         frame_no: FrameNumber,
         timestamp_ms: Milliseconds,
         frame: &EngineFrame,
-        tracked: &[TrackedTangible],
+        tracked: TrackedSet<'_>,
         context: &FrameContext,
     ) {
         let record = FrameRecord {
@@ -190,8 +190,20 @@ mod tests {
                 calibration: None,
                 raw_dropped: EventCount::default(),
             };
-            recorder.record(7.into(), Milliseconds::new(0), &frame, &[], &context);
-            recorder.record(8.into(), Milliseconds::new(16), &frame, &[], &context);
+            recorder.record(
+                7.into(),
+                Milliseconds::new(0),
+                &frame,
+                (&[]).into(),
+                &context,
+            );
+            recorder.record(
+                8.into(),
+                Milliseconds::new(16),
+                &frame,
+                (&[]).into(),
+                &context,
+            );
             recorder.finish().expect("finish recorder");
         }
 

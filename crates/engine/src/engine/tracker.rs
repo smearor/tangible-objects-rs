@@ -9,6 +9,8 @@ use tangible_objects_model::TangibleId;
 use tangible_objects_model::TouchSet;
 
 use tangible_objects_model::TouchPointSlot;
+use tangible_objects_model::TrackedBuf;
+use tangible_objects_model::TrackedSet;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
 use tracing::debug;
@@ -30,7 +32,7 @@ use super::EngineEvent;
 pub struct Tracker {
     /// Currently alive tangibles with EMA-smoothed pose and
     /// `frames_since_match` age.
-    tracked: Vec<TrackedTangible>,
+    tracked: TrackedBuf,
     /// Slot bindings per tangible ID - the slots of its last match,
     /// including persistent completion claims (the *reservation* set).
     slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
@@ -65,7 +67,7 @@ impl Tracker {
         max_frames_without_match: impl Into<FrameCount>,
     ) -> Self {
         Self {
-            tracked: Vec::new(),
+            tracked: TrackedBuf::default(),
             slots: HashMap::new(),
             matched_slots: HashMap::new(),
             ema_alpha,
@@ -107,7 +109,7 @@ impl Tracker {
         bind_claimed: bool,
     ) -> Vec<EngineEvent> {
         let mut events = Vec::new();
-        for tangible in &mut self.tracked {
+        for tangible in self.tracked.0.iter_mut() {
             tangible.frames_since_match += 1;
         }
 
@@ -202,7 +204,7 @@ impl Tracker {
 
         // A missed frame resets the pending confirmation counter - the
         // partial spawn must hold for consecutive frames.
-        for tangible in &mut self.tracked {
+        for tangible in self.tracked.0.iter_mut() {
             if tangible.pending && tangible.frames_since_match > 0 {
                 tangible.pending_frames = 0;
             }
@@ -214,7 +216,7 @@ impl Tracker {
             .tracked
             .drain(..)
             .partition(|t| FrameCount::from(t.frames_since_match) <= self.max_frames_without_match);
-        self.tracked = kept;
+        self.tracked = kept.into();
         for tangible in removed {
             debug!(pattern = %tangible.pattern_name, "tangible removed");
             self.slots.remove(&tangible.id);
@@ -225,8 +227,8 @@ impl Tracker {
     }
 
     /// All currently tracked tangibles.
-    pub fn active(&self) -> &[TrackedTangible] {
-        &self.tracked
+    pub fn active(&self) -> TrackedSet<'_> {
+        (&self.tracked).into()
     }
 
     /// Drops all tracked tangibles.

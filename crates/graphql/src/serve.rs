@@ -115,7 +115,7 @@ mod tests {
                 events: vec![EngineEvent::TangibleAdded(tracked()[0].clone())],
                 candidates: Vec::new(),
             },
-            &tracked(),
+            (&tracked()).into(),
         );
 
         let result = schema

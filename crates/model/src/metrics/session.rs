@@ -11,7 +11,7 @@ use crate::TangibleId;
 use crate::TouchSet;
 
 use crate::TouchPointSlot;
-use crate::TrackedTangible;
+use crate::TrackedSet;
 use crate::TrackingId;
 
 use super::PatternMetrics;
@@ -62,7 +62,7 @@ impl SessionMetrics {
         &mut self,
         touches: TouchSet<'_>,
         matches: &[PatternMatch],
-        tracked: &[TrackedTangible],
+        tracked: TrackedSet<'_>,
         touches_changed: bool,
     ) {
         self.frames += 1;
@@ -180,16 +180,16 @@ mod tests {
         metrics.record(
             (&[touch(0, 1)]).into(),
             &[matcher(false)],
-            &[tracked(0)],
+            (&[tracked(0)]).into(),
             true,
         );
         metrics.record(
             (&[touch(0, 9)]).into(),
             &[matcher(true)],
-            &[tracked(0)],
+            (&[tracked(0)]).into(),
             true,
         );
-        metrics.record((&[]).into(), &[], &[], false);
+        metrics.record((&[]).into(), &[], (&[]).into(), false);
 
         assert_eq!(metrics.frames, FrameCount::new(3));
         assert_eq!(metrics.tracked_frames, FrameCount::new(2));

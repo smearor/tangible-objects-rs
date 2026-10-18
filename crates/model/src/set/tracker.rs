@@ -5,6 +5,7 @@ use super::SetAction;
 use super::TangibleSet;
 use super::TangibleSetId;
 use crate::TangibleId;
+use crate::TrackedSet;
 use crate::TrackedTangible;
 
 /// Per-set runtime state of the [`SetTracker`].
@@ -60,7 +61,7 @@ impl SetTracker {
     /// actions that occurred since the previous update.
     ///
     /// Call once per frame with the full list of tracked tangibles.
-    pub fn update(&mut self, tangibles: &[TrackedTangible]) -> Vec<SetAction> {
+    pub fn update(&mut self, tangibles: TrackedSet<'_>) -> Vec<SetAction> {
         let mut actions = Vec::new();
         for set in &self.sets {
             let Some(state) = self.states.get_mut(&set.id) else {
@@ -193,11 +194,16 @@ mod tests {
         let mut tracker = SetTracker::new(vec![set(1, &[1, 2], &[])]);
 
         // One of two mandatory members is not enough.
-        assert!(tracker.update(&[tangible(1, 1, 0.0, 0.0)]).is_empty());
+        assert!(
+            tracker
+                .update((&[tangible(1, 1, 0.0, 0.0)]).into())
+                .is_empty()
+        );
         assert!(!tracker.is_active(TangibleSetId::new(1)));
 
         // All mandatory members present: activation + one add per member.
-        let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]);
+        let actions =
+            tracker.update((&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]).into());
         assert!(tracker.is_active(TangibleSetId::new(1)));
         assert_eq!(actions[0], SetAction::SetAdded(TangibleSetId::new(1)));
         assert_eq!(added_ids(&actions).len(), 2);
@@ -206,11 +212,11 @@ mod tests {
     #[test]
     fn hysteresis_keeps_set_active_with_partial_mandatory() {
         let mut tracker = SetTracker::new(vec![set(1, &[1, 2], &[])]);
-        tracker.update(&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]);
+        tracker.update((&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]).into());
 
         // Only one mandatory member left: set stays active, member reported
         // as removed.
-        let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0)]);
+        let actions = tracker.update((&[tangible(1, 1, 0.0, 0.0)]).into());
         assert!(tracker.is_active(TangibleSetId::new(1)));
         assert!(
             !actions
@@ -226,9 +232,9 @@ mod tests {
     #[test]
     fn set_deactivates_when_last_mandatory_member_removed() {
         let mut tracker = SetTracker::new(vec![set(1, &[1], &[2])]);
-        tracker.update(&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]);
+        tracker.update((&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]).into());
 
-        let actions = tracker.update(&[]);
+        let actions = tracker.update((&[]).into());
         assert!(!tracker.is_active(TangibleSetId::new(1)));
         assert!(
             actions
@@ -248,17 +254,19 @@ mod tests {
     #[test]
     fn additional_member_emits_add_move_remove() {
         let mut tracker = SetTracker::new(vec![set(1, &[1], &[2])]);
-        tracker.update(&[tangible(1, 1, 0.0, 0.0)]);
+        tracker.update((&[tangible(1, 1, 0.0, 0.0)]).into());
 
         // Additional member appears: ObjectAdded.
-        let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]);
+        let actions =
+            tracker.update((&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 10.0, 0.0)]).into());
         assert!(actions.iter().any(|a| matches!(
             a,
             SetAction::ObjectAdded(_, t) if t.id == TangibleId::new(2)
         )));
 
         // Pose change: ObjectMoved.
-        let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 20.0, 0.0)]);
+        let actions =
+            tracker.update((&[tangible(1, 1, 0.0, 0.0), tangible(2, 2, 20.0, 0.0)]).into());
         assert!(actions.iter().any(|a| matches!(
             a,
             SetAction::ObjectMoved(_, t) if t.id == TangibleId::new(2)
@@ -266,7 +274,7 @@ mod tests {
 
         // Disappears: ObjectRemoved - but the set stays active because the
         // mandatory member remains.
-        let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0)]);
+        let actions = tracker.update((&[tangible(1, 1, 0.0, 0.0)]).into());
         assert!(actions.iter().any(|a| matches!(
             a,
             SetAction::ObjectRemoved(_, t) if t.id == TangibleId::new(2)
@@ -277,7 +285,7 @@ mod tests {
     #[test]
     fn additional_only_members_never_activate() {
         let mut tracker = SetTracker::new(vec![set(1, &[1], &[2])]);
-        let actions = tracker.update(&[tangible(2, 2, 10.0, 0.0)]);
+        let actions = tracker.update((&[tangible(2, 2, 10.0, 0.0)]).into());
         assert!(actions.is_empty());
         assert!(!tracker.is_active(TangibleSetId::new(1)));
     }
@@ -285,7 +293,7 @@ mod tests {
     #[test]
     fn set_without_mandatory_members_never_activates() {
         let mut tracker = SetTracker::new(vec![set(1, &[], &[1])]);
-        let actions = tracker.update(&[tangible(1, 1, 0.0, 0.0)]);
+        let actions = tracker.update((&[tangible(1, 1, 0.0, 0.0)]).into());
         assert!(actions.is_empty());
         assert!(!tracker.is_active(TangibleSetId::new(1)));
     }
@@ -293,11 +301,11 @@ mod tests {
     #[test]
     fn reactivation_reports_members_as_added_again() {
         let mut tracker = SetTracker::new(vec![set(1, &[1], &[])]);
-        tracker.update(&[tangible(1, 1, 0.0, 0.0)]);
-        tracker.update(&[]);
+        tracker.update((&[tangible(1, 1, 0.0, 0.0)]).into());
+        tracker.update((&[]).into());
 
         // New instance (new TangibleId) re-activates the set.
-        let actions = tracker.update(&[tangible(5, 1, 0.0, 0.0)]);
+        let actions = tracker.update((&[tangible(5, 1, 0.0, 0.0)]).into());
         assert!(
             actions
                 .iter()

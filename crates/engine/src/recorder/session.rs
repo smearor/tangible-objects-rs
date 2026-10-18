@@ -9,7 +9,7 @@ use tangible_objects_model::Milliseconds;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::RemainingFrameCount;
-use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::TrackedSet;
 
 use super::FrameContext;
 use super::FrameRecorder;
@@ -98,7 +98,7 @@ impl RecordingSession {
         frame_no: FrameNumber,
         timestamp_ms: Milliseconds,
         frame: &EngineFrame,
-        tracked: &[TrackedTangible],
+        tracked: TrackedSet<'_>,
     ) -> bool {
         if frame.touches.is_empty() && tracked.is_empty() {
             return false;

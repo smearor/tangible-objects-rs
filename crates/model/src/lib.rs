@@ -117,6 +117,8 @@ pub use set::TangibleSetId;
 pub use set::TangibleSetState;
 pub use tangible::TangibleCount;
 pub use tangible::TangibleId;
+pub use tangible::TrackedBuf;
+pub use tangible::TrackedSet;
 pub use tangible::TrackedTangible;
 pub use touch_point::TouchPoint;
 pub use touch_point::TouchPointSlot;

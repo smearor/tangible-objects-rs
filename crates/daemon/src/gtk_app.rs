@@ -38,6 +38,7 @@ use tangible_objects_model::ProfileFile;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchSet;
 
+use tangible_objects_model::TrackedSet;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::EngineRuntime;
@@ -546,7 +547,15 @@ fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mutex<Sh
     if mode == GuiMode::Training {
         draw_training(cr, w, h, touches.into(), &to_screen, &s);
     } else {
-        draw_live(cr, w, h, touches.into(), matches, &s.tracked, &to_screen);
+        draw_live(
+            cr,
+            w,
+            h,
+            touches.into(),
+            matches,
+            (&s.tracked).into(),
+            &to_screen,
+        );
     }
 }
 
@@ -632,7 +641,7 @@ fn draw_live(
     _h: f64,
     touches: TouchSet<'_>,
     matches: &[PatternMatch],
-    tracked: &[TrackedTangible],
+    tracked: TrackedSet<'_>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
 ) {
     // Collect matched indices.

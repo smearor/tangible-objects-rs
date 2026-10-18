@@ -9,7 +9,7 @@ use tangible_objects_engine::EngineFrame;
 use tangible_objects_model::SetTracker;
 use tangible_objects_model::TangibleSet;
 use tangible_objects_model::TouchPoint;
-use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::TrackedSet;
 
 use super::ControlCommand;
 use super::DomainEvent;
@@ -176,7 +176,7 @@ impl EngineRuntime {
 
     /// Publishes a processed frame: runs the set tracker, updates the
     /// snapshot and broadcasts engine events followed by set actions.
-    pub fn publish(&mut self, frame: &EngineFrame, tracked: &[TrackedTangible]) {
+    pub fn publish(&mut self, frame: &EngineFrame, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
         let touches_changed = frame
             .events
@@ -210,7 +210,7 @@ impl EngineRuntime {
     /// Publishes the current engine state without a frame - used on the
     /// command-drain wake-up path so interface-visible state (e.g. a stopped
     /// recording) reaches clients even while the device is idle.
-    pub fn publish_snapshot(&mut self, touches: Vec<TouchPoint>, tracked: &[TrackedTangible]) {
+    pub fn publish_snapshot(&mut self, touches: Vec<TouchPoint>, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
         self.snapshot.send_replace(EngineSnapshot {
             tracked: tracked.to_vec(),
@@ -374,7 +374,7 @@ mod tests {
                 EngineEvent::TangibleAdded(tracked[0].clone()),
                 EngineEvent::TouchPointsUpdated,
             ]),
-            &tracked,
+            (&tracked).into(),
         );
 
         assert!(matches!(
@@ -401,7 +401,7 @@ mod tests {
         let tracked = vec![tangible(1, 1), tangible(2, 2)];
         let (mut runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
 
-        runtime.publish(&frame(Vec::new()), &tracked);
+        runtime.publish(&frame(Vec::new()), (&tracked).into());
 
         let snapshot = handle.snapshot();
         assert_eq!(snapshot.tracked.len(), 2);
@@ -435,7 +435,7 @@ mod tests {
         let (mut runtime, handle) = EngineRuntime::new(vec![set(1, &[1])], Vec::new());
         let mut receiver = handle.subscribe();
 
-        runtime.publish(&frame(Vec::new()), &tracked);
+        runtime.publish(&frame(Vec::new()), (&tracked).into());
 
         assert!(receiver.try_recv().is_err());
     }
