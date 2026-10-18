@@ -128,7 +128,7 @@ impl PatternMatch {
 mod tests {
     use super::PatternMatch;
     use crate::ClaimedIndices;
-    use crate::FrameCount;
+    use crate::DEFAULT_SPAWN_STABILITY;
     use crate::PatternId;
     use crate::RotationRad;
     use crate::Vec2;
@@ -179,7 +179,7 @@ mod tests {
             touch_indices: vec![0, 1, 2].into(),
             partial: false,
             claimed_indices: ClaimedIndices::default(),
-            spawn_stability: FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
         };
         assert!(!pattern_match.is_partial());
         assert_eq!(pattern_match.all_indices().count(), 3);

@@ -67,8 +67,8 @@ mod tests {
     use super::build_schema;
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
+    use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FilterMode;
-    use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PinCount;
     use tangible_objects_model::RotationRad;
@@ -88,7 +88,7 @@ mod tests {
             rotation_rad: RotationRad::new(1.0),
             pending: false,
             pending_frames: 0,
-            spawn_stability: tangible_objects_model::FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
             frames_since_match: 0,
         }]
     }
@@ -103,7 +103,7 @@ mod tests {
                 num_points: PinCount::new(3),
                 owner: None,
                 spawn_on_partial: false,
-                spawn_stability: FrameCount::new(15),
+                spawn_stability: DEFAULT_SPAWN_STABILITY,
             }],
         );
         let schema = build_schema(handle);

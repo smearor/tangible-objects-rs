@@ -256,6 +256,7 @@ mod tests {
     use super::Tracker;
     use super::ema_angle;
     use crate::EngineEvent;
+    use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
@@ -271,7 +272,7 @@ mod tests {
             touch_indices: Default::default(),
             partial: false,
             claimed_indices: Default::default(),
-            spawn_stability: tangible_objects_model::FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
         }
     }
 
@@ -349,7 +350,7 @@ mod tests {
         let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
         let mut partial = pattern_match(1, 10.0, 20.0);
         partial.partial = true;
-        partial.spawn_stability = FrameCount::new(15);
+        partial.spawn_stability = DEFAULT_SPAWN_STABILITY;
         tracker.update(&[partial], (&touches()).into(), true);
         assert!(tracker.active()[0].pending);
 

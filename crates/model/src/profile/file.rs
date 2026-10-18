@@ -75,9 +75,11 @@ fn default_enabled() -> bool {
 }
 
 /// Default partial-spawn confirmation window (`spawn_stability = 15`
-/// frames, ~0.25 s at 60 Hz).
+/// frames, ~0.25 s at 60 Hz). Phantom partials die inside this window
+/// before they can emit `TangibleAdded`.
+pub const DEFAULT_SPAWN_STABILITY: FrameCount = FrameCount::new(15);
 fn default_spawn_stability() -> FrameCount {
-    FrameCount::new(15)
+    DEFAULT_SPAWN_STABILITY
 }
 
 impl ProfileFile {

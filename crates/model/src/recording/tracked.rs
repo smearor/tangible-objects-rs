@@ -95,6 +95,7 @@ impl<'de> Deserialize<'de> for TrackedRecord {
 #[cfg(test)]
 mod tests {
     use super::TrackedRecord;
+    use crate::DEFAULT_SPAWN_STABILITY;
     use crate::RotationRad;
     use crate::TangibleId;
     use crate::TrackedTangible;
@@ -109,7 +110,7 @@ mod tests {
             rotation_rad: RotationRad::new(std::f64::consts::PI),
             pending: false,
             pending_frames: 0,
-            spawn_stability: crate::FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
             frames_since_match: 3,
         }
     }

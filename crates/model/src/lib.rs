@@ -91,6 +91,7 @@ pub use pattern::TangiblePattern;
 pub use pixels::Pixels;
 pub use point_buf::PointBuf;
 pub use point_set::PointSet;
+pub use profile::DEFAULT_SPAWN_STABILITY;
 pub use profile::ProfileDir;
 pub use profile::ProfileError;
 pub use profile::ProfileFile;

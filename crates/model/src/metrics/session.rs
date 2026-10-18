@@ -128,6 +128,7 @@ impl SessionMetrics {
 #[cfg(test)]
 mod tests {
     use super::SessionMetrics;
+    use crate::DEFAULT_SPAWN_STABILITY;
     use crate::FrameCount;
     use crate::PatternId;
     use crate::PatternMatch;
@@ -156,7 +157,7 @@ mod tests {
             touch_indices: vec![0].into(),
             partial,
             claimed_indices: Default::default(),
-            spawn_stability: FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
         }
     }
 
@@ -169,7 +170,7 @@ mod tests {
             rotation_rad: RotationRad::new(0.0),
             pending: false,
             pending_frames: 0,
-            spawn_stability: FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
             frames_since_match: 0,
         }
     }

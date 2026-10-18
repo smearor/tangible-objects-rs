@@ -7,6 +7,7 @@ use super::PatternTolerances;
 use super::PinCount;
 use crate::CombinationBuf;
 use crate::Combinations;
+use crate::DEFAULT_SPAWN_STABILITY;
 use crate::Deviations;
 use crate::FrameCount;
 use crate::MatchError;
@@ -66,7 +67,7 @@ impl TangiblePattern {
             id: id.into(),
             name: name.into(),
             spawn_on_partial: false,
-            spawn_stability: FrameCount::new(15),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
             num_points: PinCount::new(points.len()),
             sorted_distances: points.distances(),
             tolerance: tolerance.into(),

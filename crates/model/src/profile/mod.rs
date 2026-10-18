@@ -10,4 +10,5 @@ mod file;
 
 pub use dir::ProfileDir;
 pub use error::ProfileError;
+pub use file::DEFAULT_SPAWN_STABILITY;
 pub use file::ProfileFile;
