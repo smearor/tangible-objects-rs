@@ -277,11 +277,8 @@ impl Engine {
 
     /// Slots inside fields of `suppress`-enabled sets - merged into the
     /// proxy's suppression set in `--filter` mode.
-    pub fn field_suppressed_slots(
-        &self,
-        touches: TouchSet<'_>,
-    ) -> std::collections::HashSet<tangible_objects_model::TouchPointSlot> {
-        self.fields.suppressed_slots(touches.into())
+    pub fn field_suppressed_slots(&self, touches: TouchSet<'_>) -> HashSet<TouchPointSlot> {
+        self.fields.suppressed_slots(touches)
     }
 
     /// Sets the edge margin: touches closer than `margin` to the surface
@@ -323,7 +320,7 @@ impl Engine {
 
     /// The loaded figure patterns.
     pub fn patterns(&self) -> PatternSet<'_> {
-        (&self.patterns).into()
+        self.patterns.as_pattern_set()
     }
 
     /// All currently active touch points.
@@ -349,7 +346,7 @@ impl Engine {
     /// Finds all pattern matches in a given set of touch points without
     /// touching engine state.
     pub fn find_matches(&self, touches: TouchSet<'_>) -> Vec<PatternMatch> {
-        matching::find_matches(touches.into(), (&self.patterns).into())
+        matching::find_matches(touches, self.patterns())
     }
 
     /// Feeds one raw event into the engine.
@@ -476,14 +473,14 @@ impl Engine {
         let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
             Some(out) => matching::find_matches_with_diagnostics(
                 (&touches).into(),
-                (&self.patterns).into(),
+                self.patterns(),
                 &mut **out,
                 &reserved,
                 &self.completion,
             ),
             None => matching::find_matches_excluding(
                 (&touches).into(),
-                (&self.patterns).into(),
+                self.patterns(),
                 &reserved,
                 &self.completion,
             ),

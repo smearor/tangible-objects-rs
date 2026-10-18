@@ -2,8 +2,11 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::MatchScore;
+use crate::CombinationBuf;
+use crate::Distances;
 use crate::Millimeters;
 use crate::PatternId;
+use crate::PatternName;
 use crate::PatternTolerance;
 use crate::RecordLabel;
 
@@ -17,9 +20,9 @@ pub struct CandidateReport {
     /// Pattern the combination was tested against.
     pub pattern_id: PatternId,
     /// Name of the figure profile the combination was tested against.
-    pub pattern_name: crate::PatternName,
+    pub pattern_name: PatternName,
     /// Indices into the frame's `touches` forming this combination.
-    pub touch_indices: Vec<usize>,
+    pub touch_indices: CombinationBuf,
     /// Whether the combination matched the pattern within `tolerance`.
     pub matched: bool,
     /// Whether this was a partial attempt (`num_points - 1` contacts, one pin
@@ -28,7 +31,7 @@ pub struct CandidateReport {
     /// Sorted pairwise distances measured on the combination's points.
     /// Index `i` corresponds to the pattern's `sorted_distances[i]` (or the
     /// subset fingerprint for partial candidates).
-    pub measured_distances: crate::Distances,
+    pub measured_distances: Distances,
     /// Absolute deviation `|measured[i] - reference[i]|` per distance index,
     /// parallel to `measured_distances`.
     pub deviations: Vec<Millimeters>,

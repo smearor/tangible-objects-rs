@@ -341,7 +341,7 @@ impl EngineService {
         } else {
             PatternBuf::default()
         };
-        let report = AnalysisReport::analyze(&recording, mode, (&patterns).into());
+        let report = AnalysisReport::analyze(&recording, mode, patterns.as_pattern_set());
         serde_json::to_string_pretty(&report)
             .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
     }
@@ -361,7 +361,7 @@ impl EngineService {
                 "no profiles loaded from {dir}"
             )));
         }
-        let report = SimilarityReport::analyze((&patterns).into());
+        let report = SimilarityReport::analyze(patterns.as_pattern_set());
         serde_json::to_string_pretty(&report)
             .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
     }

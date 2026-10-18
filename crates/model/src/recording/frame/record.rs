@@ -101,7 +101,7 @@ mod tests {
             candidates: vec![CandidateReport {
                 pattern_id: PatternId::new(5),
                 pattern_name: "TestFigur-5P".into(),
-                touch_indices: vec![0, 1, 2, 3],
+                touch_indices: vec![0, 1, 2, 3].into(),
                 matched: true,
                 partial: false,
                 measured_distances: vec![Millimeters::new(34.15)].into(),

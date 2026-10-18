@@ -298,9 +298,9 @@ mod tests {
             pattern_name: format!("fig-{id}").into(),
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
-            touch_indices: Vec::new(),
+            touch_indices: Default::default(),
             partial: false,
-            claimed_indices: Vec::new(),
+            claimed_indices: Default::default(),
             spawn_stability: tangible_objects_model::FrameCount::new(15),
         }
     }

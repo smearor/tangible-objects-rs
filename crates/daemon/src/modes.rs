@@ -11,6 +11,17 @@ use std::time::Instant;
 
 use miette::IntoDiagnostic;
 use miette::Result;
+use tangible_objects_analysis::CollisionReport;
+use tangible_objects_analysis::Dataset;
+use tangible_objects_analysis::DeviationReport;
+use tangible_objects_analysis::FlappyReport;
+use tangible_objects_analysis::MlReport;
+use tangible_objects_analysis::Recording;
+use tangible_objects_analysis::ScoringReport;
+use tangible_objects_analysis::SimilarityReport;
+use tangible_objects_analysis::ToleranceReport;
+use tangible_objects_analysis::UtilizationReport;
+use tangible_objects_engine::DeviceConverter;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EvtestReplay;
@@ -1353,11 +1364,11 @@ pub fn resolve_device(device: Option<String>, profiles_dir: Option<&Path>) -> Re
     if let Some(path) = device {
         return Ok(PathBuf::from(path));
     }
-    let mut registry = tangible_objects_model::DeviceRegistry::builtin();
+    let mut registry = DeviceRegistry::builtin();
     if let Some(dir) = profiles_dir {
         registry = registry.with_dir(dir);
     }
-    let entry = tangible_objects_engine::TouchDevice::detect(&registry).into_diagnostic()?;
+    let entry = TouchDevice::detect(&registry).into_diagnostic()?;
     let profile = registry
         .find_by_ids(entry.vendor, entry.product)
         .expect("detected entry matches a profile");
@@ -1377,7 +1388,7 @@ pub fn resolve_device(device: Option<String>, profiles_dir: Option<&Path>) -> Re
 /// dir) or as a TOML file path; the output lands next to the input as
 /// `<stem>.to-<profile-name>.evtest`.
 pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path>) -> Result<()> {
-    let mut registry = tangible_objects_model::DeviceRegistry::builtin();
+    let mut registry = DeviceRegistry::builtin();
     if let Some(dir) = profiles_dir {
         registry = registry.with_dir(dir);
     }
@@ -1403,7 +1414,7 @@ pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path
         "to-{}.evtest",
         profile.name.replace(' ', "-").to_lowercase()
     ));
-    let converter = tangible_objects_engine::DeviceConverter::new(profile.clone());
+    let converter = DeviceConverter::new(profile.clone());
     let stats = converter.convert(input, &out).into_diagnostic()?;
     println!(
         "Konvertiert: {} → {} ({} Events: {} übernommen, {} gedroppt, {} geclampt)",
@@ -1423,9 +1434,9 @@ pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path
 /// candidate of every labeled frame (normalized deviation features +
 /// ground-truth target) for external ML tooling.
 pub fn run_export_dataset(path: &Path) -> Result<()> {
-    let recording = tangible_objects_analysis::Recording::load(path).into_diagnostic()?;
+    let recording = Recording::load(path).into_diagnostic()?;
     let out = path.with_extension("dataset.jsonl");
-    let dataset = tangible_objects_analysis::Dataset::of(&recording);
+    let dataset = Dataset::of(&recording);
     dataset.write_jsonl(&out).into_diagnostic()?;
     println!(
         "Dataset: {} ({} rows, {} features)",
@@ -1444,7 +1455,7 @@ pub fn run_export_dataset(path: &Path) -> Result<()> {
 /// Prints utilization, tolerance suggestions, flappy-contact metrics and the
 /// collision matrix for the loaded frames.
 pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
-    let recording = tangible_objects_analysis::Recording::load(path).into_diagnostic()?;
+    let recording = Recording::load(path).into_diagnostic()?;
     println!(
         "Analyse: {} ({} Frames)\n",
         path.display(),
@@ -1453,17 +1464,14 @@ pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
     let patterns = load_patterns(profiles_dir);
     print!(
         "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
-        tangible_objects_analysis::UtilizationReport::analyze(&recording),
-        tangible_objects_analysis::DeviationReport::analyze(&recording),
-        tangible_objects_analysis::DeviationReport::analyze_contacts(
-            &recording,
-            (&patterns).into()
-        ),
-        tangible_objects_analysis::ToleranceReport::analyze(&recording),
-        tangible_objects_analysis::FlappyReport::analyze(&recording),
-        tangible_objects_analysis::CollisionReport::analyze(&recording),
-        tangible_objects_analysis::ScoringReport::analyze(&recording),
-        tangible_objects_analysis::MlReport::analyze(&recording),
+        UtilizationReport::analyze(&recording),
+        DeviationReport::analyze(&recording),
+        DeviationReport::analyze_contacts(&recording, patterns.as_pattern_set()),
+        ToleranceReport::analyze(&recording),
+        FlappyReport::analyze(&recording),
+        CollisionReport::analyze(&recording),
+        ScoringReport::analyze(&recording),
+        MlReport::analyze(&recording),
     );
     Ok(())
 }
@@ -1472,12 +1480,12 @@ pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
 /// directory - the phantom-collision surface (which reduced contact
 /// sets of one figure can satisfy another figure's fingerprint).
 pub fn run_similarity(dir: &Path, json_out: Option<&Path>) -> Result<()> {
-    let loaded = tangible_objects_model::ProfileFile::load_dir(dir);
+    let loaded = ProfileFile::load_dir(dir);
     for (file, error) in &loaded.errors {
         eprintln!("{}: {error}", file.display());
     }
     let patterns = loaded.into_patterns();
-    let report = tangible_objects_analysis::SimilarityReport::analyze((&patterns).into());
+    let report = SimilarityReport::analyze(patterns.as_pattern_set());
     println!(
         "Aehnlichkeits-Analyse: {} ({} Profile)\n",
         dir.display(),

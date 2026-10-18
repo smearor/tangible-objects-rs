@@ -1,4 +1,6 @@
 use super::PatternId;
+use crate::ClaimedIndices;
+use crate::CombinationBuf;
 use crate::FrameCount;
 use crate::Millimeters;
 use crate::PatternName;
@@ -18,7 +20,7 @@ pub struct PatternMatch {
     /// Estimated figure orientation in radians.
     pub rotation_rad: RotationRad,
     /// Indices into the frame's touch point list that belong to this figure.
-    pub touch_indices: Vec<usize>,
+    pub touch_indices: CombinationBuf,
     /// Whether the match used a partial (`num_points - k`) fingerprint.
     /// `true` also for completed partials - see `claimed_indices`.
     pub partial: bool,
@@ -26,7 +28,7 @@ pub struct PatternMatch {
     /// from the matched geometry and assigned to this figure even though
     /// they did not satisfy the fingerprint (TRACKING_STABILIZATION.md).
     /// Empty when completion did not run or found nothing.
-    pub claimed_indices: Vec<usize>,
+    pub claimed_indices: ClaimedIndices,
     /// Frames a partial *spawn* must hold before the tangible is
     /// confirmed - carried from the pattern
     /// (SPAWN_AS_PARTIAL.md); ignored for non-partial matches.
@@ -90,6 +92,10 @@ impl PatternMatch {
 #[cfg(test)]
 mod tests {
     use super::PatternMatch;
+    use crate::ClaimedIndices;
+    use crate::FrameCount;
+    use crate::PatternId;
+    use crate::RotationRad;
     use crate::Vec2;
 
     #[test]
@@ -131,19 +137,19 @@ mod tests {
     #[test]
     fn partial_flag_and_all_indices() {
         let mut pattern_match = PatternMatch {
-            pattern_id: crate::PatternId::new(1),
+            pattern_id: PatternId::new(1),
             pattern_name: "Figur8".into(),
             center: Vec2::new(0.0, 0.0),
-            rotation_rad: crate::RotationRad::new(0.0),
-            touch_indices: vec![0, 1, 2],
+            rotation_rad: RotationRad::new(0.0),
+            touch_indices: vec![0, 1, 2].into(),
             partial: false,
-            claimed_indices: Vec::new(),
-            spawn_stability: crate::FrameCount::new(15),
+            claimed_indices: ClaimedIndices::default(),
+            spawn_stability: FrameCount::new(15),
         };
         assert!(!pattern_match.is_partial());
         assert_eq!(pattern_match.all_indices().count(), 3);
         pattern_match.partial = true;
-        pattern_match.claimed_indices = vec![5];
+        pattern_match.claimed_indices = vec![5].into();
         assert!(pattern_match.is_partial());
         assert_eq!(
             pattern_match.all_indices().collect::<Vec<usize>>(),

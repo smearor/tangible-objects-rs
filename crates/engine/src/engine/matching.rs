@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::ClaimPool;
+use tangible_objects_model::ClaimedIndices;
 use tangible_objects_model::Combination;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::MatchScore;
@@ -76,7 +77,15 @@ pub(crate) fn try_pattern(
     let points = touches.positions_of(combo.as_slice());
     (pattern.match_score((&points).into()) <= completion.affinity_factor.as_f64()
         && pattern.accepts((&points).into()))
-    .then(|| build_match(pattern, points.as_point_set(), combo, false, Vec::new()))
+    .then(|| {
+        build_match(
+            pattern,
+            points.as_point_set(),
+            combo,
+            false,
+            Default::default(),
+        )
+    })
 }
 
 /// Like [`try_pattern`] for a partial (`num_points - 1`) combination;
@@ -167,7 +176,7 @@ fn find_matches_inner(
                     points.as_point_set(),
                     (&combo).into(),
                     false,
-                    Vec::new(),
+                    Default::default(),
                 );
                 consider(&mut best, candidate, score);
             }
@@ -266,7 +275,7 @@ fn claim_missing(
     pool: ClaimPool<'_>,
     touches: TouchSet<'_>,
     completion: &CompletionConfig,
-) -> Vec<usize> {
+) -> ClaimedIndices {
     let radius = pattern.tolerance.as_f64() * completion.radius_factor;
     let mut claimed = Vec::new();
     let mut taken: HashSet<usize> = combo.iter().copied().collect();
@@ -290,7 +299,7 @@ fn claim_missing(
             taken.insert(index);
         }
     }
-    claimed
+    claimed.into()
 }
 
 /// Builds a [`CandidateReport`] for an exact (full-pin) combination.
@@ -305,7 +314,7 @@ fn exact_report(
     CandidateReport {
         pattern_id: pattern.id,
         pattern_name: pattern.name.clone(),
-        touch_indices: combo.as_slice().to_vec(),
+        touch_indices: combo.into(),
         matched,
         partial: false,
         match_error: deviations.iter().copied().sum(),
@@ -352,7 +361,7 @@ fn partial_report(
     CandidateReport {
         pattern_id: pattern.id,
         pattern_name: pattern.name.clone(),
-        touch_indices: combo.as_slice().to_vec(),
+        touch_indices: combo.into(),
         matched,
         partial: true,
         measured_distances,
@@ -370,7 +379,7 @@ fn build_match(
     points: PointSet<'_>,
     combo: Combination<'_>,
     partial: bool,
-    claimed: Vec<usize>,
+    claimed: ClaimedIndices,
 ) -> PatternMatch {
     let center = Vec2::centroid(points.as_slice());
     let name = if partial {
@@ -384,7 +393,7 @@ fn build_match(
         spawn_stability: pattern.spawn_stability,
         center,
         rotation_rad: PatternMatch::rotation_of(points, &center),
-        touch_indices: combo.as_slice().to_vec(),
+        touch_indices: combo.into(),
         partial,
         claimed_indices: claimed,
     }
@@ -534,7 +543,7 @@ mod tests {
         assert!(reports.iter().all(|report| !report.partial));
 
         let matched = reports.iter().find(|report| report.matched).expect("match");
-        assert_eq!(matched.touch_indices, vec![0, 1, 2]);
+        assert_eq!(matched.touch_indices, vec![0, 1, 2].into());
         assert!(matched.deviations.iter().all(|d| d.as_f64() <= 5.0));
         // Score-based matching: every report carries its normalized score;
         // matched candidates score <= 1.0, rejected ones above.
@@ -768,7 +777,7 @@ mod tests {
         assert_eq!(matches.len(), 1);
         assert!(matches[0].is_partial());
         // The near-predicted touch is claimed, the distant one is not.
-        assert_eq!(matches[0].claimed_indices, vec![3]);
+        assert_eq!(matches[0].claimed_indices, vec![3].into());
         assert!(
             matches[0]
                 .all_indices()

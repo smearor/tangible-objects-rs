@@ -130,7 +130,7 @@ impl QueryRoot {
         } else {
             PatternBuf::default()
         };
-        let report = AnalysisReport::analyze(&recording, mode, (&patterns).into());
+        let report = AnalysisReport::analyze(&recording, mode, patterns.as_pattern_set());
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }
@@ -146,7 +146,7 @@ impl QueryRoot {
                 "no profiles loaded from {dir}"
             )));
         }
-        let report = SimilarityReport::analyze((&patterns).into());
+        let report = SimilarityReport::analyze(patterns.as_pattern_set());
         serde_json::to_string_pretty(&report)
             .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
     }

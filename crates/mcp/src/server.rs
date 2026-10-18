@@ -259,7 +259,7 @@ impl EngineMcp {
         } else {
             PatternBuf::default()
         };
-        let report = AnalysisReport::analyze(&recording, mode, (&patterns).into());
+        let report = AnalysisReport::analyze(&recording, mode, patterns.as_pattern_set());
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,
@@ -283,7 +283,7 @@ impl EngineMcp {
                 None,
             ));
         }
-        let report = SimilarityReport::analyze((&patterns).into());
+        let report = SimilarityReport::analyze(patterns.as_pattern_set());
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,
