@@ -1,4 +1,6 @@
 name = "FM4"
+spawn_on_partial = true
+spawn_stability = 15
 num_points = 4
 tolerance = 3.0
 sorted_sides = [

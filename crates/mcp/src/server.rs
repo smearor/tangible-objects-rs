@@ -266,8 +266,12 @@ impl EngineMcp {
             .chunks_exact(2)
             .map(|pair| Vec2::new(pair[0], pair[1]))
             .collect();
-        let profile =
+        let mut profile =
             ProfileFile::from_points(&args.name, &points, PatternTolerance::new(args.tolerance));
+        profile.spawn_on_partial = args.spawn_on_partial.unwrap_or(false);
+        if let Some(stability) = args.spawn_stability {
+            profile.spawn_stability = tangible_objects_model::FrameCount::new(stability);
+        }
         self.handle
             .send_command(ControlCommand::Register {
                 registration: Box::new(Registration::Pattern(profile)),
@@ -348,8 +352,12 @@ impl EngineMcp {
             .chunks_exact(2)
             .map(|pair| Vec2::new(pair[0], pair[1]))
             .collect();
-        let profile =
+        let mut profile =
             ProfileFile::from_points(&args.name, &points, PatternTolerance::new(args.tolerance));
+        profile.spawn_on_partial = args.spawn_on_partial.unwrap_or(false);
+        if let Some(stability) = args.spawn_stability {
+            profile.spawn_stability = tangible_objects_model::FrameCount::new(stability);
+        }
         self.handle
             .send_command(ControlCommand::UpdateProfile {
                 id: PatternId::new(args.pattern_id),

@@ -160,7 +160,12 @@ fn find_matches_inner(
         // bounds how many pins may be missing (1 or 2); 4+ pin figures
         // only. A successful partial may then *claim* the predicted
         // missing pins from still-unassigned touches (completion).
+        //
+        // Spawn gate: partials may only *create* a tangible for
+        // `spawn_on_partial` patterns - reduced contact sets of other
+        // figures must not spawn phantoms (SPAWN_AS_PARTIAL.md).
         if best.is_none()
+            && pattern.spawn_on_partial
             && pattern.ref_points.is_some()
             && available.len() + completion.max_missing as usize >= pattern.num_points
             && pattern.num_points >= 4
@@ -340,6 +345,7 @@ fn build_match(
     PatternMatch {
         pattern_id: pattern.id,
         pattern_name: name,
+        spawn_stability: pattern.spawn_stability,
         center,
         rotation_rad: PatternMatch::rotation_of(points, &center),
         touch_indices: combo.to_vec(),
@@ -533,7 +539,9 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        pattern.spawn_on_partial = true;
+        let patterns = vec![pattern];
         // One pin missing - three square contacts plus a distractor touch
         // (partial matching requires at least num_points active touches).
         let touches = vec![
@@ -640,7 +648,9 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        pattern.spawn_on_partial = true;
+        let patterns = vec![pattern];
         // True missing-pin case: only num_points - 1 touches exist (a pin
         // lost contact entirely - e.g. Figur8 with one pin swallowed).
         let touches = vec![
@@ -674,7 +684,9 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        pattern.spawn_on_partial = true;
+        let patterns = vec![pattern];
         // Three matched pins at translated positions + a fourth touch near
         // the predicted missing pin (translated (40,40) → (140,140)).
         let touches = vec![
@@ -720,7 +732,9 @@ mod tests {
             Vec2::new(0.0, 40.0),
             Vec2::new(40.0, 40.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(1, "square", &square, 5.0)];
+        let mut pattern = TangiblePattern::from_points(1, "square", &square, 5.0);
+        pattern.spawn_on_partial = true;
+        let patterns = vec![pattern];
         // Fourth touch 30mm from the predicted position - outside the
         // claim radius (tolerance 5 × factor 2 = 10mm).
         let touches = vec![

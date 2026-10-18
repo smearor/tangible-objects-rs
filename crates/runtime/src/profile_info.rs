@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
+use tangible_objects_model::FrameCount;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::TangiblePattern;
@@ -20,11 +21,16 @@ pub struct ProfileInfo {
     /// Owning application for runtime registrations; `None` for
     /// statically loaded profiles.
     pub owner: Option<Owner>,
+    /// Whether a partial match may spawn this figure
+    /// (SPAWN_AS_PARTIAL.md).
+    pub spawn_on_partial: bool,
+    /// Frames a partial spawn must hold before confirmation.
+    pub spawn_stability: FrameCount,
 }
 
 #[cfg(feature = "zbus")]
 impl zvariant::Type for ProfileInfo {
-    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(usus)");
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(ususbt)");
 }
 
 impl From<&TangiblePattern> for ProfileInfo {
@@ -34,6 +40,8 @@ impl From<&TangiblePattern> for ProfileInfo {
             name: pattern.name.clone(),
             num_points: pattern.num_points as u32,
             owner: None,
+            spawn_on_partial: pattern.spawn_on_partial,
+            spawn_stability: pattern.spawn_stability,
         }
     }
 }

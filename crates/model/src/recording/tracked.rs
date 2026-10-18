@@ -32,6 +32,10 @@ pub struct TrackedRecord {
     pub rotation_rad: RotationRad,
     /// Consecutive frames without a match for this tangible.
     pub frames_since_match: u32,
+    /// Whether this tangible is an unconfirmed partial spawn
+    /// (SPAWN_AS_PARTIAL.md). `#[serde(default)]` keeps older recordings
+    /// loadable - recorded before pending existed, they show `false`.
+    pub pending: bool,
 }
 
 impl From<&TrackedTangible> for TrackedRecord {
@@ -43,19 +47,21 @@ impl From<&TrackedTangible> for TrackedRecord {
             center: tracked.center,
             rotation_rad: tracked.rotation_rad,
             frames_since_match: tracked.frames_since_match,
+            pending: tracked.pending,
         }
     }
 }
 
 impl Serialize for TrackedRecord {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("TrackedRecord", 6)?;
+        let mut state = serializer.serialize_struct("TrackedRecord", 7)?;
         state.serialize_field("id", &self.id)?;
         state.serialize_field("pattern_id", &self.pattern_id)?;
         state.serialize_field("pattern_name", &self.pattern_name)?;
         state.serialize_field("center", &self.center)?;
         state.serialize_field("rotation_deg", &self.rotation_rad.to_degrees())?;
         state.serialize_field("frames_since_match", &self.frames_since_match)?;
+        state.serialize_field("pending", &self.pending)?;
         state.end()
     }
 }
@@ -70,6 +76,8 @@ impl<'de> Deserialize<'de> for TrackedRecord {
             center: Vec2<Millimeters>,
             rotation_deg: f64,
             frames_since_match: u32,
+            #[serde(default)]
+            pending: bool,
         }
         let helper = Helper::deserialize(deserializer)?;
         Ok(Self {
@@ -79,6 +87,7 @@ impl<'de> Deserialize<'de> for TrackedRecord {
             center: helper.center,
             rotation_rad: RotationRad::new(helper.rotation_deg.to_radians()),
             frames_since_match: helper.frames_since_match,
+            pending: helper.pending,
         })
     }
 }
@@ -98,6 +107,9 @@ mod tests {
             pattern_name: "TestFigur-5P".into(),
             center: Vec2::new(171.94, 80.84),
             rotation_rad: RotationRad::new(std::f64::consts::PI),
+            pending: false,
+            pending_frames: 0,
+            spawn_stability: crate::FrameCount::new(15),
             frames_since_match: 3,
         }
     }

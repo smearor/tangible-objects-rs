@@ -147,19 +147,43 @@ impl Tracker {
                     .insert(tangible.id, matched_slots_of(pattern_match, touches));
                 self.slots
                     .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
-                events.push(EngineEvent::TangibleMoved(tangible.clone()));
+                if tangible.pending {
+                    // Confirmation: an exact match on the same slot set
+                    // confirms immediately; a held partial match counts
+                    // toward the pattern's spawn-stability window.
+                    if !pattern_match.partial {
+                        tangible.pending = false;
+                    } else {
+                        tangible.pending_frames += 1;
+                        if tangible.pending_frames >= tangible.spawn_stability.as_u64() as u32 {
+                            tangible.pending = false;
+                        }
+                    }
+                    if !tangible.pending {
+                        events.push(EngineEvent::TangibleAdded(tangible.clone()));
+                    }
+                } else {
+                    events.push(EngineEvent::TangibleMoved(tangible.clone()));
+                }
             }
         }
 
-        // Create new tracked tangibles for unmatched matches.
+        // Create new tracked tangibles for unmatched matches. A
+        // partial-spawned tangible starts pending and emits no event
+        // until confirmed (spawn_stability frames or an exact match).
         for (match_index, pattern_match) in matches.iter().enumerate() {
             if !used_matches[match_index] {
+                let pending = pattern_match.partial;
                 let tangible = TrackedTangible {
                     id: self.next_tangible_id,
                     pattern_id: pattern_match.pattern_id,
                     pattern_name: pattern_match.pattern_name.clone(),
                     center: pattern_match.center,
                     rotation_rad: pattern_match.rotation_rad,
+                    pending,
+                    // The spawn frame itself is the first held frame.
+                    pending_frames: if pending { 1 } else { 0 },
+                    spawn_stability: pattern_match.spawn_stability,
                     frames_since_match: 0,
                 };
                 self.next_tangible_id = TangibleId::new(self.next_tangible_id.as_u32() + 1);
@@ -169,7 +193,17 @@ impl Tracker {
                     .insert(tangible.id, slots_of(pattern_match, touches, bind_claimed));
                 debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
                 self.tracked.push(tangible.clone());
-                events.push(EngineEvent::TangibleAdded(tangible));
+                if !pending {
+                    events.push(EngineEvent::TangibleAdded(tangible));
+                }
+            }
+        }
+
+        // A missed frame resets the pending confirmation counter - the
+        // partial spawn must hold for consecutive frames.
+        for tangible in &mut self.tracked {
+            if tangible.pending && tangible.frames_since_match > 0 {
+                tangible.pending_frames = 0;
             }
         }
 
@@ -266,6 +300,7 @@ mod tests {
             touch_indices: Vec::new(),
             partial: false,
             claimed_indices: Vec::new(),
+            spawn_stability: tangible_objects_model::FrameCount::new(15),
         }
     }
 
@@ -311,6 +346,63 @@ mod tests {
             events.as_slice(),
             [EngineEvent::TangibleRemoved(_)]
         ));
+    }
+
+    #[test]
+    fn partial_spawn_is_pending_until_spawn_stability() {
+        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut partial = pattern_match(1, 10.0, 20.0);
+        partial.partial = true;
+        partial.spawn_stability = FrameCount::new(3);
+
+        // A partial spawn emits no TangibleAdded - it stays pending.
+        let events = tracker.update(&[partial.clone()], &touches(), true);
+        assert!(events.is_empty());
+        assert!(tracker.active()[0].pending);
+
+        // Held partial matches count toward the window.
+        let events = tracker.update(&[partial.clone()], &touches(), true);
+        assert!(events.is_empty());
+        let events = tracker.update(&[partial.clone()], &touches(), true);
+        assert!(matches!(
+            events.as_slice(),
+            [EngineEvent::TangibleAdded(t)] if !t.pending
+        ));
+        // After confirmation the tangible emits TangibleMoved again.
+        let events = tracker.update(&[partial.clone()], &touches(), true);
+        assert!(matches!(events.as_slice(), [EngineEvent::TangibleMoved(_)]));
+    }
+
+    #[test]
+    fn pending_exact_match_confirms_immediately() {
+        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut partial = pattern_match(1, 10.0, 20.0);
+        partial.partial = true;
+        partial.spawn_stability = FrameCount::new(15);
+        tracker.update(&[partial], &touches(), true);
+        assert!(tracker.active()[0].pending);
+
+        // An exact match on the same slot set confirms instantly.
+        let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], &touches(), true);
+        assert!(matches!(
+            events.as_slice(),
+            [EngineEvent::TangibleAdded(t)] if !t.pending
+        ));
+    }
+
+    #[test]
+    fn pending_counter_resets_on_missed_frame() {
+        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut partial = pattern_match(1, 10.0, 20.0);
+        partial.partial = true;
+        partial.spawn_stability = FrameCount::new(2);
+        tracker.update(&[partial.clone()], &touches(), true);
+        tracker.update(&[], &touches(), true);
+        // The miss reset the counter: one more held frame does not
+        // confirm yet.
+        let events = tracker.update(&[partial.clone()], &touches(), true);
+        assert!(events.is_empty());
+        assert!(tracker.active()[0].pending);
     }
 
     #[test]

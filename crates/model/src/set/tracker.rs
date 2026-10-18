@@ -162,6 +162,9 @@ mod tests {
             pattern_name: format!("fig-{pattern}").into(),
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
+            pending: false,
+            pending_frames: 0,
+            spawn_stability: crate::FrameCount::new(15),
             frames_since_match: 0,
         }
     }

@@ -24,6 +24,10 @@ pub struct PatternMatch {
     /// they did not satisfy the fingerprint (TRACKING_STABILIZATION.md).
     /// Empty when completion did not run or found nothing.
     pub claimed_indices: Vec<usize>,
+    /// Frames a partial *spawn* must hold before the tangible is
+    /// confirmed - carried from the pattern
+    /// (SPAWN_AS_PARTIAL.md); ignored for non-partial matches.
+    pub spawn_stability: crate::FrameCount,
 }
 
 impl PatternMatch {
@@ -131,6 +135,7 @@ mod tests {
             touch_indices: vec![0, 1, 2],
             partial: false,
             claimed_indices: Vec::new(),
+            spawn_stability: crate::FrameCount::new(15),
         };
         assert!(!pattern_match.is_partial());
         assert_eq!(pattern_match.all_indices().count(), 3);

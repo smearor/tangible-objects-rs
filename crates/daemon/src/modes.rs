@@ -675,6 +675,8 @@ pub(crate) fn apply_registration(
                                 name: profile.name.clone(),
                                 num_points: profile.num_points as u32,
                                 owner,
+                                spawn_on_partial: profile.spawn_on_partial,
+                                spawn_stability: profile.spawn_stability,
                             });
                         }
                         Err(reason) => {
@@ -712,6 +714,8 @@ pub(crate) fn apply_registration(
                         pattern_id: id,
                         name: profile.name.clone(),
                         num_points: profile.num_points as u32,
+                        spawn_on_partial: profile.spawn_on_partial,
+                        spawn_stability: profile.spawn_stability,
                         owner: engine
                             .pattern_owner(id)
                             .map(Owner::to_string)

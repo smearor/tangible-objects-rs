@@ -128,8 +128,12 @@ impl MutationRoot {
     ) -> Result<bool> {
         let points = flat_points(&input.points)?;
         let tolerance = tangible_objects_model::PatternTolerance::new(input.tolerance_mm);
-        let profile =
+        let mut profile =
             tangible_objects_model::ProfileFile::from_points(&input.name, &points, tolerance);
+        profile.spawn_on_partial = input.spawn_on_partial.unwrap_or(false);
+        if let Some(stability) = input.spawn_stability {
+            profile.spawn_stability = tangible_objects_model::FrameCount::new(stability as u64);
+        }
         ctx.data::<EngineHandle>()?
             .send_command(ControlCommand::Register {
                 registration: Box::new(Registration::Pattern(profile)),
@@ -151,8 +155,12 @@ impl MutationRoot {
     ) -> Result<bool> {
         let points = flat_points(&input.points)?;
         let tolerance = tangible_objects_model::PatternTolerance::new(input.tolerance_mm);
-        let profile =
+        let mut profile =
             tangible_objects_model::ProfileFile::from_points(&input.name, &points, tolerance);
+        profile.spawn_on_partial = input.spawn_on_partial.unwrap_or(false);
+        if let Some(stability) = input.spawn_stability {
+            profile.spawn_stability = tangible_objects_model::FrameCount::new(stability as u64);
+        }
         ctx.data::<EngineHandle>()?
             .send_command(ControlCommand::UpdateProfile {
                 id,
@@ -222,6 +230,12 @@ struct RegisterPatternInput {
     points: Vec<f64>,
     /// Scalar matching tolerance in millimeters.
     tolerance_mm: f64,
+    /// Whether a partial match may spawn this figure
+    /// (SPAWN_AS_PARTIAL.md); `null`/`false` = exact-only spawns.
+    spawn_on_partial: Option<bool>,
+    /// Frames a partial spawn must hold before confirmation;
+    /// `null` = 15.
+    spawn_stability: Option<i32>,
 }
 
 /// Input for `registerFieldSet`.

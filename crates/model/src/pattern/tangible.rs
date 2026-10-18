@@ -16,6 +16,12 @@ pub struct TangiblePattern {
     pub id: PatternId,
     /// Human-readable figure name (from the profile file).
     pub name: crate::PatternName,
+    /// Whether a partial match may spawn this tangible
+    /// (SPAWN_AS_PARTIAL.md); the incumbent path ignores the flag.
+    pub spawn_on_partial: bool,
+    /// Frames a partial spawn must hold before the tangible leaves
+    /// pending state.
+    pub spawn_stability: crate::FrameCount,
     /// Number of contact pins the figure must have.
     pub num_points: usize,
     /// Sorted pairwise distances of the reference point set (the fingerprint).
@@ -46,6 +52,8 @@ impl TangiblePattern {
         Self {
             id: id.into(),
             name: name.into(),
+            spawn_on_partial: false,
+            spawn_stability: crate::FrameCount::new(15),
             num_points: points.len(),
             sorted_distances: sorted_pairwise_distances(points),
             tolerance: tolerance.into(),

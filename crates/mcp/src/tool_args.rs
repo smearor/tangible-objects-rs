@@ -76,6 +76,12 @@ pub struct RegisterPatternArgs {
     /// `session` (default) or `persistent` (written to the runtime
     /// store).
     pub lifetime: Option<String>,
+    /// Whether a partial match may spawn this figure
+    /// (SPAWN_AS_PARTIAL.md); default `false` (exact-only spawns).
+    pub spawn_on_partial: Option<bool>,
+    /// Frames a partial spawn must hold before confirmation;
+    /// default 15.
+    pub spawn_stability: Option<u64>,
 }
 
 /// Arguments for the `update_profile` tool - replaces a registered
@@ -90,6 +96,10 @@ pub struct UpdateProfileArgs {
     pub points: Vec<f64>,
     /// Scalar matching tolerance in millimeters.
     pub tolerance: f64,
+    /// Whether a partial match may spawn this figure.
+    pub spawn_on_partial: Option<bool>,
+    /// Frames a partial spawn must hold before confirmation.
+    pub spawn_stability: Option<u64>,
 }
 
 /// Arguments for the `register_field_set` tool - the set is given as TOML

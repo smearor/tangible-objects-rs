@@ -26,6 +26,18 @@ pub struct ProfileFile {
     /// startup (`enabled = false` keeps the file without registering).
     #[serde(default = "default_enabled")]
     pub enabled: bool,
+    /// Whether a partial match may *spawn* this tangible
+    /// (SPAWN_AS_PARTIAL.md). `false` (default, conservative): only
+    /// exact matches create a track - reduced contact sets of other
+    /// figures can then never spawn this pattern as a phantom. Partials
+    /// still sustain an existing incumbent regardless of this flag.
+    #[serde(default)]
+    pub spawn_on_partial: bool,
+    /// Frames a partial spawn must hold before the tangible leaves its
+    /// pending state and emits `TangibleAdded` - phantom partials die
+    /// inside this window. Only meaningful with `spawn_on_partial`.
+    #[serde(default = "default_spawn_stability")]
+    pub spawn_stability: crate::FrameCount,
     /// Number of contact pins.
     pub num_points: usize,
     /// Matching tolerance for the distance fingerprint.
@@ -57,6 +69,12 @@ fn default_enabled() -> bool {
     true
 }
 
+/// Default partial-spawn confirmation window (`spawn_stability = 15`
+/// frames, ~0.25 s at 60 Hz).
+fn default_spawn_stability() -> crate::FrameCount {
+    crate::FrameCount::new(15)
+}
+
 impl ProfileFile {
     /// Creates a profile from measured contact positions.
     ///
@@ -77,6 +95,8 @@ impl ProfileFile {
         Self {
             name: name.into(),
             enabled: true,
+            spawn_on_partial: false,
+            spawn_stability: default_spawn_stability(),
             num_points: points.len(),
             tolerance,
             tolerances: Vec::new(),
@@ -91,6 +111,8 @@ impl ProfileFile {
         TangiblePattern {
             id,
             name: self.name.clone(),
+            spawn_on_partial: self.spawn_on_partial,
+            spawn_stability: self.spawn_stability,
             num_points: self.num_points,
             sorted_distances: self.sorted_sides.clone(),
             tolerance: self.tolerance,

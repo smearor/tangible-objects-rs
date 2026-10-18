@@ -70,5 +70,10 @@ impl Display for FrameCount {
     }
 }
 
+#[cfg(feature = "zbus")]
+impl zvariant::Type for FrameCount {
+    const SIGNATURE: &'static zvariant::Signature = <u64 as zvariant::Type>::SIGNATURE;
+}
+
 #[cfg(feature = "async-graphql")]
 async_graphql::scalar!(FrameCount);

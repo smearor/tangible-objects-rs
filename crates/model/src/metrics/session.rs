@@ -155,6 +155,7 @@ mod tests {
             touch_indices: vec![0],
             partial,
             claimed_indices: vec![],
+            spawn_stability: FrameCount::new(15),
         }
     }
 
@@ -165,6 +166,9 @@ mod tests {
             pattern_name: "fig".into(),
             center: Vec2::new(0.0, 0.0),
             rotation_rad: RotationRad::new(0.0),
+            pending: false,
+            pending_frames: 0,
+            spawn_stability: FrameCount::new(15),
             frames_since_match: 0,
         }
     }

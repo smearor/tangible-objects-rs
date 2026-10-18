@@ -29,6 +29,19 @@ pub struct TrackedTangible {
     pub center: Vec2<Millimeters>,
     /// Smoothed orientation in radians.
     pub rotation_rad: RotationRad,
+    /// Whether this tangible was spawned by a partial match and has not
+    /// yet confirmed (SPAWN_AS_PARTIAL.md). Pending tangibles reserve
+    /// their slots but emit no events until the spawn-stability window
+    /// or an exact match confirms them.
+    pub pending: bool,
+    /// Consecutive match frames the pending spawn has held so far;
+    /// internal bookkeeping, not exposed on interfaces.
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    pub pending_frames: u32,
+    /// Confirmation threshold carried from the pattern; internal
+    /// bookkeeping, not exposed on interfaces.
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    pub spawn_stability: crate::FrameCount,
     /// Number of consecutive frames without a match for this tangible.
     /// Used for expiry hysteresis; internal bookkeeping, not exposed on
     /// interfaces.
@@ -38,13 +51,14 @@ pub struct TrackedTangible {
 
 impl Serialize for TrackedTangible {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut state = serializer.serialize_struct("TrackedTangible", 6)?;
+        let mut state = serializer.serialize_struct("TrackedTangible", 7)?;
         state.serialize_field("id", &self.id)?;
         state.serialize_field("pattern_id", &self.pattern_id)?;
         state.serialize_field("pattern_name", &self.pattern_name)?;
         state.serialize_field("center_x", &self.center.x)?;
         state.serialize_field("center_y", &self.center.y)?;
         state.serialize_field("rotation_deg", &self.rotation_rad.to_degrees())?;
+        state.serialize_field("pending", &self.pending)?;
         state.end()
     }
 }

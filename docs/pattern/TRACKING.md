@@ -33,6 +33,27 @@ A 4+-pin figure that loses one contact may re-match as a *partial*
 Partials are excluded from suppression (suppressing the remaining pins
 of a half-lifted figure would eat the lift).
 
+## Partial spawns (`spawn_on_partial`)
+
+A partial match may only *create* a tracked tangible when the profile
+opts in (`spawn_on_partial = true` in the TOML, `spawn_onPartial` on the
+register interfaces; default `false`). Incumbent re-matching is
+unaffected - the flag only gates *birth* of a track, since a reduced
+contact set can satisfy foreign partial fingerprints (phantom surface;
+see `--similarity`).
+
+A partial-spawned tangible starts **pending**: it reserves its slots but
+emits no `TangibleAdded` until
+
+- the partial match has held for `spawn_stability` consecutive frames
+  (default 15, ~0.25 s), or
+- an exact match confirms the same slot set immediately.
+
+Pending tangibles appear in `tracked` with `pending = true` (recordings,
+GraphQL, D-Bus, MCP), render dimmed in the GUI and suppress nothing.
+A missed frame resets the counter; the expiry hysteresis is the normal
+`frames_since_match` budget.
+
 ## Missing-point completion
 
 When a partial match leaves `n-k` pins matched, the engine predicts each

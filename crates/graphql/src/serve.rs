@@ -82,6 +82,9 @@ mod tests {
             pattern_name: "triangle".into(),
             center: Vec2::new(10.0, 20.0),
             rotation_rad: RotationRad::new(1.0),
+            pending: false,
+            pending_frames: 0,
+            spawn_stability: tangible_objects_model::FrameCount::new(15),
             frames_since_match: 0,
         }]
     }
@@ -95,6 +98,8 @@ mod tests {
                 name: "triangle".into(),
                 num_points: 3,
                 owner: None,
+                spawn_on_partial: false,
+                spawn_stability: tangible_objects_model::FrameCount::new(15),
             }],
         );
         let schema = build_schema(handle);

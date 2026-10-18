@@ -36,6 +36,7 @@ use tangible_objects_model::Pixels;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
 use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::ProfileInfo;
@@ -57,6 +58,8 @@ enum GuiMode {
 struct SharedState {
     touches: Vec<TouchPoint>,
     matches: Vec<PatternMatch>,
+    /// Currently tracked tangibles (pending flags render dimmed).
+    tracked: Vec<TrackedTangible>,
     calibration: Option<Calibration>,
     stable_frames: u32,
     stable: bool,
@@ -93,6 +96,7 @@ pub fn run_gui(
         let state = Arc::new(Mutex::new(SharedState {
             touches: Vec::new(),
             matches: Vec::new(),
+            tracked: Vec::new(),
             calibration: None,
             stable_frames: 0,
             stable: false,
@@ -316,6 +320,7 @@ fn evdev_thread(
 
                 if let Ok(mut s) = state.lock() {
                     s.touches = touches;
+                    s.tracked = engine.tracked().to_vec();
                     s.matches = matches;
                     s.stable_frames = stable_frames;
                     s.stable = stable_frames >= STABLE_THRESHOLD && count >= 3;
@@ -539,7 +544,7 @@ fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mutex<Sh
     if mode == GuiMode::Training {
         draw_training(cr, w, h, touches, &to_screen, &s);
     } else {
-        draw_live(cr, w, h, touches, matches, &to_screen);
+        draw_live(cr, w, h, touches, matches, &s.tracked, &to_screen);
     }
 }
 
@@ -625,6 +630,7 @@ fn draw_live(
     _h: f64,
     touches: &[TouchPoint],
     matches: &[PatternMatch],
+    tracked: &[TrackedTangible],
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
 ) {
     // Collect matched indices.
@@ -638,13 +644,20 @@ fn draw_live(
     // Draw figures (lines + names).
     for m in matches {
         let (r, g, b) = figure_color(m.pattern_id);
+        // Pending (unconfirmed partial spawn) - dim the whole figure.
+        let pending = tracked.iter().any(|t| {
+            t.pending
+                && t.pattern_id == m.pattern_id
+                && t.center.distance(&m.center).as_f64() < 50.0
+        });
+        let alpha = if pending { 0.25 } else { 1.0 };
         let n = m.touch_indices.len();
         if n < 2 {
             continue;
         }
 
         // Complete graph.
-        cr.set_source_rgba(r, g, b, 0.5);
+        cr.set_source_rgba(r, g, b, 0.5 * alpha);
         cr.set_line_width(2.5);
         for i in 0..n {
             for j in (i + 1)..n {
@@ -659,7 +672,7 @@ fn draw_live(
         // Touch points.
         for &idx in &m.touch_indices {
             let p = to_screen(&touches[idx].pos);
-            cr.set_source_rgb(r, g, b);
+            cr.set_source_rgba(r, g, b, alpha);
             cr.arc(p.x, p.y, 14.0, 0.0, 2.0 * std::f64::consts::PI);
             let _ = cr.fill();
             cr.set_source_rgb(1.0, 1.0, 1.0);
@@ -676,7 +689,7 @@ fn draw_live(
             .collect();
         let top_y = ys.iter().cloned().fold(f64::INFINITY, f64::min);
         let cx = to_screen(&m.center).x;
-        cr.set_source_rgb(1.0, 1.0, 1.0);
+        cr.set_source_rgba(1.0, 1.0, 1.0, alpha);
         cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
         cr.set_font_size(22.0);
         if let Ok(extents) = cr.text_extents(m.pattern_name.as_str()) {

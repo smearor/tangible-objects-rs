@@ -323,9 +323,11 @@ impl EngineService {
     }
 
     /// Registers a figure profile at runtime: `points` is the flat pin
-    /// list `[x0, y0, x1, y1, ...]` in mm. Queued to the device loop;
-    /// fingerprint collisions are rejected there - verify via
-    /// `list_profiles`.
+    /// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
+    /// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps
+    /// the profile default. Queued to the device loop; fingerprint
+    /// collisions are rejected there - verify via `list_profiles`.
+    #[allow(clippy::too_many_arguments)]
     async fn register_pattern(
         &self,
         name: &str,
@@ -333,6 +335,8 @@ impl EngineService {
         tolerance: f64,
         owner: &str,
         persistent: bool,
+        spawn_on_partial: bool,
+        spawn_stability: u64,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<()> {
         use tangible_objects_model::Millimeters;
@@ -350,7 +354,11 @@ impl EngineService {
             .chunks_exact(2)
             .map(|pair| Vec2::new(pair[0], pair[1]))
             .collect();
-        let profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+        let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+        profile.spawn_on_partial = spawn_on_partial;
+        if spawn_stability > 0 {
+            profile.spawn_stability = tangible_objects_model::FrameCount::new(spawn_stability);
+        }
         self.handle
             .send_command(ControlCommand::Register {
                 registration: Box::new(Registration::Pattern(profile)),
@@ -372,6 +380,8 @@ impl EngineService {
         name: &str,
         points: Vec<f64>,
         tolerance: f64,
+        spawn_on_partial: bool,
+        spawn_stability: u64,
     ) -> fdo::Result<()> {
         use tangible_objects_model::Millimeters;
         use tangible_objects_model::PatternId;
@@ -388,7 +398,11 @@ impl EngineService {
             .chunks_exact(2)
             .map(|pair| Vec2::new(pair[0], pair[1]))
             .collect();
-        let profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+        let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+        profile.spawn_on_partial = spawn_on_partial;
+        if spawn_stability > 0 {
+            profile.spawn_stability = tangible_objects_model::FrameCount::new(spawn_stability);
+        }
         self.handle
             .send_command(ControlCommand::UpdateProfile {
                 id: PatternId::new(id),
