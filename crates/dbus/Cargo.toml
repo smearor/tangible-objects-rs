@@ -11,6 +11,7 @@ description = "D-Bus interface for tangible object detection state and signals."
 
 [dependencies]
 futures-lite.workspace = true
+tangible-objects-analysis.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model = { workspace = true, features = ["zbus"] }
 tangible-objects-runtime = { workspace = true, features = ["zbus"] }

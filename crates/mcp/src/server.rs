@@ -27,6 +27,7 @@ use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
 use super::tool_args::GetPoseArgs;
+use super::tool_args::AnalyzeArgs;
 use super::tool_args::RecordingArtifactArgs;
 use super::tool_args::RegisterFieldSetArgs;
 use super::tool_args::RegisterPatternArgs;
@@ -229,13 +230,24 @@ impl EngineMcp {
     )]
     async fn analyze_recording(
         &self,
-        Parameters(args): Parameters<RecordingArtifactArgs>,
+        Parameters(args): Parameters<AnalyzeArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(
             &args.path,
         ))
         .map_err(|e| ErrorData::invalid_params(format!("recording unreadable: {e}"), None))?;
-        let report = tangible_objects_analysis::DeviationReport::analyze(&recording);
+        let report = if args.mode == Some(tangible_objects_model::AnalysisMode::Contacts) {
+            let dir = args.profiles_dir.as_deref().unwrap_or("profiles");
+            let loaded = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir));
+            let patterns = loaded.into_patterns();
+            if patterns.is_empty() {
+                return Err(ErrorData::invalid_params(
+                    format!("no profiles loaded from {dir}"), None));
+            }
+            tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
+        } else {
+            tangible_objects_analysis::DeviationReport::analyze(&recording)
+        };
         Ok(CallToolResult::success(vec![ContentBlock::text(
             serde_json::to_string_pretty(&report)
                 .map_err(|e| ErrorData::internal_error(format!("serialize: {e}"), None))?,

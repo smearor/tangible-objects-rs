@@ -2233,6 +2233,7 @@ version = "0.1.0"
 dependencies = [
  "futures-lite",
  "serde_json",
+ "tangible-objects-analysis",
  "tangible-objects-engine",
  "tangible-objects-model",
  "tangible-objects-runtime",
@@ -2262,6 +2263,7 @@ dependencies = [
  "axum",
  "futures-core",
  "serde_json",
+ "tangible-objects-analysis",
  "tangible-objects-engine",
  "tangible-objects-model",
  "tangible-objects-runtime",

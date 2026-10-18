@@ -301,7 +301,7 @@ fn main() -> Result<()> {
             let path = file.ok_or_else(|| {
                 miette::miette!("Usage: tangible-objects --analyze <recording.jsonl>")
             })?;
-            modes::run_analyze(Path::new(&path))
+            modes::run_analyze(Path::new(&path), profiles_dir.as_deref())
         }
         "--similarity" => {
             let dir = file.ok_or_else(|| {

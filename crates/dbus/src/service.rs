@@ -298,6 +298,39 @@ impl EngineService {
             .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
     }
 
+    /// Runs the deviation analysis over a recording artifact on the
+    /// daemon host - same `mode`/`profiles_dir` semantics as the MCP
+    /// `analyze_recording` tool (`"contacts"` re-evaluates every
+    /// same-size contact subset of each frame).
+    async fn analyze_recording(
+        &self,
+        path: &str,
+        mode: &str,
+        profiles_dir: &str,
+    ) -> fdo::Result<String> {
+        let recording = tangible_objects_analysis::Recording::load(std::path::Path::new(path))
+            .map_err(|e| fdo::Error::InvalidArgs(format!("recording unreadable: {e}")))?;
+        let mode = if mode.is_empty() {
+            tangible_objects_model::AnalysisMode::default()
+        } else {
+            mode.parse::<tangible_objects_model::AnalysisMode>()
+                .map_err(fdo::Error::InvalidArgs)?
+        };
+        let report = if mode == tangible_objects_model::AnalysisMode::Contacts {
+            let dir = if profiles_dir.is_empty() { "profiles" } else { profiles_dir };
+            let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
+                .into_patterns();
+            if patterns.is_empty() {
+                return Err(fdo::Error::InvalidArgs(format!("no profiles loaded from {dir}")));
+            }
+            tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
+        } else {
+            tangible_objects_analysis::DeviationReport::analyze(&recording)
+        };
+        serde_json::to_string_pretty(&report)
+            .map_err(|e| fdo::Error::Failed(format!("serialize: {e}")))
+    }
+
     /// Session metrics as JSON (uptime, re-ID churn, match quality,
     /// per-slot contact stability).
     async fn metrics(&self) -> String {

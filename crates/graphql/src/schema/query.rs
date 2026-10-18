@@ -106,6 +106,35 @@ impl QueryRoot {
     /// Restricted to known recording extensions (`.jsonl`, `.evtest`,
     /// `.dataset.jsonl`) and paths below the daemon's working directory -
     /// a LAN/debug convenience, not a general file server.
+    /// Runs the deviation analysis over a recording artifact - same
+    /// `mode`/`profiles_dir` semantics as the MCP `analyze_recording`
+    /// tool (`"contacts"` re-evaluates every same-size contact subset).
+    async fn analyze_recording(
+        &self,
+        path: String,
+        mode: Option<tangible_objects_model::AnalysisMode>,
+        profiles_dir: Option<String>,
+    ) -> Result<String> {
+        let recording =
+            tangible_objects_analysis::Recording::load(std::path::Path::new(&path))
+                .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
+        let report = if mode == Some(tangible_objects_model::AnalysisMode::Contacts) {
+            let dir = profiles_dir.as_deref().unwrap_or("profiles");
+            let patterns = tangible_objects_model::ProfileFile::load_dir(std::path::Path::new(dir))
+                .into_patterns();
+            if patterns.is_empty() {
+                return Err(async_graphql::Error::new(format!(
+                    "no profiles loaded from {dir}"
+                )));
+            }
+            tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns)
+        } else {
+            tangible_objects_analysis::DeviationReport::analyze(&recording)
+        };
+        serde_json::to_string_pretty(&report)
+            .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
+    }
+
     async fn recording_artifact(&self, path: String) -> Result<String> {
         let path = std::path::PathBuf::from(&path);
         let valid_ext = path

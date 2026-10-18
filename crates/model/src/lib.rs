@@ -10,6 +10,7 @@ mod contact_count;
 mod device;
 mod event;
 mod field;
+mod analysis_mode;
 mod filter_mode;
 mod metrics;
 mod millimeters;
@@ -28,6 +29,7 @@ mod touch_point;
 mod units_per_mm;
 mod vec2;
 
+pub use analysis_mode::AnalysisMode;
 pub use calibration::Calibration;
 pub use completion::CompletionConfig;
 pub use completion::CompletionMode;

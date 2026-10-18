@@ -1441,17 +1441,19 @@ pub fn run_export_dataset(path: &Path) -> Result<()> {
 ///
 /// Prints utilization, tolerance suggestions, flappy-contact metrics and the
 /// collision matrix for the loaded frames.
-pub fn run_analyze(path: &Path) -> Result<()> {
+pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
     let recording = tangible_objects_analysis::Recording::load(path).into_diagnostic()?;
     println!(
         "Analyse: {} ({} Frames)\n",
         path.display(),
         recording.frames().len()
     );
+    let patterns = load_patterns(profiles_dir);
     print!(
-        "{}\n{}\n{}\n{}\n{}\n{}\n{}",
+        "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
         tangible_objects_analysis::UtilizationReport::analyze(&recording),
         tangible_objects_analysis::DeviationReport::analyze(&recording),
+        tangible_objects_analysis::DeviationReport::analyze_contacts(&recording, &patterns),
         tangible_objects_analysis::ToleranceReport::analyze(&recording),
         tangible_objects_analysis::FlappyReport::analyze(&recording),
         tangible_objects_analysis::CollisionReport::analyze(&recording),

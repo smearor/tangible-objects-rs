@@ -5,54 +5,13 @@ use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
-use tangible_objects_model::PatternName;
+use tangible_objects_model::TangiblePattern;
 
+use super::DistanceStats;
+use super::PatternAcc;
+use super::PatternDeviation;
 use crate::Percentiles;
 use crate::Recording;
-
-/// Per-distance-index deviation statistics of one pattern over a
-/// recording - the causal "why did the match fail" answer.
-///
-/// `index i` refers to the pattern's `sorted_distances[i]`, i.e. a
-/// concrete pin pair; a high `blocker_frames` pinpoints the unstable
-/// pin pair that most often pushed the deviation over tolerance.
-#[derive(Debug, Serialize)]
-pub struct DistanceStats {
-    /// Distance index into the pattern's sorted fingerprint.
-    pub index: usize,
-    /// Frames this index was measured (full candidates only).
-    pub samples: FrameCount,
-    /// Mean absolute deviation in millimeters.
-    pub mean: Millimeters,
-    /// Worst observed deviation in millimeters.
-    pub max: Millimeters,
-    /// 99th percentile deviation in millimeters.
-    pub p99: Millimeters,
-    /// Frames where this index exceeded its effective tolerance
-    /// (per-index `tolerances[i]` when configured, else the scalar).
-    pub over_tolerance: FrameCount,
-    /// Frames where this index was the **only** over-tolerance
-    /// distance - the direct cause of the miss.
-    pub sole_blocker: FrameCount,
-    /// Frames where this index was among the over-tolerance
-    /// distances.
-    pub blocker: FrameCount,
-}
-
-/// Per-pattern deviation analysis.
-#[derive(Debug, Serialize)]
-pub struct PatternDeviation {
-    /// Pattern the statistics belong to.
-    pub pattern_id: PatternId,
-    /// Profile name.
-    pub pattern_name: PatternName,
-    /// Frames with a matched full candidate.
-    pub matched_frames: FrameCount,
-    /// Frames with a full candidate that did not match.
-    pub missed_frames: FrameCount,
-    /// Per-distance-index statistics, in fingerprint order.
-    pub distances: Vec<DistanceStats>,
-}
 
 /// Automated deviation detail analysis over a recording.
 ///
@@ -71,17 +30,11 @@ pub struct DeviationReport {
 
 impl DeviationReport {
     /// Folds the recording into per-pattern per-index statistics.
+    ///
+    /// Covers only *full generic candidates* - frames whose contacts run
+    /// through the incumbent path produce no candidates and are invisible
+    /// here; see [`Self::analyze_contacts`] for the contact-level pass.
     pub fn analyze(recording: &Recording) -> Self {
-        struct PatternAcc {
-            name: PatternName,
-            matched: u64,
-            missed: u64,
-            deviations: Vec<Vec<f64>>,
-            over: Vec<u64>,
-            sole: Vec<u64>,
-            blocker: Vec<u64>,
-        }
-
         let mut acc: BTreeMap<PatternId, PatternAcc> = BTreeMap::new();
 
         for frame in recording.frames() {
@@ -91,92 +44,131 @@ impl DeviationReport {
                 }
                 let entry = acc
                     .entry(candidate.pattern_id)
-                    .or_insert_with(|| PatternAcc {
-                        name: candidate.pattern_name.clone(),
-                        matched: 0,
-                        missed: 0,
-                        deviations: Vec::new(),
-                        over: Vec::new(),
-                        sole: Vec::new(),
-                        blocker: Vec::new(),
-                    });
-                if candidate.matched {
-                    entry.matched += 1;
-                } else {
-                    entry.missed += 1;
-                }
+                    .or_insert_with(|| PatternAcc::new(candidate.pattern_name.clone()));
 
                 // Effective tolerance per index: per-index tolerances
                 // when configured, else the scalar fallback.
-                let tolerances_at = |index: usize| {
+                let tolerance_at = |index: usize| {
                     candidate
                         .tolerances
                         .get(index)
                         .copied()
                         .unwrap_or_else(|| candidate.tolerance.as_millimeters())
                 };
+                entry.push(&candidate.deviations, candidate.matched, tolerance_at);
+            }
+        }
 
-                let blockers: Vec<usize> = candidate
-                    .deviations
-                    .iter()
-                    .enumerate()
-                    .filter(|(index, deviation)| {
-                        deviation.as_f64() > tolerances_at(*index).as_f64()
-                    })
-                    .map(|(index, _)| index)
-                    .collect();
+        Self {
+            patterns: acc
+                .into_iter()
+                .map(|(pattern_id, data)| Self::finish(pattern_id, data))
+                .collect(),
+        }
+    }
 
-                for (index, deviation) in candidate.deviations.iter().enumerate() {
-                    let over = deviation.as_f64() > tolerances_at(index).as_f64();
-                    if entry.deviations.len() <= index {
-                        entry.deviations.resize_with(index + 1, Vec::new);
-                        entry.over.resize(index + 1, 0);
-                        entry.sole.resize(index + 1, 0);
-                        entry.blocker.resize(index + 1, 0);
+    /// Folds every recorded *contact set* into per-index statistics:
+    /// for each frame and pattern all `num_points`-sized subsets of
+    /// `frame.touches` are evaluated against the pattern fingerprint,
+    /// regardless of whether the frame produced a generic candidate.
+    /// Covers the incumbent-tracked majority of frames that
+    /// [`Self::analyze`] cannot see.
+    pub fn analyze_contacts(recording: &Recording, patterns: &[TangiblePattern]) -> Self {
+        let mut acc: BTreeMap<PatternId, PatternAcc> = BTreeMap::new();
+
+        for frame in recording.frames() {
+            let touches: Vec<_> = frame.touches.iter().map(|point| point.pos).collect();
+            for pattern in patterns {
+                // Only the best-fitting subset counts per frame - foreign
+                // contacts (hands, other objects) would otherwise inflate
+                // the deviation statistics with non-figure geometry.
+                let mut best: Option<(Vec<Millimeters>, f64)> = None;
+                for subset in Self::combinations(touches.len(), pattern.num_points) {
+                    let points: Vec<_> =
+                        subset.iter().map(|&index| touches[index]).collect();
+                    let deviations = TangiblePattern::deviations(
+                        &TangiblePattern::distances_of(&points),
+                        &pattern.sorted_distances,
+                    );
+                    let score = pattern.score_of(&deviations);
+                    if best.as_ref().is_none_or(|(_, s)| score < *s) {
+                        best = Some((deviations, score));
                     }
-                    entry.deviations[index].push(deviation.as_f64());
-                    if over {
-                        entry.over[index] += 1;
-                    }
-                    if blockers.len() == 1 && blockers[0] == index {
-                        entry.sole[index] += 1;
-                    }
-                    if blockers.contains(&index) {
-                        entry.blocker[index] += 1;
-                    }
+                }
+                if let Some((deviations, score)) = best {
+                    let entry = acc
+                        .entry(pattern.id)
+                        .or_insert_with(|| PatternAcc::new(pattern.name.clone()));
+                    entry.push(&deviations, score <= 1.0, |index| {
+                        pattern.tolerance_at(index).as_millimeters()
+                    });
                 }
             }
         }
 
-        let patterns = acc
-            .into_iter()
-            .map(|(pattern_id, data)| PatternDeviation {
-                pattern_id,
-                pattern_name: data.name,
-                matched_frames: FrameCount::new(data.matched),
-                missed_frames: FrameCount::new(data.missed),
-                distances: data
-                    .deviations
-                    .into_iter()
-                    .enumerate()
-                    .filter_map(|(index, samples)| {
-                        let stats = Percentiles::of(samples.iter().copied())?;
-                        Some(DistanceStats {
-                            index,
-                            samples: FrameCount::new(samples.len() as u64),
-                            mean: Millimeters::new(stats.mean),
-                            max: Millimeters::new(stats.max),
-                            p99: Millimeters::new(stats.p99),
-                            over_tolerance: FrameCount::new(data.over[index]),
-                            sole_blocker: FrameCount::new(data.sole[index]),
-                            blocker: FrameCount::new(data.blocker[index]),
-                        })
-                    })
-                    .collect(),
-            })
-            .collect();
+        Self {
+            patterns: acc
+                .into_iter()
+                .map(|(pattern_id, data)| Self::finish(pattern_id, data))
+                .collect(),
+        }
+    }
 
-        Self { patterns }
+    /// All k-element index subsets of `n` items, in lexicographic
+    /// order - used by `analyze_contacts` to enumerate same-size
+    /// contact subsets per frame.
+    fn combinations(n: usize, k: usize) -> Vec<Vec<usize>> {
+        if k == 0 || k > n {
+            return Vec::new();
+        }
+        let mut result = Vec::new();
+        let mut current = Vec::with_capacity(k);
+        fn visit(
+            start: usize,
+            n: usize,
+            k: usize,
+            current: &mut Vec<usize>,
+            result: &mut Vec<Vec<usize>>,
+        ) {
+            if current.len() == k {
+                result.push(current.clone());
+                return;
+            }
+            for index in start..=n - (k - current.len()) {
+                current.push(index);
+                visit(index + 1, n, k, current, result);
+                current.pop();
+            }
+        }
+        visit(0, n, k, &mut current, &mut result);
+        result
+    }
+
+    fn finish(pattern_id: PatternId, data: PatternAcc) -> PatternDeviation {
+        PatternDeviation {
+            pattern_id,
+            pattern_name: data.name,
+            matched_frames: data.matched,
+            missed_frames: data.missed,
+            distances: data
+                .deviations
+                .into_iter()
+                .enumerate()
+                .filter_map(|(index, samples)| {
+                    let stats = Percentiles::of(samples.iter().copied())?;
+                    Some(DistanceStats {
+                        index,
+                        samples: FrameCount::new(samples.len() as u64),
+                        mean: Millimeters::new(stats.mean),
+                        max: Millimeters::new(stats.max),
+                        p99: Millimeters::new(stats.p99),
+                        over_tolerance: data.over[index],
+                        sole_blocker: data.sole[index],
+                        blocker: data.blocker[index],
+                    })
+                })
+                .collect(),
+        }
     }
 }
 
