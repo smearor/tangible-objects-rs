@@ -98,7 +98,7 @@ mod tests {
     }
 
     fn syn() -> RawEvent {
-        RawEvent::new(EventType::Syn, SYN_REPORT, 0)
+        RawEvent::syn_report()
     }
 
     /// True for a legacy `ABS_X` event (code 0 is shared with SYN_REPORT -

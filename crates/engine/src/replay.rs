@@ -6,9 +6,7 @@ use std::path::Path;
 
 use tangible_objects_model::Calibration;
 use tangible_objects_model::EventCode;
-use tangible_objects_model::EventType;
 use tangible_objects_model::RawEvent;
-use tangible_objects_model::SYN_REPORT;
 
 use crate::EngineError;
 
@@ -172,7 +170,7 @@ fn parse_evtest_line(line: &str) -> Option<RawEvent> {
     // parse and still yields a SYN event - while `code 0 (ABS_X)` lines
     // (legacy single-touch axes) no longer misread as frame boundaries.
     if line.contains("SYN_REPORT") && !line.contains("type ") {
-        return Some(RawEvent::new(EventType::Syn, SYN_REPORT, 0));
+        return Some(RawEvent::syn_report());
     }
 
     // Format: "Event: time X.XXXXXX, type N (EV_XXX), code M (XXX), value V"

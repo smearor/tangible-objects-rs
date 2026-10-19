@@ -10,7 +10,6 @@ use tangible_objects_model::EventType;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::RawEvent;
-use tangible_objects_model::SYN_REPORT;
 use tangible_objects_model::TouchPointSlot;
 
 use super::LegacyMode;
@@ -269,14 +268,10 @@ impl EmitBoundary {
 
 /// Builds the `SYN_REPORT` event closing an emitted frame.
 fn syn_event() -> InputEvent {
-    InputEvent::new(
-        evdev::EventType(u16::from(EventType::Syn)),
-        SYN_REPORT.as_u16(),
-        0,
-    )
+    InputEvent::from(&RawEvent::syn_report())
 }
 
 /// Builds an `EV_ABS` input event for a fixed code/value pair.
 fn input_event(code: u16, value: i32) -> InputEvent {
-    InputEvent::new(evdev::EventType(u16::from(EventType::Abs)), code, value)
+    InputEvent::from(&RawEvent::new(EventType::Abs, code, value))
 }

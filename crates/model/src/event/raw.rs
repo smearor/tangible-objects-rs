@@ -30,6 +30,16 @@ impl RawEvent {
     pub fn is_syn_report(&self) -> bool {
         self.event_type == EventType::Syn && self.code == SYN_REPORT
     }
+
+    /// The `SYN_REPORT` frame delimiter event - the canonical closing
+    /// event of every frame.
+    pub const fn syn_report() -> Self {
+        Self {
+            event_type: EventType::Syn,
+            code: SYN_REPORT,
+            value: 0,
+        }
+    }
 }
 
 /// Builds a `RawEvent` from an evdev event - the timestamp is not part of

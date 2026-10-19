@@ -208,7 +208,6 @@ mod tests {
     use tangible_objects_model::Calibration;
     use tangible_objects_model::EventType;
     use tangible_objects_model::RawEvent;
-    use tangible_objects_model::SYN_REPORT;
 
     fn temp_path(name: &str) -> std::path::PathBuf {
         std::env::temp_dir().join(format!("robofigure-{name}-{}", std::process::id()))
@@ -229,7 +228,7 @@ mod tests {
                 tangible_objects_model::EventCode::new(0),
                 2401,
             ),
-            RawEvent::new(EventType::Syn, SYN_REPORT, 0),
+            RawEvent::syn_report(),
         ];
 
         {
@@ -261,7 +260,7 @@ mod tests {
         let path = temp_path("raw-recorder-nocal.evtest");
         {
             let recorder = RawRecorder::spawn(&path, None, None).expect("spawn recorder");
-            recorder.record(&RawEvent::new(EventType::Syn, SYN_REPORT, 0), 0.0);
+            recorder.record(&RawEvent::syn_report(), 0.0);
             recorder.finish().expect("finish recorder");
         }
         let mut replay = EvtestReplay::open(&path).expect("open replay");

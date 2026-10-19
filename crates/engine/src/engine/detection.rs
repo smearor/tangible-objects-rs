@@ -559,7 +559,6 @@ mod tests {
     use tangible_objects_model::PatternId;
     use tangible_objects_model::ProfileFile;
     use tangible_objects_model::RawEvent;
-    use tangible_objects_model::SYN_REPORT;
     use tangible_objects_model::TangiblePattern;
     use tangible_objects_model::Vec2;
 
@@ -580,7 +579,7 @@ mod tests {
     }
 
     fn syn(engine: &mut Engine) -> Option<EngineFrame> {
-        engine.process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
+        engine.process(&RawEvent::syn_report())
     }
 
     fn lift(engine: &mut Engine, slot: i32) {
@@ -596,11 +595,7 @@ mod tests {
                 .process(&RawEvent::new(EventType::Abs, ABS_MT_SLOT, 0))
                 .is_none()
         );
-        assert!(
-            engine
-                .process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
-                .is_some()
-        );
+        assert!(engine.process(&RawEvent::syn_report()).is_some());
     }
 
     #[test]
@@ -609,7 +604,7 @@ mod tests {
         contact(&mut engine, 0, 1, 0, 0);
         contact(&mut engine, 1, 2, 50, 0);
         contact(&mut engine, 2, 3, 0, 50);
-        let frame = engine.process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0));
+        let frame = engine.process(&RawEvent::syn_report());
 
         let frame = frame.expect("frame expected on SYN_REPORT");
         assert_eq!(frame.matches.len(), 1);
@@ -637,7 +632,7 @@ mod tests {
         contact(&mut engine, 2, 3, 0, 50);
 
         let frame = engine
-            .process_with_diagnostics(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
+            .process_with_diagnostics(&RawEvent::syn_report())
             .expect("frame expected on SYN_REPORT");
 
         assert_eq!(frame.candidates.len(), 1);
@@ -653,7 +648,7 @@ mod tests {
         contact(&mut engine, 2, 3, 0, 50);
 
         let frame = engine
-            .process(&RawEvent::new(EventType::Syn, SYN_REPORT, 0))
+            .process(&RawEvent::syn_report())
             .expect("frame expected on SYN_REPORT");
 
         assert!(frame.candidates.is_empty());
