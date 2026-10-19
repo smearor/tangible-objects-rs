@@ -11,7 +11,7 @@ mod detection;
 mod diagnostics;
 mod error;
 mod event;
-mod fields;
+pub(crate) mod fields;
 mod frame;
 mod matching;
 mod registration_error;

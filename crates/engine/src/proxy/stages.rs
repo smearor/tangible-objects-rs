@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::TouchPointSlot;
@@ -107,6 +108,19 @@ impl Stages {
         for stage in &mut self.0 {
             stage.set_mode(mode, stability);
         }
+    }
+
+    /// Propagates the current field sets to the field stage - other
+    /// stages ignore it.
+    pub fn set_field_sets(&mut self, sets: Vec<FieldSet>) {
+        for stage in &mut self.0 {
+            stage.set_fields(sets.clone());
+        }
+    }
+
+    /// Whether a field stage is present.
+    pub fn has_field_stage(&self) -> bool {
+        self.iter().any(|stage| stage.is_field_stage())
     }
 }
 

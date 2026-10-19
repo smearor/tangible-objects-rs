@@ -99,6 +99,8 @@ pub fn run_filter(
     for scope in engine.stage_scopes() {
         pipeline.ensure_tangible_stage(scope.clone());
     }
+    // `suppress`-flagged field sets live in the pipeline's field stage.
+    pipeline.set_field_sets(engine.field_sets().to_vec());
     if let Some(gate) = stability {
         pipeline.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
         println!("Stabilitäts-Gate: {gate} Frames");
@@ -131,10 +133,12 @@ pub fn run_filter(
                 other => {
                     apply_registration(&mut runtime, &mut engine, other);
                     // New profiles may carry a `stage` scope not seen
-                    // before - create the stage lazily.
+                    // before - create the stage lazily; field sets flow
+                    // to the pipeline's field stage.
                     for scope in engine.stage_scopes() {
                         pipeline.ensure_tangible_stage(scope.clone());
                     }
+                    pipeline.set_field_sets(engine.field_sets().to_vec());
                 }
             }
         }
@@ -191,13 +195,9 @@ pub fn run_filter(
                     );
                 }
             }
-            // Contacts inside `suppress`-enabled field sets never reach
-            // the OS either (SINGLE_CONTACT_FIELD.md) - unscoped.
-            scoped
-                .entry(None)
-                .or_default()
-                .extend(engine.field_suppressed_slots((&engine_frame.touches).into()));
-
+            // `suppress`-enabled field sets suppress via the pipeline's
+            // field stage (SINGLE_CONTACT_FIELD.md) - the daemon merge is
+            // gone.
             let suppressed: usize = scoped.values().map(HashSet::len).sum();
             let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;

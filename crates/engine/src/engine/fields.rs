@@ -1,10 +1,8 @@
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchSet;
 
-use tangible_objects_model::Vec2;
 use tracing::warn;
 
 use super::EngineEvent;
@@ -109,7 +107,7 @@ impl FieldTracker {
                         && set
                             .fields
                             .iter()
-                            .any(|field| field_contains(set, field, touch))
+                            .any(|field| set.field_contains(field, touch))
                 })
             })
             .map(|touch| touch.slot)
@@ -125,7 +123,7 @@ impl FieldTracker {
                 let raw = ContactCount::from(
                     touches
                         .iter()
-                        .filter(|touch| field_contains(set, field, touch))
+                        .filter(|touch| set.field_contains(field, touch))
                         .count(),
                 );
 
@@ -162,20 +160,6 @@ impl FieldTracker {
         }
         events
     }
-}
-
-/// Containment check in the field's coordinate space (window-relative
-/// when the set carries an anchor).
-fn field_contains(
-    set: &FieldSet,
-    field: &tangible_objects_model::Field,
-    touch: &TouchPoint,
-) -> bool {
-    let local = match &set.window {
-        Some(anchor) => anchor.to_local(&touch.pos),
-        None => Vec2::new(touch.pos.x, touch.pos.y),
-    };
-    field.region.contains(&local)
 }
 
 #[cfg(test)]

@@ -2,23 +2,25 @@ use std::collections::HashSet;
 
 use evdev::InputEvent;
 
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::RawEvent;
+use tangible_objects_model::Region;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
 
 use super::LegacyMode;
 use super::boundary::EmitBoundary;
 use super::edge_stage::EdgeStage;
+use super::field_stage::FieldStage;
 use super::stage::Stage;
 use super::stage_frame::ScopedMatches;
 use super::stages::Stages;
 use super::tangible_stage::TangibleStage;
 use super::zone_stage::ZoneStage;
-use tangible_objects_model::Millimeters;
-use tangible_objects_model::Region;
-use tangible_objects_model::StageName;
 
 /// Ordered stage chain plus the shared emit boundary
 /// (EVENT_PIPELINE.md phase 2).
@@ -67,6 +69,17 @@ impl Pipeline {
     /// suppressed - play-area masking.
     pub fn push_zone_stage(&mut self, zones: Vec<Region>) {
         self.stages.push(Box::new(ZoneStage::new(zones)));
+    }
+
+    /// Syncs the field stage's sets - creates it lazily on first use.
+    /// `suppress`-enabled field sets then suppress their contacts via
+    /// the stage (replaces the daemon-side merge into the general
+    /// stage's matched set).
+    pub fn set_field_sets(&mut self, sets: Vec<FieldSet>) {
+        if !self.stages.has_field_stage() {
+            self.stages.push(Box::new(FieldStage::new()));
+        }
+        self.stages.set_field_sets(sets);
     }
 
     /// Ensures a tangible stage exists for `scope` - created lazily the
@@ -132,7 +145,7 @@ mod tests {
     use super::Pipeline;
     use crate::proxy::tangible_stage::SUPPRESSION_HYSTERESIS;
     use std::collections::HashSet;
-    use tangible_objects_model::ABS_MT_POSITION_X;
+    use tangible_objects_model::{FieldSet, ABS_MT_POSITION_X, FrameCount, Field};
     use tangible_objects_model::ABS_MT_POSITION_Y;
     use tangible_objects_model::ABS_MT_SLOT;
     use tangible_objects_model::ABS_MT_TRACKING_ID;
@@ -581,6 +594,44 @@ mod tests {
             pipeline.push(ev);
         }
         let touches = [touch_point(0, 100.0, 50.0), touch_point(1, 400.0, 50.0)];
+        let out = pipeline.finish(&HashSet::new(), (&touches[..]).into());
+        assert!(out.iter().all(|e| e.value() != 700));
+        assert!(out.iter().any(|e| e.value() == 900));
+    }
+
+    #[test]
+    fn field_stage_suppresses_marked_contacts() {
+        // A suppress-enabled field covering 0..100mm - contact inside is
+        // dropped, outside passes.
+        let mut pipeline = Pipeline::new();
+        pipeline.set_mode(FilterMode::Gated, None);
+        pipeline.set_field_sets(vec![FieldSet {
+            name: "board".into(),
+            window: None,
+            stability: FrameCount::new(2),
+            suppress: true,
+            fields: vec![Field {
+                name: "a1".into(),
+                region: Region {
+                    x_min: Millimeters::new(0.0),
+                    y_min: Millimeters::new(0.0),
+                    x_max: Millimeters::new(100.0),
+                    y_max: Millimeters::new(100.0),
+                },
+            }],
+        }]);
+        for ev in [
+            abs(ABS_MT_SLOT, 0),
+            abs(ABS_MT_TRACKING_ID, 1),
+            abs(ABS_MT_POSITION_X, 700),
+            abs(ABS_MT_SLOT, 1),
+            abs(ABS_MT_TRACKING_ID, 2),
+            abs(ABS_MT_POSITION_X, 900),
+            syn(),
+        ] {
+            pipeline.push(ev);
+        }
+        let touches = [touch_point(0, 50.0, 50.0), touch_point(1, 400.0, 50.0)];
         let out = pipeline.finish(&HashSet::new(), (&touches[..]).into());
         assert!(out.iter().all(|e| e.value() != 700));
         assert!(out.iter().any(|e| e.value() == 900));

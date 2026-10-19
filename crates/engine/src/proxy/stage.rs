@@ -1,3 +1,4 @@
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::StageName;
@@ -52,4 +53,12 @@ pub(crate) trait Stage {
     /// `SetFilterMode` propagation - only tangible stages carry a
     /// `FilterMode`; always-on stages ignore the command.
     fn set_mode(&mut self, _mode: FilterMode, _stability: Option<FrameCount>) {}
+
+    /// Field-set propagation - only the field stage consumes it.
+    fn set_fields(&mut self, _sets: Vec<FieldSet>) {}
+
+    /// Marker for the field stage - the pipeline creates it lazily.
+    fn is_field_stage(&self) -> bool {
+        false
+    }
 }

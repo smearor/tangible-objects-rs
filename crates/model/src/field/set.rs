@@ -8,6 +8,8 @@ use super::Field;
 use super::FieldSetName;
 use super::WindowAnchor;
 use crate::FrameCount;
+use crate::TouchPoint;
+use crate::Vec2;
 
 /// Default debounce stability for field sets (2 frames).
 pub fn default_stability() -> FrameCount {
@@ -57,6 +59,17 @@ pub struct FieldSet {
 }
 
 impl FieldSet {
+    /// Whether `touch` lies inside `field` - evaluated in the field's
+    /// coordinate space: window-relative when the set carries a
+    /// `window` anchor, screen-absolute otherwise.
+    pub fn field_contains(&self, field: &Field, touch: &TouchPoint) -> bool {
+        let local = match &self.window {
+            Some(anchor) => anchor.to_local(&touch.pos),
+            None => Vec2::new(touch.pos.x, touch.pos.y),
+        };
+        field.region.contains(&local)
+    }
+
     /// Whether all fields are mutually disjoint (no overlapping cells).
     /// Registration of an overlapping set is rejected.
     pub fn is_disjoint(&self) -> bool {

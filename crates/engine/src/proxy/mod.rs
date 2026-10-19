@@ -6,6 +6,7 @@
 
 mod boundary;
 mod edge_stage;
+mod field_stage;
 mod legacy_mode;
 mod pipeline;
 mod stage;
