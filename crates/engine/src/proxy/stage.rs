@@ -26,6 +26,7 @@ const DEFAULT_STABILITY_GATE: FrameCount = FrameCount::new(2);
 /// guarded withholding). `classify` is the stage's per-frame entry point;
 /// the boundary then consumes [`Self::suppresses`]/[`Self::suppressed_slots`]
 /// to shape the emitted stream.
+#[derive(Debug)]
 pub(crate) struct TangibleStage {
     /// Suppressed slots mapped to frames elapsed since their last match.
     /// Resets on every renewed match; expiry releases the slot.

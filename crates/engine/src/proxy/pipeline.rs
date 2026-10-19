@@ -10,6 +10,7 @@ use tangible_objects_model::TouchPointSlot;
 use super::LegacyMode;
 use super::boundary::EmitBoundary;
 use super::stage::TangibleStage;
+use super::stages::Stages;
 
 /// Ordered stage chain plus the shared emit boundary
 /// (EVENT_PIPELINE.md phase 2).
@@ -25,7 +26,7 @@ use super::stage::TangibleStage;
 /// registration.
 pub struct Pipeline {
     /// Suppression stages, in declaration order.
-    stages: Vec<TangibleStage>,
+    stages: Stages,
     /// Emit mechanism: frame buffer, emitted set, guarded withholding.
     emit: EmitBoundary,
 }
@@ -41,7 +42,7 @@ impl Pipeline {
     /// `Guarded` policy) - today's single-stage parity.
     pub fn new() -> Self {
         Self {
-            stages: vec![TangibleStage::new()],
+            stages: vec![TangibleStage::new()].into(),
             emit: EmitBoundary::new(),
         }
     }
@@ -58,9 +59,7 @@ impl Pipeline {
     /// Per-stage control arrives with stage-scoped commands in a later
     /// phase - today one stage exists, so this is parity behavior.
     pub fn set_mode(&mut self, mode: FilterMode, stability: Option<FrameCount>) {
-        for stage in &mut self.stages {
-            stage.set_mode(mode, stability);
-        }
+        self.stages.set_mode(mode, stability);
     }
 
     /// Buffers one source event for the current frame.
@@ -73,9 +72,7 @@ impl Pipeline {
     /// scoping lands), then the emit boundary merges the stage decisions
     /// into the emitted frame, ending in `SYN_REPORT`.
     pub fn finish(&mut self, matched: &HashSet<TouchPointSlot>) -> Vec<InputEvent> {
-        for stage in &mut self.stages {
-            stage.classify(matched);
-        }
+        self.stages.classify(matched);
         self.emit.finish(&mut self.stages, matched)
     }
 }

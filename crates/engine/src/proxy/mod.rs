@@ -8,6 +8,7 @@ mod boundary;
 mod legacy_mode;
 mod pipeline;
 mod stage;
+mod stages;
 mod virtual_device;
 
 pub use legacy_mode::LegacyMode;

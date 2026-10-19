@@ -14,7 +14,7 @@ use tangible_objects_model::SYN_REPORT;
 use tangible_objects_model::TouchPointSlot;
 
 use super::LegacyMode;
-use super::stage::TangibleStage;
+use super::stages::Stages;
 
 /// Emit mechanism of the proxy pipeline (EVENT_PIPELINE.md).
 ///
@@ -93,11 +93,11 @@ impl EmitBoundary {
     /// releases the slot on every stage.
     pub fn finish(
         &mut self,
-        stages: &mut [TangibleStage],
+        stages: &mut Stages,
         matched: &HashSet<TouchPointSlot>,
     ) -> Vec<InputEvent> {
-        let mode = merged_mode(stages);
-        let stability_gate = merged_gate(stages);
+        let mode = stages.merged_mode();
+        let stability_gate = stages.merged_gate();
 
         let mut out = Vec::with_capacity(self.frame.len() + 8);
         // Whether the clone still believes a contact is live right now -
@@ -136,7 +136,7 @@ impl EmitBoundary {
         // replayed so nothing is lost.
         let mut release = Vec::new();
         for (&slot, held) in self.held.iter_mut() {
-            if mode != FilterMode::Guarded || was_suppressed(stages, slot) {
+            if mode != FilterMode::Guarded || stages.was_suppressed(slot) {
                 release.push(slot);
             } else if matched.contains(&slot) {
                 held.unmatched = FrameCount::new(0);
@@ -149,7 +149,7 @@ impl EmitBoundary {
         }
         for slot in release {
             let held = self.held.remove(&slot).unwrap_or_default();
-            if mode == FilterMode::Guarded && was_suppressed(stages, slot) {
+            if mode == FilterMode::Guarded && stages.was_suppressed(slot) {
                 continue; // pending tangible: drop the withheld events
             }
             for raw in held.events {
@@ -166,7 +166,8 @@ impl EmitBoundary {
 
         // Retract contacts that were emitted before their slot got
         // classified as a tangible.
-        let retract: Vec<TouchPointSlot> = suppressed_slots(stages)
+        let retract: Vec<TouchPointSlot> = stages
+            .suppressed_slots()
             .filter(|slot| self.emitted.contains(slot))
             .collect();
         for slot in retract {
@@ -204,9 +205,9 @@ impl EmitBoundary {
                     && raw.value == -1
                     && let Some(slot) = current_slot
                 {
-                    release_slot(stages, slot);
+                    stages.release_slot(slot);
                 }
-                if current_slot.is_some_and(|slot| suppresses(stages, slot)) {
+                if current_slot.is_some_and(|slot| stages.suppresses(slot)) {
                     continue;
                 }
                 if mode == FilterMode::Guarded {
@@ -290,65 +291,4 @@ fn to_input_event(raw: &RawEvent) -> InputEvent {
 /// Builds an `EV_ABS` input event for a fixed code/value pair.
 fn input_event(code: u16, value: i32) -> InputEvent {
     InputEvent::new(evdev::EventType(u16::from(EventType::Abs)), code, value)
-}
-
-/// The mechanism's effective policy across all stages: `TangiblesOnly`
-/// and `Guarded` are mechanism-visible (`Guarded` withholds, `TangiblesOnly`
-/// drains); `Immediate`/`Gated`/`Off` differ only in stage-side
-/// classification, not mechanism, so the first stage's mode suffices.
-fn merged_mode(stages: &[TangibleStage]) -> FilterMode {
-    if stages
-        .iter()
-        .any(|stage| stage.mode() == FilterMode::TangiblesOnly)
-    {
-        return FilterMode::TangiblesOnly;
-    }
-    if stages
-        .iter()
-        .any(|stage| stage.mode() == FilterMode::Guarded)
-    {
-        return FilterMode::Guarded;
-    }
-    stages
-        .first()
-        .map_or(FilterMode::default(), TangibleStage::mode)
-}
-
-/// The gate used for guarded-mode release - the gate of the (first)
-/// guarded stage, else any stage's.
-fn merged_gate(stages: &[TangibleStage]) -> FrameCount {
-    stages
-        .iter()
-        .find(|stage| stage.mode() == FilterMode::Guarded)
-        .or_else(|| stages.first())
-        .map_or(FrameCount::new(0), TangibleStage::stability_gate)
-}
-
-/// Whether any stage suppresses `slot` under its active policy.
-fn suppresses(stages: &[TangibleStage], slot: TouchPointSlot) -> bool {
-    stages.iter().any(|stage| stage.suppresses(slot))
-}
-
-/// Whether any stage holds `slot` in its suppressed set - used by the
-/// guarded-release logic.
-fn was_suppressed(stages: &[TangibleStage], slot: TouchPointSlot) -> bool {
-    stages.iter().any(|stage| stage.was_suppressed(slot))
-}
-
-/// Union of every stage's suppressed slots - deduplicated: a slot
-/// suppressed by two stages must retract only once.
-fn suppressed_slots(stages: &[TangibleStage]) -> impl Iterator<Item = TouchPointSlot> + '_ {
-    stages
-        .iter()
-        .flat_map(TangibleStage::suppressed_slots)
-        .collect::<HashSet<_>>()
-        .into_iter()
-}
-
-/// Releases `slot` on every stage - a lifting contact frees it for a new
-/// tangible regardless of which stage suppressed it.
-fn release_slot(stages: &mut [TangibleStage], slot: TouchPointSlot) {
-    for stage in stages {
-        stage.release(slot);
-    }
 }
