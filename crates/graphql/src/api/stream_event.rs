@@ -42,6 +42,10 @@ pub enum StreamEvent {
     FieldSetRegistered,
     /// A field set was removed.
     FieldSetUnregistered,
+    /// A scoped tangible stage was created on the pipeline.
+    StageRegistered,
+    /// A scoped tangible stage was removed.
+    StageUnregistered,
     /// The completion configuration changed.
     CompletionChanged,
     /// The filter-proxy suppression policy changed.
@@ -74,6 +78,8 @@ impl StreamEvent {
             Self::ProfileRegistered => EventKind::ProfileRegistered,
             Self::ProfileUnregistered => EventKind::ProfileUnregistered,
             Self::FieldSetRegistered => EventKind::FieldSetRegistered,
+            Self::StageRegistered => EventKind::StageRegistered,
+            Self::StageUnregistered => EventKind::StageUnregistered,
             Self::FieldSetUnregistered => EventKind::FieldSetUnregistered,
             Self::CompletionChanged => EventKind::CompletionChanged,
             Self::FilterModeChanged => EventKind::FilterModeChanged,

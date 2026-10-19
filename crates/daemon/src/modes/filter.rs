@@ -96,13 +96,15 @@ pub fn run_filter(
     }
     // A stage exists per scope tagged on any pattern - lazily kept in
     // sync as registrations introduce new scope names.
-    for scope in engine.stage_scopes() {
-        pipeline.ensure_tangible_stage(scope.clone());
-    }
+    sync_stages(&mut runtime, &mut pipeline, &engine);
     // `suppress`-flagged field sets live in the pipeline's field stage.
     pipeline.set_field_sets(engine.field_sets().to_vec());
     if let Some(gate) = stability {
-        pipeline.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
+        pipeline.set_mode(
+            tangible_objects_model::FilterMode::default(),
+            Some(gate),
+            None,
+        );
         println!("Stabilitäts-Gate: {gate} Frames");
     }
     if let Some(legacy_mode) = legacy {
@@ -116,10 +118,29 @@ pub fn run_filter(
         // queued SetFilterMode applies while the device is idle.
         while let Ok(command) = runtime.try_recv_command() {
             match command {
-                ControlCommand::SetFilterMode { mode, stability } => {
-                    pipeline.set_mode(mode, stability);
+                ControlCommand::SetFilterMode {
+                    mode,
+                    stability,
+                    stage,
+                } => {
+                    pipeline.set_mode(mode, stability, stage.as_ref());
                     runtime.emit_lifecycle(LifecycleEvent::FilterModeChanged(mode));
-                    println!("\nFilter-Modus: {mode}");
+                    match &stage {
+                        Some(stage) => println!("\nFilter-Modus: {mode} (Stage {stage})"),
+                        None => println!("\nFilter-Modus: {mode}"),
+                    }
+                }
+                ControlCommand::RegisterStage { name } => {
+                    if pipeline.register_stage(name.clone()) {
+                        println!("\nStage registriert: {name}");
+                        runtime.emit_lifecycle(LifecycleEvent::StageRegistered { name });
+                    }
+                }
+                ControlCommand::UnregisterStage { name } => {
+                    if pipeline.unregister_stage(&name) {
+                        println!("\nStage entfernt: {name}");
+                        runtime.emit_lifecycle(LifecycleEvent::StageUnregistered { name });
+                    }
                 }
                 ControlCommand::SetCompletion(config) => {
                     engine.set_completion(config);
@@ -132,12 +153,9 @@ pub fn run_filter(
                 }
                 other => {
                     apply_registration(&mut runtime, &mut engine, other);
-                    // New profiles may carry a `stage` scope not seen
-                    // before - create the stage lazily; field sets flow
-                    // to the pipeline's field stage.
-                    for scope in engine.stage_scopes() {
-                        pipeline.ensure_tangible_stage(scope.clone());
-                    }
+                    // Registrations may introduce or retire scope names
+                    // and field sets - keep the pipeline in sync.
+                    sync_stages(&mut runtime, &mut pipeline, &engine);
                     pipeline.set_field_sets(engine.field_sets().to_vec());
                 }
             }
@@ -212,4 +230,21 @@ pub fn run_filter(
         }
     }
     Ok(())
+}
+
+/// Keeps the pipeline's tangible stages in sync with the engine's
+/// pattern scopes and reports the changes: a `stage = "name"` profile
+/// creates its stage (`StageRegistered`), a scope whose last pattern
+/// went away drops the stage with its hysteresis (`StageUnregistered`).
+fn sync_stages(runtime: &mut EngineRuntime, pipeline: &mut Pipeline, engine: &Engine) {
+    let scopes: HashSet<StageName> = engine.stage_scopes().cloned().collect();
+    let changes = pipeline.sync_scopes(&scopes);
+    for scope in changes.registered {
+        println!("\nStage registriert: {scope}");
+        runtime.emit_lifecycle(LifecycleEvent::StageRegistered { name: scope });
+    }
+    for scope in changes.unregistered {
+        println!("\nStage entfernt: {scope}");
+        runtime.emit_lifecycle(LifecycleEvent::StageUnregistered { name: scope });
+    }
 }

@@ -7,6 +7,7 @@ use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
 use super::stage_frame::StageFrame;
+use super::stage_metrics::StageMetrics;
 
 /// Suppresses every contact inside the declared zones - play-area
 /// masking (EVENT_PIPELINE.md).
@@ -24,6 +25,8 @@ pub(crate) struct ZoneStage {
     zones: Vec<Region>,
     /// Slots suppressed this frame - rebuilt by `classify`.
     suppressed: HashSet<TouchPointSlot>,
+    /// Per-stage counters - updated in `classify`.
+    metrics: StageMetrics,
 }
 
 impl ZoneStage {
@@ -32,6 +35,7 @@ impl ZoneStage {
         Self {
             zones,
             suppressed: HashSet::new(),
+            metrics: StageMetrics::default(),
         }
     }
 }
@@ -58,15 +62,16 @@ impl Stage for ZoneStage {
     }
 
     fn classify(&mut self, frame: &StageFrame<'_>) {
-        self.suppressed = frame
-            .touches
-            .iter()
-            .filter(|touch| self.zones.iter().any(|zone| zone.contains(&touch.pos)))
-            .map(|touch| touch.slot)
-            .collect();
+        let suppressed =
+            frame.slots_where(|touch| self.zones.iter().any(|zone| zone.contains(&touch.pos)));
+        self.metrics.record_frame(&mut self.suppressed, suppressed);
     }
 
     fn release(&mut self, slot: TouchPointSlot) {
         self.suppressed.remove(&slot);
+    }
+
+    fn metrics(&self) -> &StageMetrics {
+        &self.metrics
     }
 }

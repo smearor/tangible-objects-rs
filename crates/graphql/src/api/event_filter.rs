@@ -17,9 +17,16 @@ pub(crate) const DEFAULT_MAX_HZ: u32 = 30;
 /// which kinds pass, plus optional `patternId`/`setId`/`fieldSet` narrows
 /// and the `TOUCH_POINTS_UPDATED` throttle.
 pub(crate) struct EventFilter {
+    /// Event kinds the subscriber requested - anything else is dropped.
     kinds: HashSet<EventKind>,
+    /// Optional narrow: only events about this pattern pass
+    /// (`TANGIBLE_*`/`OBJECT_*`/`PROFILE_*` kinds).
     pattern_id: Option<PatternId>,
+    /// Optional narrow: only events about this tangible set pass
+    /// (`SET_*`/`OBJECT_*` kinds).
     set_id: Option<TangibleSetId>,
+    /// Optional narrow: only events about this field set pass
+    /// (`FIELD_*` kinds).
     field_set: Option<String>,
     /// Minimum interval between emitted `TOUCH_POINTS_UPDATED` events.
     touch_interval: Option<Duration>,
@@ -74,7 +81,7 @@ impl EventFilter {
             return false;
         }
         if let Some(field_set) = &self.field_set
-            && event.field_set.as_deref() != Some(field_set.as_str())
+            && event.field_set.as_ref().map(|name| name.as_str()) != Some(field_set.as_str())
         {
             return false;
         }
@@ -110,6 +117,7 @@ mod tests {
             field_set: None,
             field: None,
             count: None,
+            frames: None,
             pattern_id: None,
             name: None,
             owner: None,
@@ -185,9 +193,9 @@ mod tests {
             None,
         );
         let mut placed = event(EventKind::FieldPlaced);
-        placed.field_set = Some("board".to_string());
+        placed.field_set = Some("board".into());
         assert!(filter.accepts(&placed));
-        placed.field_set = Some("other".to_string());
+        placed.field_set = Some("other".into());
         assert!(!filter.accepts(&placed));
     }
 }

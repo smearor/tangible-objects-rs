@@ -10,6 +10,7 @@ use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
+use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
@@ -21,14 +22,43 @@ impl MutationRoot {
     /// Switches the filter proxy's suppression policy
     /// (`off`/`immediate`/`gated`/`guarded`/`tangiblesOnly`); `stability`
     /// overrides the consecutive-matched-frames gate, `null` keeps it.
+    /// `stage` narrows the switch to that scope's tangible stage,
+    /// `null` broadcasts to all.
     async fn set_filter_mode(
         &self,
         ctx: &Context<'_>,
         mode: FilterMode,
         stability: Option<FrameCount>,
+        stage: Option<StageName>,
     ) -> Result<bool> {
         ctx.data::<EngineHandle>()?
-            .send_command(ControlCommand::SetFilterMode { mode, stability })
+            .send_command(ControlCommand::SetFilterMode {
+                mode,
+                stability,
+                stage,
+            })
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Claims or creates a pipeline stage for `name` (EVENT_PIPELINE.md
+    /// phase 7) - persists until `unregisterStage`, so a client can
+    /// pre-configure the stage's policy before any `stage = "name"`
+    /// pattern registers.
+    async fn register_stage(&self, ctx: &Context<'_>, name: StageName) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::RegisterStage { name })
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Removes the pipeline stage for `name` - its suppression state
+    /// dies with it; patterns of that scope keep matching.
+    async fn unregister_stage(&self, ctx: &Context<'_>, name: StageName) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::UnregisterStage { name })
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

@@ -17,6 +17,16 @@ pub struct SetFilterModeArgs {
     /// Optional consecutive-matched-frames gate (e.g. 2 or 3); omit to
     /// keep the current value.
     pub stability: Option<u64>,
+    /// Optional stage scope - narrows the switch to that stage only
+    /// (EVENT_PIPELINE.md); omit to apply to all tangible stages.
+    pub stage: Option<String>,
+}
+
+/// Arguments for the `register_stage`/`unregister_stage` tools.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct StageArgs {
+    /// Stage scope name.
+    pub name: String,
 }
 
 /// Arguments for the `train_profile` tool.

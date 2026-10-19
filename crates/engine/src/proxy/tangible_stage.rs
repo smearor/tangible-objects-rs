@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::StageName;
@@ -7,6 +8,7 @@ use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
 use super::stage_frame::StageFrame;
+use super::stage_metrics::StageMetrics;
 
 /// Frames a suppressed slot survives without a renewed match - mirrors the
 /// tracker's expiry hysteresis so a transient match loss (tilt, flaky pin)
@@ -46,6 +48,13 @@ pub(crate) struct TangibleStage {
     /// Pattern scope this stage suppresses - `None` = the general stage
     /// holding all untagged patterns (EVENT_PIPELINE.md phase 4).
     scope: Option<StageName>,
+    /// `RegisterStage`-claimed: explicit stages survive scope syncs
+    /// (`sync_scopes` only garbage-collects pattern-driven stages) -
+    /// a client can pre-configure a stage's policy before any pattern
+    /// with that scope exists.
+    explicit: bool,
+    /// Per-stage counters - updated in `classify`.
+    metrics: StageMetrics,
 }
 
 impl TangibleStage {
@@ -64,6 +73,8 @@ impl TangibleStage {
             stability_gate: DEFAULT_STABILITY_GATE,
             mode: FilterMode::default(),
             scope,
+            explicit: false,
+            metrics: StageMetrics::default(),
         }
     }
 }
@@ -75,32 +86,14 @@ impl Default for TangibleStage {
 }
 
 impl Stage for TangibleStage {
-    /// Switches the suppression policy (`SetFilterMode` control command).
-    /// `stability` replaces the gate when `Some`; `None` keeps the current
-    /// value. State from the previous mode is kept: existing suppressions
-    /// stay suppressed, held contacts stay held until their next
-    /// evaluation.
-    fn set_mode(&mut self, mode: FilterMode, stability: Option<FrameCount>) {
-        self.mode = mode;
-        if let Some(gate) = stability {
-            self.stability_gate = gate;
-        }
-    }
-
     fn mode(&self) -> FilterMode {
         self.mode
-    }
-
-    fn scope(&self) -> &Option<StageName> {
-        &self.scope
     }
 
     fn stability_gate(&self) -> FrameCount {
         self.stability_gate
     }
 
-    /// Whether `slot` is suppressed under the active policy - `Off`
-    /// never suppresses.
     fn suppresses(&self, slot: TouchPointSlot) -> bool {
         self.mode != FilterMode::Off && self.suppressed.contains_key(&slot)
     }
@@ -113,10 +106,8 @@ impl Stage for TangibleStage {
         Box::new(self.suppressed.keys().copied())
     }
 
-    /// Releases a slot whose tracking contact ended - a lifting contact
-    /// frees the slot for a new tangible.
-    fn release(&mut self, slot: TouchPointSlot) {
-        self.suppressed.remove(&slot);
+    fn scope(&self) -> &Option<StageName> {
+        &self.scope
     }
 
     /// Advances classification by one frame: `frame.matched` carries the
@@ -132,9 +123,14 @@ impl Stage for TangibleStage {
     ///   but never enters suppression.
     fn classify(&mut self, frame: &StageFrame<'_>) {
         let matched = frame.matched;
+        self.metrics.frames += 1;
+        self.metrics.matched_total += matched.len().into();
         match self.mode {
             FilterMode::Immediate => {
                 for &slot in matched {
+                    if !self.suppressed.contains_key(&slot) {
+                        self.metrics.suppressed_total += ContactCount::new(1);
+                    }
                     self.suppressed.insert(slot, FrameCount::new(0));
                 }
             }
@@ -158,6 +154,7 @@ impl Stage for TangibleStage {
                 for slot in graduated {
                     self.pending.remove(&slot);
                     self.suppressed.insert(slot, FrameCount::new(0));
+                    self.metrics.suppressed_total += ContactCount::new(1);
                 }
             }
             FilterMode::Off | FilterMode::TangiblesOnly => {}
@@ -167,5 +164,42 @@ impl Stage for TangibleStage {
             *age += 1;
             *age <= SUPPRESSION_HYSTERESIS
         });
+        self.metrics.suppressed = self.suppressed.len().into();
+    }
+
+    /// Releases a slot whose tracking contact ended - a lifting contact
+    /// frees the slot for a new tangible.
+    fn release(&mut self, slot: TouchPointSlot) {
+        self.suppressed.remove(&slot);
+    }
+
+    /// Switches the suppression policy (`SetFilterMode` control command).
+    /// `stability` replaces the gate when `Some`; `None` keeps the current
+    /// value. State from the previous mode is kept: existing suppressions
+    /// stay suppressed, held contacts stay held until their next
+    /// evaluation.
+    fn set_mode(&mut self, mode: FilterMode, stability: Option<FrameCount>) {
+        self.mode = mode;
+        if let Some(gate) = stability {
+            self.stability_gate = gate;
+        }
+    }
+
+    /// Whether `slot` is suppressed under the active policy - `Off`
+    /// never suppresses.
+    fn is_tangible_stage(&self) -> bool {
+        true
+    }
+
+    fn is_explicit(&self) -> bool {
+        self.explicit
+    }
+
+    fn mark_explicit(&mut self) {
+        self.explicit = true;
+    }
+
+    fn metrics(&self) -> &StageMetrics {
+        &self.metrics
     }
 }

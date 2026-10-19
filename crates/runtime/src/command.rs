@@ -9,6 +9,7 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
+use tangible_objects_model::StageName;
 
 /// Control command sent by an interface back to the daemon's device loop.
 ///
@@ -27,6 +28,27 @@ pub enum ControlCommand {
         mode: FilterMode,
         /// Consecutive frames a slot must match before suppression starts.
         stability: Option<FrameCount>,
+        /// Scope of the stage to reconfigure (EVENT_PIPELINE.md phase 7):
+        /// `Some` applies the policy to that stage only, `None`
+        /// broadcasts to all tangible stages. Positional stages always
+        /// ignore `SetFilterMode`.
+        stage: Option<StageName>,
+    },
+    /// Create or claim a pipeline stage for `name` before any `stage =
+    /// "name"` pattern registers - the stage persists until
+    /// `UnregisterStage`, independent of pattern lifetimes
+    /// (EVENT_PIPELINE.md phase 7). Lets a client pre-configure a
+    /// stage's `SetFilterMode` policy.
+    RegisterStage {
+        /// Stage scope name.
+        name: StageName,
+    },
+    /// Remove the pipeline stage for `name` - its suppression state
+    /// dies with it; patterns of that scope keep matching but are no
+    /// longer stage-suppressed until a new stage exists.
+    UnregisterStage {
+        /// Stage scope name.
+        name: StageName,
     },
     /// Capture a new figure profile with the given name.
     TrainProfile(String),

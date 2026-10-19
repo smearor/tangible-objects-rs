@@ -7,6 +7,7 @@ use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
 use super::stage_frame::StageFrame;
+use super::stage_metrics::StageMetrics;
 
 /// Suppresses contacts inside `suppress`-enabled field sets
 /// (SINGLE_CONTACT_FIELD.md, EVENT_PIPELINE.md phase 5).
@@ -27,6 +28,8 @@ pub(crate) struct FieldStage {
     sets: Vec<FieldSet>,
     /// Slots suppressed this frame - rebuilt by `classify`.
     suppressed: HashSet<TouchPointSlot>,
+    /// Per-stage counters - updated in `classify`.
+    metrics: StageMetrics,
 }
 
 impl FieldStage {
@@ -35,6 +38,7 @@ impl FieldStage {
         Self {
             sets: Vec::new(),
             suppressed: HashSet::new(),
+            metrics: StageMetrics::default(),
         }
     }
 }
@@ -46,19 +50,6 @@ impl Default for FieldStage {
 }
 
 impl Stage for FieldStage {
-    /// Replaces the stage's field sets - called by the pipeline when the
-    /// engine's registry changes (initial `--fields` load and
-    /// `RegisterFieldSet`/`UnregisterFieldSet` commands).
-    fn set_fields(&mut self, sets: Vec<FieldSet>) {
-        self.sets = sets;
-    }
-
-    /// Marker - the pipeline creates the field stage lazily via
-    /// [`super::Pipeline::set_field_sets`].
-    fn is_field_stage(&self) -> bool {
-        true
-    }
-
     fn mode(&self) -> FilterMode {
         FilterMode::Immediate
     }
@@ -80,23 +71,36 @@ impl Stage for FieldStage {
     }
 
     fn classify(&mut self, frame: &StageFrame<'_>) {
-        self.suppressed = frame
-            .touches
-            .iter()
-            .filter(|touch| {
-                self.sets.iter().any(|set| {
-                    set.suppress
-                        && set
-                            .fields
-                            .iter()
-                            .any(|field| set.field_contains(field, touch))
-                })
+        let suppressed = frame.slots_where(|touch| {
+            self.sets.iter().any(|set| {
+                set.suppress
+                    && set
+                        .fields
+                        .iter()
+                        .any(|field| set.field_contains(field, touch))
             })
-            .map(|touch| touch.slot)
-            .collect();
+        });
+        self.metrics.record_frame(&mut self.suppressed, suppressed);
     }
 
     fn release(&mut self, slot: TouchPointSlot) {
         self.suppressed.remove(&slot);
+    }
+
+    /// Replaces the stage's field sets - called by the pipeline when the
+    /// engine's registry changes (initial `--fields` load and
+    /// `RegisterFieldSet`/`UnregisterFieldSet` commands).
+    fn set_fields(&mut self, sets: Vec<FieldSet>) {
+        self.sets = sets;
+    }
+
+    /// Marker - the pipeline creates the field stage lazily via
+    /// [`super::Pipeline::set_field_sets`].
+    fn is_field_stage(&self) -> bool {
+        true
+    }
+
+    fn metrics(&self) -> &StageMetrics {
+        &self.metrics
     }
 }

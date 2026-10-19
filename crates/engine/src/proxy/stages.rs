@@ -10,6 +10,7 @@ use tangible_objects_model::TouchPointSlot;
 use super::stage::Stage;
 use super::stage_frame::ScopedMatches;
 use super::stage_frame::StageFrame;
+use crate::StageMetrics;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TouchSet;
 
@@ -93,6 +94,28 @@ impl Stages {
             .map(|stage| &**stage)
     }
 
+    /// Scopes of all tangible stages - the lifecycle-synced set the
+    /// daemon diffs against the engine's pattern scopes.
+    pub fn tangible_scopes(&self) -> impl Iterator<Item = &StageName> {
+        self.iter()
+            .filter(|stage| stage.is_tangible_stage())
+            .filter_map(|stage| stage.scope().as_ref())
+    }
+
+    /// Removes the tangible stage for `scope` - its hysteresis dies with
+    /// it (phase 4/6 lifecycle: the scope's last pattern is gone).
+    pub fn remove_tangible_stage(&mut self, scope: &StageName) -> bool {
+        let before = self.len();
+        self.0
+            .retain(|stage| !(stage.is_tangible_stage() && stage.scope().as_ref() == Some(scope)));
+        self.len() != before
+    }
+
+    /// Per-stage metric snapshots, in declaration order.
+    pub fn stage_metrics(&self) -> impl Iterator<Item = &StageMetrics> {
+        self.iter().map(|stage| stage.metrics())
+    }
+
     /// Releases `slot` on every stage - a lifting contact frees it for a
     /// new tangible regardless of which stage suppressed it.
     pub fn release_slot(&mut self, slot: TouchPointSlot) {
@@ -101,13 +124,42 @@ impl Stages {
         }
     }
 
-    /// Switches the suppression policy on every stage (`SetFilterMode`
-    /// control command - unscoped until per-stage control lands; stages
-    /// without a `FilterMode` concept ignore it).
-    pub fn set_mode(&mut self, mode: FilterMode, stability: Option<FrameCount>) {
+    /// Switches the suppression policy (`SetFilterMode` control
+    /// command): `scope` `Some` applies it to the matching stage only,
+    /// `None` broadcasts to all tangible stages - positional stages
+    /// ignore `SetFilterMode` regardless.
+    pub fn set_mode(
+        &mut self,
+        mode: FilterMode,
+        stability: Option<FrameCount>,
+        scope: Option<&StageName>,
+    ) {
         for stage in &mut self.0 {
-            stage.set_mode(mode, stability);
+            if scope.is_none() || stage.scope().as_ref() == scope {
+                stage.set_mode(mode, stability);
+            }
         }
+    }
+
+    /// Scopes of `RegisterStage`-claimed tangible stages - these survive
+    /// `sync_scopes` garbage collection.
+    pub fn explicit_scopes(&self) -> impl Iterator<Item = &StageName> {
+        self.iter()
+            .filter(|stage| stage.is_explicit())
+            .filter_map(|stage| stage.scope().as_ref())
+    }
+
+    /// Claims the tangible stage for `scope` as `RegisterStage`-driven;
+    /// returns `false` when no such stage exists.
+    pub fn mark_stage_explicit(&mut self, scope: &StageName) -> bool {
+        let mut found = false;
+        for stage in &mut self.0 {
+            if stage.is_tangible_stage() && stage.scope().as_ref() == Some(scope) {
+                stage.mark_explicit();
+                found = true;
+            }
+        }
+        found
     }
 
     /// Propagates the current field sets to the field stage - other

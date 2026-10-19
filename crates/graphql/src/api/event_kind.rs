@@ -35,6 +35,10 @@ pub enum EventKind {
     FieldSetRegistered,
     /// A field set was removed.
     FieldSetUnregistered,
+    /// A scoped tangible stage was created on the pipeline.
+    StageRegistered,
+    /// A scoped tangible stage was removed.
+    StageUnregistered,
     /// The completion configuration changed.
     CompletionChanged,
     /// The filter-proxy suppression policy changed.

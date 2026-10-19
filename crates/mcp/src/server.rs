@@ -46,6 +46,7 @@ use super::tool_args::SetFilterModeArgs;
 use super::tool_args::SetRecordLabelArgs;
 use super::tool_args::ShowMessageArgs;
 use super::tool_args::SimilarityArgs;
+use super::tool_args::StageArgs;
 use super::tool_args::StartRecordingArgs;
 use super::tool_args::TrainProfileArgs;
 use super::tool_args::UnregisterFieldSetArgs;
@@ -510,12 +511,55 @@ impl EngineMcp {
             )
         })?;
         let stability = args.stability.map(tangible_objects_model::FrameCount::new);
+        let stage = args.stage.map(StageName::new);
         self.handle
-            .send_command(ControlCommand::SetFilterMode { mode, stability })
+            .send_command(ControlCommand::SetFilterMode {
+                mode,
+                stability,
+                stage,
+            })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "filter mode set to {mode}"
+        ))]))
+    }
+
+    /// Claims or creates a pipeline stage for the given scope.
+    #[tool(
+        description = "Register a pipeline stage - persists until unregistered, so its filter mode can be set before any scoped pattern exists."
+    )]
+    async fn register_stage(
+        &self,
+        Parameters(args): Parameters<StageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::RegisterStage {
+                name: tangible_objects_model::StageName::new(&args.name),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "stage {} registered",
+            args.name
+        ))]))
+    }
+
+    /// Removes a pipeline stage - its suppression state dies with it.
+    #[tool(description = "Unregister a pipeline stage by scope name.")]
+    async fn unregister_stage(
+        &self,
+        Parameters(args): Parameters<StageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::UnregisterStage {
+                name: tangible_objects_model::StageName::new(&args.name),
+            })
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "stage {} unregistered",
+            args.name
         ))]))
     }
 

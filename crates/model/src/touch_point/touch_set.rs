@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use std::ops::Deref;
 
 use super::TouchPoint;
+use super::TouchPointSlot;
 use crate::PointBuf;
 
 /// The active contacts of one frame - a borrowed view, not an
@@ -39,6 +41,19 @@ impl TouchSet<'_> {
     /// measured point set a candidate combination refers to.
     pub fn positions_of(self, indices: &[usize]) -> PointBuf {
         PointBuf(indices.iter().map(|&i| self.0[i].pos).collect())
+    }
+
+    /// Slots of the contacts satisfying `predicate` - positional stages
+    /// express their mask as one filter and let the view do the walk.
+    pub fn slots_where(
+        self,
+        mut predicate: impl FnMut(&TouchPoint) -> bool,
+    ) -> HashSet<TouchPointSlot> {
+        self.0
+            .iter()
+            .filter(|touch| predicate(touch))
+            .map(|touch| touch.slot)
+            .collect()
     }
 }
 

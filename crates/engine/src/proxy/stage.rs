@@ -5,6 +5,7 @@ use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage_frame::StageFrame;
+use super::stage_metrics::StageMetrics;
 
 /// One stage of the event pipeline (EVENT_PIPELINE.md).
 ///
@@ -61,4 +62,22 @@ pub(crate) trait Stage {
     fn is_field_stage(&self) -> bool {
         false
     }
+
+    /// Marker for tangible stages - scoped stage lifecycle
+    /// (`StageRegistered`/`Unregistered`) applies to them only.
+    fn is_tangible_stage(&self) -> bool {
+        false
+    }
+
+    /// Whether this stage was claimed by `RegisterStage` - explicit
+    /// stages survive `sync_scopes` garbage collection.
+    fn is_explicit(&self) -> bool {
+        false
+    }
+
+    /// Claims the stage as `RegisterStage`-driven.
+    fn mark_explicit(&mut self) {}
+
+    /// The stage's counters - per-stage metrics (phase 6).
+    fn metrics(&self) -> &StageMetrics;
 }

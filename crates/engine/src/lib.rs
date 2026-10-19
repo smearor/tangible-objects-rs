@@ -25,6 +25,8 @@ pub use engine::TouchState;
 pub use engine::Tracker;
 pub use proxy::LegacyMode;
 pub use proxy::Pipeline;
+pub use proxy::ScopeChanges;
+pub use proxy::StageMetrics;
 pub use proxy::VirtualTouchscreen;
 pub use recorder::FrameContext;
 pub use recorder::FrameRecorder;

@@ -147,6 +147,7 @@ mod tests {
             Ok(ControlCommand::SetFilterMode {
                 mode: FilterMode::Guarded,
                 stability: Some(_),
+                stage: None,
             })
         ));
     }

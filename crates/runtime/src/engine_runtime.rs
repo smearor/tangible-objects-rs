@@ -360,6 +360,7 @@ mod tests {
             .try_send_command(ControlCommand::SetFilterMode {
                 mode: tangible_objects_model::FilterMode::Guarded,
                 stability: Some(tangible_objects_model::FrameCount::new(3)),
+                stage: None,
             })
             .unwrap();
 
@@ -368,6 +369,7 @@ mod tests {
             Ok(ControlCommand::SetFilterMode {
                 mode: tangible_objects_model::FilterMode::Guarded,
                 stability: Some(_),
+                stage: None,
             })
         ));
     }

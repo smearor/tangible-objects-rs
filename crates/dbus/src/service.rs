@@ -151,16 +151,45 @@ impl EngineService {
 
     /// Switches the filter proxy's suppression policy
     /// (`off`/`immediate`/`gated`/`guarded`); `stability > 0` overrides
-    /// the consecutive-matched-frames gate, `0` keeps it.
-    async fn set_filter_mode(&self, mode: &str, stability: u64) -> fdo::Result<()> {
+    /// the consecutive-matched-frames gate, `0` keeps it. `stage`
+    /// narrows the switch to that scope's tangible stage, `""` applies
+    /// to all.
+    async fn set_filter_mode(&self, mode: &str, stability: u64, stage: &str) -> fdo::Result<()> {
         let mode = mode.parse::<FilterMode>().map_err(|_| {
             fdo::Error::InvalidArgs(
                 "mode must be one of: off, immediate, gated, guarded, tangibles-only".to_string(),
             )
         })?;
         let stability = (stability > 0).then(|| FrameCount::new(stability));
+        let stage = (!stage.is_empty()).then(|| StageName::new(stage));
         self.handle
-            .send_command(ControlCommand::SetFilterMode { mode, stability })
+            .send_command(ControlCommand::SetFilterMode {
+                mode,
+                stability,
+                stage,
+            })
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
+    /// Claims or creates a pipeline stage for `name` (EVENT_PIPELINE.md
+    /// phase 7) - persists until `UnregisterStage`.
+    async fn register_stage(&self, name: &str) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::RegisterStage {
+                name: StageName::new(name),
+            })
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
+    /// Removes the pipeline stage for `name` - its suppression state
+    /// dies with it.
+    async fn unregister_stage(&self, name: &str) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::UnregisterStage {
+                name: StageName::new(name),
+            })
             .await
             .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
     }

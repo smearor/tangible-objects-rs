@@ -35,6 +35,9 @@ pub(crate) fn drain_control_commands(
             ControlCommand::SetFilterMode { mode, .. } => {
                 warn!(%mode, "filter mode command - only honored in --filter mode");
             }
+            ControlCommand::RegisterStage { .. } | ControlCommand::UnregisterStage { .. } => {
+                warn!("stage commands - only honored in --filter mode");
+            }
             ControlCommand::TrainProfile(name) => {
                 warn!(name, "remote training command - not yet wired");
             }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use tangible_objects_model::StageName;
+use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
 
@@ -22,3 +23,15 @@ pub(crate) struct StageFrame<'a> {
 /// Matched slots grouped by stage scope (EVENT_PIPELINE.md phase 4) -
 /// the `None` key is the general stage for untagged patterns.
 pub(crate) type ScopedMatches = HashMap<Option<StageName>, HashSet<TouchPointSlot>>;
+
+impl StageFrame<'_> {
+    /// Slots of this frame's contacts satisfying `predicate` -
+    /// convenience delegate to [`TouchSet::slots_where`] so positional
+    /// stages read "the frame's slots where".
+    pub fn slots_where(
+        &self,
+        predicate: impl FnMut(&TouchPoint) -> bool,
+    ) -> HashSet<TouchPointSlot> {
+        self.touches.slots_where(predicate)
+    }
+}

@@ -5,6 +5,7 @@ use tangible_objects_model::FrameCount;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
+use tangible_objects_model::StageName;
 
 /// Lifecycle event emitted when the device loop *applies* a control
 /// command - not frame-derived like [`EngineEvent`] but a session-level
@@ -39,6 +40,18 @@ pub enum LifecycleEvent {
     FieldSetUnregistered {
         /// Removed field-set name.
         name: FieldSetName,
+    },
+    /// A scoped tangible stage was created on the pipeline - the first
+    /// `stage = "name"` profile registered (EVENT_PIPELINE.md phase 6).
+    StageRegistered {
+        /// New stage's scope name.
+        name: StageName,
+    },
+    /// A scoped tangible stage was removed - its last pattern went
+    /// away; its suppression state died with it.
+    StageUnregistered {
+        /// Removed stage's scope name.
+        name: StageName,
     },
     /// The completion configuration changed (`SetCompletion` applied).
     CompletionChanged(CompletionConfig),

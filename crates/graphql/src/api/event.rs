@@ -1,5 +1,10 @@
 use async_graphql::SimpleObject;
 use tangible_objects_engine::EngineEvent;
+use tangible_objects_model::ContactCount;
+use tangible_objects_model::FieldName;
+use tangible_objects_model::FieldSetName;
+use tangible_objects_model::FrameCount;
+use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::SetAction;
 use tangible_objects_model::TangibleSetId;
@@ -24,18 +29,20 @@ pub struct TangibleEvent {
     /// Affected set for `SET_*` and `OBJECT_*` events.
     pub set_id: Option<TangibleSetId>,
     /// Field-set name for `FIELD_*` events.
-    pub field_set: Option<String>,
+    pub field_set: Option<FieldSetName>,
     /// Field name for `FIELD_*` events.
-    pub field: Option<String>,
-    /// Debounced contact count for `FIELD_COUNT_CHANGED` events; recorded
-    /// frame count for `RECORDING_STOPPED`.
-    pub count: Option<i32>,
+    pub field: Option<FieldName>,
+    /// Debounced contact count for `FIELD_COUNT_CHANGED` events.
+    pub count: Option<ContactCount>,
+    /// Recorded frame count for `RECORDING_STOPPED` events.
+    pub frames: Option<FrameCount>,
     /// Affected pattern for `PROFILE_*` lifecycle events.
     pub pattern_id: Option<PatternId>,
-    /// Profile or field-set name for lifecycle events.
+    /// Profile, field-set or stage name for lifecycle events -
+    /// deliberately heterogeneous: `kind` says which.
     pub name: Option<String>,
     /// Owning application for registration events.
-    pub owner: Option<String>,
+    pub owner: Option<Owner>,
     /// Applied value for config events (`COMPLETION_CHANGED` =
     /// `mode radius max_missing persist`, `FILTER_MODE_CHANGED` = mode).
     pub detail: Option<String>,
@@ -53,6 +60,7 @@ impl TangibleEvent {
             field_set: None,
             field: None,
             count: None,
+            frames: None,
             pattern_id: None,
             name: None,
             owner: None,
@@ -102,23 +110,23 @@ impl From<&EngineEvent> for TangibleEvent {
             EngineEvent::FieldPlaced { set, field } => (
                 EventKind::FieldPlaced,
                 None,
-                Some(set.as_str().to_string()),
-                Some(field.as_str().to_string()),
+                Some(set.clone()),
+                Some(field.clone()),
                 None,
             ),
             EngineEvent::FieldLifted { set, field } => (
                 EventKind::FieldLifted,
                 None,
-                Some(set.as_str().to_string()),
-                Some(field.as_str().to_string()),
+                Some(set.clone()),
+                Some(field.clone()),
                 None,
             ),
             EngineEvent::FieldCountChanged { set, field, count } => (
                 EventKind::FieldCountChanged,
                 None,
-                Some(set.as_str().to_string()),
-                Some(field.as_str().to_string()),
-                Some(count.as_u32() as i32),
+                Some(set.clone()),
+                Some(field.clone()),
+                Some(*count),
             ),
         };
         Self {
@@ -157,6 +165,8 @@ impl From<&LifecycleEvent> for TangibleEvent {
             LifecycleEvent::ProfileUnregistered { .. } => EventKind::ProfileUnregistered,
             LifecycleEvent::FieldSetRegistered { .. } => EventKind::FieldSetRegistered,
             LifecycleEvent::FieldSetUnregistered { .. } => EventKind::FieldSetUnregistered,
+            LifecycleEvent::StageRegistered { .. } => EventKind::StageRegistered,
+            LifecycleEvent::StageUnregistered { .. } => EventKind::StageUnregistered,
             LifecycleEvent::CompletionChanged(_) => EventKind::CompletionChanged,
             LifecycleEvent::FilterModeChanged(_) => EventKind::FilterModeChanged,
             LifecycleEvent::RecordingStarted => EventKind::RecordingStarted,
@@ -171,16 +181,20 @@ impl From<&LifecycleEvent> for TangibleEvent {
             } => {
                 event_out.pattern_id = Some(*pattern_id);
                 event_out.name = Some(name.to_string());
-                event_out.owner = owner.as_ref().map(|o| o.to_string());
+                event_out.owner = owner.clone();
             }
             LifecycleEvent::ProfileUnregistered { pattern_id } => {
                 event_out.pattern_id = Some(*pattern_id);
             }
             LifecycleEvent::FieldSetRegistered { name, owner } => {
                 event_out.name = Some(name.to_string());
-                event_out.owner = owner.as_ref().map(|o| o.to_string());
+                event_out.owner = owner.clone();
             }
             LifecycleEvent::FieldSetUnregistered { name } => {
+                event_out.name = Some(name.to_string());
+            }
+            LifecycleEvent::StageRegistered { name }
+            | LifecycleEvent::StageUnregistered { name } => {
                 event_out.name = Some(name.to_string());
             }
             LifecycleEvent::CompletionChanged(config) => {
@@ -193,7 +207,7 @@ impl From<&LifecycleEvent> for TangibleEvent {
                 event_out.detail = Some(mode.to_string());
             }
             LifecycleEvent::RecordingStopped { frames } => {
-                event_out.count = Some(frames.as_u64() as i32);
+                event_out.frames = Some(*frames);
             }
             _ => {}
         }

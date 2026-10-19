@@ -8,6 +8,7 @@ use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
 use super::stage_frame::StageFrame;
+use super::stage_metrics::StageMetrics;
 
 /// Suppresses contacts inside the edge margin - ghost contacts some
 /// panels emit at the axis bounds (EVENT_PIPELINE.md).
@@ -36,6 +37,8 @@ pub(crate) struct EdgeStage {
     surface: Region,
     /// Slots suppressed this frame - rebuilt by `classify`.
     suppressed: HashSet<TouchPointSlot>,
+    /// Per-stage counters - updated in `classify`.
+    metrics: StageMetrics,
 }
 
 impl EdgeStage {
@@ -46,6 +49,7 @@ impl EdgeStage {
             margin,
             surface,
             suppressed: HashSet::new(),
+            metrics: StageMetrics::default(),
         }
     }
 }
@@ -73,15 +77,15 @@ impl Stage for EdgeStage {
 
     fn classify(&mut self, frame: &StageFrame<'_>) {
         let inner = self.surface.inset(self.margin);
-        self.suppressed = frame
-            .touches
-            .iter()
-            .filter(|touch| !inner.contains(&touch.pos))
-            .map(|touch| touch.slot)
-            .collect();
+        let suppressed = frame.slots_where(|touch| !inner.contains(&touch.pos));
+        self.metrics.record_frame(&mut self.suppressed, suppressed);
     }
 
     fn release(&mut self, slot: TouchPointSlot) {
         self.suppressed.remove(&slot);
+    }
+
+    fn metrics(&self) -> &StageMetrics {
+        &self.metrics
     }
 }
