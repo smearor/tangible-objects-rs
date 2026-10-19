@@ -11,11 +11,13 @@ description = "Domain model for the tangible-objects platform: touch points, pat
 
 [features]
 async-graphql = ["dep:async-graphql"]
+evdev = ["dep:evdev"]
 mcp = ["dep:schemars"]
 zbus = ["dep:zvariant"]
 
 [dependencies]
 async-graphql = { workspace = true, optional = true }
+evdev = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true

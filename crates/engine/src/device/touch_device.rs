@@ -133,11 +133,7 @@ impl TouchDevice {
     pub fn fetch_events(&mut self) -> Result<Vec<RawEvent>, EngineError> {
         let mut events = Vec::new();
         for event in self.device.fetch_events()? {
-            events.push(RawEvent::new(
-                event.event_type().0,
-                event.code(),
-                event.value(),
-            ));
+            events.push(RawEvent::from(&event));
         }
         Ok(events)
     }

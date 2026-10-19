@@ -32,6 +32,31 @@ impl RawEvent {
     }
 }
 
+/// Builds a `RawEvent` from an evdev event - the timestamp is not part of
+/// the triple. Available with the `evdev` feature.
+#[cfg(feature = "evdev")]
+impl From<&evdev::InputEvent> for RawEvent {
+    fn from(event: &evdev::InputEvent) -> Self {
+        Self::new(event.event_type().0, event.code(), event.value())
+    }
+}
+
+/// Rebuilds an evdev event from the `(type, code, value)` triple.
+///
+/// The timestamp is assigned at emission - replay/proxy paths add at most
+/// one frame of latency, so source timestamps are not carried over.
+/// Available with the `evdev` feature.
+#[cfg(feature = "evdev")]
+impl From<&RawEvent> for evdev::InputEvent {
+    fn from(raw: &RawEvent) -> Self {
+        Self::new(
+            evdev::EventType(u16::from(raw.event_type)),
+            raw.code.as_u16(),
+            raw.value,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::EventType;

@@ -160,7 +160,7 @@ impl EmitBoundary {
                         self.emitted.insert(slot);
                     }
                 }
-                out.push(to_input_event(&raw));
+                out.push(InputEvent::from(&raw));
             }
         }
 
@@ -246,7 +246,7 @@ impl EmitBoundary {
                 legacy_events.push(raw);
                 continue;
             }
-            out.push(to_input_event(&raw));
+            out.push(InputEvent::from(&raw));
         }
 
         // Legacy single-touch events mirror "at least one active contact" -
@@ -259,7 +259,7 @@ impl EmitBoundary {
             LegacyMode::Auto => !self.emitted.is_empty() || had_contact,
         };
         if emit_legacy {
-            out.extend(legacy_events.iter().map(to_input_event));
+            out.extend(legacy_events.iter().map(InputEvent::from));
         }
 
         out.push(syn_event());
@@ -273,18 +273,6 @@ fn syn_event() -> InputEvent {
         evdev::EventType(u16::from(EventType::Syn)),
         SYN_REPORT.as_u16(),
         0,
-    )
-}
-
-/// Converts a [`RawEvent`] back into an [`InputEvent`] for the clone.
-///
-/// The timestamp is assigned at emission; the proxy adds at most one frame
-/// of latency so source timestamps are not carried over.
-fn to_input_event(raw: &RawEvent) -> InputEvent {
-    InputEvent::new(
-        evdev::EventType(u16::from(raw.event_type)),
-        raw.code.as_u16(),
-        raw.value,
     )
 }
 
