@@ -13,6 +13,9 @@ use crate::PointBuf;
 pub struct TouchSet<'a>(pub &'a [TouchPoint]);
 
 impl<'a> TouchSet<'a> {
+    /// The empty contact set.
+    pub const EMPTY: Self = Self(&[]);
+
     /// Wraps a contact slice.
     pub const fn new(touches: &'a [TouchPoint]) -> Self {
         Self(touches)
@@ -21,6 +24,13 @@ impl<'a> TouchSet<'a> {
     /// The wrapped slice.
     pub const fn as_slice(self) -> &'a [TouchPoint] {
         self.0
+    }
+}
+
+impl Default for TouchSet<'_> {
+    /// The empty contact set - same as [`TouchSet::EMPTY`].
+    fn default() -> Self {
+        Self::EMPTY
     }
 }
 

@@ -4,6 +4,7 @@ use serde::Serialize;
 use crate::Millimeters;
 use crate::Pixels;
 use crate::RawAxisValue;
+use crate::Region;
 use crate::UnitsPerMm;
 use crate::Vec2;
 
@@ -79,6 +80,17 @@ impl Calibration {
             Millimeters::new((self.y_max - self.y_min) / self.y_res)
         } else {
             Millimeters::new(0.0)
+        }
+    }
+
+    /// The whole usable surface as a [`crate::Region`] in millimeters -
+    /// the bounds edge-ghost and zone filtering refer to.
+    pub fn surface_region(&self) -> Region {
+        Region {
+            x_min: Millimeters::new(self.x_min.as_f64() / self.x_res.as_f64()),
+            y_min: Millimeters::new(self.y_min.as_f64() / self.y_res.as_f64()),
+            x_max: Millimeters::new(self.x_max.as_f64() / self.x_res.as_f64()),
+            y_max: Millimeters::new(self.y_max.as_f64() / self.y_res.as_f64()),
         }
     }
 

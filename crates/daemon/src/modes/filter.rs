@@ -53,7 +53,8 @@ pub fn run_filter(
     }
 
     let mut engine = Engine::new(patterns.to_vec());
-    if let Some(cal) = effective_calibration(&device, device_profiles) {
+    let calibration = effective_calibration(&device, device_profiles);
+    if let Some(cal) = calibration {
         println!(
             "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
@@ -81,6 +82,16 @@ pub fn run_filter(
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
     let mut pipeline = Pipeline::new();
+    // Edge ghosts leak to the virtual device unless suppressed - the
+    // edge stage drops contacts inside the margin (the engine still
+    // filters them from matching via `set_edge_margin` above).
+    if let (Some(margin), Some(cal)) = (config.edge, calibration) {
+        pipeline.push_edge_stage(margin, cal.surface_region());
+    }
+    if !config.zones.is_empty() {
+        pipeline.push_zone_stage(config.zones.clone());
+        println!("Zonen-Maskierung: {} Region(en)", config.zones.len());
+    }
     if let Some(gate) = stability {
         pipeline.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
         println!("Stabilitäts-Gate: {gate} Frames");
@@ -167,7 +178,7 @@ pub fn run_filter(
             // the OS either (SINGLE_CONTACT_FIELD.md).
             suppressed.extend(engine.field_suppressed_slots((&engine_frame.touches).into()));
 
-            let out = pipeline.finish(&suppressed);
+            let out = pipeline.finish(&suppressed, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;
 
             print!(

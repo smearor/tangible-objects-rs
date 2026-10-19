@@ -107,6 +107,7 @@ pub use recording::RECORD_SCHEMA_VERSION;
 pub use recording::RecordLabel;
 pub use recording::RemainingFrameCount;
 pub use recording::TrackedRecord;
+pub use region::ParseRegionError;
 pub use region::Region;
 pub use registration::Lifetime;
 pub use registration::Owner;

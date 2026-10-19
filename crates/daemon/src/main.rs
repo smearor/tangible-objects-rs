@@ -24,6 +24,7 @@ use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::Region;
 
 /// Parses a `--legacy` value - `LegacyMode`'s `Err` is `()`, which clap
 /// cannot render, so the message is supplied here.
@@ -121,6 +122,10 @@ struct Cli {
     /// Geister-Kontakte am Rand verwerfen (--live/--record/--gui)
     #[arg(long, value_name = "mm")]
     edge_filter_mm: Option<f64>,
+    /// Zone maskieren (x_min,y_min,x_max,y_max in mm, wiederholbar;
+    /// --filter)
+    #[arg(long, value_name = "x0,y0,x1,y1")]
+    zone: Vec<Region>,
     /// Occupancy-Feld-Sets laden (TOML-Datei oder -Verzeichnis)
     #[arg(long, value_name = "file|dir")]
     fields: Option<String>,
@@ -182,6 +187,7 @@ fn main() -> Result<()> {
             edge: cli.edge_filter_mm.map(Millimeters::new),
             fields: modes::load_field_sets(cli.fields.as_deref()),
             completion,
+            zones: cli.zone.clone(),
         })
     };
     let interfaces = || -> Result<Interfaces> {
