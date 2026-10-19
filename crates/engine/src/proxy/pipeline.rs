@@ -12,12 +12,13 @@ use super::LegacyMode;
 use super::boundary::EmitBoundary;
 use super::edge_stage::EdgeStage;
 use super::stage::Stage;
-use super::stage_frame::StageFrame;
+use super::stage_frame::ScopedMatches;
 use super::stages::Stages;
 use super::tangible_stage::TangibleStage;
 use super::zone_stage::ZoneStage;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Region;
+use tangible_objects_model::StageName;
 
 /// Ordered stage chain plus the shared emit boundary
 /// (EVENT_PIPELINE.md phase 2).
@@ -68,6 +69,18 @@ impl Pipeline {
         self.stages.push(Box::new(ZoneStage::new(zones)));
     }
 
+    /// Ensures a tangible stage exists for `scope` - created lazily the
+    /// first time a `stage = "name"` profile registers (EVENT_PIPELINE.md
+    /// phase 4). New stages start with empty hysteresis - the
+    /// conservative default: nothing suppressed until their own gate
+    /// passes.
+    pub fn ensure_tangible_stage(&mut self, scope: StageName) {
+        if self.stages.find_by_scope(&scope).is_none() {
+            self.stages
+                .push(Box::new(TangibleStage::with_scope(Some(scope))));
+        }
+    }
+
     /// Switches the legacy single-touch event policy (`BTN_TOUCH`,
     /// `ABS_X`, `ABS_Y`). [`LegacyMode::Auto`] (default) emits them only
     /// while a contact is live on the virtual device.
@@ -88,18 +101,29 @@ impl Pipeline {
         self.emit.push(event);
     }
 
-    /// Finishes the buffered frame: every stage classifies the frame
-    /// (`matched` slots plus the active `touches` for positional
-    /// stages), then the emit boundary merges the stage decisions into
-    /// the emitted frame, ending in `SYN_REPORT`.
+    /// Finishes the buffered frame with `matched` treated as the general
+    /// stage's set - the unscoped convenience for single-scope setups.
     pub fn finish(
         &mut self,
         matched: &HashSet<TouchPointSlot>,
         touches: TouchSet<'_>,
     ) -> Vec<InputEvent> {
-        let frame = StageFrame { matched, touches };
-        self.stages.classify(&frame);
-        self.emit.finish(&mut self.stages, matched)
+        let scoped = ScopedMatches::from([(None, matched.clone())]);
+        self.finish_scoped(&scoped, touches)
+    }
+
+    /// Finishes the buffered frame: every stage classifies the subset of
+    /// `matched` keyed by its own scope (input masking), then the emit
+    /// boundary merges the stage decisions - the mechanism sees the
+    /// union - into the emitted frame, ending in `SYN_REPORT`.
+    pub fn finish_scoped(
+        &mut self,
+        matched: &ScopedMatches,
+        touches: TouchSet<'_>,
+    ) -> Vec<InputEvent> {
+        self.stages.classify(matched, touches);
+        let union: HashSet<TouchPointSlot> = matched.values().flatten().copied().collect();
+        self.emit.finish(&mut self.stages, &union)
     }
 }
 

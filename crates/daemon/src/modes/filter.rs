@@ -1,5 +1,6 @@
 //! Filter-proxy mode (FILTER_PROXY_VIRTUAL.md).
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
 use std::path::Path;
@@ -14,6 +15,7 @@ use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternSet;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
@@ -92,6 +94,11 @@ pub fn run_filter(
         pipeline.push_zone_stage(config.zones.clone());
         println!("Zonen-Maskierung: {} Region(en)", config.zones.len());
     }
+    // A stage exists per scope tagged on any pattern - lazily kept in
+    // sync as registrations introduce new scope names.
+    for scope in engine.stage_scopes() {
+        pipeline.ensure_tangible_stage(scope.clone());
+    }
     if let Some(gate) = stability {
         pipeline.set_mode(tangible_objects_model::FilterMode::default(), Some(gate));
         println!("Stabilitäts-Gate: {gate} Frames");
@@ -121,7 +128,14 @@ pub fn run_filter(
                         config.mode, config.radius_factor, config.max_missing, config.persist
                     );
                 }
-                other => apply_registration(&mut runtime, &mut engine, other),
+                other => {
+                    apply_registration(&mut runtime, &mut engine, other);
+                    // New profiles may carry a `stage` scope not seen
+                    // before - create the stage lazily.
+                    for scope in engine.stage_scopes() {
+                        pipeline.ensure_tangible_stage(scope.clone());
+                    }
+                }
             }
         }
 
@@ -159,33 +173,40 @@ pub fn run_filter(
 
             // Exact matches always suppress; under CompletionMode::Exact a
             // completed partial suppresses its matched *and* claimed slots.
+            // Scoped by stage: a match of a `stage = "x"` pattern feeds
+            // only that stage's classification (EVENT_PIPELINE.md).
             let completion_exact = engine.completion().mode == CompletionMode::Exact;
-            let mut suppressed: HashSet<TouchPointSlot> = engine_frame
-                .matches
-                .iter()
-                .flat_map(|matched| {
-                    if !matched.is_partial()
-                        || (completion_exact && !matched.claimed_indices.is_empty())
-                    {
-                        matched.all_indices().collect::<Vec<usize>>()
-                    } else {
-                        Vec::new()
-                    }
-                })
-                .map(|index| engine_frame.touches[index].slot)
-                .collect();
+            let mut scoped: HashMap<Option<StageName>, HashSet<TouchPointSlot>> = HashMap::new();
+            for matched in &engine_frame.matches {
+                if !matched.is_partial()
+                    || (completion_exact && !matched.claimed_indices.is_empty())
+                {
+                    let scope = engine
+                        .pattern(matched.pattern_id)
+                        .and_then(|pattern| pattern.stage.clone());
+                    scoped.entry(scope).or_default().extend(
+                        matched
+                            .all_indices()
+                            .map(|index| engine_frame.touches[index].slot),
+                    );
+                }
+            }
             // Contacts inside `suppress`-enabled field sets never reach
-            // the OS either (SINGLE_CONTACT_FIELD.md).
-            suppressed.extend(engine.field_suppressed_slots((&engine_frame.touches).into()));
+            // the OS either (SINGLE_CONTACT_FIELD.md) - unscoped.
+            scoped
+                .entry(None)
+                .or_default()
+                .extend(engine.field_suppressed_slots((&engine_frame.touches).into()));
 
-            let out = pipeline.finish(&suppressed, (&engine_frame.touches).into());
+            let suppressed: usize = scoped.values().map(HashSet::len).sum();
+            let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;
 
             print!(
                 "\rFrame {frame} | {} Touch | {} Figur | {} unterdrückt     ",
                 engine_frame.touches.len(),
                 engine_frame.matches.len(),
-                suppressed.len()
+                suppressed
             );
             std::io::stdout().flush().ok();
         }

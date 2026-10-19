@@ -149,6 +149,7 @@ pub(crate) fn apply_registration(
                                 owner: owner.clone(),
                                 spawn_on_partial: profile.spawn_on_partial,
                                 spawn_stability: profile.spawn_stability,
+                                stage: profile.stage.clone(),
                             });
                             runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
                                 pattern_id: id,
@@ -199,6 +200,7 @@ pub(crate) fn apply_registration(
                         spawn_on_partial: profile.spawn_on_partial,
                         spawn_stability: profile.spawn_stability,
                         owner: owner.clone(),
+                        stage: profile.stage.clone(),
                     });
                     runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
                         pattern_id: id,

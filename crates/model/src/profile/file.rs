@@ -16,6 +16,7 @@ use crate::PatternTolerance;
 use crate::PatternTolerances;
 use crate::PinCount;
 use crate::Region;
+use crate::StageName;
 use crate::TangiblePattern;
 use crate::Vec2;
 
@@ -67,6 +68,11 @@ pub struct ProfileFile {
     /// Serialized as TOML `[[regions]]` blocks.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub regions: Vec<Region>,
+    /// Pipeline stage this pattern suppresses through
+    /// (EVENT_PIPELINE.md, `stage = "game"`). `None` = the general stage
+    /// holding all untagged patterns.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<StageName>,
 }
 
 /// Default enabled state for profile files (`enabled = true`).
@@ -110,6 +116,7 @@ impl ProfileFile {
             sorted_sides: Distances(distances),
             points: points.to_vec(),
             regions: Vec::new(),
+            stage: None,
         }
     }
 
@@ -130,6 +137,7 @@ impl ProfileFile {
                 None
             },
             regions: self.regions.clone(),
+            stage: self.stage.clone(),
         }
     }
 

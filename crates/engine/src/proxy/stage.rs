@@ -1,5 +1,6 @@
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage_frame::StageFrame;
@@ -32,6 +33,15 @@ pub(crate) trait Stage {
     /// Currently suppressed slots - unioned by the boundary for
     /// retraction.
     fn suppressed_slots(&self) -> Box<dyn Iterator<Item = TouchPointSlot> + '_>;
+
+    /// The pattern scope this stage's `matched` set covers
+    /// (EVENT_PIPELINE.md phase 4): `None` = the general stage for
+    /// untagged patterns. Positional stages ignore `matched` entirely -
+    /// the default satisfies them. Returned by reference so the pipeline
+    /// can key the scoped-match map without cloning the name per frame.
+    fn scope(&self) -> &Option<StageName> {
+        &None
+    }
 
     /// Advances the stage's classification by one frame.
     fn classify(&mut self, frame: &StageFrame<'_>);

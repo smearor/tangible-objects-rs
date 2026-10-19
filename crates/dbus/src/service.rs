@@ -20,6 +20,7 @@ use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
@@ -405,6 +406,7 @@ impl EngineService {
         persistent: bool,
         spawn_on_partial: bool,
         spawn_stability: u64,
+        stage: &str,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<()> {
         if !points.len().is_multiple_of(2) || points.is_empty() {
@@ -418,6 +420,7 @@ impl EngineService {
             .collect();
         let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
         profile.spawn_on_partial = spawn_on_partial;
+        profile.stage = (!stage.is_empty()).then(|| StageName::new(stage));
         if spawn_stability > 0 {
             profile.spawn_stability = tangible_objects_model::FrameCount::new(spawn_stability);
         }
@@ -436,6 +439,7 @@ impl EngineService {
     }
 
     /// Replaces a registered pattern's geometry while keeping its ID.
+    #[allow(clippy::too_many_arguments)]
     async fn update_profile(
         &self,
         id: u32,
@@ -444,6 +448,7 @@ impl EngineService {
         tolerance: f64,
         spawn_on_partial: bool,
         spawn_stability: u64,
+        stage: &str,
     ) -> fdo::Result<()> {
         if !points.len().is_multiple_of(2) || points.is_empty() {
             return Err(fdo::Error::InvalidArgs(
@@ -456,6 +461,7 @@ impl EngineService {
             .collect();
         let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
         profile.spawn_on_partial = spawn_on_partial;
+        profile.stage = (!stage.is_empty()).then(|| StageName::new(stage));
         if spawn_stability > 0 {
             profile.spawn_stability = tangible_objects_model::FrameCount::new(spawn_stability);
         }

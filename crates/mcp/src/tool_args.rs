@@ -82,6 +82,9 @@ pub struct RegisterPatternArgs {
     /// Frames a partial spawn must hold before confirmation;
     /// default 15.
     pub spawn_stability: Option<u64>,
+    /// Pipeline stage this pattern suppresses through
+    /// (EVENT_PIPELINE.md); `null` = the general stage.
+    pub stage: Option<String>,
 }
 
 /// Arguments for the `update_profile` tool - replaces a registered
@@ -100,6 +103,9 @@ pub struct UpdateProfileArgs {
     pub spawn_on_partial: Option<bool>,
     /// Frames a partial spawn must hold before confirmation.
     pub spawn_stability: Option<u64>,
+    /// Pipeline stage this pattern suppresses through
+    /// (EVENT_PIPELINE.md); `null` keeps the pattern's stage.
+    pub stage: Option<String>,
 }
 
 /// Arguments for the `register_field_set` tool - the set is given as TOML

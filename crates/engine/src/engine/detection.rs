@@ -15,6 +15,8 @@ use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
+use tangible_objects_model::StageName;
+use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
@@ -217,6 +219,21 @@ impl Engine {
     /// Owner recorded for a pattern, if any.
     pub fn pattern_owner(&self, id: PatternId) -> Option<&Owner> {
         self.pattern_owners.get(&id).and_then(Option::as_ref)
+    }
+
+    /// The pattern with `id`, if registered.
+    pub fn pattern(&self, id: PatternId) -> Option<&TangiblePattern> {
+        self.patterns.iter().find(|pattern| pattern.id == id)
+    }
+
+    /// Distinct pipeline stage scopes present on registered patterns
+    /// (EVENT_PIPELINE.md) - the daemon keeps a stage alive for each.
+    pub fn stage_scopes(&self) -> impl Iterator<Item = &StageName> {
+        self.patterns
+            .iter()
+            .filter_map(|pattern| pattern.stage.as_ref())
+            .collect::<HashSet<_>>()
+            .into_iter()
     }
 
     /// Removes every pattern and field set owned by `owner` (disconnect

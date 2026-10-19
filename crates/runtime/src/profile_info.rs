@@ -5,6 +5,7 @@ use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PinCount;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TangiblePattern;
 
 /// Static info about a loaded figure profile for query-style responses.
@@ -28,6 +29,9 @@ pub struct ProfileInfo {
     pub spawn_on_partial: bool,
     /// Frames a partial spawn must hold before confirmation.
     pub spawn_stability: FrameCount,
+    /// Pipeline stage this pattern suppresses through
+    /// (EVENT_PIPELINE.md); `None` = the general stage.
+    pub stage: Option<StageName>,
 }
 
 #[cfg(feature = "zbus")]
@@ -44,6 +48,7 @@ impl From<&TangiblePattern> for ProfileInfo {
             owner: None,
             spawn_on_partial: pattern.spawn_on_partial,
             spawn_stability: pattern.spawn_stability,
+            stage: pattern.stage.clone(),
         }
     }
 }

@@ -131,6 +131,7 @@ impl MutationRoot {
         let mut profile =
             tangible_objects_model::ProfileFile::from_points(&input.name, &points, tolerance);
         profile.spawn_on_partial = input.spawn_on_partial.unwrap_or(false);
+        profile.stage = input.stage.clone();
         if let Some(stability) = input.spawn_stability {
             profile.spawn_stability = tangible_objects_model::FrameCount::new(stability as u64);
         }
@@ -158,6 +159,7 @@ impl MutationRoot {
         let mut profile =
             tangible_objects_model::ProfileFile::from_points(&input.name, &points, tolerance);
         profile.spawn_on_partial = input.spawn_on_partial.unwrap_or(false);
+        profile.stage = input.stage.clone();
         if let Some(stability) = input.spawn_stability {
             profile.spawn_stability = tangible_objects_model::FrameCount::new(stability as u64);
         }
@@ -236,6 +238,9 @@ struct RegisterPatternInput {
     /// Frames a partial spawn must hold before confirmation;
     /// `null` = 15.
     spawn_stability: Option<i32>,
+    /// Pipeline stage this pattern suppresses through
+    /// (EVENT_PIPELINE.md); `null` = the general stage.
+    stage: Option<tangible_objects_model::StageName>,
 }
 
 /// Input for `registerFieldSet`.

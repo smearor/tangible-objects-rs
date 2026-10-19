@@ -7,7 +7,10 @@ use tangible_objects_model::FrameCount;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
+use super::stage_frame::ScopedMatches;
 use super::stage_frame::StageFrame;
+use tangible_objects_model::StageName;
+use tangible_objects_model::TouchSet;
 
 /// Owned stage chain of a pipeline (`Vec<Box<dyn Stage>>`).
 ///
@@ -70,13 +73,23 @@ impl Stages {
 
 // Mutation side - per-frame classification and slot lifecycle.
 impl Stages {
-    /// Advances every stage's classification by one frame - `frame`
-    /// carries the matched slots and active touches (unscoped until
-    /// stage scoping lands).
-    pub fn classify(&mut self, frame: &StageFrame<'_>) {
+    /// Advances every stage's classification by one frame - each stage
+    /// receives the `scoped` subset keyed by its own `scope()` plus the
+    /// shared touches (EVENT_PIPELINE.md phase 4 input masking).
+    pub fn classify(&mut self, scoped: &ScopedMatches, touches: TouchSet<'_>) {
+        let empty = HashSet::new();
         for stage in &mut self.0 {
-            stage.classify(frame);
+            let matched = scoped.get(stage.scope()).unwrap_or(&empty);
+            stage.classify(&StageFrame { matched, touches });
         }
+    }
+
+    /// The stage keyed by `scope`, if present - the daemon ensures one
+    /// per scope appearing on patterns.
+    pub fn find_by_scope(&self, scope: &StageName) -> Option<&dyn Stage> {
+        self.iter()
+            .find(|stage| stage.scope().as_ref() == Some(scope))
+            .map(|stage| &**stage)
     }
 
     /// Releases `slot` on every stage - a lifting contact frees it for a

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
@@ -42,17 +43,27 @@ pub(crate) struct TangibleStage {
     stability_gate: FrameCount,
     /// Active suppression policy.
     mode: FilterMode,
+    /// Pattern scope this stage suppresses - `None` = the general stage
+    /// holding all untagged patterns (EVENT_PIPELINE.md phase 4).
+    scope: Option<StageName>,
 }
 
 impl TangibleStage {
-    /// Creates a stage with the default policy ([`FilterMode::Guarded`],
-    /// [`DEFAULT_STABILITY_GATE`]).
+    /// Creates a general stage with the default policy
+    /// ([`FilterMode::Guarded`], [`DEFAULT_STABILITY_GATE`]).
     pub fn new() -> Self {
+        Self::with_scope(None)
+    }
+
+    /// Creates a stage suppressing the patterns tagged with `scope`'s
+    /// name; `None` is the general stage.
+    pub fn with_scope(scope: Option<StageName>) -> Self {
         Self {
             suppressed: HashMap::new(),
             pending: HashMap::new(),
             stability_gate: DEFAULT_STABILITY_GATE,
             mode: FilterMode::default(),
+            scope,
         }
     }
 }
@@ -78,6 +89,10 @@ impl Stage for TangibleStage {
 
     fn mode(&self) -> FilterMode {
         self.mode
+    }
+
+    fn scope(&self) -> &Option<StageName> {
+        &self.scope
     }
 
     fn stability_gate(&self) -> FrameCount {

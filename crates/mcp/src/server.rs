@@ -30,6 +30,7 @@ use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_runtime::ControlCommand;
@@ -317,6 +318,7 @@ impl EngineMcp {
         let mut profile =
             ProfileFile::from_points(&args.name, &points, PatternTolerance::new(args.tolerance));
         profile.spawn_on_partial = args.spawn_on_partial.unwrap_or(false);
+        profile.stage = args.stage.clone().map(StageName::new);
         if let Some(stability) = args.spawn_stability {
             profile.spawn_stability = tangible_objects_model::FrameCount::new(stability);
         }
@@ -403,6 +405,7 @@ impl EngineMcp {
         let mut profile =
             ProfileFile::from_points(&args.name, &points, PatternTolerance::new(args.tolerance));
         profile.spawn_on_partial = args.spawn_on_partial.unwrap_or(false);
+        profile.stage = args.stage.clone().map(StageName::new);
         if let Some(stability) = args.spawn_stability {
             profile.spawn_stability = tangible_objects_model::FrameCount::new(stability);
         }

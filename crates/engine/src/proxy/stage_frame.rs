@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::collections::HashSet;
 
+use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
 
@@ -16,3 +18,7 @@ pub(crate) struct StageFrame<'a> {
     /// Active touches this frame.
     pub touches: TouchSet<'a>,
 }
+
+/// Matched slots grouped by stage scope (EVENT_PIPELINE.md phase 4) -
+/// the `None` key is the general stage for untagged patterns.
+pub(crate) type ScopedMatches = HashMap<Option<StageName>, HashSet<TouchPointSlot>>;

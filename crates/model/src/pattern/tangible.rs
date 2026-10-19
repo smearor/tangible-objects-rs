@@ -16,6 +16,7 @@ use crate::Millimeters;
 use crate::PatternName;
 use crate::PointSet;
 use crate::Region;
+use crate::StageName;
 use crate::Vec2;
 
 /// A tangible figure pattern defined by invariant pairwise distances.
@@ -53,6 +54,9 @@ pub struct TangiblePattern {
     /// Detection regions restricting where this figure may match
     /// (PROFILE_REGIONS.md). Empty = anywhere on the surface.
     pub regions: Vec<Region>,
+    /// Pipeline stage this pattern suppresses through
+    /// (EVENT_PIPELINE.md). `None` = the general stage.
+    pub stage: Option<StageName>,
 }
 
 impl TangiblePattern {
@@ -74,6 +78,7 @@ impl TangiblePattern {
             tolerances: PatternTolerances::default(),
             ref_points: Some(points.to_vec()),
             regions: Vec::new(),
+            stage: None,
         }
     }
 
