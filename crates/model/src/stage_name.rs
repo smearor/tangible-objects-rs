@@ -3,11 +3,12 @@ use std::fmt::Display;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Name of an event-pipeline stage (EVENT_PIPELINE.md).
+/// Name of an event-pipeline stage.
 ///
-/// Profiles scope to a stage via `stage = "game"`; the pipeline resolves
-/// the name to a `StageId` at registration. `None` scopes to the general
-/// stage - the unscoped default holding all untagged patterns.
+/// Profiles scope to a stage via `stage = "game"`; the name keys the
+/// stage's scope directly. The name is unique per pipeline). `None`
+/// scopes to the general stage - the unscoped default holding all
+/// untagged patterns.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct StageName(String);
