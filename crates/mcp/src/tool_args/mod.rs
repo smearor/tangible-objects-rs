@@ -3,6 +3,7 @@
 
 mod analyze;
 mod get_pose;
+mod list_profiles;
 mod record_label;
 mod recording_artifact;
 mod register_field_set;
@@ -22,6 +23,7 @@ mod update_profile;
 
 pub use analyze::AnalyzeArgs;
 pub use get_pose::GetPoseArgs;
+pub use list_profiles::ListProfilesArgs;
 pub use record_label::SetRecordLabelArgs;
 pub use recording_artifact::RecordingArtifactArgs;
 pub use register_field_set::RegisterFieldSetArgs;

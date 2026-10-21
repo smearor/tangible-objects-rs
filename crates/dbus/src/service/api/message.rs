@@ -1,9 +1,15 @@
-//! Message methods - `show_message`.
+//! Message methods - `message`, `show_message`.
 
 use tangible_objects_runtime::ControlCommand;
 use zbus::fdo;
 
 use crate::service::engine_service::EngineService;
+
+/// The user-facing message currently displayed in the GUI overlay;
+/// `""` when none is set.
+pub(crate) async fn message(service: &EngineService) -> String {
+    service.handle.snapshot().message.unwrap_or_default()
+}
 
 /// Shows a user-facing message in the GUI overlay; an empty string
 /// clears it.

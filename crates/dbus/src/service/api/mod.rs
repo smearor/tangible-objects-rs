@@ -14,6 +14,7 @@ pub(crate) mod owner;
 pub(crate) mod pattern;
 pub(crate) mod profiles;
 pub(crate) mod recording;
+pub(crate) mod sets;
 pub(crate) mod stage;
 pub(crate) mod tangibles;
 pub(crate) mod training;

@@ -6,14 +6,18 @@ use crate::Owner;
 use crate::PatternId;
 use crate::PatternName;
 use crate::StageName;
+use serde::Serialize;
 
 /// Lifecycle event emitted when the device loop *applies* a control
 /// command - not frame-derived like [`EngineEvent`] but a session-level
 /// fact: what actually took effect.
 ///
 /// Subscribers see the applied outcome only: a rejected registration or an
-/// ignored command produces no event (SUBSCRIPTIONS.md).
-#[derive(Debug, Clone)]
+/// ignored command produces no event (SUBSCRIPTIONS.md). Serializes as a
+/// tagged object `{"kind": "profile_registered", ...}` - the D-Bus
+/// `lifecycleEvent` signal carries this JSON string.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum LifecycleEvent {
     /// A pattern was registered (`Register`) or replaced (`UpdateProfile`).
     ProfileRegistered {

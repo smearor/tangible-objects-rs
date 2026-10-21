@@ -20,7 +20,10 @@ use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::StageName;
+use tangible_objects_model::TangibleId;
 use tangible_objects_model::TangibleSetId;
+use tangible_objects_model::TangibleSetState;
+use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::ProfileInfo;
 use zbus::fdo;
@@ -38,9 +41,27 @@ impl EngineService {
         api::tangibles::list_tangibles(self).await
     }
 
-    /// Loaded figure profiles.
-    async fn list_profiles(&self) -> Vec<ProfileInfo> {
-        api::profiles::list_profiles(self).await
+    /// Active touch points of the last processed frame.
+    async fn touch_points(&self) -> Vec<TouchPoint> {
+        api::tangibles::touch_points(self).await
+    }
+
+    /// Tangible Object Sets joined with their live activation state.
+    async fn sets(&self) -> Vec<TangibleSetState> {
+        api::sets::sets(self).await
+    }
+
+    /// Center `(x, y)` and rotation (radians) of one tangible by
+    /// tracking ID; fails when the ID is not tracked.
+    async fn get_pose(&self, id: TangibleId) -> fdo::Result<(f64, f64, f64)> {
+        api::tangibles::get_pose(self, id).await
+    }
+
+    /// Loaded figure profiles - `owner` filters to one owning
+    /// application (`""` for all), `static_only` keeps only owner-less
+    /// static profiles.
+    async fn list_profiles(&self, owner: &str, static_only: bool) -> Vec<ProfileInfo> {
+        api::profiles::list_profiles(self, owner, static_only).await
     }
 
     /// Attached input device as a flat key-value list
@@ -221,10 +242,22 @@ impl EngineService {
         api::metrics::reset_metrics(self).await
     }
 
+    /// The user-facing message currently displayed in the GUI overlay;
+    /// `""` when none is set.
+    async fn message(&self) -> String {
+        api::message::message(self).await
+    }
+
     /// Shows a user-facing message in the GUI overlay; an empty string
     /// clears it.
     async fn show_message(&self, text: &str) -> fdo::Result<()> {
         api::message::show_message(self, text).await
+    }
+
+    /// Reads a recording artifact file (`*.jsonl`, `*.evtest`,
+    /// `*.dataset.jsonl`, no `..` components) from the daemon host.
+    async fn recording_artifact(&self, path: &str) -> fdo::Result<String> {
+        api::recording::recording_artifact(self, path).await
     }
 
     /// Shows or hides the daemon-embedded GUI window (`--gui` mode) -
@@ -352,4 +385,11 @@ impl EngineService {
         field: &str,
         count: u32,
     ) -> zbus::Result<()>;
+
+    /// A lifecycle event occurred (profile/stage/field-set
+    /// registration, completion/filter-mode changes, recording
+    /// start/stop) - payload is the JSON-serialized `LifecycleEvent`
+    /// (same event class the GraphQL `eventStream` exposes).
+    #[zbus(signal)]
+    pub async fn lifecycle_event(emitter: &SignalEmitter<'_>, event: &str) -> zbus::Result<()>;
 }

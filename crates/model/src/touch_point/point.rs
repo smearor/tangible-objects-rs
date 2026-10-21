@@ -34,6 +34,13 @@ pub struct TouchPoint {
     pub pos: Vec2<Millimeters>,
 }
 
+#[cfg(feature = "zbus")]
+impl zvariant::Type for TouchPoint {
+    /// Flat `(slot, tracking_id, x, y)` - matches the `#[serde(flatten)]`
+    /// field order.
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("uidd");
+}
+
 impl<'de> Deserialize<'de> for TouchPoint {
     /// Accepts both wire shapes: the GraphQL `SimpleObject` form
     /// (`pos {x,y}` + `trackingId`, camelCase keys) and the legacy flat

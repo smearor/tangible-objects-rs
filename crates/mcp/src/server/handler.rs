@@ -30,6 +30,9 @@ const URI_TOUCH_POINTS: &str = "tangible://touch-points";
 const URI_SETS: &str = "tangible://sets";
 /// Resource URI listing the loaded figure profiles.
 const URI_PROFILES: &str = "tangible://profiles";
+/// Resource URI for the user-facing message currently shown in the
+/// GUI overlay (`""` when none is set).
+const URI_MESSAGE: &str = "tangible://message";
 
 impl EngineMcp {
     /// Merges every topic router into the server-wide tool router.
@@ -83,6 +86,11 @@ impl ServerHandler for EngineMcp {
                 "Tangible Object Sets with activation state",
             ),
             resource(URI_PROFILES, "profiles", "Loaded figure profiles"),
+            resource(
+                URI_MESSAGE,
+                "message",
+                "User-facing message currently shown in the GUI overlay",
+            ),
         ])))
     }
 
@@ -107,6 +115,7 @@ impl ServerHandler for EngineMcp {
                     )?
                 }
                 URI_PROFILES => json_pretty(&handle.profiles())?,
+                URI_MESSAGE => handle.snapshot().message.unwrap_or_default(),
                 uri => {
                     return Err(ErrorData::resource_not_found(
                         format!("unknown resource: {uri}"),

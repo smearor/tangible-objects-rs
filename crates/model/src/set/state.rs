@@ -32,6 +32,13 @@ pub struct TangibleSetState {
     pub active: bool,
 }
 
+#[cfg(feature = "zbus")]
+impl zvariant::Type for TangibleSetState {
+    /// Flat `(id, name, mandatory, additional, active)` - matches the
+    /// `#[serde(flatten)]` field order.
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(usaauaub)");
+}
+
 impl<'de> Deserialize<'de> for TangibleSetState {
     /// Accepts both wire shapes: the GraphQL `{set: {...}, active}`
     /// nesting (what the schema emits) and the legacy flat form

@@ -66,6 +66,38 @@ pub(crate) async fn stop_recording(service: &EngineService) -> fdo::Result<()> {
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }
 
+/// Reads a recording artifact file from the daemon host - restricted
+/// to `*.jsonl`, `*.evtest` and `*.dataset.jsonl` without `..` path
+/// components (same allowlist as the MCP `recording_artifact` tool).
+pub(crate) async fn recording_artifact(
+    _service: &EngineService,
+    path: &str,
+) -> fdo::Result<String> {
+    let path = PathBuf::from(path);
+    let valid_ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e == "jsonl" || e == "evtest")
+        .unwrap_or(false);
+    let valid_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.ends_with(".dataset.jsonl"))
+        .unwrap_or(false);
+    if path
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+        || !(valid_ext || valid_name)
+    {
+        return Err(fdo::Error::InvalidArgs(
+            "only recording artifacts (*.jsonl, *.evtest, *.dataset.jsonl) without '..' are readable"
+                .to_string(),
+        ));
+    }
+    std::fs::read_to_string(&path)
+        .map_err(|e| fdo::Error::Failed(format!("cannot read {}: {e}", path.display())))
+}
+
 /// Sets the ground-truth label for subsequent recorded frames; an empty
 /// string clears it.
 pub(crate) async fn set_record_label(

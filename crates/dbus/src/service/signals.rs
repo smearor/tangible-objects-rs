@@ -40,9 +40,16 @@ pub(crate) async fn emit_signal(emitter: &SignalEmitter<'_>, event: &DomainEvent
             .await
         }
         DomainEvent::Set(action) => emit_set_action(emitter, action).await,
-        // Lifecycle events flow only to GraphQL subscriptions - no D-Bus
-        // signal counterparts (SUBSCRIPTIONS.md scope).
-        DomainEvent::Lifecycle(_) => Ok(()),
+        // Lifecycle events ride one generic signal carrying the
+        // JSON-serialized event (same contract as `metrics`/`analyze`
+        // methods returning JSON strings).
+        DomainEvent::Lifecycle(event) => match serde_json::to_string(event) {
+            Ok(json) => EngineService::lifecycle_event(emitter, &json).await,
+            Err(err) => {
+                warn!(%err, "failed to serialize lifecycle event");
+                Ok(())
+            }
+        },
     };
     if let Err(err) = result {
         warn!(%err, "failed to emit D-Bus signal");
