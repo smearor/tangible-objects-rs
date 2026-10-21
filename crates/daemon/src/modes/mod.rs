@@ -23,6 +23,8 @@ pub use analysis::run_similarity;
 #[cfg(feature = "gui")]
 pub(crate) use control::drain_control_commands;
 #[cfg(feature = "gui")]
+pub(crate) use control::register_profile_hook;
+#[cfg(feature = "gui")]
 pub(crate) use control::spawn_interfaces;
 #[cfg(feature = "gui")]
 pub(crate) use control::status_of_session;

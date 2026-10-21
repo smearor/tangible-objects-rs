@@ -5,6 +5,7 @@ use tangible_objects_engine::Engine;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::PinCount;
+use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
@@ -299,6 +300,26 @@ pub(crate) fn tick_training(
             },
         );
     }
+}
+
+/// `GuiHooks::register_profile` implementation - registers a
+/// completed remote-training capture as a persistent pattern.
+/// Only the GUI host calls it (`gui` feature).
+#[cfg(feature = "gui")]
+pub(crate) fn register_profile_hook(
+    runtime: &mut EngineRuntime,
+    engine: &mut Engine,
+    profile: ProfileFile,
+) {
+    apply_registration(
+        runtime,
+        engine,
+        ControlCommand::Register {
+            registration: Box::new(Registration::Pattern(profile)),
+            owner: None,
+            lifetime: Lifetime::Persistent,
+        },
+    );
 }
 
 /// Live snapshot of a recording session for the interface-facing status.
