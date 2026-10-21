@@ -94,8 +94,7 @@ impl WebSocketClient {
         field: &str,
         query: &str,
         variables: Value,
-    ) -> Result<impl Stream<Item = Result<TangibleEvent, ClientError>> + 'static, ClientError>
-    {
+    ) -> Result<impl Stream<Item = Result<TangibleEvent, ClientError>> + 'static, ClientError> {
         self.send(json!({
             "id": field,
             "type": "subscribe",
