@@ -1,7 +1,8 @@
+use crate::Calibration;
+use crate::RawAxisValue;
+use crate::UnitsPerMm;
+use serde::Deserialize;
 use serde::Serialize;
-use tangible_objects_model::Calibration;
-use tangible_objects_model::RawAxisValue;
-use tangible_objects_model::UnitsPerMm;
 
 /// Static information about the input device attached to this daemon -
 /// the identity needed to interpret or convert its raw event stream.
@@ -9,7 +10,8 @@ use tangible_objects_model::UnitsPerMm;
 /// Published once at session start inside [`crate::EngineSnapshot`];
 /// interfaces read it via the `device_info` query (remote recording:
 /// computer A learns B's touchscreen geometry before pulling artifacts).
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 pub struct DeviceInfo {
     /// `Input device name` of the evdev device (or the replayed file).

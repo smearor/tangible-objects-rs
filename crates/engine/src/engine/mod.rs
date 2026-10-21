@@ -10,7 +10,6 @@ mod best_match;
 mod detection;
 mod diagnostics;
 mod error;
-mod event;
 pub(crate) mod fields;
 mod frame;
 mod matching;
@@ -20,9 +19,9 @@ mod tracker;
 
 pub use detection::Engine;
 pub use error::EngineError;
-pub use event::EngineEvent;
 pub use fields::FieldTracker;
 pub use frame::EngineFrame;
 pub use registration_error::RegistrationError;
+pub use tangible_objects_model::EngineEvent;
 pub use touch_state::TouchState;
 pub use tracker::Tracker;

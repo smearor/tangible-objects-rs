@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 
 use crate::ContactCount;
@@ -6,7 +7,7 @@ use crate::Millimeters;
 use crate::TangibleCount;
 
 /// Per-pattern recognition counters of a session.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PatternMetrics {
     /// Frames in which at least one tangible of this pattern was tracked.
     pub tracked_frames: FrameCount,

@@ -1,10 +1,9 @@
-//! Optional detection settings bundled for the run_* modes.
+use crate::CompletionConfig;
+use crate::FieldSet;
+use crate::Millimeters;
+use crate::Region;
 
-use tangible_objects_model::CompletionConfig;
-use tangible_objects_model::FieldSet;
-use tangible_objects_model::Millimeters;
-use tangible_objects_model::Region;
-
+/// Optional detection settings bundled for the daemon's run modes.
 #[derive(Debug, Default, Clone)]
 pub struct DetectionConfig {
     /// Edge ghost margin in millimeters (`--edge-filter-mm`).

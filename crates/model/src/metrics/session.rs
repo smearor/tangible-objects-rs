@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use serde::Deserialize;
 use serde::Serialize;
 
 use crate::ContactCount;
@@ -22,7 +23,7 @@ use super::PatternMetrics;
 /// all interfaces (`metrics`/`reset_metrics`). The counters replace the
 /// ad-hoc analysis previously run on `.jsonl` recordings - uptime,
 /// re-ID churn, match quality and per-slot contact stability.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SessionMetrics {
     /// Total frames processed.
     pub frames: FrameCount,

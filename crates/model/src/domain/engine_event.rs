@@ -1,7 +1,7 @@
-use tangible_objects_model::ContactCount;
-use tangible_objects_model::FieldName;
-use tangible_objects_model::FieldSetName;
-use tangible_objects_model::TrackedTangible;
+use crate::ContactCount;
+use crate::FieldName;
+use crate::FieldSetName;
+use crate::TrackedTangible;
 
 /// Domain event emitted by the engine for a completed input frame.
 ///

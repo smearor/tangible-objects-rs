@@ -7,8 +7,10 @@
 mod dir;
 mod error;
 mod file;
+mod info;
 
 pub use dir::ProfileDir;
 pub use error::ProfileError;
 pub use file::DEFAULT_SPAWN_STABILITY;
 pub use file::ProfileFile;
+pub use info::ProfileInfo;

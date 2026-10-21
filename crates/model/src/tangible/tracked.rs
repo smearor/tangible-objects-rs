@@ -5,6 +5,8 @@ use crate::PatternId;
 use crate::PatternName;
 use crate::RotationRad;
 use crate::Vec2;
+use serde::Deserialize;
+use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
 use serde::ser::SerializeStruct;
@@ -62,6 +64,56 @@ impl Serialize for TrackedTangible {
         state.serialize_field("rotation_deg", &self.rotation_rad.to_degrees())?;
         state.serialize_field("pending", &self.pending)?;
         state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for TrackedTangible {
+    /// Accepts both wire shapes: the GraphQL `SimpleObject` form
+    /// (`center {x,y}` + `rotationRad`, camelCase keys) and the legacy
+    /// flat serde form (`center_x`/`center_y`/`rotation_deg`).
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Helper {
+            id: TangibleId,
+            pattern_id: PatternId,
+            pattern_name: PatternName,
+            center: Option<Vec2<Millimeters>>,
+            #[serde(default, alias = "center_x")]
+            center_x: Option<f64>,
+            #[serde(default, alias = "center_y")]
+            center_y: Option<f64>,
+            rotation_rad: Option<RotationRad>,
+            #[serde(default)]
+            rotation_deg: Option<f64>,
+            #[serde(default)]
+            pending: bool,
+        }
+        let h = Helper::deserialize(deserializer)?;
+        let center = h.center.unwrap_or_else(|| {
+            Vec2::new(
+                h.center_x.unwrap_or_default(),
+                h.center_y.unwrap_or_default(),
+            )
+        });
+        let rotation_rad = h
+            .rotation_rad
+            .or_else(|| h.rotation_deg.map(|deg| RotationRad(deg.to_radians())))
+            .unwrap_or(RotationRad(0.0));
+        Ok(Self {
+            id: h.id,
+            pattern_id: h.pattern_id,
+            pattern_name: h.pattern_name,
+            center,
+            rotation_rad,
+            pending: h.pending,
+            pending_frames: FrameCount::default(),
+            spawn_stability: FrameCount::default(),
+            frames_since_match: FrameCount::default(),
+        })
     }
 }
 

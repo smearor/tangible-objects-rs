@@ -1,7 +1,6 @@
-use tangible_objects_engine::EngineEvent;
-use tangible_objects_model::SetAction;
-
-use super::LifecycleEvent;
+use super::engine_event::EngineEvent;
+use super::lifecycle_event::LifecycleEvent;
+use crate::SetAction;
 
 /// Unified domain event distributed to all interface crates.
 ///

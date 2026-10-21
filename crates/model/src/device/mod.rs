@@ -7,9 +7,11 @@
 //! load from a directory (`--device-profiles`).
 
 mod error;
+mod info;
 mod profile;
 mod registry;
 
 pub use error::DeviceError;
+pub use info::DeviceInfo;
 pub use profile::DeviceProfile;
 pub use registry::DeviceRegistry;

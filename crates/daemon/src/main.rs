@@ -13,7 +13,6 @@ mod gtk_app;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use crate::modes::DetectionConfig;
 use crate::modes::Interfaces;
 use clap::CommandFactory;
 use clap::Parser;
@@ -22,6 +21,7 @@ use miette::Result;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
+use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Region;

@@ -10,6 +10,7 @@
 mod candidate;
 mod frame;
 mod label;
+mod status;
 mod tracked;
 
 pub use candidate::CandidateCount;
@@ -21,4 +22,5 @@ pub use frame::FrameRecord;
 pub use frame::RECORD_SCHEMA_VERSION;
 pub use frame::RemainingFrameCount;
 pub use label::RecordLabel;
+pub use status::RecordingStatus;
 pub use tracked::TrackedRecord;

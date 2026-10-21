@@ -1,14 +1,16 @@
+use crate::EventCount;
+use crate::FrameCount;
+use crate::RecordLabel;
+use serde::Deserialize;
 use serde::Serialize;
-use tangible_objects_model::EventCount;
-use tangible_objects_model::FrameCount;
-use tangible_objects_model::RecordLabel;
 
 /// Live status of the daemon's recording session.
 ///
 /// Published inside [`crate::EngineSnapshot`] - interfaces read it via the
 /// `recording_status` query; `None` in the snapshot means no session is or
 /// was active.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 pub struct RecordingStatus {
     /// Whether a session is currently recording.

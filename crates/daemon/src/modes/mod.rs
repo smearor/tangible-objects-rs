@@ -6,7 +6,6 @@
 
 mod analysis;
 mod control;
-mod detection_config;
 mod filter;
 mod interfaces;
 mod live;
@@ -27,12 +26,13 @@ pub(crate) use control::drain_control_commands;
 pub(crate) use control::spawn_interfaces;
 #[cfg(feature = "gui")]
 pub(crate) use control::status_of_session;
-pub use detection_config::DetectionConfig;
 pub use filter::run_filter;
 pub use interfaces::Interfaces;
 pub use live::run_live;
 pub use record::run_record;
 pub use replay::run_replay;
+#[cfg(feature = "gui")]
+pub use tangible_objects_model::DetectionConfig;
 // Only the gui feature calls this through `modes::` - the modes
 // themselves use `super::setup::effective_calibration` directly.
 #[cfg(feature = "gui")]

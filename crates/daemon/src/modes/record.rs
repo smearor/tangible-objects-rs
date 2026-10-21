@@ -24,9 +24,9 @@ use tracing::warn;
 use super::control::apply_registration;
 use super::control::spawn_interfaces;
 use super::control::status_of_session;
-use super::detection_config::DetectionConfig;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
+use tangible_objects_model::DetectionConfig;
 
 /// Number of frames a keypress label applies to (~1 s at 120 Hz report rate).
 const LABEL_FRAME_COUNT: u64 = 120;

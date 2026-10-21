@@ -8,25 +8,23 @@
 //! snapshot and control access - they never touch the engine directly.
 
 mod command;
-mod device_info;
-mod domain_event;
 mod engine_handle;
 mod engine_runtime;
-mod lifecycle_event;
-mod profile_info;
-mod recording_status;
 mod snapshot;
 
 pub use command::ControlCommand;
-pub use device_info::DeviceInfo;
-pub use domain_event::DomainEvent;
 pub use engine_handle::EngineHandle;
 pub use engine_runtime::COMMAND_CHANNEL_CAPACITY;
 pub use engine_runtime::EVENT_CHANNEL_CAPACITY;
 pub use engine_runtime::EngineRuntime;
-pub use lifecycle_event::LifecycleEvent;
-pub use profile_info::ProfileInfo;
-pub use recording_status::RecordingStatus;
 pub use snapshot::EngineSnapshot;
+pub use tangible_objects_model::DeviceInfo;
+pub use tangible_objects_model::DomainEvent;
+pub use tangible_objects_model::EventKind;
+pub use tangible_objects_model::LifecycleEvent;
 pub use tangible_objects_model::PatternMetrics;
+pub use tangible_objects_model::ProfileInfo;
+pub use tangible_objects_model::RecordingStatus;
 pub use tangible_objects_model::SessionMetrics;
+pub use tangible_objects_model::StreamEvent;
+pub use tangible_objects_model::TangibleEvent;
