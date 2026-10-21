@@ -114,7 +114,7 @@ impl QueryRoot {
         path: String,
         mode: Option<AnalysisMode>,
         profiles_dir: Option<String>,
-    ) -> Result<String> {
+    ) -> Result<async_graphql::Json<AnalysisReport>> {
         let recording = Recording::load(Path::new(&path))
             .map_err(|e| async_graphql::Error::new(format!("recording unreadable: {e}")))?;
         let mode = mode.unwrap_or_default();
@@ -130,15 +130,20 @@ impl QueryRoot {
         } else {
             PatternBuf::default()
         };
-        let report = AnalysisReport::analyze(&recording, mode, patterns.as_pattern_set());
-        serde_json::to_string_pretty(&report)
-            .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
+        Ok(async_graphql::Json(AnalysisReport::analyze(
+            &recording,
+            mode,
+            patterns.as_pattern_set(),
+        )))
     }
 
     /// Pairwise profile-collision analysis over a profile directory -
     /// every pair's minimum achievable max deviation over same-size
     /// contact subsets, classified as Safe/Partial/Exact risk.
-    async fn analyze_similarity(&self, profiles_dir: Option<String>) -> Result<String> {
+    async fn analyze_similarity(
+        &self,
+        profiles_dir: Option<String>,
+    ) -> Result<async_graphql::Json<SimilarityReport>> {
         let dir = profiles_dir.as_deref().unwrap_or("profiles");
         let patterns = ProfileFile::load_dir(Path::new(dir)).into_patterns();
         if patterns.is_empty() {
@@ -146,9 +151,9 @@ impl QueryRoot {
                 "no profiles loaded from {dir}"
             )));
         }
-        let report = SimilarityReport::analyze(patterns.as_pattern_set());
-        serde_json::to_string_pretty(&report)
-            .map_err(|e| async_graphql::Error::new(format!("serialize: {e}")))
+        Ok(async_graphql::Json(SimilarityReport::analyze(
+            patterns.as_pattern_set(),
+        )))
     }
 
     async fn recording_artifact(&self, path: String) -> Result<String> {

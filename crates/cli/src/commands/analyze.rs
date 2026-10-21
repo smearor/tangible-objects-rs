@@ -21,17 +21,19 @@ pub(crate) async fn analyze(client: &GraphQLClient, args: &AnalyzeArgs) -> Resul
                 Some(m) => serde_json::from_value(serde_json::json!(m))
                     .map_err(|e| ClientError::Protocol(format!("unknown mode {m}: {e}")))?,
             };
+            let report = client
+                .analyze_recording(path, mode, profiles_dir.as_deref())
+                .await?;
             println!(
                 "{}",
-                client
-                    .analyze_recording(path, mode, profiles_dir.as_deref())
-                    .await?
+                serde_json::to_string_pretty(&report).unwrap_or_default()
             );
         }
         AnalyzeCommand::Similarity { profiles_dir } => {
+            let report = client.analyze_similarity(profiles_dir.as_deref()).await?;
             println!(
                 "{}",
-                client.analyze_similarity(profiles_dir.as_deref()).await?
+                serde_json::to_string_pretty(&report).unwrap_or_default()
             );
         }
         AnalyzeCommand::Artifact { path } => {

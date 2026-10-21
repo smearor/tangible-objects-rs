@@ -1,7 +1,9 @@
 //! Analysis queries - `analyzeRecording`, `analyzeSimilarity` and
-//! `recordingArtifact` (reports/artifact content as plain strings).
+//! `recordingArtifact` (the artifact stays raw file text).
 
 use serde_json::json;
+use tangible_objects_analysis::AnalysisReport;
+use tangible_objects_analysis::SimilarityReport;
 use tangible_objects_model::AnalysisMode;
 
 use crate::ClientError;
@@ -9,13 +11,14 @@ use crate::GraphQLClient;
 use crate::client::gql_enum;
 
 impl GraphQLClient {
-    /// Deviation analysis over a recording (`analyzeRecording` query).
+    /// Deviation analysis over a recording (`analyzeRecording` query -
+    /// `Json<AnalysisReport>` passthrough).
     pub async fn analyze_recording(
         &self,
         path: &str,
         mode: AnalysisMode,
         profiles_dir: Option<&str>,
-    ) -> Result<String, ClientError> {
+    ) -> Result<AnalysisReport, ClientError> {
         self.call(
             "analyzeRecording",
             "query($path: String!, $mode: AnalysisMode, $profilesDir: String) { analyzeRecording(path: $path, mode: $mode, profilesDir: $profilesDir) }",
@@ -28,11 +31,12 @@ impl GraphQLClient {
         .await
     }
 
-    /// Pairwise profile-collision report (`analyzeSimilarity` query).
+    /// Pairwise profile-collision report (`analyzeSimilarity` query -
+    /// `Json<SimilarityReport>` passthrough).
     pub async fn analyze_similarity(
         &self,
         profiles_dir: Option<&str>,
-    ) -> Result<String, ClientError> {
+    ) -> Result<SimilarityReport, ClientError> {
         self.call(
             "analyzeSimilarity",
             "query($profilesDir: String) { analyzeSimilarity(profilesDir: $profilesDir) }",
@@ -41,7 +45,8 @@ impl GraphQLClient {
         .await
     }
 
-    /// Recording artifact content (`recordingArtifact` query).
+    /// Recording artifact content (`recordingArtifact` query) - raw
+    /// file text, legitimately an untyped `String`.
     pub async fn recording_artifact(&self, path: &str) -> Result<String, ClientError> {
         self.call(
             "recordingArtifact",

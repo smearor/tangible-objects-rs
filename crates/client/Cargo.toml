@@ -16,6 +16,7 @@ futures-lite.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tangible-objects-analysis.workspace = true
 tangible-objects-model.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
