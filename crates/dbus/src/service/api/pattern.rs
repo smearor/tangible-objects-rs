@@ -1,0 +1,128 @@
+//! Pattern methods - `register_pattern`, `update_profile`,
+//! `unregister_pattern`.
+
+use tangible_objects_model::FrameCount;
+use tangible_objects_model::Lifetime;
+use tangible_objects_model::Millimeters;
+use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternTolerance;
+use tangible_objects_model::ProfileFile;
+use tangible_objects_model::Registration;
+use tangible_objects_model::StageName;
+use tangible_objects_model::Vec2;
+use tangible_objects_runtime::ControlCommand;
+use zbus::fdo;
+use zbus::message::Header;
+
+use crate::service::engine_service::EngineService;
+
+/// Validates the flat pin list into `Vec2<Millimeters>` pairs and
+/// fills the spawn/stage options - shared by `register_pattern` and
+/// `update_profile`.
+fn build_profile(
+    name: &str,
+    points: &[f64],
+    tolerance: f64,
+    spawn_on_partial: bool,
+    spawn_stability: u64,
+    stage: &str,
+) -> fdo::Result<ProfileFile> {
+    if !points.len().is_multiple_of(2) || points.is_empty() {
+        return Err(fdo::Error::InvalidArgs(
+            "points must be a non-empty even-length flat list".to_string(),
+        ));
+    }
+    let points: Vec<Vec2<Millimeters>> = points
+        .chunks_exact(2)
+        .map(|pair| Vec2::new(pair[0], pair[1]))
+        .collect();
+    let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+    profile.spawn_on_partial = spawn_on_partial;
+    profile.stage = (!stage.is_empty()).then(|| StageName::new(stage));
+    if spawn_stability > 0 {
+        profile.spawn_stability = FrameCount::new(spawn_stability);
+    }
+    Ok(profile)
+}
+
+/// Registers a figure profile at runtime: `points` is the flat pin
+/// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
+/// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps
+/// the profile default. Queued to the device loop; fingerprint
+/// collisions are rejected there - verify via `list_profiles`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn register_pattern(
+    service: &EngineService,
+    name: &str,
+    points: Vec<f64>,
+    tolerance: f64,
+    owner: &str,
+    persistent: bool,
+    spawn_on_partial: bool,
+    spawn_stability: u64,
+    stage: &str,
+    header: &Header<'_>,
+) -> fdo::Result<()> {
+    let profile = build_profile(
+        name,
+        &points,
+        tolerance,
+        spawn_on_partial,
+        spawn_stability,
+        stage,
+    )?;
+    service
+        .handle
+        .send_command(ControlCommand::Register {
+            registration: Box::new(Registration::Pattern(profile)),
+            owner: Some(service.session_owner(owner, header)),
+            lifetime: if persistent {
+                Lifetime::Persistent
+            } else {
+                Lifetime::Session
+            },
+        })
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Replaces a registered pattern's geometry while keeping its ID.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn update_profile(
+    service: &EngineService,
+    id: u32,
+    name: &str,
+    points: Vec<f64>,
+    tolerance: f64,
+    spawn_on_partial: bool,
+    spawn_stability: u64,
+    stage: &str,
+) -> fdo::Result<()> {
+    let profile = build_profile(
+        name,
+        &points,
+        tolerance,
+        spawn_on_partial,
+        spawn_stability,
+        stage,
+    )?;
+    service
+        .handle
+        .send_command(ControlCommand::UpdateProfile {
+            id: PatternId::new(id),
+            profile: Box::new(profile),
+        })
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Removes a dynamically registered pattern by ID.
+pub(crate) async fn unregister_pattern(service: &EngineService, id: u32) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::UnregisterPattern {
+            id: PatternId::new(id),
+        })
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}

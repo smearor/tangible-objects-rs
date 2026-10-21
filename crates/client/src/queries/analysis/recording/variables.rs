@@ -1,8 +1,7 @@
 //! `AnalyzeRecordingVariables` - the variables of `analyzeRecording`.
 
-use tangible_objects_model::AnalysisMode;
 use cynic::QueryVariables;
-
+use tangible_objects_model::AnalysisMode;
 
 /// Variables of `analyzeRecording` - `path` is required, `mode` and
 /// `profilesDir` optional.
