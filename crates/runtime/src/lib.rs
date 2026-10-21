@@ -11,6 +11,7 @@ mod command;
 mod engine_handle;
 mod engine_runtime;
 mod snapshot;
+mod training_state;
 
 pub use command::ControlCommand;
 pub use engine_handle::EngineHandle;
@@ -28,3 +29,4 @@ pub use tangible_objects_model::RecordingStatus;
 pub use tangible_objects_model::SessionMetrics;
 pub use tangible_objects_model::StreamEvent;
 pub use tangible_objects_model::TangibleEvent;
+pub use training_state::TrainingState;

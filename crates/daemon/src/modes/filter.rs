@@ -25,9 +25,10 @@ use tangible_objects_runtime::ProfileInfo;
 
 use super::control::apply_registration;
 use super::control::spawn_interfaces;
-use super::detection_config::DetectionConfig;
+use super::control::tick_training;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
+use tangible_objects_model::DetectionConfig;
 
 /// Filter-proxy mode (FILTER_PROXY_VIRTUAL.md): grabs the real device and
 /// re-emits its event stream on a uinput clone, minus the slots a matched
@@ -151,6 +152,12 @@ pub fn run_filter(
                         config.mode, config.radius_factor, config.max_missing, config.persist
                     );
                 }
+                ControlCommand::TrainProfile(name) => {
+                    runtime.start_training(&name);
+                    runtime.set_message(Some(format!(
+                        "Training '{name}': Figur auflegen und still halten"
+                    )));
+                }
                 other => {
                     apply_registration(&mut runtime, &mut engine, other);
                     // Registrations may introduce or retire scope names
@@ -219,6 +226,11 @@ pub fn run_filter(
             let suppressed: usize = scoped.values().map(HashSet::len).sum();
             let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;
+
+            // A completed capture registers the profile persistently -
+            // its stage scope may need the pipeline sync.
+            tick_training(&mut runtime, &mut engine, &engine_frame.touches);
+            sync_stages(&mut runtime, &mut pipeline, &engine);
 
             print!(
                 "\rFrame {frame} | {} Touch | {} Figur | {} unterdrückt     ",

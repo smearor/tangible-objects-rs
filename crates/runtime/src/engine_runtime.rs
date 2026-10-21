@@ -24,6 +24,7 @@ use super::EngineSnapshot;
 use super::LifecycleEvent;
 use super::ProfileInfo;
 use super::RecordingStatus;
+use super::TrainingState;
 
 /// Default capacity of the broadcast event channel.
 ///
@@ -70,6 +71,13 @@ pub struct EngineRuntime {
     metrics: SessionMetrics,
     /// User-facing message shown by the GUI (`ShowMessage` command).
     message: Option<String>,
+    /// Whether the daemon-embedded GUI window is shown
+    /// (`SetGuiVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    gui_visible: bool,
+    /// Pending remote profile capture (`TrainProfile` command) -
+    /// the device loops tick it with each frame's touches.
+    training: Option<TrainingState>,
 }
 
 impl EngineRuntime {
@@ -110,6 +118,9 @@ impl EngineRuntime {
             profiles: profiles.clone(),
             metrics: SessionMetrics::default(),
             message: None,
+            #[cfg(feature = "gui")]
+            gui_visible: true,
+            training: None,
         };
         let handle = EngineHandle::new(events, snapshot_rx, command_tx, Arc::new(sets), profiles);
         (runtime, handle)
@@ -228,6 +239,40 @@ impl EngineRuntime {
     /// The current user-facing message, if any.
     pub fn message(&self) -> Option<&str> {
         self.message.as_deref()
+    }
+
+    /// Shows or hides the daemon-embedded GUI window
+    /// (`SetGuiVisible` command); embedded in snapshots so the GUI
+    /// polls it like `message`. Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_gui_visible(&mut self, visible: bool) {
+        self.gui_visible = visible;
+    }
+
+    /// Whether the daemon-embedded GUI window should be shown.
+    /// Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn gui_visible(&self) -> bool {
+        self.gui_visible
+    }
+
+    /// Arms remote profile capture (`TrainProfile` command) - the
+    /// device loops tick [`TrainingState`] with each frame's touches.
+    pub fn start_training(&mut self, name: &str) {
+        self.training = Some(TrainingState::new(name));
+    }
+
+    /// Advances remote training with this frame's touches; returns the
+    /// captured [`ProfileFile`] once the contact set stayed stable
+    /// (and clears the request).
+    pub fn training_tick(
+        &mut self,
+        touches: &[TouchPoint],
+    ) -> Option<tangible_objects_model::ProfileFile> {
+        let state = self.training.as_mut()?;
+        let profile = state.tick(touches)?;
+        self.training = None;
+        Some(profile)
     }
 
     /// Next pending control command from an interface, if any.

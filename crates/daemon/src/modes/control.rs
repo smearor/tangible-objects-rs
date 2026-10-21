@@ -39,7 +39,10 @@ pub(crate) fn drain_control_commands(
                 warn!("stage commands - only honored in --filter mode");
             }
             ControlCommand::TrainProfile(name) => {
-                warn!(name, "remote training command - not yet wired");
+                runtime.start_training(&name);
+                runtime.set_message(Some(format!(
+                    "Training '{name}': Figur auflegen und still halten"
+                )));
             }
             ControlCommand::StartRecording { base_path, label } => {
                 if recording.is_some() {
@@ -269,6 +272,30 @@ pub(crate) fn apply_registration(
             runtime.set_message((!text.is_empty()).then_some(text));
         }
         other => warn!(?other, "command ignored"),
+    }
+}
+
+/// Advances remote profile training: ticks the runtime's
+/// [`TrainingState`][tangible_objects_runtime::TrainingState] with the
+/// frame's touches and applies a persistent `Register` once the point
+/// set stabilized (capture → `add_pattern` + lifecycle + persist).
+pub(crate) fn tick_training(
+    runtime: &mut EngineRuntime,
+    engine: &mut Engine,
+    touches: &[tangible_objects_model::TouchPoint],
+) {
+    if let Some(profile) = runtime.training_tick(touches) {
+        println!("\nTraining abgeschlossen: {}", profile.name);
+        runtime.set_message(None);
+        apply_registration(
+            runtime,
+            engine,
+            ControlCommand::Register {
+                registration: Box::new(Registration::Pattern(profile)),
+                owner: None,
+                lifetime: Lifetime::Persistent,
+            },
+        );
     }
 }
 

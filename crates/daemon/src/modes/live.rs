@@ -19,9 +19,10 @@ use tangible_objects_runtime::ProfileInfo;
 use super::control::drain_control_commands;
 use super::control::spawn_interfaces;
 use super::control::status_of_session;
-use super::detection_config::DetectionConfig;
+use super::control::tick_training;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
+use tangible_objects_model::DetectionConfig;
 
 /// Live detection loop on a real evdev device.
 ///
@@ -120,6 +121,7 @@ pub fn run_live(
                 frame += 1;
                 runtime.publish(&engine_frame, engine.tracked());
                 drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
+                tick_training(&mut runtime, &mut engine, &engine_frame.touches);
 
                 if let Some(session) = &mut recording {
                     session.record_frame(
