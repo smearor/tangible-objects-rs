@@ -17,6 +17,12 @@ pub enum FieldSetsCommand {
     Register {
         /// Path to the field-set `.toml`.
         file: String,
+        /// Owning application.
+        #[arg(long)]
+        owner: Option<String>,
+        /// `session` (default) or `persistent`.
+        #[arg(long)]
+        lifetime: Option<String>,
     },
     /// Remove a field set (`unregisterFieldSet`).
     Unregister {

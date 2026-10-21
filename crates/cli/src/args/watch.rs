@@ -14,7 +14,7 @@ pub struct WatchArgs {
     pub set_id: Option<u32>,
     /// Throttle `TOUCH_POINTS_UPDATED`.
     #[arg(long)]
-    pub max_hz: Option<u32>,
+    pub max_hz: Option<i32>,
     /// Stream `fieldEvents` instead, optionally narrowed to a set.
     #[arg(long)]
     pub fields: Option<Option<String>>,
