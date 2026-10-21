@@ -43,9 +43,9 @@ impl<'de> Deserialize<'de> for TouchPoint {
             y: Option<f64>,
         }
         let h = Helper::deserialize(deserializer)?;
-        let pos = h.pos.unwrap_or_else(|| {
-            Vec2::new(h.x.unwrap_or_default(), h.y.unwrap_or_default())
-        });
+        let pos = h
+            .pos
+            .unwrap_or_else(|| Vec2::new(h.x.unwrap_or_default(), h.y.unwrap_or_default()));
         Ok(Self {
             slot: h.slot,
             tracking_id: h.tracking_id,
