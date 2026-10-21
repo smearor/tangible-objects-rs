@@ -1,0 +1,21 @@
+[package]
+name = "tangible-objects-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "CLI client for the tangible-objects daemon - the full GraphQL surface as subcommands."
+
+[dependencies]
+clap = { workspace = true, features = ["env"] }
+futures-lite.workspace = true
+miette.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tabled.workspace = true
+tangible-objects-client.workspace = true
+tangible-objects-model.workspace = true
+tokio.workspace = true

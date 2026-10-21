@@ -21,6 +21,7 @@ tangible-objects-graphql = { path = "crates/graphql" }
 tangible-objects-dbus = { path = "crates/dbus" }
 tangible-objects-mcp = { path = "crates/mcp" }
 tangible-objects-client = { path = "crates/client" }
+tangible-objects-cli = { path = "crates/cli" }
 # core
 serde = { version = "1.0", features = ["derive"] }
 serde-jsonlines = "0.7"
@@ -49,6 +50,7 @@ serde_json = "1"
 # clients
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio-tungstenite = "0.26"
+tabled = "0.20"
 clap = { version = "4.6.7", features = ["derive"] }
 ratatui = "0.29"
 crossterm = "0.28"

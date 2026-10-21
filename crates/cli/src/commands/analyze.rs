@@ -1,0 +1,42 @@
+//! `analyze` - offline analysis queries; reports print verbatim
+//! (JSON strings).
+
+use tangible_objects_client::ClientError;
+use tangible_objects_client::GraphQLClient;
+use tangible_objects_model::AnalysisMode;
+
+use crate::args::AnalyzeArgs;
+use crate::args::AnalyzeCommand;
+
+/// `analyze` subcommands.
+pub(crate) async fn analyze(client: &GraphQLClient, args: &AnalyzeArgs) -> Result<(), ClientError> {
+    match &args.command {
+        AnalyzeCommand::Recording {
+            path,
+            mode,
+            profiles_dir,
+        } => {
+            let mode = match mode.as_deref() {
+                None => AnalysisMode::default(),
+                Some(m) => serde_json::from_value(serde_json::json!(m))
+                    .map_err(|e| ClientError::Protocol(format!("unknown mode {m}: {e}")))?,
+            };
+            println!(
+                "{}",
+                client
+                    .analyze_recording(path, mode, profiles_dir.as_deref())
+                    .await?
+            );
+        }
+        AnalyzeCommand::Similarity { profiles_dir } => {
+            println!(
+                "{}",
+                client.analyze_similarity(profiles_dir.as_deref()).await?
+            );
+        }
+        AnalyzeCommand::Artifact { path } => {
+            println!("{}", client.recording_artifact(path).await?);
+        }
+    }
+    Ok(())
+}
