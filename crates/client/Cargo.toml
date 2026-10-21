@@ -10,15 +10,17 @@ homepage.workspace = true
 description = "Typed GraphQL client for the tangible-objects daemon."
 
 [dependencies]
+cynic.workspace = true
 futures.workspace = true
 futures-core.workspace = true
 futures-lite.workspace = true
+graphql-ws-client.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tangible-objects-analysis.workspace = true
-tangible-objects-model.workspace = true
+tangible-objects-model = { workspace = true, features = ["cynic"] }
 thiserror.workspace = true
 tokio.workspace = true
-toml.workspace = true
 tokio-tungstenite.workspace = true
+toml.workspace = true

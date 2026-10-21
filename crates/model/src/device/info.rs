@@ -1,6 +1,8 @@
 use crate::Calibration;
 use crate::RawAxisValue;
 use crate::UnitsPerMm;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -13,6 +15,15 @@ use serde::Serialize;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "DeviceInfo",
+        no_deserialize
+    )
+)]
 pub struct DeviceInfo {
     /// `Input device name` of the evdev device (or the replayed file).
     pub name: Option<String>,

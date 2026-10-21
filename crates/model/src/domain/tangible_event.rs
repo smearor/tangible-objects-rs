@@ -11,6 +11,8 @@ use crate::PatternId;
 use crate::SetAction;
 use crate::TangibleSetId;
 use crate::TrackedTangible;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -23,6 +25,16 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "TangibleEvent",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct TangibleEvent {
     /// What happened.
     pub kind: EventKind,

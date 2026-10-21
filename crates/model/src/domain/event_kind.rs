@@ -1,10 +1,26 @@
+#[cfg(feature = "cynic")]
+use crate::schema;
+#[cfg(not(feature = "cynic"))]
 use serde::Deserialize;
+#[cfg(not(feature = "cynic"))]
 use serde::Serialize;
 
 /// Discriminator for [`crate::domain::TangibleEvent`] payloads.
-#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
+#[cfg_attr(not(feature = "cynic"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "cynic"), serde(rename_all = "SCREAMING_SNAKE_CASE"))]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "cynic", derive(cynic::Enum))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        rename_all = "SCREAMING_SNAKE_CASE"
+    )
+)]
+// Under `cynic` the derive owns serde - the wire form is the same
+// SCREAMING_SNAKE either way, so the feature switch is invisible on
+// the wire.
 pub enum EventKind {
     /// The set of active touch points changed.
     TouchPointsUpdated,

@@ -3,6 +3,8 @@ use serde::Serialize;
 
 use super::TangibleSetId;
 use crate::PatternId;
+#[cfg(feature = "cynic")]
+use crate::schema;
 
 /// Definition of a Tangible Object Set (TOS).
 ///
@@ -12,6 +14,15 @@ use crate::PatternId;
 /// `additional` members belong to the set but never affect activation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "TangibleSet",
+        no_deserialize
+    )
+)]
 pub struct TangibleSet {
     /// Unique identifier of the set.
     pub id: TangibleSetId,

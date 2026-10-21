@@ -2,6 +2,8 @@ use super::TouchPointSlot;
 use super::TrackingId;
 use crate::Millimeters;
 use crate::Vec2;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -12,6 +14,16 @@ use serde::Serialize;
 /// the position.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "TouchPoint",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct TouchPoint {
     /// Multitouch slot number the contact is assigned to.
     pub slot: TouchPointSlot,

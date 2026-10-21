@@ -1,4 +1,8 @@
+#[cfg(feature = "cynic")]
+use crate::schema;
+#[cfg(not(feature = "cynic"))]
 use serde::Deserialize;
+#[cfg(not(feature = "cynic"))]
 use serde::Serialize;
 
 use super::event_kind::EventKind;
@@ -8,9 +12,18 @@ use super::event_kind::EventKind;
 /// Mirrors [`EventKind`] minus `LAGGED` - the lag control event is never
 /// requestable, it is emitted whenever this subscription drops events
 /// regardless of the `kinds` filter (SUBSCRIPTIONS.md).
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[cfg_attr(not(feature = "cynic"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "cynic"), serde(rename_all = "SCREAMING_SNAKE_CASE"))]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "cynic", derive(cynic::Enum))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        rename_all = "SCREAMING_SNAKE_CASE"
+    )
+)]
 pub enum StreamEvent {
     /// A new tangible was detected and is now tracked.
     TangibleAdded,

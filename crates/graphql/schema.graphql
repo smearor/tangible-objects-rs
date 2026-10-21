@@ -1,0 +1,1037 @@
+scalar AffinityFactor
+
+"""
+Which pass [`DeviationReport`](tangible_objects_analysis::DeviationReport)
+runs over a recording.
+
+Shared by the MCP `analyze_recording` tool, the GraphQL
+`analyzeRecording` query and the D-Bus `analyze_recording` method.
+"""
+enum AnalysisMode {
+	"""
+	Fold the recorded generic candidates - fast, but blind to frames
+	whose contacts ran through the incumbent track path.
+	"""
+	CANDIDATES
+	"""
+	Re-evaluate every same-size contact subset of each frame against
+	the pattern fingerprints - covers incumbent-tracked frames.
+	"""
+	CONTACTS
+}
+
+"""
+Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
+
+A partial match predicts the missing pins' expected positions from the
+geometric transform of its matched pins and claims a nearby unassigned
+touch within `radius_factor` × pattern tolerance.
+
+Loadable from `~/.config/tangible-objects/completion.toml` and
+changeable at runtime via the interfaces (GraphQL/MCP/D-Bus).
+"""
+type CompletionConfig {
+	"""
+	Claim radius as a multiple of the pattern's scalar tolerance.
+	Default 2.0.
+	"""
+	radiusFactor: Float!
+	"""
+	Maximum number of missing pins a partial may complete (1 or 2).
+	Default 1.
+	"""
+	maxMissing: Int!
+	"""
+	Whether claimed slots enter the tangible's slot binding for slot
+	affinity in subsequent frames. Default `true`.
+	"""
+	persist: Boolean!
+	"""
+	Whether a completed partial counts as a match only or as exact for
+	suppression. Default [`CompletionMode::Match`].
+	"""
+	mode: CompletionMode!
+	"""
+	Incumbent re-match tolerance widening (`match_score <= factor`);
+	`1.0` disables. Default 2.0.
+	"""
+	affinityFactor: AffinityFactor!
+	"""
+	Per-slot position smoothing alpha; `0.0` disables. Default 0.6.
+	"""
+	smoothingAlpha: SmoothingAlpha!
+}
+
+"""
+Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
+
+A partial match predicts the missing pins' expected positions from the
+geometric transform of its matched pins and claims a nearby unassigned
+touch within `radius_factor` × pattern tolerance.
+
+Loadable from `~/.config/tangible-objects/completion.toml` and
+changeable at runtime via the interfaces (GraphQL/MCP/D-Bus).
+"""
+input CompletionInput {
+	"""
+	Claim radius as a multiple of the pattern's scalar tolerance.
+	Default 2.0.
+	"""
+	radiusFactor: Float!
+	"""
+	Maximum number of missing pins a partial may complete (1 or 2).
+	Default 1.
+	"""
+	maxMissing: Int!
+	"""
+	Whether claimed slots enter the tangible's slot binding for slot
+	affinity in subsequent frames. Default `true`.
+	"""
+	persist: Boolean!
+	"""
+	Whether a completed partial counts as a match only or as exact for
+	suppression. Default [`CompletionMode::Match`].
+	"""
+	mode: CompletionMode!
+	"""
+	Incumbent re-match tolerance widening (`match_score <= factor`);
+	`1.0` disables. Default 2.0.
+	"""
+	affinityFactor: AffinityFactor!
+	"""
+	Per-slot position smoothing alpha; `0.0` disables. Default 0.6.
+	"""
+	smoothingAlpha: SmoothingAlpha!
+}
+
+"""
+How a completed partial match is treated downstream.
+
+A partial match whose missing pin(s) were claimed is no longer a plain
+partial - the mode decides whether it counts as exact for suppression.
+"""
+enum CompletionMode {
+	"""
+	The claimed pins complete the match for tracking and slot affinity,
+	but the match stays partial - its slots are never suppressed.
+	Conservative default: a wrongly claimed finger is bound but not
+	swallowed by the filter proxy.
+	"""
+	MATCH
+	"""
+	A completed partial counts as exact - all its slots, including the
+	claimed ones, join the suppression set.
+	"""
+	EXACT
+}
+
+scalar ContactCount
+
+"""
+Static information about the input device attached to this daemon -
+the identity needed to interpret or convert its raw event stream.
+
+Published once at session start inside [`crate::EngineSnapshot`];
+interfaces read it via the `device_info` query (remote recording:
+computer A learns B's touchscreen geometry before pulling artifacts).
+"""
+type DeviceInfo {
+	"""
+	`Input device name` of the evdev device (or the replayed file).
+	"""
+	name: String
+	"""
+	Device units per millimeter on X (`ABS_MT_POSITION_X` resolution).
+	"""
+	xRes: UnitsPerMm
+	"""
+	Device units per millimeter on Y (`ABS_MT_POSITION_Y` resolution).
+	"""
+	yRes: UnitsPerMm
+	"""
+	Minimum raw X value.
+	"""
+	xMin: RawAxisValue
+	"""
+	Maximum raw X value.
+	"""
+	xMax: RawAxisValue
+	"""
+	Minimum raw Y value.
+	"""
+	yMin: RawAxisValue
+	"""
+	Maximum raw Y value.
+	"""
+	yMax: RawAxisValue
+}
+
+scalar EventCount
+
+"""
+Discriminator for [`crate::domain::TangibleEvent`] payloads.
+"""
+enum EventKind {
+	"""
+	The set of active touch points changed.
+	"""
+	TOUCH_POINTS_UPDATED
+	"""
+	A new tangible was detected and is now tracked.
+	"""
+	TANGIBLE_ADDED
+	"""
+	A tracked tangible's pose changed.
+	"""
+	TANGIBLE_MOVED
+	"""
+	A tracked tangible expired.
+	"""
+	TANGIBLE_REMOVED
+	"""
+	All mandatory set members became present (TOS-ADD).
+	"""
+	SET_ADDED
+	"""
+	The last mandatory set member disappeared (TOS-REM).
+	"""
+	SET_REMOVED
+	"""
+	A member tangible appeared in an active set (TOS-OBJ-ADD).
+	"""
+	OBJECT_ADDED
+	"""
+	A member tangible disappeared (TOS-OBJ-REM).
+	"""
+	OBJECT_REMOVED
+	"""
+	A member tangible's pose changed in an active set (TOS-OBJ-MOV).
+	"""
+	OBJECT_MOVED
+	"""
+	An occupancy field became occupied (debounced placed).
+	"""
+	FIELD_PLACED
+	"""
+	An occupancy field became empty (debounced lifted).
+	"""
+	FIELD_LIFTED
+	"""
+	An occupancy field's debounced contact count changed.
+	"""
+	FIELD_COUNT_CHANGED
+	"""
+	A pattern was registered or replaced at runtime.
+	"""
+	PROFILE_REGISTERED
+	"""
+	A registered pattern was removed.
+	"""
+	PROFILE_UNREGISTERED
+	"""
+	A field set was registered at runtime.
+	"""
+	FIELD_SET_REGISTERED
+	"""
+	A field set was removed.
+	"""
+	FIELD_SET_UNREGISTERED
+	"""
+	A scoped tangible stage was created on the pipeline.
+	"""
+	STAGE_REGISTERED
+	"""
+	A scoped tangible stage was removed.
+	"""
+	STAGE_UNREGISTERED
+	"""
+	The completion configuration changed.
+	"""
+	COMPLETION_CHANGED
+	"""
+	The filter-proxy suppression policy changed.
+	"""
+	FILTER_MODE_CHANGED
+	"""
+	A recording session started.
+	"""
+	RECORDING_STARTED
+	"""
+	A recording session stopped (`count` carries the frames written).
+	"""
+	RECORDING_STOPPED
+	"""
+	A file-triggered config reload took effect.
+	"""
+	CONFIG_RELOADED
+	"""
+	Events were skipped because this subscription lagged - a control
+	event, never requestable via `kinds`; `skipped` carries the count.
+	"""
+	LAGGED
+}
+
+"""
+One occupancy cell.
+"""
+input FieldInput {
+	"""
+	Cell name.
+	"""
+	name: String!
+	"""
+	Bounding box in mm (or 0..1 normalized when the window carries
+	width/height).
+	"""
+	xMin: Float!
+	"""
+	Lower y bound.
+	"""
+	yMin: Float!
+	"""
+	Upper x bound.
+	"""
+	xMax: Float!
+	"""
+	Upper y bound.
+	"""
+	yMax: Float!
+}
+
+scalar FieldName
+
+scalar FieldSetName
+
+"""
+Suppression policy of the filter proxy (FILTER_PROXY_VIRTUAL.md).
+
+Controls when a slot classified as a tangible becomes invisible to the
+operating system and how unclassified new contacts are treated.
+"""
+enum FilterMode {
+	"""
+	Proxy disabled: every event passes through unchanged.
+	"""
+	OFF
+	"""
+	Suppress slots on the first matched frame. Zero leak for real
+	tangibles, but a one-frame phantom match (fingers coincidentally
+	forming a profile) eats the contact for the full hysteresis window.
+	"""
+	IMMEDIATE
+	"""
+	Suppress only after `STABILITY_GATE` consecutive matched frames -
+	phantom matches never suppress; a tangible leaks ~1 frame on
+	placement.
+	"""
+	GATED
+	"""
+	Hold every new contact's events until the first frame evaluation
+	classifies it: tangible contacts never reach the system at all,
+	finger contacts appear ~1 frame late but complete. Safest policy.
+	"""
+	GUARDED
+	"""
+	Suppress every contact - tangible and finger alike. Tangibles are
+	still detected internally (engine, interfaces, tracked poses), but
+	the virtual device emits no touch events at all. For setups where
+	only figure state matters and touch input must not disturb the UI.
+	"""
+	TANGIBLES_ONLY
+}
+
+scalar FrameCount
+
+"""
+A scalar that can represent any JSON value.
+"""
+scalar JSON
+
+"""
+How long a registration lives (DYNAMIC_PROFILES.md).
+"""
+enum Lifetime {
+	"""
+	Removed on `unregister*`/`unregister_owner` or when the owning
+	interface session ends (where disconnect is detectable).
+	"""
+	SESSION
+	"""
+	Additionally written to disk so it survives daemon restarts.
+	"""
+	PERSISTENT
+}
+
+type MutationRoot {
+	"""
+	Switches the filter proxy's suppression policy
+	(`off`/`immediate`/`gated`/`guarded`/`tangiblesOnly`); `stability`
+	overrides the consecutive-matched-frames gate, `null` keeps it.
+	`stage` narrows the switch to that scope's tangible stage,
+	`null` broadcasts to all.
+	"""
+	setFilterMode(mode: FilterMode!, stability: FrameCount, stage: StageName): Boolean!
+	"""
+	Claims or creates a pipeline stage for `name` (EVENT_PIPELINE.md
+	phase 7) - persists until `unregisterStage`, so a client can
+	pre-configure the stage's policy before any `stage = "name"`
+	pattern registers.
+	"""
+	registerStage(name: StageName!): Boolean!
+	"""
+	Removes the pipeline stage for `name` - its suppression state
+	dies with it; patterns of that scope keep matching.
+	"""
+	unregisterStage(name: StageName!): Boolean!
+	"""
+	Starts a training session that captures a new profile with the given
+	name.
+	"""
+	trainProfile(name: String!): Boolean!
+	"""
+	Starts a recording session writing `<base_path>.jsonl` +
+	`<base_path>.evtest`, optionally labeled.
+	"""
+	startRecording(basePath: String!, label: String): Boolean!
+	"""
+	Stops the active recording session.
+	"""
+	stopRecording: Boolean!
+	"""
+	Changes the ground-truth label applied to subsequent recorded frames;
+	`null` clears it.
+	"""
+	setRecordLabel(label: String): Boolean!
+	"""
+	Replaces the missing-pin completion configuration. Takes a full
+	config object - read the current one via the `completion` query,
+	modify, write back (mutation applies from the next frame on).
+	"""
+	setCompletion(config: CompletionInput!): Boolean!
+	"""
+	Resets the session metric counters - call between automated
+	test runs to isolate each series.
+	"""
+	resetMetrics: Boolean!
+	"""
+	Shows a user-facing message in the GUI (test-series steering);
+	an empty string clears it.
+	"""
+	showMessage(text: String!): Boolean!
+	"""
+	Shows or hides the daemon-embedded GUI window (`crates/gtk`,
+	`--gui` mode) - the command is ignored on headless daemons.
+	"""
+	setGuiVisible(visible: Boolean!): Boolean!
+	"""
+	Registers a figure profile at runtime (DYNAMIC_PROFILES.md).
+	Queued to the device loop - fingerprint collisions are rejected
+	there; verify via the `profiles` query.
+	"""
+	registerPattern(input: RegisterPatternInput!, owner: String, lifetime: Lifetime): Boolean!
+	"""
+	Replaces a registered pattern's geometry/name while keeping its
+	ID. Applies to new matches only.
+	"""
+	updateProfile(id: PatternId!, input: RegisterPatternInput!): Boolean!
+	"""
+	Removes a dynamically registered pattern by ID.
+	"""
+	unregisterPattern(id: PatternId!): Boolean!
+	"""
+	Removes every pattern and field set owned by `owner`.
+	"""
+	unregisterOwner(owner: String!): Boolean!
+	"""
+	Registers an occupancy field set at runtime.
+	"""
+	registerFieldSet(input: RegisterFieldSetInput!, owner: String, lifetime: Lifetime): Boolean!
+	"""
+	Removes a field set by name.
+	"""
+	unregisterFieldSet(name: String!): Boolean!
+}
+
+scalar Owner
+
+scalar PatternId
+
+scalar PatternName
+
+scalar PinCount
+
+"""
+A 2D point or vector tagged with its coordinate unit `U`.
+
+The phantom unit distinguishes positions in millimeters
+(`Vec2<Millimeters>`), raw device units (`Vec2<RawAxisValue>`) and screen
+pixels (`Vec2<Pixels>`) so they cannot be mixed up. Components stay plain
+`f64`; the unit only labels which coordinate space the point lives in.
+Serializes as a flat `{"x": .., "y": ..}` map; the unit marker is skipped.
+With the `async-graphql` feature, `Vec2<Millimeters>` is exposed as the
+GraphQL object type `Point`.
+"""
+type Point {
+	"""
+	X coordinate in the unit `U`.
+	"""
+	x: Float!
+	"""
+	Y coordinate in the unit `U`.
+	"""
+	y: Float!
+}
+
+"""
+Static info about a loaded figure profile for query-style responses.
+
+Carried by [`crate::EngineHandle`]; profiles are static for a session and
+therefore live on the handle rather than in the per-frame snapshot.
+"""
+type ProfileInfo {
+	"""
+	Runtime pattern ID assigned when the profile was loaded.
+	"""
+	patternId: PatternId!
+	"""
+	Human-readable figure name from the profile file.
+	"""
+	name: PatternName!
+	"""
+	Number of contact pins the figure must have.
+	"""
+	numPoints: PinCount!
+	"""
+	Owning application for runtime registrations; `None` for
+	statically loaded profiles.
+	"""
+	owner: Owner
+	"""
+	Whether a partial match may spawn this figure
+	(SPAWN_AS_PARTIAL.md).
+	"""
+	spawnOnPartial: Boolean!
+	"""
+	Frames a partial spawn must hold before confirmation.
+	"""
+	spawnStability: FrameCount!
+	"""
+	Pipeline stage this pattern suppresses through
+	(EVENT_PIPELINE.md); `None` = the general stage.
+	"""
+	stage: StageName
+}
+
+type QueryRoot {
+	"""
+	All currently tracked tangibles.
+	"""
+	tangibles: [TrackedTangible!]!
+	"""
+	All currently active touch points.
+	"""
+	touchPoints: [TouchPoint!]!
+	"""
+	Configured Tangible Object Sets with their current activation state.
+	"""
+	sets: [TangibleSetState!]!
+	"""
+	Loaded plus dynamically registered figure profiles. `owner`
+	filters to the registrations of one application; `staticOnly`
+	filters to profiles without an owner (loaded at startup).
+	"""
+	profiles(owner: String, staticOnly: Boolean): [ProfileInfo!]!
+	"""
+	Attached input device - name and axis calibration. Needed by remote
+	clients before converting this host's raw recordings (TRAINING.md
+	device profiles).
+	"""
+	deviceInfo: DeviceInfo
+	"""
+	Live status of the recording session; `null` while nothing records.
+	"""
+	recordingStatus: RecordingStatus
+	"""
+	Active missing-pin completion configuration
+	(TRACKING_STABILIZATION.md) - `null` when the device loop has not
+	published one yet.
+	"""
+	completion: CompletionConfig
+	"""
+	Accumulated session recognition metrics: uptime, re-ID churn,
+	match quality, per-slot contact stability.
+	"""
+	metrics: JSON!
+	"""
+	User-facing message currently shown by the GUI.
+	"""
+	message: String
+	"""
+	Reads a recording artifact produced by this daemon.
+	
+	Restricted to known recording extensions (`.jsonl`, `.evtest`,
+	`.dataset.jsonl`) and paths below the daemon's working directory -
+	a LAN/debug convenience, not a general file server.
+	Runs the deviation analysis over a recording artifact - same
+	`mode`/`profiles_dir` semantics as the MCP `analyze_recording`
+	tool (`"contacts"` re-evaluates every same-size contact subset).
+	"""
+	analyzeRecording(path: String!, mode: AnalysisMode, profilesDir: String): JSON!
+	"""
+	Pairwise profile-collision analysis over a profile directory -
+	every pair's minimum achievable max deviation over same-size
+	contact subsets, classified as Safe/Partial/Exact risk.
+	"""
+	analyzeSimilarity(profilesDir: String): JSON!
+	recordingArtifact(path: String!): String!
+}
+
+scalar RawAxisValue
+
+scalar RecordLabel
+
+"""
+Live status of the daemon's recording session.
+
+Published inside [`crate::EngineSnapshot`] - interfaces read it via the
+`recording_status` query; `None` in the snapshot means no session is or
+was active.
+"""
+type RecordingStatus {
+	"""
+	Whether a session is currently recording.
+	"""
+	active: Boolean!
+	"""
+	Current ground-truth label, if any.
+	"""
+	label: RecordLabel
+	"""
+	Frames written so far (non-empty frames only).
+	"""
+	recordedFrames: FrameCount!
+	"""
+	Frames dropped on a full frame-sink buffer.
+	"""
+	droppedFrames: FrameCount!
+	"""
+	Raw events dropped on a full raw-sink buffer.
+	"""
+	droppedEvents: EventCount!
+}
+
+"""
+Input for `registerFieldSet`.
+"""
+input RegisterFieldSetInput {
+	"""
+	Set name (namespace for its fields).
+	"""
+	name: String!
+	"""
+	Debounce stability in frames; `null` = default 2.
+	"""
+	stability: Int
+	"""
+	Optional window anchor.
+	"""
+	window: WindowInput
+	"""
+	Whether contacts inside these fields are suppressed from the OS;
+	`null`/`false` = occupancy is informational only.
+	"""
+	suppress: Boolean
+	"""
+	The cells.
+	"""
+	fields: [FieldInput!]!
+}
+
+"""
+Input for `registerPattern`: a figure defined by its pin positions.
+"""
+input RegisterPatternInput {
+	"""
+	Figure name.
+	"""
+	name: String!
+	"""
+	Flat pin coordinates `[x0, y0, x1, y1, ...]` in millimeters.
+	"""
+	points: [Float!]!
+	"""
+	Scalar matching tolerance in millimeters.
+	"""
+	toleranceMm: Float!
+	"""
+	Whether a partial match may spawn this figure
+	(SPAWN_AS_PARTIAL.md); `null`/`false` = exact-only spawns.
+	"""
+	spawnOnPartial: Boolean
+	"""
+	Frames a partial spawn must hold before confirmation;
+	`null` = 15.
+	"""
+	spawnStability: Int
+	"""
+	Pipeline stage this pattern suppresses through
+	(EVENT_PIPELINE.md); `null` = the general stage.
+	"""
+	stage: StageName
+}
+
+scalar RotationRad
+
+scalar SmoothingAlpha
+
+scalar StageName
+
+"""
+Event kind a client may request via `eventStream(kinds: ...)`.
+
+Mirrors [`EventKind`] minus `LAGGED` - the lag control event is never
+requestable, it is emitted whenever this subscription drops events
+regardless of the `kinds` filter (SUBSCRIPTIONS.md).
+"""
+enum StreamEvent {
+	"""
+	A new tangible was detected and is now tracked.
+	"""
+	TANGIBLE_ADDED
+	"""
+	A tracked tangible's pose changed.
+	"""
+	TANGIBLE_MOVED
+	"""
+	A tracked tangible expired.
+	"""
+	TANGIBLE_REMOVED
+	"""
+	The set of active touch points changed - high-rate (~120 Hz),
+	respect `maxHz`.
+	"""
+	TOUCH_POINTS_UPDATED
+	"""
+	An occupancy field became occupied.
+	"""
+	FIELD_PLACED
+	"""
+	An occupancy field became empty.
+	"""
+	FIELD_LIFTED
+	"""
+	An occupancy field's debounced contact count changed.
+	"""
+	FIELD_COUNT_CHANGED
+	"""
+	All mandatory set members became present (TOS-ADD).
+	"""
+	SET_ADDED
+	"""
+	The last mandatory set member disappeared (TOS-REM).
+	"""
+	SET_REMOVED
+	"""
+	A member tangible appeared in an active set (TOS-OBJ-ADD).
+	"""
+	OBJECT_ADDED
+	"""
+	A member tangible disappeared (TOS-OBJ-REM).
+	"""
+	OBJECT_REMOVED
+	"""
+	A member tangible's pose changed in an active set (TOS-OBJ-MOV).
+	"""
+	OBJECT_MOVED
+	"""
+	A pattern was registered or replaced at runtime.
+	"""
+	PROFILE_REGISTERED
+	"""
+	A registered pattern was removed.
+	"""
+	PROFILE_UNREGISTERED
+	"""
+	A field set was registered at runtime.
+	"""
+	FIELD_SET_REGISTERED
+	"""
+	A field set was removed.
+	"""
+	FIELD_SET_UNREGISTERED
+	"""
+	A scoped tangible stage was created on the pipeline.
+	"""
+	STAGE_REGISTERED
+	"""
+	A scoped tangible stage was removed.
+	"""
+	STAGE_UNREGISTERED
+	"""
+	The completion configuration changed.
+	"""
+	COMPLETION_CHANGED
+	"""
+	The filter-proxy suppression policy changed.
+	"""
+	FILTER_MODE_CHANGED
+	"""
+	A recording session started.
+	"""
+	RECORDING_STARTED
+	"""
+	A recording session stopped.
+	"""
+	RECORDING_STOPPED
+	"""
+	A file-triggered config reload took effect.
+	"""
+	CONFIG_RELOADED
+}
+
+type SubscriptionRoot {
+	"""
+	The single subscription entry point: streams the requested
+	`StreamEvent` kinds, narrowed by `patternId`/`setId`; `maxHz`
+	throttles the high-rate `TOUCH_POINTS_UPDATED` kind (default 30).
+	"""
+	eventStream(kinds: [StreamEvent!]!, patternId: PatternId, setId: TangibleSetId, maxHz: Int): TangibleEvent!
+	"""
+	Tangible lifecycle + motion stream - `kinds` preset to
+	`TANGIBLE_ADDED`/`TANGIBLE_MOVED`/`TANGIBLE_REMOVED`; `patternId`
+	narrows to one figure.
+	"""
+	tangibleEvents(patternId: PatternId): TangibleEvent!
+	"""
+	Occupancy field stream: `FIELD_PLACED`/`FIELD_LIFTED`/
+	`FIELD_COUNT_CHANGED`, narrowed to one field set when `set` names it.
+	"""
+	fieldEvents(set: String): TangibleEvent!
+	"""
+	Streams every domain event unfiltered.
+	"""
+	events: TangibleEvent! @deprecated(reason: "use eventStream(kinds: [...]) - an explicit filter documents intent")
+}
+
+"""
+Flattened domain event delivered by the event subscriptions.
+
+`kind` discriminates the payload: `tangible` carries the affected object
+for `TANGIBLE_*`/`OBJECT_*` kinds, `setId` for `SET_*`/`OBJECT_*` kinds,
+`field`/`fieldSet`/`count` for `FIELD_*` kinds. Lifecycle kinds use
+`patternId`/`name`/`owner`/`detail`; `LAGGED` uses `skipped`.
+"""
+type TangibleEvent {
+	"""
+	What happened.
+	"""
+	kind: EventKind!
+	"""
+	Affected tangible for `TANGIBLE_*` and `OBJECT_*` events.
+	"""
+	tangible: TrackedTangible
+	"""
+	Affected set for `SET_*` and `OBJECT_*` events.
+	"""
+	setId: TangibleSetId
+	"""
+	Field-set name for `FIELD_*` events.
+	"""
+	fieldSet: FieldSetName
+	"""
+	Field name for `FIELD_*` events.
+	"""
+	field: FieldName
+	"""
+	Debounced contact count for `FIELD_COUNT_CHANGED` events.
+	"""
+	count: ContactCount
+	"""
+	Recorded frame count for `RECORDING_STOPPED` events.
+	"""
+	frames: FrameCount
+	"""
+	Affected pattern for `PROFILE_*` lifecycle events.
+	"""
+	patternId: PatternId
+	"""
+	Profile, field-set or stage name for lifecycle events -
+	deliberately heterogeneous: `kind` says which.
+	"""
+	name: String
+	"""
+	Owning application for registration events.
+	"""
+	owner: Owner
+	"""
+	Applied value for config events (`COMPLETION_CHANGED` =
+	`mode radius max_missing persist`, `FILTER_MODE_CHANGED` = mode).
+	"""
+	detail: String
+	"""
+	Events dropped because the subscription lagged (`LAGGED` kind).
+	"""
+	skipped: Int
+}
+
+scalar TangibleId
+
+"""
+Definition of a Tangible Object Set (TOS).
+
+A set activates when **all** `mandatory` member patterns are present on
+the touch surface and stays active while **at least one** mandatory
+member remains (activation hysteresis, see `TANGIBLE_OBJECT_SET.md`).
+`additional` members belong to the set but never affect activation.
+"""
+type TangibleSet {
+	"""
+	Unique identifier of the set.
+	"""
+	id: TangibleSetId!
+	"""
+	Human-readable name of the set.
+	"""
+	name: String!
+	"""
+	Patterns that must all be present to activate the set.
+	"""
+	mandatory: [PatternId!]!
+	"""
+	Optional member patterns; never affect activation.
+	"""
+	additional: [PatternId!]!
+}
+
+scalar TangibleSetId
+
+"""
+A [`TangibleSet`] definition joined with its live activation state.
+
+The `active` flag is runtime state derived by the [`SetTracker`] and not
+part of the persisted set definition; this type bundles both for
+interface-facing queries. Serializes flat as `{id, name, mandatory,
+additional, active}`.
+"""
+type TangibleSetState {
+	"""
+	The set definition; serialized inline via `#[serde(flatten)]`.
+	"""
+	set: TangibleSet!
+	"""
+	Whether the set is currently active on the surface.
+	"""
+	active: Boolean!
+}
+
+"""
+A single active multitouch contact tracked by its slot.
+
+Serializes flat as `{slot, tracking_id, x, y}` via `#[serde(flatten)]` on
+the position.
+"""
+type TouchPoint {
+	"""
+	Multitouch slot number the contact is assigned to.
+	"""
+	slot: TouchPointSlot!
+	"""
+	Kernel-assigned tracking ID of the contact lifetime.
+	"""
+	trackingId: TrackingId!
+	"""
+	Contact position (raw device units when uncalibrated).
+	"""
+	pos: Point!
+}
+
+scalar TouchPointSlot
+
+"""
+A tangible figure tracked across frames with a smoothed pose.
+
+Produced by the engine's `Tracker`; position and rotation are
+exponentially smoothed over consecutive frames. Serializes to the
+interface-facing flat shape `{id, pattern_id, pattern_name, center_x,
+center_y, rotation_deg}` - millimeters and degrees, without the internal
+`frames_since_match` hysteresis counter.
+"""
+type TrackedTangible {
+	"""
+	Stable ID of this tangible, assigned by the `Tracker` on creation.
+	Distinguishes tangibles matching the same pattern.
+	"""
+	id: TangibleId!
+	"""
+	ID of the matched pattern.
+	"""
+	patternId: PatternId!
+	"""
+	Name of the matched figure profile.
+	"""
+	patternName: PatternName!
+	"""
+	Smoothed centroid position.
+	"""
+	center: Point!
+	"""
+	Smoothed orientation in radians.
+	"""
+	rotationRad: RotationRad!
+	"""
+	Whether this tangible was spawned by a partial match and has not
+	yet confirmed (SPAWN_AS_PARTIAL.md). Pending tangibles reserve
+	their slots but emit no events until the spawn-stability window
+	or an exact match confirms them.
+	"""
+	pending: Boolean!
+	"""
+	Smoothed orientation in degrees.
+	"""
+	rotationDeg: Float!
+}
+
+scalar TrackingId
+
+scalar UnitsPerMm
+
+"""
+Window anchor for a field set.
+"""
+input WindowInput {
+	"""
+	Window's left edge in screen mm.
+	"""
+	xOffset: Float!
+	"""
+	Window's top edge in screen mm.
+	"""
+	yOffset: Float!
+	"""
+	Window width for normalized field coordinates.
+	"""
+	width: Float
+	"""
+	Window height for normalized field coordinates.
+	"""
+	height: Float
+}
+
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
+directive @include(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
+directive @skip(if: Boolean!) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+schema {
+	query: QueryRoot
+	mutation: MutationRoot
+	subscription: SubscriptionRoot
+}
+

@@ -13,6 +13,8 @@ mod combination_buf;
 mod combinations;
 mod completion;
 mod contact_count;
+#[cfg(feature = "cynic")]
+mod cynic_schema;
 mod detection_config;
 mod device;
 mod domain;
@@ -46,9 +48,13 @@ pub use claimed_indices::ClaimedIndices;
 pub use combination::Combination;
 pub use combination_buf::CombinationBuf;
 pub use combinations::Combinations;
+pub use completion::AffinityFactor;
 pub use completion::CompletionConfig;
 pub use completion::CompletionMode;
+pub use completion::SmoothingAlpha;
 pub use contact_count::ContactCount;
+#[cfg(feature = "cynic")]
+pub use cynic_schema::schema;
 pub use detection_config::DetectionConfig;
 pub use device::DeviceError;
 pub use device::DeviceInfo;

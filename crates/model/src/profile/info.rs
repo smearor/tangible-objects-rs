@@ -5,6 +5,8 @@ use crate::PatternName;
 use crate::PinCount;
 use crate::StageName;
 use crate::TangiblePattern;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -15,6 +17,16 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "ProfileInfo",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct ProfileInfo {
     /// Runtime pattern ID assigned when the profile was loaded.
     #[serde(alias = "pattern_id")]

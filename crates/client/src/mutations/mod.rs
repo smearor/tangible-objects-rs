@@ -1,13 +1,14 @@
-//! Mutation-side methods of [`crate::GraphQLClient`] - one file per
-//! schema area.
+//! Mutation-side methods of [`crate::GraphQLClient`] - one directory
+//! per schema area: `mod.rs` holds the client methods, the cynic
+//! input objects, variables and fragments live in one file per type.
 
-mod completion;
-mod field_set;
-mod filter;
-mod gui;
-mod message;
-mod metrics;
-mod pattern;
-mod recording;
-mod stage;
-mod training;
+pub(crate) mod completion;
+pub(crate) mod field_set;
+pub(crate) mod filter;
+pub(crate) mod gui;
+pub(crate) mod message;
+pub(crate) mod metrics;
+pub(crate) mod pattern;
+pub(crate) mod recording;
+pub(crate) mod stage;
+pub(crate) mod training;

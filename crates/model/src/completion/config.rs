@@ -4,6 +4,8 @@ use serde::Serialize;
 use super::AffinityFactor;
 use super::CompletionMode;
 use super::SmoothingAlpha;
+#[cfg(feature = "cynic")]
+use crate::schema;
 
 /// Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
 ///
@@ -20,6 +22,9 @@ use super::SmoothingAlpha;
     derive(async_graphql::SimpleObject, async_graphql::InputObject),
     graphql(input_name = "CompletionInput")
 )]
+// The read side (`CompletionConfig` object) is a manual QueryFragment
+// below; the input side lives as `CompletionInput` in the client -
+// input objects are wire DTOs, the domain type keeps its own serde.
 pub struct CompletionConfig {
     /// Claim radius as a multiple of the pattern's scalar tolerance.
     /// Default 2.0.
@@ -50,5 +55,28 @@ impl Default for CompletionConfig {
             affinity_factor: AffinityFactor::default(),
             smoothing_alpha: SmoothingAlpha::default(),
         }
+    }
+}
+
+#[cfg(feature = "cynic")]
+impl cynic::QueryFragment for CompletionConfig {
+    type SchemaType = schema::CompletionConfig;
+    type VariablesFields = ();
+    const TYPE: Option<&'static str> = Some("CompletionConfig");
+
+    /// Read-side selection - `radiusFactor`, `maxMissing`, `persist`,
+    /// `mode`, `affinityFactor`, `smoothingAlpha`. The input side is
+    /// the derived `InputObject` (`CompletionInput`).
+    fn query(
+        builder: cynic::queries::SelectionBuilder<'_, Self::SchemaType, Self::VariablesFields>,
+    ) {
+        let mut builder = builder;
+        let _ = builder.select_field::<schema::__fields::CompletionConfig::radiusFactor, f64>();
+        let _ = builder.select_field::<schema::__fields::CompletionConfig::maxMissing, i32>();
+        let _ = builder.select_field::<schema::__fields::CompletionConfig::persist, bool>();
+        let _ = builder
+            .select_field::<schema::__fields::CompletionConfig::mode, schema::CompletionMode>();
+        let _ = builder.select_field::<schema::__fields::CompletionConfig::affinityFactor, schema::AffinityFactor>();
+        let _ = builder.select_field::<schema::__fields::CompletionConfig::smoothingAlpha, schema::SmoothingAlpha>();
     }
 }

@@ -1,6 +1,8 @@
 use crate::EventCount;
 use crate::FrameCount;
 use crate::RecordLabel;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -12,6 +14,16 @@ use serde::Serialize;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "RecordingStatus",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct RecordingStatus {
     /// Whether a session is currently recording.
     pub active: bool,

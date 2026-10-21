@@ -13,6 +13,11 @@ pub enum ClientError {
     /// WebSocket handshake or frame handling failed.
     #[error("WebSocket error: {0}")]
     Ws(#[from] tokio_tungstenite::tungstenite::Error),
+    /// `graphql-transport-ws` subscription failure reported by
+    /// `graphql-ws-client` - handshake, keepalive timeout, GraphQL
+    /// `error` frames and frame decode all surface here.
+    #[error("subscription transport error: {0}")]
+    Subscription(#[from] graphql_ws_client::Error),
     /// Malformed handshake - no `connection_ack`, or a `next` message
     /// without the subscription's payload.
     #[error("graphql-transport-ws protocol violation: {0}")]
@@ -21,9 +26,14 @@ pub enum ClientError {
     /// errors, resolver failures).
     #[error("GraphQL errors: {0}")]
     Graphql(serde_json::Value),
-    /// A response decoded but carried no `data` payload.
+    /// A response decoded but carried no `data` payload (absent or
+    /// `null`).
     #[error("response contained no data")]
     NoData,
+    /// The `data` object did not contain the expected operation field
+    /// - the server never ran the selection.
+    #[error("response data has no field '{0}'")]
+    FieldNotFound(String),
     /// A `data` field failed to deserialize into the expected type.
     #[error("response decode failed: {0}")]
     Decode(serde_json::Error),

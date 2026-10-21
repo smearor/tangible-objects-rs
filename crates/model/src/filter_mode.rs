@@ -1,12 +1,28 @@
+#[cfg(feature = "cynic")]
+use crate::schema;
+#[cfg(not(feature = "cynic"))]
 use serde::Deserialize;
+#[cfg(not(feature = "cynic"))]
 use serde::Serialize;
 
 /// Suppression policy of the filter proxy (FILTER_PROXY_VIRTUAL.md).
 ///
 /// Controls when a slot classified as a tangible becomes invisible to the
 /// operating system and how unclassified new contacts are treated.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(not(feature = "cynic"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "cynic", derive(cynic::Enum))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        rename_all = "SCREAMING_SNAKE_CASE"
+    )
+)]
+// Under `cynic` the derive owns serde (SCREAMING_SNAKE wire form
+// matching the schema); without it, serde serializes the Rust variant
+// names (legacy wire form used by recordings and snapshots).
 pub enum FilterMode {
     /// Proxy disabled: every event passes through unchanged.
     Off,

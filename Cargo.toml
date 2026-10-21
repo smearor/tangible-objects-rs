@@ -35,11 +35,13 @@ evdev = "0.12"
 libc = "0.2"
 futures = "0.3"
 futures-lite = "2"
+graphql-ws-client = { version = "0.13", default-features = false }
 tokio = { version = "1", features = ["full"] }
 # interfaces (planned for Phase 2)
 async-graphql = "7"
 async-graphql-axum = "7"
 axum = "0.8"
+cynic = "3.11"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
 zvariant = "5"
 rmcp = { version = "3.5", features = ["server", "macros", "schemars", "transport-io", "transport-streamable-http-server"] }

@@ -2,6 +2,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::marker::PhantomData;
 
+#[cfg(feature = "cynic")]
+use crate::schema;
+
 /// A 2D point or vector tagged with its coordinate unit `U`.
 ///
 /// The phantom unit distinguishes positions in millimeters
@@ -58,6 +61,23 @@ impl<U> Vec2<U> {
             points.iter().map(|p| p.x).sum::<f64>() / n,
             points.iter().map(|p| p.y).sum::<f64>() / n,
         )
+    }
+}
+
+#[cfg(feature = "cynic")]
+impl<U> cynic::QueryFragment for Vec2<U> {
+    type SchemaType = schema::Point;
+    type VariablesFields = ();
+    const TYPE: Option<&'static str> = Some("Point");
+
+    /// `Point { x y }` - the unit `U` is a compile-time tag only and
+    /// carries no wire representation.
+    fn query(
+        builder: cynic::queries::SelectionBuilder<'_, Self::SchemaType, Self::VariablesFields>,
+    ) {
+        let mut builder = builder;
+        let _ = builder.select_field::<schema::__fields::Point::x, f64>();
+        let _ = builder.select_field::<schema::__fields::Point::y, f64>();
     }
 }
 

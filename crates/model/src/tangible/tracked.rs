@@ -5,6 +5,8 @@ use crate::PatternId;
 use crate::PatternName;
 use crate::RotationRad;
 use crate::Vec2;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -129,4 +131,33 @@ impl TrackedTangible {
 #[cfg(feature = "zbus")]
 impl zvariant::Type for TrackedTangible {
     const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(uusddd)");
+}
+
+#[cfg(feature = "cynic")]
+impl cynic::QueryFragment for TrackedTangible {
+    type SchemaType = schema::TrackedTangible;
+    type VariablesFields = ();
+    const TYPE: Option<&'static str> = Some("TrackedTangible");
+
+    /// Selects the six schema fields - `pending_frames`,
+    /// `spawn_stability` and `frames_since_match` are bookkeeping and
+    /// carry no wire representation.
+    fn query(
+        builder: cynic::queries::SelectionBuilder<'_, Self::SchemaType, Self::VariablesFields>,
+    ) {
+        let mut builder = builder;
+        let _ = builder.select_field::<schema::__fields::TrackedTangible::id, schema::TangibleId>();
+        let _ = builder
+            .select_field::<schema::__fields::TrackedTangible::patternId, schema::PatternId>();
+        let _ = builder
+            .select_field::<schema::__fields::TrackedTangible::patternName, schema::PatternName>();
+        let mut center =
+            builder.select_field::<schema::__fields::TrackedTangible::center, schema::Point>();
+        let mut point = center.select_children::<()>();
+        let _ = point.select_field::<schema::__fields::Point::x, f64>();
+        let _ = point.select_field::<schema::__fields::Point::y, f64>();
+        let _ = builder
+            .select_field::<schema::__fields::TrackedTangible::rotationRad, schema::RotationRad>();
+        let _ = builder.select_field::<schema::__fields::TrackedTangible::pending, bool>();
+    }
 }
