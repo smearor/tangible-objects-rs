@@ -10,6 +10,7 @@ use std::fmt::Display;
 /// for the labeled profile and all other candidates as negatives.
 /// Serializes as a bare string.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct RecordLabel(pub String);
 

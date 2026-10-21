@@ -8,6 +8,7 @@ use std::fmt::Display;
 /// (`TangibleAdded`); distinguishes tangibles matching the same pattern and
 /// survives across frames as long as the tangible is associated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct TangibleId(pub u32);
 

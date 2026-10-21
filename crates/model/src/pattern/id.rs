@@ -8,6 +8,7 @@ use std::fmt::Display;
 /// associate [`crate::PatternMatch`]es with [`crate::TrackedTangible`]s and
 /// to pick UI colors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct PatternId(pub u32);
 

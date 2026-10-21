@@ -8,7 +8,6 @@ use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
 use std::path::PathBuf;
-use tangible_objects_model::RecordLabel;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
@@ -40,7 +39,7 @@ impl EngineMcp {
         self.handle
             .send_command(ControlCommand::StartRecording {
                 base_path: PathBuf::from(args.base_path.clone()),
-                label: args.label.clone().map(RecordLabel::new),
+                label: args.label.clone(),
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
@@ -71,9 +70,7 @@ impl EngineMcp {
         Parameters(args): Parameters<SetRecordLabelArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
-            .send_command(ControlCommand::SetRecordLabel(
-                args.label.clone().map(RecordLabel::new),
-            ))
+            .send_command(ControlCommand::SetRecordLabel(args.label.clone()))
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(

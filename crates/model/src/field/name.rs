@@ -10,6 +10,7 @@ use serde::Serialize;
 /// Distinct from [`crate::PatternName`]: figure profiles and field sets
 /// live in separate namespaces.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct FieldSetName(String);
 

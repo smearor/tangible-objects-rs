@@ -11,6 +11,7 @@ use crate::Millimeters;
 /// matching. Serializes as a bare number so existing profile files stay
 /// compatible.
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct PatternTolerance(pub Millimeters);
 

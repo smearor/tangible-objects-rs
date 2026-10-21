@@ -8,8 +8,6 @@ use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
 use tangible_objects_model::Millimeters;
-use tangible_objects_model::Owner;
-use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
@@ -29,10 +27,10 @@ use crate::tool_args::UpdateProfileArgs;
 fn build_profile(
     name: &str,
     points: &[f64],
-    tolerance: f64,
+    tolerance: PatternTolerance,
     spawn_on_partial: Option<bool>,
     spawn_stability: Option<u64>,
-    stage: &Option<String>,
+    stage: &Option<StageName>,
 ) -> Result<ProfileFile, ErrorData> {
     if !points.len().is_multiple_of(2) || points.is_empty() {
         return Err(ErrorData::invalid_params(
@@ -44,9 +42,9 @@ fn build_profile(
         .chunks_exact(2)
         .map(|pair| Vec2::new(pair[0], pair[1]))
         .collect();
-    let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+    let mut profile = ProfileFile::from_points(name, &points, tolerance);
     profile.spawn_on_partial = spawn_on_partial.unwrap_or(false);
-    profile.stage = stage.clone().map(StageName::new);
+    profile.stage = stage.clone();
     if let Some(stability) = spawn_stability {
         profile.spawn_stability = tangible_objects_model::FrameCount::new(stability);
     }
@@ -75,7 +73,7 @@ impl EngineMcp {
         self.handle
             .send_command(ControlCommand::Register {
                 registration: Box::new(Registration::Pattern(profile)),
-                owner: args.owner.map(Owner::new),
+                owner: args.owner,
                 lifetime: parse_lifetime(&args.lifetime)?,
             })
             .await
@@ -104,7 +102,7 @@ impl EngineMcp {
         )?;
         self.handle
             .send_command(ControlCommand::UpdateProfile {
-                id: PatternId::new(args.pattern_id),
+                id: args.pattern_id,
                 profile: Box::new(profile),
             })
             .await
@@ -123,7 +121,7 @@ impl EngineMcp {
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
             .send_command(ControlCommand::UnregisterPattern {
-                id: PatternId::new(args.pattern_id),
+                id: args.pattern_id,
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;

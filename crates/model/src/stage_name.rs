@@ -10,6 +10,7 @@ use serde::Serialize;
 /// scopes to the general stage - the unscoped default holding all
 /// untagged patterns.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct StageName(String);
 

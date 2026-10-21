@@ -9,6 +9,7 @@ use serde::Serialize;
 /// Distinct from [`crate::Owner`]: the owner is *who* registered a
 /// profile; the pattern name is *what* the profile is called.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct PatternName(String);
 

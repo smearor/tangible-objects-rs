@@ -9,6 +9,7 @@ use serde::Serialize;
 /// an owner, and D-Bus binds owners to the caller's unique bus name so a
 /// client exit automatically drops its registrations.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct Owner(String);
 

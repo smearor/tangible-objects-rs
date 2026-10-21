@@ -6,7 +6,6 @@ use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
-use tangible_objects_model::TangibleId;
 
 use crate::server::engine_mcp::EngineMcp;
 use crate::server::helpers::json_pretty;
@@ -31,11 +30,10 @@ impl EngineMcp {
         Parameters(args): Parameters<GetPoseArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         let snapshot = self.handle.snapshot();
-        let tangible_id = TangibleId::from(args.tangible_id);
-        let Some(tangible) = snapshot.tracked.iter().find(|t| t.id == tangible_id) else {
+        let Some(tangible) = snapshot.tracked.iter().find(|t| t.id == args.tangible_id) else {
             return Ok(CallToolResult::error(vec![ContentBlock::text(format!(
                 "no tangible with id {}",
-                args.tangible_id
+                args.tangible_id.as_u32()
             ))]));
         };
         Ok(CallToolResult::success(vec![ContentBlock::text(

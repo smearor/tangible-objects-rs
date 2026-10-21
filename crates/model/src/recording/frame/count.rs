@@ -10,6 +10,7 @@ use std::ops::AddAssign;
 /// sequence number, "47 frames" is a quantity. Analysis results count frames
 /// (matched, labeled, dropped); they never mean a frame's position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct FrameCount(pub u64);
 

@@ -3,6 +3,7 @@
 
 use schemars::JsonSchema;
 use serde::Deserialize;
+use tangible_objects_model::Owner;
 
 /// Arguments for the `register_field_set` tool - the set is given as TOML
 /// in the same shape as `--fields` files.
@@ -12,8 +13,9 @@ pub struct RegisterFieldSetArgs {
     /// `[[fields]]` cells).
     pub toml: String,
     /// Optional owner/application name.
-    pub owner: Option<String>,
+    pub owner: Option<Owner>,
     /// `session` (default) or `persistent` (written to the runtime
-    /// store).
+    /// store). String + parse on purpose: `Lifetime` enum serde flips
+    /// with the `cynic` feature.
     pub lifetime: Option<String>,
 }

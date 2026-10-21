@@ -14,6 +14,7 @@ use std::ops::Sub;
 /// `Vec2<Millimeters>`. Serializes as a bare number so profile files stay
 /// compatible.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 #[serde(transparent)]
 pub struct Millimeters(pub f64);
 

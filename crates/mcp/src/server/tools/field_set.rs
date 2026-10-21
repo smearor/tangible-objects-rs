@@ -7,7 +7,6 @@ use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
 use tangible_objects_model::FieldSet;
-use tangible_objects_model::Owner;
 use tangible_objects_model::Registration;
 use tangible_objects_runtime::ControlCommand;
 
@@ -32,7 +31,7 @@ impl EngineMcp {
         self.handle
             .send_command(ControlCommand::Register {
                 registration: Box::new(Registration::FieldSet(set)),
-                owner: args.owner.map(Owner::new),
+                owner: args.owner,
                 lifetime: parse_lifetime(&args.lifetime)?,
             })
             .await
@@ -50,7 +49,7 @@ impl EngineMcp {
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
             .send_command(ControlCommand::UnregisterFieldSet {
-                name: args.name.clone(),
+                name: args.name.to_string(),
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;

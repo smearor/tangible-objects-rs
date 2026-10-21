@@ -7,8 +7,6 @@ use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
 use tangible_objects_model::FilterMode;
-use tangible_objects_model::FrameCount;
-use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
@@ -31,8 +29,8 @@ impl EngineMcp {
                 None,
             )
         })?;
-        let stability = args.stability.map(FrameCount::new);
-        let stage = args.stage.map(StageName::new);
+        let stability = args.stability;
+        let stage = args.stage;
         self.handle
             .send_command(ControlCommand::SetFilterMode {
                 mode,

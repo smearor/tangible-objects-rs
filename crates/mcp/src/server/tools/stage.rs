@@ -6,7 +6,6 @@ use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
-use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
@@ -25,7 +24,7 @@ impl EngineMcp {
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
             .send_command(ControlCommand::RegisterStage {
-                name: StageName::new(&args.name),
+                name: args.name.clone(),
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
@@ -43,7 +42,7 @@ impl EngineMcp {
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
             .send_command(ControlCommand::UnregisterStage {
-                name: StageName::new(&args.name),
+                name: args.name.clone(),
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
