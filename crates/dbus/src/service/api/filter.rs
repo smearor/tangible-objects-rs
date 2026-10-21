@@ -16,16 +16,16 @@ use crate::service::engine_service::EngineService;
 pub(crate) async fn set_filter_mode(
     service: &EngineService,
     mode: &str,
-    stability: u64,
-    stage: &str,
+    stability: FrameCount,
+    stage: StageName,
 ) -> fdo::Result<()> {
     let mode = mode.parse::<FilterMode>().map_err(|_| {
         fdo::Error::InvalidArgs(
             "mode must be one of: off, immediate, gated, guarded, tangibles-only".to_string(),
         )
     })?;
-    let stability = (stability > 0).then(|| FrameCount::new(stability));
-    let stage = (!stage.is_empty()).then(|| StageName::new(stage));
+    let stability = (stability.as_u64() > 0).then_some(stability);
+    let stage = (!stage.as_str().is_empty()).then_some(stage);
     service
         .handle
         .send_command(ControlCommand::SetFilterMode {

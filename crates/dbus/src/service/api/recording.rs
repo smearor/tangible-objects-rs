@@ -45,13 +45,13 @@ pub(crate) async fn recording_status(service: &EngineService) -> Vec<(String, St
 pub(crate) async fn start_recording(
     service: &EngineService,
     base_path: &str,
-    label: &str,
+    label: RecordLabel,
 ) -> fdo::Result<()> {
     service
         .handle
         .send_command(ControlCommand::StartRecording {
             base_path: PathBuf::from(base_path),
-            label: (!label.is_empty()).then(|| RecordLabel::new(label)),
+            label: (!label.as_str().is_empty()).then_some(label),
         })
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
@@ -68,11 +68,14 @@ pub(crate) async fn stop_recording(service: &EngineService) -> fdo::Result<()> {
 
 /// Sets the ground-truth label for subsequent recorded frames; an empty
 /// string clears it.
-pub(crate) async fn set_record_label(service: &EngineService, label: &str) -> fdo::Result<()> {
+pub(crate) async fn set_record_label(
+    service: &EngineService,
+    label: RecordLabel,
+) -> fdo::Result<()> {
     service
         .handle
         .send_command(ControlCommand::SetRecordLabel(
-            (!label.is_empty()).then(|| RecordLabel::new(label)),
+            (!label.as_str().is_empty()).then_some(label),
         ))
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))

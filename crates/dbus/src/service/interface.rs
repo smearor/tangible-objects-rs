@@ -6,7 +6,20 @@
 //! zbus generates one `Interface` impl per `#[interface]` block, so
 //! the methods of `org.tangibleobjects.Engine1` cannot be split
 //! across impl blocks - delegation keeps the file readable instead.
+//! The NewType arguments are wire-transparent: `zvariant::Type`
+//! maps them onto the same `s`/`u`/`t`/`d` signatures the plain
+//! string/integer args produced before.
 
+use tangible_objects_model::AffinityFactor;
+use tangible_objects_model::FieldSetName;
+use tangible_objects_model::FrameCount;
+use tangible_objects_model::Owner;
+use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
+use tangible_objects_model::PatternTolerance;
+use tangible_objects_model::RecordLabel;
+use tangible_objects_model::SmoothingAlpha;
+use tangible_objects_model::StageName;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::ProfileInfo;
@@ -48,30 +61,35 @@ impl EngineService {
     /// the consecutive-matched-frames gate, `0` keeps it. `stage`
     /// narrows the switch to that scope's tangible stage, `""` applies
     /// to all.
-    async fn set_filter_mode(&self, mode: &str, stability: u64, stage: &str) -> fdo::Result<()> {
+    async fn set_filter_mode(
+        &self,
+        mode: &str,
+        stability: FrameCount,
+        stage: StageName,
+    ) -> fdo::Result<()> {
         api::filter::set_filter_mode(self, mode, stability, stage).await
     }
 
     /// Claims or creates a pipeline stage for `name` (EVENT_PIPELINE.md
     /// phase 7) - persists until `UnregisterStage`.
-    async fn register_stage(&self, name: &str) -> fdo::Result<()> {
+    async fn register_stage(&self, name: StageName) -> fdo::Result<()> {
         api::stage::register_stage(self, name).await
     }
 
     /// Removes the pipeline stage for `name` - its suppression state
     /// dies with it.
-    async fn unregister_stage(&self, name: &str) -> fdo::Result<()> {
+    async fn unregister_stage(&self, name: StageName) -> fdo::Result<()> {
         api::stage::unregister_stage(self, name).await
     }
 
     /// Starts a training session capturing a new profile with `name`.
-    async fn train_profile(&self, name: &str) -> fdo::Result<()> {
+    async fn train_profile(&self, name: PatternName) -> fdo::Result<()> {
         api::training::train_profile(self, name).await
     }
 
     /// Starts a recording session writing `<base_path>.jsonl` +
     /// `<base_path>.evtest`; an empty `label` records unlabeled.
-    async fn start_recording(&self, base_path: &str, label: &str) -> fdo::Result<()> {
+    async fn start_recording(&self, base_path: &str, label: RecordLabel) -> fdo::Result<()> {
         api::recording::start_recording(self, base_path, label).await
     }
 
@@ -82,7 +100,7 @@ impl EngineService {
 
     /// Sets the ground-truth label for subsequent recorded frames; an empty
     /// string clears it.
-    async fn set_record_label(&self, label: &str) -> fdo::Result<()> {
+    async fn set_record_label(&self, label: RecordLabel) -> fdo::Result<()> {
         api::recording::set_record_label(self, label).await
     }
 
@@ -157,8 +175,8 @@ impl EngineService {
         max_missing: u32,
         persist: bool,
         mode: &str,
-        affinity: f64,
-        smoothing: f64,
+        affinity: AffinityFactor,
+        smoothing: SmoothingAlpha,
     ) -> fdo::Result<()> {
         api::completion::set_completion(
             self,
@@ -223,14 +241,14 @@ impl EngineService {
     #[allow(clippy::too_many_arguments)]
     async fn register_pattern(
         &self,
-        name: &str,
+        name: PatternName,
         points: Vec<f64>,
-        tolerance: f64,
-        owner: &str,
+        tolerance: PatternTolerance,
+        owner: Owner,
         persistent: bool,
         spawn_on_partial: bool,
-        spawn_stability: u64,
-        stage: &str,
+        spawn_stability: FrameCount,
+        stage: StageName,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<()> {
         api::pattern::register_pattern(
@@ -252,13 +270,13 @@ impl EngineService {
     #[allow(clippy::too_many_arguments)]
     async fn update_profile(
         &self,
-        id: u32,
-        name: &str,
+        id: PatternId,
+        name: PatternName,
         points: Vec<f64>,
-        tolerance: f64,
+        tolerance: PatternTolerance,
         spawn_on_partial: bool,
-        spawn_stability: u64,
-        stage: &str,
+        spawn_stability: FrameCount,
+        stage: StageName,
     ) -> fdo::Result<()> {
         api::pattern::update_profile(
             self,
@@ -274,7 +292,7 @@ impl EngineService {
     }
 
     /// Removes a dynamically registered pattern by ID.
-    async fn unregister_pattern(&self, id: u32) -> fdo::Result<()> {
+    async fn unregister_pattern(&self, id: PatternId) -> fdo::Result<()> {
         api::pattern::unregister_pattern(self, id).await
     }
 
@@ -283,7 +301,7 @@ impl EngineService {
     async fn register_field_set(
         &self,
         toml_str: &str,
-        owner: &str,
+        owner: Owner,
         persistent: bool,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<()> {
@@ -291,14 +309,14 @@ impl EngineService {
     }
 
     /// Removes a field set by name.
-    async fn unregister_field_set(&self, name: &str) -> fdo::Result<()> {
+    async fn unregister_field_set(&self, name: FieldSetName) -> fdo::Result<()> {
         api::field_set::unregister_field_set(self, name).await
     }
 
     /// Removes every pattern and field set owned by `owner` - app
     /// cleanup hook; automatic cleanup also fires when a D-Bus caller's
     /// unique name vanishes.
-    async fn unregister_owner(&self, owner: &str) -> fdo::Result<()> {
+    async fn unregister_owner(&self, owner: Owner) -> fdo::Result<()> {
         api::owner::unregister_owner(self, owner).await
     }
 

@@ -1,7 +1,9 @@
 //! Completion methods - `completion`, `set_completion`.
 
+use tangible_objects_model::AffinityFactor;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
+use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_runtime::ControlCommand;
 use zbus::fdo;
 
@@ -34,8 +36,8 @@ pub(crate) async fn set_completion(
     max_missing: u32,
     persist: bool,
     mode: &str,
-    affinity: f64,
-    smoothing: f64,
+    affinity: AffinityFactor,
+    smoothing: SmoothingAlpha,
 ) -> fdo::Result<()> {
     let mode = mode
         .parse::<CompletionMode>()
@@ -50,8 +52,8 @@ pub(crate) async fn set_completion(
         max_missing,
         persist,
         mode,
-        affinity_factor: affinity.into(),
-        smoothing_alpha: smoothing.into(),
+        affinity_factor: affinity,
+        smoothing_alpha: smoothing,
     };
     service
         .handle

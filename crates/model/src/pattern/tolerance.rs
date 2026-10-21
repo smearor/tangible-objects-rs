@@ -61,3 +61,8 @@ impl Display for PatternTolerance {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for PatternTolerance {
+    const SIGNATURE: &'static zvariant::Signature = <f64 as zvariant::Type>::SIGNATURE;
+}

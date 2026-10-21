@@ -44,5 +44,10 @@ impl Display for RecordLabel {
     }
 }
 
+#[cfg(feature = "zbus")]
+impl zvariant::Type for RecordLabel {
+    const SIGNATURE: &'static zvariant::Signature = <String as zvariant::Type>::SIGNATURE;
+}
+
 #[cfg(feature = "async-graphql")]
 async_graphql::scalar!(RecordLabel);

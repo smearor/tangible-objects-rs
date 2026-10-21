@@ -4,7 +4,9 @@
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Millimeters;
+use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
@@ -20,12 +22,12 @@ use crate::service::engine_service::EngineService;
 /// fills the spawn/stage options - shared by `register_pattern` and
 /// `update_profile`.
 fn build_profile(
-    name: &str,
+    name: &PatternName,
     points: &[f64],
-    tolerance: f64,
+    tolerance: PatternTolerance,
     spawn_on_partial: bool,
-    spawn_stability: u64,
-    stage: &str,
+    spawn_stability: FrameCount,
+    stage: &StageName,
 ) -> fdo::Result<ProfileFile> {
     if !points.len().is_multiple_of(2) || points.is_empty() {
         return Err(fdo::Error::InvalidArgs(
@@ -36,11 +38,11 @@ fn build_profile(
         .chunks_exact(2)
         .map(|pair| Vec2::new(pair[0], pair[1]))
         .collect();
-    let mut profile = ProfileFile::from_points(name, &points, PatternTolerance::new(tolerance));
+    let mut profile = ProfileFile::from_points(name.as_str(), &points, tolerance);
     profile.spawn_on_partial = spawn_on_partial;
-    profile.stage = (!stage.is_empty()).then(|| StageName::new(stage));
-    if spawn_stability > 0 {
-        profile.spawn_stability = FrameCount::new(spawn_stability);
+    profile.stage = (!stage.as_str().is_empty()).then(|| stage.clone());
+    if spawn_stability.as_u64() > 0 {
+        profile.spawn_stability = spawn_stability;
     }
     Ok(profile)
 }
@@ -53,29 +55,29 @@ fn build_profile(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn register_pattern(
     service: &EngineService,
-    name: &str,
+    name: PatternName,
     points: Vec<f64>,
-    tolerance: f64,
-    owner: &str,
+    tolerance: PatternTolerance,
+    owner: Owner,
     persistent: bool,
     spawn_on_partial: bool,
-    spawn_stability: u64,
-    stage: &str,
+    spawn_stability: FrameCount,
+    stage: StageName,
     header: &Header<'_>,
 ) -> fdo::Result<()> {
     let profile = build_profile(
-        name,
+        &name,
         &points,
         tolerance,
         spawn_on_partial,
         spawn_stability,
-        stage,
+        &stage,
     )?;
     service
         .handle
         .send_command(ControlCommand::Register {
             registration: Box::new(Registration::Pattern(profile)),
-            owner: Some(service.session_owner(owner, header)),
+            owner: Some(service.session_owner(owner.as_str(), header)),
             lifetime: if persistent {
                 Lifetime::Persistent
             } else {
@@ -90,26 +92,26 @@ pub(crate) async fn register_pattern(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn update_profile(
     service: &EngineService,
-    id: u32,
-    name: &str,
+    id: PatternId,
+    name: PatternName,
     points: Vec<f64>,
-    tolerance: f64,
+    tolerance: PatternTolerance,
     spawn_on_partial: bool,
-    spawn_stability: u64,
-    stage: &str,
+    spawn_stability: FrameCount,
+    stage: StageName,
 ) -> fdo::Result<()> {
     let profile = build_profile(
-        name,
+        &name,
         &points,
         tolerance,
         spawn_on_partial,
         spawn_stability,
-        stage,
+        &stage,
     )?;
     service
         .handle
         .send_command(ControlCommand::UpdateProfile {
-            id: PatternId::new(id),
+            id,
             profile: Box::new(profile),
         })
         .await
@@ -117,12 +119,10 @@ pub(crate) async fn update_profile(
 }
 
 /// Removes a dynamically registered pattern by ID.
-pub(crate) async fn unregister_pattern(service: &EngineService, id: u32) -> fdo::Result<()> {
+pub(crate) async fn unregister_pattern(service: &EngineService, id: PatternId) -> fdo::Result<()> {
     service
         .handle
-        .send_command(ControlCommand::UnregisterPattern {
-            id: PatternId::new(id),
-        })
+        .send_command(ControlCommand::UnregisterPattern { id })
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }

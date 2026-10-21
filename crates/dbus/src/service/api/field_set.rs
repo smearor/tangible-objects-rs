@@ -1,7 +1,9 @@
 //! Field-set methods - `register_field_set`, `unregister_field_set`.
 
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::Lifetime;
+use tangible_objects_model::Owner;
 use tangible_objects_model::Registration;
 use tangible_objects_runtime::ControlCommand;
 use zbus::fdo;
@@ -14,7 +16,7 @@ use crate::service::engine_service::EngineService;
 pub(crate) async fn register_field_set(
     service: &EngineService,
     toml_str: &str,
-    owner: &str,
+    owner: Owner,
     persistent: bool,
     header: &Header<'_>,
 ) -> fdo::Result<()> {
@@ -24,7 +26,7 @@ pub(crate) async fn register_field_set(
         .handle
         .send_command(ControlCommand::Register {
             registration: Box::new(Registration::FieldSet(set)),
-            owner: Some(service.session_owner(owner, header)),
+            owner: Some(service.session_owner(owner.as_str(), header)),
             lifetime: if persistent {
                 Lifetime::Persistent
             } else {
@@ -36,7 +38,10 @@ pub(crate) async fn register_field_set(
 }
 
 /// Removes a field set by name.
-pub(crate) async fn unregister_field_set(service: &EngineService, name: &str) -> fdo::Result<()> {
+pub(crate) async fn unregister_field_set(
+    service: &EngineService,
+    name: FieldSetName,
+) -> fdo::Result<()> {
     service
         .handle
         .send_command(ControlCommand::UnregisterFieldSet {
