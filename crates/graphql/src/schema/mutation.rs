@@ -146,6 +146,16 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Shows or hides the daemon-embedded GUI window (`crates/gtk`,
+    /// `--gui` mode) - the command is ignored on headless daemons.
+    async fn set_gui_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetGuiVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
     /// Registers a figure profile at runtime (DYNAMIC_PROFILES.md).
     /// Queued to the device loop - fingerprint collisions are rejected
     /// there; verify via the `profiles` query.

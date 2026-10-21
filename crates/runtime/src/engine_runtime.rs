@@ -191,6 +191,8 @@ impl EngineRuntime {
             field_sets: self.field_sets.clone(),
             metrics: self.metrics.clone(),
             message: self.message.clone(),
+            #[cfg(feature = "gui")]
+            gui_visible: self.gui_visible,
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -215,6 +217,8 @@ impl EngineRuntime {
             field_sets: self.field_sets.clone(),
             metrics: self.metrics.clone(),
             message: self.message.clone(),
+            #[cfg(feature = "gui")]
+            gui_visible: self.gui_visible,
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));

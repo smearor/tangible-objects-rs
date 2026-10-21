@@ -271,6 +271,8 @@ pub(crate) fn apply_registration(
             println!("\n{}", text);
             runtime.set_message((!text.is_empty()).then_some(text));
         }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetGuiVisible(visible) => runtime.set_gui_visible(visible),
         other => warn!(?other, "command ignored"),
     }
 }

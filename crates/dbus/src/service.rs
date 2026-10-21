@@ -420,6 +420,15 @@ impl EngineService {
             .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
     }
 
+    /// Shows or hides the daemon-embedded GUI window (`--gui` mode) -
+    /// ignored on headless daemons.
+    async fn set_gui_visible(&self, visible: bool) -> fdo::Result<()> {
+        self.handle
+            .send_command(ControlCommand::SetGuiVisible(visible))
+            .await
+            .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+    }
+
     /// Registers a figure profile at runtime: `points` is the flat pin
     /// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
     /// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps

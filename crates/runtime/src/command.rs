@@ -117,4 +117,9 @@ pub enum ControlCommand {
         /// Owner name (or the caller's unique bus name on D-Bus).
         owner: Owner,
     },
+    /// Show or hide the daemon-embedded GUI window (`crates/gtk`,
+    /// `--gui` mode). Part of the command vocabulary on all builds -
+    /// daemons without the `gui` feature ignore it (the runtime's
+    /// `gui_visible` state is feature-gated).
+    SetGuiVisible(bool),
 }

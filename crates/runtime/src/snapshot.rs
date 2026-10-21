@@ -37,4 +37,9 @@ pub struct EngineSnapshot {
     /// User-facing message currently displayed in the GUI
     /// (`show_message` command).
     pub message: Option<String>,
+    /// Whether the daemon-embedded GUI window is shown
+    /// (`SetGuiVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub gui_visible: bool,
 }

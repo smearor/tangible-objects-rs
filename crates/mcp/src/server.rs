@@ -43,6 +43,7 @@ use super::tool_args::RegisterFieldSetArgs;
 use super::tool_args::RegisterPatternArgs;
 use super::tool_args::SetCompletionArgs;
 use super::tool_args::SetFilterModeArgs;
+use super::tool_args::SetGuiVisibleArgs;
 use super::tool_args::SetRecordLabelArgs;
 use super::tool_args::ShowMessageArgs;
 use super::tool_args::SimilarityArgs;
@@ -234,6 +235,24 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(
             "message shown".to_string(),
         )]))
+    }
+
+    /// Shows or hides the daemon-embedded GUI window (`--gui` mode).
+    #[tool(
+        description = "Show or hide the daemon-embedded GUI window (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_gui_visible(
+        &self,
+        Parameters(args): Parameters<SetGuiVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetGuiVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "gui visible: {}",
+            args.visible
+        ))]))
     }
 
     /// Runs the offline deviation analysis over a recording artifact.

@@ -72,6 +72,13 @@ pub struct ShowMessageArgs {
     pub text: String,
 }
 
+/// Arguments for the `set_gui_visible` tool.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct SetGuiVisibleArgs {
+    /// `true` shows the window, `false` hides it.
+    pub visible: bool,
+}
+
 /// Arguments for the `register_pattern` tool.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegisterPatternArgs {
