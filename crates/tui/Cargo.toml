@@ -1,0 +1,19 @@
+[package]
+name = "tangible-objects-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Terminal dashboard for the tangible-objects daemon - live surface view over GraphQL."
+
+[dependencies]
+clap = { workspace = true, features = ["env"] }
+crossterm.workspace = true
+futures-lite.workspace = true
+ratatui.workspace = true
+tangible-objects-client.workspace = true
+tangible-objects-model.workspace = true
+tokio.workspace = true
