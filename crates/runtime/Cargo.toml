@@ -11,6 +11,7 @@ description = "Shared runtime: event distribution, snapshots and control channel
 
 [features]
 async-graphql = ["dep:async-graphql", "tangible-objects-model/async-graphql"]
+gui = []
 zbus = ["dep:zvariant", "tangible-objects-model/zbus"]
 
 [dependencies]

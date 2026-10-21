@@ -1,0 +1,18 @@
+[package]
+name = "tangible-objects-gtk"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Daemon-embedded GTK4/Cairo visualization for tangible object detection - embedded library, not a remote client."
+
+[dependencies]
+cairo-rs.workspace = true
+gtk4.workspace = true
+libc.workspace = true
+tangible-objects-engine.workspace = true
+tangible-objects-model.workspace = true
+tangible-objects-runtime.workspace = true

@@ -7,9 +7,6 @@
 
 mod modes;
 
-#[cfg(feature = "gui")]
-mod gtk_app;
-
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
@@ -56,6 +53,7 @@ struct Cli {
     #[arg(long, group = "mode")]
     train: bool,
     /// GTK Fullscreen-Visualisierung (Feature gui)
+    #[cfg(feature = "gui")]
     #[arg(long, group = "mode")]
     gui: bool,
     /// Filter-Proxy: Grab + uinput-Klon, Tangibles unterdrückt
@@ -257,6 +255,7 @@ fn main() -> Result<()> {
             device_profiles,
         );
     }
+    #[cfg(feature = "gui")]
     if cli.gui {
         let dev = cli.device.ok_or_else(|| {
             miette::miette!("Usage: tangible-objects --gui --device /dev/input/eventX")
@@ -314,19 +313,23 @@ fn run_gui_mode(
     config: modes::DetectionConfig,
     interfaces: modes::Interfaces,
 ) -> Result<()> {
-    gtk_app::run_gui(dev, profiles_dir, device_profiles, config, interfaces);
+    // Daemon plumbing flows into the embedded GUI as injected hooks -
+    // the gtk crate links engine/model/runtime, never the daemon.
+    let hooks = tangible_objects_gtk::GuiHooks {
+        spawn_interfaces: Box::new(move |handle| modes::spawn_interfaces(handle, &interfaces)),
+        drain_control_commands: modes::drain_control_commands,
+        status_of_session: modes::status_of_session,
+        effective_calibration: modes::effective_calibration,
+        register_profile: modes::register_profile_hook,
+    };
+    tangible_objects_gtk::run_gui(
+        dev.to_string(),
+        profiles_dir.map(str::to_string),
+        modes::load_patterns(profiles_dir),
+        device_profiles,
+        config,
+        true,
+        hooks,
+    );
     Ok(())
-}
-
-/// Fallback when the binary was built without the `gui` feature.
-#[cfg(not(feature = "gui"))]
-fn run_gui_mode(
-    _dev: &str,
-    _profiles_dir: Option<&str>,
-    _device_profiles: Option<PathBuf>,
-    _config: modes::DetectionConfig,
-    _interfaces: modes::Interfaces,
-) -> Result<()> {
-    eprintln!("GUI-Modus nicht kompiliert. Baue mit: cargo build --features gui");
-    std::process::exit(1);
 }

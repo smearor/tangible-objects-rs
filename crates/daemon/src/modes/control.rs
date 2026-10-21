@@ -5,6 +5,7 @@ use tangible_objects_engine::Engine;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::PinCount;
+#[cfg(feature = "gui")]
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
 use tangible_objects_runtime::ControlCommand;
