@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternId;
@@ -6,7 +7,7 @@ use crate::Percentiles;
 use crate::utilization::RatioBands;
 
 /// Utilization statistics of one pattern across the recording.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PatternUtilization {
     /// ID of the figure profile; `None` for label-only rows (a label that
     /// never produced a candidate, e.g. a figure whose pin count exceeded

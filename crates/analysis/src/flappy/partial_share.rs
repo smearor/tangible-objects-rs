@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::CandidateCount;
 use tangible_objects_model::PatternName;
@@ -7,7 +8,7 @@ use tangible_objects_model::PatternName;
 /// A high share indicates unstable contacts at figure level - the pattern
 /// only matched because one pin was allowed to drop out. Invariant:
 /// `partial_matches <= matched_total`.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PartialShare {
     /// Name of the figure profile.
     pub pattern_name: PatternName,

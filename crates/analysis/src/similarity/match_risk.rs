@@ -1,7 +1,8 @@
+use serde::Deserialize;
 use serde::Serialize;
 
 /// How likely a same-size contact set of two profiles collides.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum MatchRisk {
     /// Even the closest subset pairing stays beyond the partial
     /// tolerance - effectively no phantom surface.

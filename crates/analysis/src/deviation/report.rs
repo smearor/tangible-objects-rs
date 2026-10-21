@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::CombinationBuf;
 use tangible_objects_model::Combinations;
@@ -25,7 +26,7 @@ use crate::Recording;
 /// often killed the match. Equivalent to manually inspecting
 /// `candidates[].deviations` around dropout windows - but over the
 /// whole recording and per pattern.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeviationReport {
     /// One analysis per pattern that produced at least one full
     /// candidate; sorted by pattern ID.

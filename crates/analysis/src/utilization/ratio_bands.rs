@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 
 use tangible_objects_model::FrameCount;
@@ -7,7 +8,7 @@ use tangible_objects_model::FrameCount;
 ///
 /// Ratios `>= 1.0` exceed the configured tolerance; those frames are
 /// counted in `over_tolerance_frames`, not here.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RatioBands {
     /// Frames whose best candidate needed under 25 % of the configured
     /// tolerance.

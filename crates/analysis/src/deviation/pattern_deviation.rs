@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternId;
@@ -6,7 +7,7 @@ use tangible_objects_model::PatternName;
 use super::DistanceStats;
 
 /// Per-pattern deviation analysis.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PatternDeviation {
     /// Pattern the statistics belong to.
     pub pattern_id: PatternId,

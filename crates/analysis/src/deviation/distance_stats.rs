@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
@@ -8,7 +9,7 @@ use tangible_objects_model::Millimeters;
 /// `index i` refers to the pattern's `sorted_distances[i]`, i.e. a
 /// concrete pin pair; a high `blocker` count pinpoints the unstable
 /// pin pair that most often pushed the deviation over tolerance.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DistanceStats {
     /// Distance index into the pattern's sorted fingerprint.
     pub index: usize,

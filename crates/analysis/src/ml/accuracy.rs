@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
 
@@ -7,7 +8,7 @@ use std::fmt::Display;
 /// `Option<Accuracy>` is `None` when evaluation was impossible (no held-out
 /// samples, untrainable model); a `NaN` input clamps to `0.0` rather than
 /// propagating.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Accuracy(pub f64);
 
 impl Accuracy {

@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::MatchScore;
@@ -20,7 +21,7 @@ const THRESHOLDS: &[f64] = &[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 /// matcher (τ = 1.0) sits on.
 ///
 /// [`CandidateReport::normalized_score`]: tangible_objects_model::CandidateReport::normalized_score
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScoringReport {
     /// Labeled frames in the recording (0 → sweep skipped).
     pub labeled_frames: FrameCount,

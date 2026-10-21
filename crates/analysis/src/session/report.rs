@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::AnalysisMode;
 use tangible_objects_model::PatternSet;
@@ -13,7 +14,7 @@ use crate::UtilizationReport;
 
 /// All recording-based reports bundled into one session analysis -
 /// the remote-interface counterpart of `--analyze`.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AnalysisReport {
     /// Per-pattern uptime and false-negative statistics.
     pub utilization: UtilizationReport,

@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::PatternSet;
 
@@ -13,7 +14,7 @@ use super::SimilarityPair;
 /// phantom spawn is geometrically possible. Pairs are sorted ascending
 /// by `min_max_deviation` - the top entries are the highest collision
 /// risks (and the first candidates for `spawn_on_partial = false`).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SimilarityReport {
     /// One entry per distinct pattern pair, sorted by collision risk.
     pub pairs: Vec<SimilarityPair>,

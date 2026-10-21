@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 
 use tangible_objects_model::CandidateReport;
@@ -9,7 +10,7 @@ use tangible_objects_model::PatternId;
 /// One dataset row: a recorded candidate with its ground-truth target.
 ///
 /// Serializes as one JSONL object per line.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DatasetRow {
     /// Frame the candidate was tested in.
     pub frame: FrameNumber,

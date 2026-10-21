@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -12,7 +13,7 @@ use crate::Percentiles;
 use crate::Recording;
 
 /// Tolerance-utilization report over a whole recording (TRAINING.md 2.1).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UtilizationReport {
     /// Total recorded frames.
     pub total_frames: FrameCount,

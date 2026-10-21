@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde::Serialize;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::Deviation;
@@ -18,7 +19,7 @@ use super::subset_collision::SubsetCollision;
 /// over all same-size subset fingerprints (`contact_count` pins kept)
 /// - the geometric phantom surface. A value ≤ tolerance means a real
 ///   contact set can satisfy both fingerprints.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SimilarityPair {
     /// First profile of the pair.
     pub a: PatternName,
