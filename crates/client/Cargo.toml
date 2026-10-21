@@ -1,0 +1,23 @@
+[package]
+name = "tangible-objects-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Typed GraphQL client for the tangible-objects daemon."
+
+[dependencies]
+futures.workspace = true
+futures-core.workspace = true
+futures-lite.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tangible-objects-model.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tokio-tungstenite.workspace = true

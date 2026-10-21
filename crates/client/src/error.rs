@@ -1,0 +1,30 @@
+//! Errors the [`crate::GraphQLClient`] can raise.
+
+use thiserror::Error;
+
+/// Failure modes of client calls - transport, protocol and GraphQL-level
+/// errors stay distinguishable (GraphQL `errors` arrays keep their
+/// structure, not a stringified blob).
+#[derive(Debug, Error)]
+pub enum ClientError {
+    /// HTTP request failed (unreachable host, 4xx/5xx, body decode).
+    #[error("HTTP request failed: {0}")]
+    Http(#[from] reqwest::Error),
+    /// WebSocket handshake or frame handling failed.
+    #[error("WebSocket error: {0}")]
+    Ws(#[from] tokio_tungstenite::tungstenite::Error),
+    /// Malformed handshake - no `connection_ack`, or a `next` message
+    /// without the subscription's payload.
+    #[error("graphql-transport-ws protocol violation: {0}")]
+    Protocol(String),
+    /// The endpoint returned a GraphQL `errors` array (parse/validation
+    /// errors, resolver failures).
+    #[error("GraphQL errors: {0}")]
+    Graphql(serde_json::Value),
+    /// A response decoded but carried no `data` payload.
+    #[error("response contained no data")]
+    NoData,
+    /// A `data` field failed to deserialize into the expected type.
+    #[error("response decode failed: {0}")]
+    Decode(serde_json::Error),
+}
