@@ -1,6 +1,7 @@
 //! `stages` args - pipeline stage lifecycle.
 
 use clap::Subcommand;
+use tangible_objects_model::StageName;
 
 /// `stages` subcommands.
 #[derive(Debug, clap::Args)]
@@ -16,11 +17,11 @@ pub enum StagesCommand {
     /// Claim/create a pipeline stage (`registerStage`).
     Register {
         /// Stage name.
-        name: String,
+        name: StageName,
     },
     /// Remove a stage (`unregisterStage`).
     Unregister {
         /// Stage name.
-        name: String,
+        name: StageName,
     },
 }

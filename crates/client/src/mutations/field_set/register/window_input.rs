@@ -3,6 +3,7 @@
 //! [`tangible_objects_model::WindowAnchor`].
 
 use cynic::InputObject;
+use tangible_objects_model::Millimeters;
 
 /// The `WindowInput` input object - wire DTO of
 /// [`tangible_objects_model::WindowAnchor`].
@@ -15,11 +16,11 @@ use cynic::InputObject;
 )]
 pub(crate) struct WindowInput {
     /// Window's left edge in screen mm.
-    pub x_offset: f64,
+    pub x_offset: Millimeters,
     /// Window's top edge in screen mm.
-    pub y_offset: f64,
+    pub y_offset: Millimeters,
     /// Window width for normalized field coordinates.
-    pub width: Option<f64>,
+    pub width: Option<Millimeters>,
     /// Window height for normalized field coordinates.
-    pub height: Option<f64>,
+    pub height: Option<Millimeters>,
 }

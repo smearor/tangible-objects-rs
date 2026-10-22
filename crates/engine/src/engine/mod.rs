@@ -6,20 +6,21 @@
 //! `SYN_REPORT` that carries domain [`EngineEvent`]s (touch changes, tangible
 //! added/moved/removed) for interface crates.
 
-mod best_match;
+mod cell_state;
 mod detection;
 mod diagnostics;
 mod error;
-pub(crate) mod fields;
+pub(crate) mod field_tracker;
 mod frame;
 mod matching;
 mod registration_error;
 mod touch_state;
 mod tracker;
 
+pub(crate) use cell_state::CellState;
 pub use detection::Engine;
 pub use error::EngineError;
-pub use fields::FieldTracker;
+pub use field_tracker::FieldTracker;
 pub use frame::EngineFrame;
 pub use registration_error::RegistrationError;
 pub use tangible_objects_model::EngineEvent;

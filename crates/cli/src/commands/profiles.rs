@@ -6,9 +6,6 @@ use std::path::Path;
 use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
 use tangible_objects_client::ProfileQuery;
-use tangible_objects_model::Lifetime;
-use tangible_objects_model::Owner;
-use tangible_objects_model::PatternId;
 use tangible_objects_model::ProfileFile;
 
 use crate::args::Cli;
@@ -52,17 +49,17 @@ pub(crate) async fn profiles(
         }
         ProfilesCommand::Show { id } => {
             let list = client.profiles(&ProfileQuery::default()).await?;
-            let found = list.iter().find(|p| p.pattern_id.as_u32() == *id);
+            let found = list.iter().find(|p| p.pattern_id == *id);
             match found {
                 Some(p) => println!("{}", serde_json::to_string_pretty(p).unwrap_or_default()),
                 None => eprintln!("no profile with id {id}"),
             }
         }
         ProfilesCommand::Delete { id } => {
-            client.unregister_pattern(PatternId::new(*id)).await?;
+            client.unregister_pattern(*id).await?;
         }
         ProfilesCommand::UnregisterOwner { owner } => {
-            client.unregister_owner(&Owner::new(owner)).await?;
+            client.unregister_owner(owner).await?;
         }
         ProfilesCommand::Register {
             file,
@@ -70,14 +67,13 @@ pub(crate) async fn profiles(
             lifetime,
         } => {
             let profile = load_profile(file)?;
-            let owner = owner.as_deref().map(Owner::new);
             client
-                .register_pattern(&profile, owner.as_ref(), parse_lifetime(lifetime)?)
+                .register_pattern(&profile, owner.as_ref(), *lifetime)
                 .await?;
         }
         ProfilesCommand::Update { id, file } => {
             let profile = load_profile(file)?;
-            client.update_profile(PatternId::new(*id), &profile).await?;
+            client.update_profile(*id, &profile).await?;
         }
         ProfilesCommand::Train { name } => {
             client.train_profile(name).await?;
@@ -87,13 +83,7 @@ pub(crate) async fn profiles(
 }
 
 /// Loads a profile `.toml` for `profiles register|update`.
-fn load_profile(file: &str) -> Result<ProfileFile, ClientError> {
-    ProfileFile::load(Path::new(file))
-        .map_err(|e| ClientError::Protocol(format!("profile load {file}: {e}")))
-}
-
-/// Parses `session|persistent` into [`Lifetime`].
-fn parse_lifetime(text: &str) -> Result<Lifetime, ClientError> {
-    serde_json::from_value(serde_json::json!(text))
-        .map_err(|e| ClientError::Protocol(format!("unknown lifetime {text}: {e}")))
+fn load_profile(file: &Path) -> Result<ProfileFile, ClientError> {
+    ProfileFile::load(file)
+        .map_err(|e| ClientError::Protocol(format!("profile load {}: {e}", file.display())))
 }

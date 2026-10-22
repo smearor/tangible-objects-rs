@@ -10,6 +10,7 @@
 //! maps them onto the same `s`/`u`/`t`/`d` signatures the plain
 //! string/integer args produced before.
 
+use std::path::Path;
 use tangible_objects_model::AffinityFactor;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
@@ -60,8 +61,8 @@ impl EngineService {
     /// Loaded figure profiles - `owner` filters to one owning
     /// application (`""` for all), `static_only` keeps only owner-less
     /// static profiles.
-    async fn list_profiles(&self, owner: &str, static_only: bool) -> Vec<ProfileInfo> {
-        api::profiles::list_profiles(self, owner, static_only).await
+    async fn list_profiles(&self, owner: Owner, static_only: bool) -> Vec<ProfileInfo> {
+        api::profiles::list_profiles(self, &owner, static_only).await
     }
 
     /// Attached input device as a flat key-value list
@@ -111,7 +112,7 @@ impl EngineService {
     /// Starts a recording session writing `<base_path>.jsonl` +
     /// `<base_path>.evtest`; an empty `label` records unlabeled.
     async fn start_recording(&self, base_path: &str, label: RecordLabel) -> fdo::Result<()> {
-        api::recording::start_recording(self, base_path, label).await
+        api::recording::start_recording(self, std::path::Path::new(base_path), label).await
     }
 
     /// Stops the active recording session.
@@ -257,7 +258,7 @@ impl EngineService {
     /// Reads a recording artifact file (`*.jsonl`, `*.evtest`,
     /// `*.dataset.jsonl`, no `..` components) from the daemon host.
     async fn recording_artifact(&self, path: &str) -> fdo::Result<String> {
-        api::recording::recording_artifact(self, path).await
+        api::recording::recording_artifact(self, Path::new(path)).await
     }
 
     /// Shows or hides the daemon-embedded GUI window (`--gui` mode) -

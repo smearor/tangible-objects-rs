@@ -1,20 +1,22 @@
 //! `serve`/`spawn` - runs the D-Bus service on the session bus and
 //! forwards domain events as signals until the device loop stops.
 
+use crate::service::EngineService;
+use crate::service::OwnerSessions;
+use crate::service::signals::emit_signal;
 use std::future::pending;
-
+use std::thread::JoinHandle;
+use tangible_objects_model::Owner;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
+use tokio::runtime::Runtime;
 use tokio::sync::broadcast::error::RecvError;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
 use zbus::connection;
+use zbus::fdo::DBusProxy;
 use zbus::object_server::SignalEmitter;
-
-use crate::service::EngineService;
-use crate::service::OwnerSessions;
-use crate::service::signals::emit_signal;
 
 /// Well-known bus name of the daemon's D-Bus service.
 pub const BUS_NAME: &str = "org.tangibleobjects.Engine";
@@ -42,7 +44,7 @@ pub async fn serve(handle: EngineHandle) -> zbus::Result<()> {
 
     // Disconnect cleanup: when a caller's unique bus name vanishes,
     // unregister everything that name had registered (session-scoped).
-    let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
+    let proxy = DBusProxy::new(&connection).await?;
     let mut owner_changes = proxy.receive_name_owner_changed().await?;
     let cleanup_handle = handle.clone();
     tokio::spawn(async move {
@@ -56,7 +58,7 @@ pub async fn serve(handle: EngineHandle) -> zbus::Result<()> {
                 continue;
             }
             let name = args.name().to_string();
-            let owners: Vec<String> = owner_sessions
+            let owners: Vec<Owner> = owner_sessions
                 .lock()
                 .map(|mut sessions| {
                     sessions
@@ -69,9 +71,7 @@ pub async fn serve(handle: EngineHandle) -> zbus::Result<()> {
             for owner in owners {
                 info!(%owner, %name, "D-Bus caller vanished - unregistering");
                 let _ = cleanup_handle
-                    .send_command(ControlCommand::UnregisterOwner {
-                        owner: owner.into(),
-                    })
+                    .send_command(ControlCommand::UnregisterOwner { owner })
                     .await;
             }
         }
@@ -100,8 +100,8 @@ pub async fn serve(handle: EngineHandle) -> zbus::Result<()> {
 
 /// Spawns the D-Bus service on a dedicated thread with its own tokio
 /// runtime, keeping the daemon's synchronous device loop untouched.
-pub fn spawn(handle: EngineHandle) -> std::thread::JoinHandle<()> {
-    std::thread::spawn(move || match tokio::runtime::Runtime::new() {
+pub fn spawn(handle: EngineHandle) -> JoinHandle<()> {
+    std::thread::spawn(move || match Runtime::new() {
         Ok(runtime) => {
             if let Err(err) = runtime.block_on(serve(handle)) {
                 error!(%err, "D-Bus service failed");

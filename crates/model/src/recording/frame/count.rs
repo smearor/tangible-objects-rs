@@ -1,8 +1,10 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
+use std::num::ParseIntError;
 use std::ops::Add;
 use std::ops::AddAssign;
+use std::str::FromStr;
 
 /// A count of frames - a cardinality, not an ordinal.
 ///
@@ -62,6 +64,15 @@ impl Add<FrameCount> for FrameCount {
 impl AddAssign<u64> for FrameCount {
     fn add_assign(&mut self, rhs: u64) {
         self.0 += rhs;
+    }
+}
+
+impl FromStr for FrameCount {
+    type Err = ParseIntError;
+
+    /// Parses the numeric frame count (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u64>().map(Self::new)
     }
 }
 

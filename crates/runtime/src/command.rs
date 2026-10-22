@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
@@ -51,7 +53,7 @@ pub enum ControlCommand {
         name: StageName,
     },
     /// Capture a new figure profile with the given name.
-    TrainProfile(String),
+    TrainProfile(PatternName),
     /// Start a recording session writing `<base_path>.jsonl` (frames) and
     /// `<base_path>.evtest` (raw events).
     StartRecording {
@@ -109,7 +111,7 @@ pub enum ControlCommand {
     /// Remove a field set by name.
     UnregisterFieldSet {
         /// Field set to remove.
-        name: String,
+        name: FieldSetName,
     },
     /// Remove every pattern and field set owned by `owner` - used for
     /// explicit app cleanup and D-Bus disconnect handling.

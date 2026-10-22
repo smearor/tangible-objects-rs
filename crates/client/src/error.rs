@@ -10,9 +10,11 @@ pub enum ClientError {
     /// HTTP request failed (unreachable host, 4xx/5xx, body decode).
     #[error("HTTP request failed: {0}")]
     Http(#[from] reqwest::Error),
-    /// WebSocket handshake or frame handling failed.
+    /// WebSocket handshake or frame handling failed - boxed: the
+    /// tungstenite error enum is ~140 bytes and would dominate
+    /// `size_of::<ClientError>`.
     #[error("WebSocket error: {0}")]
-    Ws(#[from] tokio_tungstenite::tungstenite::Error),
+    Ws(Box<tokio_tungstenite::tungstenite::Error>),
     /// `graphql-transport-ws` subscription failure reported by
     /// `graphql-ws-client` - handshake, keepalive timeout, GraphQL
     /// `error` frames and frame decode all surface here.
@@ -37,4 +39,11 @@ pub enum ClientError {
     /// A `data` field failed to deserialize into the expected type.
     #[error("response decode failed: {0}")]
     Decode(serde_json::Error),
+}
+
+impl From<tokio_tungstenite::tungstenite::Error> for ClientError {
+    /// Wraps the transport error boxed (see [`ClientError::Ws`]).
+    fn from(e: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self::Ws(Box::new(e))
+    }
 }

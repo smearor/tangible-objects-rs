@@ -54,7 +54,7 @@ impl QueryRoot {
     async fn profiles(
         &self,
         ctx: &Context<'_>,
-        owner: Option<String>,
+        owner: Option<Owner>,
         static_only: Option<bool>,
     ) -> Result<Vec<ProfileInfo>> {
         let handle = ctx.data::<EngineHandle>()?;
@@ -62,7 +62,7 @@ impl QueryRoot {
             .profiles()
             .into_iter()
             .filter(|info| match &owner {
-                Some(owner) => info.owner.as_ref().map(Owner::as_str) == Some(owner.as_str()),
+                Some(owner) => info.owner.as_ref() == Some(owner),
                 None => true,
             })
             .filter(|info| !(static_only.unwrap_or(false) && info.owner.is_some()))

@@ -239,10 +239,8 @@ pub(crate) fn apply_registration(
         ControlCommand::UnregisterFieldSet { name } => {
             if engine.remove_field_set(&name) {
                 runtime.set_field_sets(engine.field_sets().to_vec());
-                unpersist("fields.d", &name);
-                runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered {
-                    name: name.clone().into(),
-                });
+                unpersist("fields.d", name.as_str());
+                runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
                 println!("\nFeld-Set entfernt: {name}");
             } else {
                 println!("\nFeld-Set {name} nicht gefunden");
@@ -252,14 +250,12 @@ pub(crate) fn apply_registration(
             let (patterns, field_sets) = engine.remove_by_owner(&owner);
             for (id, name) in &patterns {
                 runtime.remove_profile(*id);
-                unpersist("profiles.d", name);
+                unpersist("profiles.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::ProfileUnregistered { pattern_id: *id });
             }
             for name in &field_sets {
-                unpersist("fields.d", name);
-                runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered {
-                    name: name.clone().into(),
-                });
+                unpersist("fields.d", name.as_str());
+                runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
             }
             runtime.set_field_sets(engine.field_sets().to_vec());
             println!(

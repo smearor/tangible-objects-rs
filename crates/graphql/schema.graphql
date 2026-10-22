@@ -278,24 +278,24 @@ input FieldInput {
 	"""
 	Cell name.
 	"""
-	name: String!
+	name: FieldName!
 	"""
 	Bounding box in mm (or 0..1 normalized when the window carries
 	width/height).
 	"""
-	xMin: Float!
+	xMin: Millimeters!
 	"""
 	Lower y bound.
 	"""
-	yMin: Float!
+	yMin: Millimeters!
 	"""
 	Upper x bound.
 	"""
-	xMax: Float!
+	xMax: Millimeters!
 	"""
 	Upper y bound.
 	"""
-	yMax: Float!
+	yMax: Millimeters!
 }
 
 scalar FieldName
@@ -362,6 +362,8 @@ enum Lifetime {
 	PERSISTENT
 }
 
+scalar Millimeters
+
 type MutationRoot {
 	"""
 	Switches the filter proxy's suppression policy
@@ -387,12 +389,12 @@ type MutationRoot {
 	Starts a training session that captures a new profile with the given
 	name.
 	"""
-	trainProfile(name: String!): Boolean!
+	trainProfile(name: PatternName!): Boolean!
 	"""
 	Starts a recording session writing `<base_path>.jsonl` +
 	`<base_path>.evtest`, optionally labeled.
 	"""
-	startRecording(basePath: String!, label: String): Boolean!
+	startRecording(basePath: String!, label: RecordLabel): Boolean!
 	"""
 	Stops the active recording session.
 	"""
@@ -401,7 +403,7 @@ type MutationRoot {
 	Changes the ground-truth label applied to subsequent recorded frames;
 	`null` clears it.
 	"""
-	setRecordLabel(label: String): Boolean!
+	setRecordLabel(label: RecordLabel): Boolean!
 	"""
 	Replaces the missing-pin completion configuration. Takes a full
 	config object - read the current one via the `completion` query,
@@ -428,7 +430,7 @@ type MutationRoot {
 	Queued to the device loop - fingerprint collisions are rejected
 	there; verify via the `profiles` query.
 	"""
-	registerPattern(input: RegisterPatternInput!, owner: String, lifetime: Lifetime): Boolean!
+	registerPattern(input: RegisterPatternInput!, owner: Owner, lifetime: Lifetime): Boolean!
 	"""
 	Replaces a registered pattern's geometry/name while keeping its
 	ID. Applies to new matches only.
@@ -441,15 +443,15 @@ type MutationRoot {
 	"""
 	Removes every pattern and field set owned by `owner`.
 	"""
-	unregisterOwner(owner: String!): Boolean!
+	unregisterOwner(owner: Owner!): Boolean!
 	"""
 	Registers an occupancy field set at runtime.
 	"""
-	registerFieldSet(input: RegisterFieldSetInput!, owner: String, lifetime: Lifetime): Boolean!
+	registerFieldSet(input: RegisterFieldSetInput!, owner: Owner, lifetime: Lifetime): Boolean!
 	"""
 	Removes a field set by name.
 	"""
-	unregisterFieldSet(name: String!): Boolean!
+	unregisterFieldSet(name: FieldSetName!): Boolean!
 }
 
 scalar Owner
@@ -457,6 +459,8 @@ scalar Owner
 scalar PatternId
 
 scalar PatternName
+
+scalar PatternTolerance
 
 scalar PinCount
 
@@ -540,7 +544,7 @@ type QueryRoot {
 	filters to the registrations of one application; `staticOnly`
 	filters to profiles without an owner (loaded at startup).
 	"""
-	profiles(owner: String, staticOnly: Boolean): [ProfileInfo!]!
+	profiles(owner: Owner, staticOnly: Boolean): [ProfileInfo!]!
 	"""
 	Attached input device - name and axis calibration. Needed by remote
 	clients before converting this host's raw recordings (TRAINING.md
@@ -627,11 +631,11 @@ input RegisterFieldSetInput {
 	"""
 	Set name (namespace for its fields).
 	"""
-	name: String!
+	name: FieldSetName!
 	"""
 	Debounce stability in frames; `null` = default 2.
 	"""
-	stability: Int
+	stability: FrameCount
 	"""
 	Optional window anchor.
 	"""
@@ -654,15 +658,15 @@ input RegisterPatternInput {
 	"""
 	Figure name.
 	"""
-	name: String!
+	name: PatternName!
 	"""
 	Flat pin coordinates `[x0, y0, x1, y1, ...]` in millimeters.
 	"""
-	points: [Float!]!
+	points: [Millimeters!]!
 	"""
 	Scalar matching tolerance in millimeters.
 	"""
-	toleranceMm: Float!
+	toleranceMm: PatternTolerance!
 	"""
 	Whether a partial match may spawn this figure
 	(SPAWN_AS_PARTIAL.md); `null`/`false` = exact-only spawns.
@@ -672,7 +676,7 @@ input RegisterPatternInput {
 	Frames a partial spawn must hold before confirmation;
 	`null` = 15.
 	"""
-	spawnStability: Int
+	spawnStability: FrameCount
 	"""
 	Pipeline stage this pattern suppresses through
 	(EVENT_PIPELINE.md); `null` = the general stage.
@@ -806,7 +810,7 @@ type SubscriptionRoot {
 	Occupancy field stream: `FIELD_PLACED`/`FIELD_LIFTED`/
 	`FIELD_COUNT_CHANGED`, narrowed to one field set when `set` names it.
 	"""
-	fieldEvents(set: String): TangibleEvent!
+	fieldEvents(set: FieldSetName): TangibleEvent!
 	"""
 	Streams every domain event unfiltered.
 	"""
@@ -1002,19 +1006,19 @@ input WindowInput {
 	"""
 	Window's left edge in screen mm.
 	"""
-	xOffset: Float!
+	xOffset: Millimeters!
 	"""
 	Window's top edge in screen mm.
 	"""
-	yOffset: Float!
+	yOffset: Millimeters!
 	"""
 	Window width for normalized field coordinates.
 	"""
-	width: Float
+	width: Millimeters
 	"""
 	Window height for normalized field coordinates.
 	"""
-	height: Float
+	height: Millimeters
 }
 
 """

@@ -1,7 +1,8 @@
-use std::fmt::Display;
-
 use serde::Deserialize;
 use serde::Serialize;
+use std::convert::Infallible;
+use std::fmt::Display;
+use std::str::FromStr;
 
 /// Name of an event-pipeline stage.
 ///
@@ -41,6 +42,15 @@ impl From<&str> for StageName {
 impl AsRef<str> for StageName {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl FromStr for StageName {
+    type Err = Infallible;
+
+    /// Wraps any string as a stage name (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 

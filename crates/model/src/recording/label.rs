@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use serde::Serialize;
+use std::convert::Infallible;
 use std::fmt::Display;
+use std::str::FromStr;
 
 /// Ground-truth label attached to recorded frames.
 ///
@@ -35,6 +37,15 @@ impl From<String> for RecordLabel {
 impl From<&str> for RecordLabel {
     fn from(label: &str) -> Self {
         Self(label.to_string())
+    }
+}
+
+impl FromStr for RecordLabel {
+    type Err = Infallible;
+
+    /// Wraps any string as a record label (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 

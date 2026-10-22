@@ -62,6 +62,9 @@ impl Display for PatternTolerance {
     }
 }
 
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(PatternTolerance);
+
 #[cfg(feature = "zbus")]
 impl zvariant::Type for PatternTolerance {
     const SIGNATURE: &'static zvariant::Signature = <f64 as zvariant::Type>::SIGNATURE;

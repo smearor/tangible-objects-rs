@@ -1,6 +1,8 @@
 //! `FieldInput` - the cynic input object for one occupancy cell.
 
 use cynic::InputObject;
+use tangible_objects_model::FieldName;
+use tangible_objects_model::Millimeters;
 
 /// The `FieldInput` input object - a flat-named occupancy cell with
 /// millimeter bounds.
@@ -13,13 +15,13 @@ use cynic::InputObject;
 )]
 pub(crate) struct FieldInput {
     /// Cell name.
-    pub name: String,
+    pub name: FieldName,
     /// Bounding box in mm (or 0..1 normalized under a window).
-    pub x_min: f64,
+    pub x_min: Millimeters,
     /// Lower y bound.
-    pub y_min: f64,
+    pub y_min: Millimeters,
     /// Upper x bound.
-    pub x_max: f64,
+    pub x_max: Millimeters,
     /// Upper y bound.
-    pub y_max: f64,
+    pub y_max: Millimeters,
 }

@@ -1,6 +1,11 @@
 //! `profiles` args - profile listing, registration and training.
 
 use clap::Subcommand;
+use std::path::PathBuf;
+use tangible_objects_model::Lifetime;
+use tangible_objects_model::Owner;
+use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
 
 /// `profiles` subcommands.
 #[derive(Debug, clap::Args)]
@@ -17,7 +22,7 @@ pub enum ProfilesCommand {
     List {
         /// Only profiles owned by this application.
         #[arg(long)]
-        owner: Option<String>,
+        owner: Option<Owner>,
         /// Only statically loaded profiles.
         #[arg(long)]
         static_only: bool,
@@ -25,39 +30,39 @@ pub enum ProfilesCommand {
     /// Show one profile by pattern ID.
     Show {
         /// Pattern ID.
-        id: u32,
+        id: PatternId,
     },
     /// Remove a registered pattern (`unregisterPattern`).
     Delete {
         /// Pattern ID.
-        id: u32,
+        id: PatternId,
     },
     /// Drop every registration of an owner (`unregisterOwner`).
     UnregisterOwner {
         /// Owner string.
-        owner: String,
+        owner: Owner,
     },
     /// Register a profile file at runtime (`registerPattern`).
     Register {
         /// Path to the profile `.toml`.
-        file: String,
+        file: PathBuf,
         /// Owning application.
         #[arg(long)]
-        owner: Option<String>,
+        owner: Option<Owner>,
         /// `session` (default) or `persistent`.
         #[arg(long, default_value = "session")]
-        lifetime: String,
+        lifetime: Lifetime,
     },
     /// Replace a pattern's geometry (`updateProfile`).
     Update {
         /// Pattern ID.
-        id: u32,
+        id: PatternId,
         /// Path to the profile `.toml`.
-        file: String,
+        file: PathBuf,
     },
     /// Ask the daemon to record a profile (`trainProfile`).
     Train {
         /// Figure name.
-        name: String,
+        name: PatternName,
     },
 }

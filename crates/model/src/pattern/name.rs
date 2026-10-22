@@ -1,7 +1,8 @@
-use std::fmt::Display;
-
 use serde::Deserialize;
 use serde::Serialize;
+use std::convert::Infallible;
+use std::fmt::Display;
+use std::str::FromStr;
 
 /// Name of a figure profile - the identity used to address a pattern in
 /// maps, interfaces and the runtime store (not merely a display string).
@@ -40,6 +41,15 @@ impl From<String> for PatternName {
 impl From<&str> for PatternName {
     fn from(name: &str) -> Self {
         Self::new(name)
+    }
+}
+
+impl FromStr for PatternName {
+    type Err = Infallible;
+
+    /// Wraps any string as a pattern name (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 

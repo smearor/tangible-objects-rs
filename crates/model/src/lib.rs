@@ -5,6 +5,7 @@
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
 mod analysis_mode;
+mod best_score;
 mod calibration;
 mod claim_pool;
 mod claimed_indices;
@@ -21,6 +22,7 @@ mod domain;
 mod event;
 mod field;
 mod filter_mode;
+mod filter_mode_parse_error;
 mod metrics;
 mod millimeters;
 mod milliseconds;
@@ -42,6 +44,7 @@ mod units_per_mm;
 mod vec2;
 
 pub use analysis_mode::AnalysisMode;
+pub use best_score::BestScore;
 pub use calibration::Calibration;
 pub use claim_pool::ClaimPool;
 pub use claimed_indices::ClaimedIndices;
@@ -65,6 +68,7 @@ pub use domain::EngineEvent;
 pub use domain::EventKind;
 pub use domain::LifecycleEvent;
 pub use domain::StreamEvent;
+pub use domain::StreamEventParseError;
 pub use domain::TangibleEvent;
 pub use event::ABS_MT_POSITION_X;
 pub use event::ABS_MT_POSITION_Y;
@@ -86,6 +90,7 @@ pub use field::FieldSetName;
 pub use field::WindowAnchor;
 pub use field::default_stability;
 pub use filter_mode::FilterMode;
+pub use filter_mode_parse_error::FilterModeParseError;
 pub use metrics::PatternMetrics;
 pub use metrics::SessionMetrics;
 pub use millimeters::Millimeters;

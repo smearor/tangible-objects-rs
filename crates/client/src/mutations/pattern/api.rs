@@ -31,7 +31,7 @@ impl GraphQLClient {
             "registerPattern",
             RegisterPatternVariables {
                 input: profile.into(),
-                owner: owner.map(|o| o.as_str().to_string()),
+                owner: owner.cloned(),
                 lifetime: Some(lifetime),
             },
         )
@@ -68,7 +68,7 @@ impl GraphQLClient {
         self.call_mutation::<UnregisterOwner, _, _>(
             "unregisterOwner",
             UnregisterOwnerVariables {
-                owner: owner.as_str().to_string(),
+                owner: owner.clone(),
             },
         )
         .await

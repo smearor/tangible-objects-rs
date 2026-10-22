@@ -2,7 +2,6 @@
 
 use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
-use tangible_objects_model::RecordLabel;
 
 use crate::args::Cli;
 use crate::args::RecordArgs;
@@ -23,14 +22,13 @@ pub(crate) async fn record(
             });
         }
         RecordCommand::Start { path, label } => {
-            let label = label.as_deref().map(RecordLabel::new);
             client.start_recording(path, label.as_ref()).await?;
         }
         RecordCommand::Stop => {
             client.stop_recording().await?;
         }
         RecordCommand::Label { label, clear } => {
-            let value = if *clear { None } else { label.as_deref() };
+            let value = if *clear { None } else { label.as_ref() };
             client.set_record_label(value).await?;
         }
     }

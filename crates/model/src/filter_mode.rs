@@ -1,3 +1,4 @@
+use crate::FilterModeParseError;
 #[cfg(feature = "cynic")]
 use crate::schema;
 #[cfg(not(feature = "cynic"))]
@@ -67,7 +68,7 @@ impl std::fmt::Display for FilterMode {
 }
 
 impl std::str::FromStr for FilterMode {
-    type Err = ();
+    type Err = FilterModeParseError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
@@ -76,7 +77,7 @@ impl std::str::FromStr for FilterMode {
             "gated" => Ok(Self::Gated),
             "guarded" => Ok(Self::Guarded),
             "tangibles-only" | "tangibles_only" => Ok(Self::TangiblesOnly),
-            _ => Err(()),
+            _ => Err(FilterModeParseError::new(value)),
         }
     }
 }

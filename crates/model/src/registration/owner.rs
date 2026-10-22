@@ -1,7 +1,8 @@
-use std::fmt::Display;
-
 use serde::Deserialize;
 use serde::Serialize;
+use std::convert::Infallible;
+use std::fmt::Display;
+use std::str::FromStr;
 
 /// Application that registered a profile or field set (DYNAMIC_PROFILES.md).
 ///
@@ -34,6 +35,15 @@ impl From<String> for Owner {
 impl From<&str> for Owner {
     fn from(name: &str) -> Self {
         Self::new(name)
+    }
+}
+
+impl FromStr for Owner {
+    type Err = Infallible;
+
+    /// Wraps any string as an owner (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 

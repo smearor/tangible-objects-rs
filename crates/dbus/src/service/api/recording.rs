@@ -1,7 +1,7 @@
 //! Recording methods - `recording_status`, `start_recording`,
 //! `stop_recording`, `set_record_label`.
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use tangible_objects_model::RecordLabel;
 use tangible_objects_runtime::ControlCommand;
@@ -44,13 +44,13 @@ pub(crate) async fn recording_status(service: &EngineService) -> Vec<(String, St
 /// `<base_path>.evtest`; an empty `label` records unlabeled.
 pub(crate) async fn start_recording(
     service: &EngineService,
-    base_path: &str,
+    base_path: &Path,
     label: RecordLabel,
 ) -> fdo::Result<()> {
     service
         .handle
         .send_command(ControlCommand::StartRecording {
-            base_path: PathBuf::from(base_path),
+            base_path: base_path.to_path_buf(),
             label: (!label.as_str().is_empty()).then_some(label),
         })
         .await
@@ -71,9 +71,8 @@ pub(crate) async fn stop_recording(service: &EngineService) -> fdo::Result<()> {
 /// components (same allowlist as the MCP `recording_artifact` tool).
 pub(crate) async fn recording_artifact(
     _service: &EngineService,
-    path: &str,
+    path: &Path,
 ) -> fdo::Result<String> {
-    let path = PathBuf::from(path);
     let valid_ext = path
         .extension()
         .and_then(|e| e.to_str())
@@ -94,7 +93,7 @@ pub(crate) async fn recording_artifact(
                 .to_string(),
         ));
     }
-    std::fs::read_to_string(&path)
+    std::fs::read_to_string(path)
         .map_err(|e| fdo::Error::Failed(format!("cannot read {}: {e}", path.display())))
 }
 

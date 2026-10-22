@@ -1,7 +1,8 @@
-use std::fmt::Display;
-
 use serde::Deserialize;
 use serde::Serialize;
+use std::convert::Infallible;
+use std::fmt::Display;
+use std::str::FromStr;
 
 /// Name of an occupancy field set - the identity used to address a set
 /// in maps, interfaces and the runtime store (not merely a display
@@ -35,6 +36,15 @@ impl From<String> for FieldSetName {
 impl From<&str> for FieldSetName {
     fn from(name: &str) -> Self {
         Self::new(name)
+    }
+}
+
+impl FromStr for FieldSetName {
+    type Err = Infallible;
+
+    /// Wraps any string as a field-set name (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 

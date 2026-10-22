@@ -2,6 +2,7 @@
 
 use cynic::StreamingOperation;
 use futures_lite::Stream;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::TangibleEvent;
 
 use crate::ClientError;
@@ -15,11 +16,11 @@ impl GraphQLClient {
     /// one field set).
     pub async fn field_events(
         &self,
-        set: Option<&str>,
+        set: Option<&FieldSetName>,
     ) -> Result<impl Stream<Item = Result<TangibleEvent, ClientError>> + 'static, ClientError> {
         let operation =
             StreamingOperation::<FieldEventsSub, _>::subscription(FieldEventsVariables {
-                set: set.map(str::to_string),
+                set: set.cloned(),
             });
         subscribe(&self.endpoint, "fieldEvents", operation).await
     }

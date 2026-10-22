@@ -15,9 +15,9 @@ use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::Vec2;
 
-use super::best_match::BestMatch;
 use super::diagnostics::CandidateDiagnostics;
 use super::diagnostics::NoDiagnostics;
+use tangible_objects_model::BestScore;
 
 /// Finds all pattern matches in the current set of touch points.
 ///
@@ -160,7 +160,7 @@ fn find_matches_inner(
             continue;
         }
 
-        let mut best = BestMatch::default();
+        let mut best = BestScore::default();
 
         for combo in combinations(&available, pattern.num_points.as_usize()) {
             let points = touches.positions_of(&combo);
@@ -250,7 +250,7 @@ fn find_matches_inner(
             }
         }
 
-        if let Some(pattern_match) = best.into_match() {
+        if let Some(pattern_match) = best.into_value() {
             // Matched pins and completion-claimed pins are both consumed -
             // a claimed point belongs to this figure this frame even when
             // `persist` is off (persistence only governs future binding).

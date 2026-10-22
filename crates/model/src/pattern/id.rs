@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 /// Runtime identifier of a figure pattern.
 ///
@@ -33,6 +35,15 @@ impl From<u32> for PatternId {
 impl From<PatternId> for u32 {
     fn from(id: PatternId) -> Self {
         id.0
+    }
+}
+
+impl FromStr for PatternId {
+    type Err = ParseIntError;
+
+    /// Parses the numeric pattern ID (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u32>().map(Self::new)
     }
 }
 

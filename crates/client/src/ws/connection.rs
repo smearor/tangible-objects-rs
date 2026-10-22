@@ -51,12 +51,10 @@ impl Connection for TungsteniteConnection {
     }
 
     /// Converts outbound [`Message`]s into tungstenite frames.
-    fn send(&mut self, message: Message) -> impl Future<Output = Result<(), Error>> + Send {
-        async move {
-            self.socket
-                .send(message::into_frame(message))
-                .await
-                .map_err(|error| Error::Send(error.to_string()))
-        }
+    async fn send(&mut self, message: Message) -> Result<(), Error> {
+        self.socket
+            .send(message::into_frame(message))
+            .await
+            .map_err(|error| Error::Send(error.to_string()))
     }
 }

@@ -3,7 +3,6 @@
 //! behind match failures, computed over a whole recording.
 
 mod accumulator;
-mod best_subset;
 mod distance_stats;
 mod pattern_deviation;
 mod report;

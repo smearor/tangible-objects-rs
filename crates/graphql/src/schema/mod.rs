@@ -1,3 +1,4 @@
+mod input;
 mod mutation;
 mod query;
 mod subscription;

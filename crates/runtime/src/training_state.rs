@@ -33,9 +33,9 @@ impl TrainingState {
     /// Starts a capture for `name` - the next stable point set (≥3
     /// contacts, ≥[`STABLE_THRESHOLD`] equal-sized frames) becomes the
     /// profile.
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &PatternName) -> Self {
         Self {
-            name: PatternName::new(name),
+            name: name.clone(),
             stable_count: None,
             stable_frames: 0,
         }
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn captures_after_stable_frames() {
-        let mut state = TrainingState::new("fig");
+        let mut state = TrainingState::new(&PatternName::new("fig"));
         for _ in 0..STABLE_THRESHOLD {
             assert!(state.tick(&touches(4)).is_none());
         }
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn resets_on_count_change() {
-        let mut state = TrainingState::new("fig");
+        let mut state = TrainingState::new(&PatternName::new("fig"));
         for _ in 0..STABLE_THRESHOLD {
             state.tick(&touches(4));
         }
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn ignores_sub_minimal_sets() {
-        let mut state = TrainingState::new("fig");
+        let mut state = TrainingState::new(&PatternName::new("fig"));
         for _ in 0..STABLE_THRESHOLD + 4 {
             assert!(state.tick(&touches(2)).is_none());
         }

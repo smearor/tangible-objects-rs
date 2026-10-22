@@ -3,6 +3,7 @@
 use crate::mutations::pattern::input::RegisterPatternInput;
 use cynic::QueryVariables;
 use tangible_objects_model::Lifetime;
+use tangible_objects_model::Owner;
 
 /// Variables of `registerPattern`.
 #[derive(QueryVariables)]
@@ -11,7 +12,7 @@ pub(crate) struct RegisterPatternVariables {
     /// The pattern geometry.
     pub input: RegisterPatternInput,
     /// Owning application.
-    pub owner: Option<String>,
+    pub owner: Option<Owner>,
     /// `session` or `persistent`.
     pub lifetime: Option<Lifetime>,
 }

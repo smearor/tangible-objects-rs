@@ -136,7 +136,7 @@ pub fn run_record(
                     warn!(%mode, "filter mode command - only honored in --filter mode");
                 }
                 ControlCommand::TrainProfile(name) => {
-                    warn!(name, "remote training command - not yet wired");
+                    warn!(%name, "remote training command - not yet wired");
                 }
                 ControlCommand::StartRecording { .. } => {
                     warn!("already recording - StartRecording ignored");

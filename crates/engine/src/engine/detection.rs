@@ -12,6 +12,7 @@ use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
@@ -70,9 +71,9 @@ pub struct Engine {
     /// IDs are never reused (DYNAMIC_PROFILES.md decision).
     next_pattern_id: PatternId,
     /// Owner (registering application) per dynamically added pattern.
-    pattern_owners: std::collections::HashMap<PatternId, Option<Owner>>,
+    pattern_owners: HashMap<PatternId, Option<Owner>>,
     /// Owner per dynamically added field set, keyed by set name.
-    field_set_owners: std::collections::HashMap<FieldSetName, Option<Owner>>,
+    field_set_owners: HashMap<FieldSetName, Option<Owner>>,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -105,8 +106,8 @@ impl Engine {
             fields: FieldTracker::new(),
             completion: CompletionConfig::default(),
             next_pattern_id,
-            pattern_owners: std::collections::HashMap::new(),
-            field_set_owners: std::collections::HashMap::new(),
+            pattern_owners: HashMap::new(),
+            field_set_owners: HashMap::new(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -239,8 +240,11 @@ impl Engine {
     /// Removes every pattern and field set owned by `owner` (disconnect
     /// cleanup). Returns `(id, name)` pairs for patterns and names for
     /// field sets - names let the caller remove persisted files too.
-    pub fn remove_by_owner(&mut self, owner: &Owner) -> (Vec<(PatternId, String)>, Vec<String>) {
-        let patterns: Vec<(PatternId, String)> = self
+    pub fn remove_by_owner(
+        &mut self,
+        owner: &Owner,
+    ) -> (Vec<(PatternId, PatternName)>, Vec<FieldSetName>) {
+        let patterns: Vec<(PatternId, PatternName)> = self
             .pattern_owners
             .iter()
             .filter(|(_, o)| o.as_ref() == Some(owner))
@@ -248,17 +252,17 @@ impl Engine {
                 self.patterns
                     .iter()
                     .find(|pattern| pattern.id == *id)
-                    .map(|pattern| (*id, pattern.name.as_str().to_string()))
+                    .map(|pattern| (*id, pattern.name.clone()))
             })
             .collect();
         for (id, _) in &patterns {
             self.remove_pattern(*id);
         }
-        let set_names: Vec<String> = self
+        let set_names: Vec<FieldSetName> = self
             .field_set_owners
             .iter()
             .filter(|(_, o)| o.as_ref() == Some(owner))
-            .map(|(name, _)| name.as_str().to_string())
+            .map(|(name, _)| name.clone())
             .collect();
         for name in &set_names {
             self.remove_field_set(name);
@@ -290,7 +294,7 @@ impl Engine {
     }
 
     /// Removes a field set by name. Returns `true` when removed.
-    pub fn remove_field_set(&mut self, name: &str) -> bool {
+    pub fn remove_field_set(&mut self, name: &FieldSetName) -> bool {
         self.field_set_owners.remove(name);
         self.fields.remove_set(name)
     }
@@ -844,7 +848,7 @@ mod tests {
             .expect("register field set");
         let (patterns, sets) = engine.remove_by_owner(&"game".into());
         assert_eq!(patterns.len(), 1);
-        assert_eq!(sets, vec!["grid".to_string()]);
+        assert_eq!(sets, vec!["grid".into()]);
         assert!(engine.patterns().is_empty());
         assert!(engine.field_sets().is_empty());
         // Other owners stay untouched.

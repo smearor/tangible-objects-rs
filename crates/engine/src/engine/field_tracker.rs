@@ -1,22 +1,13 @@
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::TouchSet;
 
 use tracing::warn;
 
+use super::CellState;
 use super::EngineEvent;
-
-/// Per-field debounce state.
-#[derive(Clone, Default)]
-struct CellState {
-    /// The last confirmed (emitted) contact count.
-    stable_count: ContactCount,
-    /// The candidate count currently being confirmed.
-    pending_count: ContactCount,
-    /// Consecutive frames at `pending_count`.
-    run_length: FrameCount,
-}
 
 /// Occupancy tracker for [`FieldSet`]s.
 ///
@@ -80,8 +71,8 @@ impl FieldTracker {
     }
 
     /// Removes a field set by name. Returns `true` when removed.
-    pub fn remove_set(&mut self, name: &str) -> bool {
-        let Some(index) = self.sets.iter().position(|set| set.name.as_str() == name) else {
+    pub fn remove_set(&mut self, name: &FieldSetName) -> bool {
+        let Some(index) = self.sets.iter().position(|set| set.name == *name) else {
             return false;
         };
         self.sets.remove(index);

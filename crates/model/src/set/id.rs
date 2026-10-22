@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 /// Unique identifier of a Tangible Object Set (TOS).
 ///
@@ -32,6 +34,15 @@ impl From<u32> for TangibleSetId {
 impl From<TangibleSetId> for u32 {
     fn from(id: TangibleSetId) -> Self {
         id.0
+    }
+}
+
+impl FromStr for TangibleSetId {
+    type Err = ParseIntError;
+
+    /// Parses the numeric set ID (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u32>().map(Self::new)
     }
 }
 

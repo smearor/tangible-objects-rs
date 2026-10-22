@@ -3,7 +3,6 @@
 
 use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
-use tangible_objects_model::AnalysisMode;
 
 use crate::args::AnalyzeArgs;
 use crate::args::AnalyzeCommand;
@@ -16,13 +15,8 @@ pub(crate) async fn analyze(client: &GraphQLClient, args: &AnalyzeArgs) -> Resul
             mode,
             profiles_dir,
         } => {
-            let mode = match mode.as_deref() {
-                None => AnalysisMode::default(),
-                Some(m) => serde_json::from_value(serde_json::json!(m))
-                    .map_err(|e| ClientError::Protocol(format!("unknown mode {m}: {e}")))?,
-            };
             let report = client
-                .analyze_recording(path, mode, profiles_dir.as_deref())
+                .analyze_recording(path, mode.unwrap_or_default(), profiles_dir.as_deref())
                 .await?;
             println!(
                 "{}",

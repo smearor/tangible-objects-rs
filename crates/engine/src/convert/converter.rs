@@ -4,7 +4,10 @@ use std::io::Write;
 use std::path::Path;
 
 use tangible_objects_model::ABS_MT_POSITION_X;
+use tangible_objects_model::Calibration;
 use tangible_objects_model::DeviceProfile;
+use tangible_objects_model::EventCode;
+use tangible_objects_model::EventType;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::RawEvent;
 
@@ -85,16 +88,13 @@ impl DeviceConverter {
     fn convert_event(
         &self,
         event: &RawEvent,
-        source: &tangible_objects_model::Calibration,
+        source: &Calibration,
         stats: &mut ConvertStats,
     ) -> RawEvent {
-        if event.event_type != tangible_objects_model::EventType::Abs
-            || !POSITION_CODES.contains(&event.code.as_u16())
-        {
+        if event.event_type != EventType::Abs || !POSITION_CODES.contains(&event.code.as_u16()) {
             return *event;
         }
-        let axis_x = event.code == ABS_MT_POSITION_X
-            || event.code == tangible_objects_model::EventCode::new(0);
+        let axis_x = event.code == ABS_MT_POSITION_X || event.code == EventCode::new(0);
         let res = if axis_x { source.x_res } else { source.y_res };
         let mm = Millimeters::new(event.value as f64 / res.as_f64());
         let (raw, clamped) = self.target.to_raw(mm, axis_x);

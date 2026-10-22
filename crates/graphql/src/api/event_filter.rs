@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::time::Instant;
 
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::TangibleSetId;
 
@@ -27,7 +28,7 @@ pub(crate) struct EventFilter {
     set_id: Option<TangibleSetId>,
     /// Optional narrow: only events about this field set pass
     /// (`FIELD_*` kinds).
-    field_set: Option<String>,
+    field_set: Option<FieldSetName>,
     /// Minimum interval between emitted `TOUCH_POINTS_UPDATED` events.
     touch_interval: Option<Duration>,
     /// When the last `TOUCH_POINTS_UPDATED` passed the throttle.
@@ -42,7 +43,7 @@ impl EventFilter {
         kinds: &[StreamEvent],
         pattern_id: Option<PatternId>,
         set_id: Option<TangibleSetId>,
-        field_set: Option<String>,
+        field_set: Option<FieldSetName>,
         max_hz: Option<u32>,
     ) -> Self {
         Self {
@@ -81,7 +82,7 @@ impl EventFilter {
             return false;
         }
         if let Some(field_set) = &self.field_set
-            && event.field_set.as_ref().map(|name| name.as_str()) != Some(field_set.as_str())
+            && event.field_set.as_ref() != Some(field_set)
         {
             return false;
         }
@@ -189,7 +190,7 @@ mod tests {
             &[StreamEvent::FieldPlaced],
             None,
             None,
-            Some("board".to_string()),
+            Some("board".into()),
             None,
         );
         let mut placed = event(EventKind::FieldPlaced);

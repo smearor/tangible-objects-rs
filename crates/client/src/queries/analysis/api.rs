@@ -1,6 +1,8 @@
 //! `analyze_recording()`, `analyze_similarity()` and
 //! `recording_artifact()` methods of [`GraphQLClient`].
 
+use std::path::Path;
+
 use tangible_objects_analysis::AnalysisReport;
 use tangible_objects_analysis::SimilarityReport;
 use tangible_objects_model::AnalysisMode;
@@ -19,16 +21,16 @@ impl GraphQLClient {
     /// `Json<AnalysisReport>` passthrough).
     pub async fn analyze_recording(
         &self,
-        path: &str,
+        path: &Path,
         mode: AnalysisMode,
-        profiles_dir: Option<&str>,
+        profiles_dir: Option<&Path>,
     ) -> Result<AnalysisReport, ClientError> {
         self.call_query::<AnalyzeRecordingQuery, _, _>(
             "analyzeRecording",
             AnalyzeRecordingVariables {
-                path: path.to_string(),
+                path: path.to_string_lossy().into_owned(),
                 mode: Some(mode),
-                profiles_dir: profiles_dir.map(str::to_string),
+                profiles_dir: profiles_dir.map(|dir| dir.to_string_lossy().into_owned()),
             },
         )
         .await
@@ -38,12 +40,12 @@ impl GraphQLClient {
     /// `Json<SimilarityReport>` passthrough).
     pub async fn analyze_similarity(
         &self,
-        profiles_dir: Option<&str>,
+        profiles_dir: Option<&Path>,
     ) -> Result<SimilarityReport, ClientError> {
         self.call_query::<AnalyzeSimilarityQuery, _, _>(
             "analyzeSimilarity",
             AnalyzeSimilarityVariables {
-                profiles_dir: profiles_dir.map(str::to_string),
+                profiles_dir: profiles_dir.map(|dir| dir.to_string_lossy().into_owned()),
             },
         )
         .await
@@ -51,11 +53,11 @@ impl GraphQLClient {
 
     /// Recording artifact content (`recordingArtifact` query) - raw
     /// file text, legitimately an untyped `String`.
-    pub async fn recording_artifact(&self, path: &str) -> Result<String, ClientError> {
+    pub async fn recording_artifact(&self, path: &Path) -> Result<String, ClientError> {
         self.call_query::<RecordingArtifactQuery, _, _>(
             "recordingArtifact",
             RecordingArtifactVariables {
-                path: path.to_string(),
+                path: path.to_string_lossy().into_owned(),
             },
         )
         .await

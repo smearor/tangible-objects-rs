@@ -1,6 +1,7 @@
 //! `start_recording()`, `stop_recording()` and `set_record_label()`
 //! methods of [`GraphQLClient`].
 
+use std::path::Path;
 use tangible_objects_model::RecordLabel;
 
 use crate::ClientError;
@@ -16,14 +17,14 @@ impl GraphQLClient {
     /// the artifact's output path on the daemon host.
     pub async fn start_recording(
         &self,
-        base_path: &str,
+        base_path: &Path,
         label: Option<&RecordLabel>,
     ) -> Result<bool, ClientError> {
         self.call_mutation::<StartRecording, _, _>(
             "startRecording",
             StartRecordingVariables {
-                base_path: base_path.to_string(),
-                label: label.map(|l| l.as_str().to_string()),
+                base_path: base_path.to_string_lossy().into_owned(),
+                label: label.cloned(),
             },
         )
         .await
@@ -36,11 +37,11 @@ impl GraphQLClient {
     }
 
     /// Sets the ground-truth label mid-session (`setRecordLabel`).
-    pub async fn set_record_label(&self, label: Option<&str>) -> Result<bool, ClientError> {
+    pub async fn set_record_label(&self, label: Option<&RecordLabel>) -> Result<bool, ClientError> {
         self.call_mutation::<SetRecordLabel, _, _>(
             "setRecordLabel",
             SetRecordLabelVariables {
-                label: label.map(str::to_string),
+                label: label.cloned(),
             },
         )
         .await

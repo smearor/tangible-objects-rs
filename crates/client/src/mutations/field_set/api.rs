@@ -2,6 +2,7 @@
 //! [`GraphQLClient`].
 
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 
@@ -25,7 +26,7 @@ impl GraphQLClient {
             "registerFieldSet",
             RegisterFieldSetVariables {
                 input: set.into(),
-                owner: owner.map(|o| o.as_str().to_string()),
+                owner: owner.cloned(),
                 lifetime: Some(lifetime),
             },
         )
@@ -33,12 +34,10 @@ impl GraphQLClient {
     }
 
     /// Removes a field set (`unregisterFieldSet`).
-    pub async fn unregister_field_set(&self, name: &str) -> Result<bool, ClientError> {
+    pub async fn unregister_field_set(&self, name: &FieldSetName) -> Result<bool, ClientError> {
         self.call_mutation::<UnregisterFieldSet, _, _>(
             "unregisterFieldSet",
-            UnregisterFieldSetVariables {
-                name: name.to_string(),
-            },
+            UnregisterFieldSetVariables { name: name.clone() },
         )
         .await
     }

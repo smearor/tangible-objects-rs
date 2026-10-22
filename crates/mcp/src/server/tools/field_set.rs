@@ -49,7 +49,7 @@ impl EngineMcp {
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
             .send_command(ControlCommand::UnregisterFieldSet {
-                name: args.name.to_string(),
+                name: args.name.clone(),
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;

@@ -12,9 +12,9 @@ use tangible_objects_runtime::EngineHandle;
 use zbus::message::Header;
 use zbus::names::UniqueName;
 
-/// Maps a caller's unique bus name to the owner strings it registered
+/// Maps a caller's unique bus name to the [`Owner`]s it registered
 /// under - drives automatic cleanup when the name vanishes.
-pub type OwnerSessions = Arc<Mutex<HashMap<String, HashSet<String>>>>;
+pub type OwnerSessions = Arc<Mutex<HashMap<String, HashSet<Owner>>>>;
 
 /// D-Bus service object served at `/org/tangibleobjects/Engine`.
 ///
@@ -39,18 +39,18 @@ impl EngineService {
     }
 
     /// Resolves the effective owner for a register call: the explicit
-    /// `owner` string, else the caller's unique bus name. Records the
+    /// `owner`, else the caller's unique bus name. Records the
     /// owner under the sender for disconnect cleanup.
-    pub(crate) fn session_owner(&self, owner: &str, header: &Header<'_>) -> Owner {
+    pub(crate) fn session_owner(&self, owner: Owner, header: &Header<'_>) -> Owner {
         let sender = header
             .sender()
             .map(UniqueName::as_str)
             .unwrap_or_default()
             .to_string();
-        let effective = if owner.is_empty() {
-            sender.clone()
+        let effective = if owner.as_str().is_empty() {
+            Owner::new(sender.clone())
         } else {
-            owner.to_string()
+            owner
         };
         if !sender.is_empty()
             && let Ok(mut sessions) = self.owner_sessions.lock()
@@ -60,6 +60,6 @@ impl EngineService {
                 .or_default()
                 .insert(effective.clone());
         }
-        Owner::new(effective)
+        effective
     }
 }

@@ -3,6 +3,8 @@
 
 use cynic::InputObject;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FieldSetName;
+use tangible_objects_model::FrameCount;
 
 use crate::mutations::field_set::register::field_input::FieldInput;
 use crate::mutations::field_set::register::window_input::WindowInput;
@@ -18,9 +20,9 @@ use crate::mutations::field_set::register::window_input::WindowInput;
 )]
 pub(crate) struct RegisterFieldSetInput {
     /// Set name (namespace for its fields).
-    name: String,
+    name: FieldSetName,
     /// Debounce stability in frames.
-    stability: Option<i32>,
+    stability: Option<FrameCount>,
     /// Optional window anchor.
     window: Option<WindowInput>,
     /// Whether contacts inside these fields are suppressed.
@@ -33,24 +35,24 @@ impl From<&FieldSet> for RegisterFieldSetInput {
     /// Projects the field set into the wire input shape.
     fn from(set: &FieldSet) -> Self {
         Self {
-            name: set.name.as_str().to_string(),
-            stability: Some(set.stability.as_u64() as i32),
+            name: set.name.clone(),
+            stability: Some(set.stability),
             window: set.window.as_ref().map(|w| WindowInput {
-                x_offset: w.x_offset.as_f64(),
-                y_offset: w.y_offset.as_f64(),
-                width: w.width.map(|v| v.as_f64()),
-                height: w.height.map(|v| v.as_f64()),
+                x_offset: w.x_offset,
+                y_offset: w.y_offset,
+                width: w.width,
+                height: w.height,
             }),
             suppress: Some(set.suppress),
             fields: set
                 .fields
                 .iter()
                 .map(|f| FieldInput {
-                    name: f.name.as_str().to_string(),
-                    x_min: f.region.x_min.as_f64(),
-                    y_min: f.region.y_min.as_f64(),
-                    x_max: f.region.x_max.as_f64(),
-                    y_max: f.region.y_max.as_f64(),
+                    name: f.name.clone(),
+                    x_min: f.region.x_min,
+                    y_min: f.region.y_min,
+                    x_max: f.region.x_max,
+                    y_max: f.region.y_max,
                 })
                 .collect(),
         }

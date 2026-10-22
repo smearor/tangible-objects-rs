@@ -2,7 +2,6 @@
 
 use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
-use tangible_objects_model::StageName;
 
 use crate::args::StagesArgs;
 use crate::args::StagesCommand;
@@ -11,10 +10,10 @@ use crate::args::StagesCommand;
 pub(crate) async fn stages(client: &GraphQLClient, args: &StagesArgs) -> Result<(), ClientError> {
     match &args.command {
         StagesCommand::Register { name } => {
-            client.register_stage(&StageName::new(name)).await?;
+            client.register_stage(name).await?;
         }
         StagesCommand::Unregister { name } => {
-            client.unregister_stage(&StageName::new(name)).await?;
+            client.unregister_stage(name).await?;
         }
     }
     Ok(())

@@ -55,5 +55,5 @@ async fn main() -> io::Result<()> {
     if let Err(e) = &result {
         eprintln!("{e}");
     }
-    result.map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+    result.map_err(|e| io::Error::other(e.to_string()))
 }

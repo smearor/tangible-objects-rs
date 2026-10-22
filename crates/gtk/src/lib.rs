@@ -103,10 +103,10 @@ pub fn run_gui(
         let da_tick = drawing_area.clone();
         let win_tick = window.clone();
         gtk4::glib::timeout_add_local(Duration::from_millis(33), move || {
-            if let Ok(s) = state_tick.lock() {
-                if win_tick.is_visible() != s.visible {
-                    win_tick.set_visible(s.visible);
-                }
+            if let Ok(s) = state_tick.lock()
+                && win_tick.is_visible() != s.visible
+            {
+                win_tick.set_visible(s.visible);
             }
             da_tick.queue_draw();
             ControlFlow::Continue

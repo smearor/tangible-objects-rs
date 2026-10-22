@@ -21,7 +21,7 @@ impl EngineMcp {
         Parameters(args): Parameters<TrainProfileArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
-            .send_command(ControlCommand::TrainProfile(args.name.to_string()))
+            .send_command(ControlCommand::TrainProfile(args.name.clone()))
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(

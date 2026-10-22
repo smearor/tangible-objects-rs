@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 /// Stable identifier of a tangible instance.
 ///
@@ -27,6 +29,15 @@ impl TangibleId {
 impl From<u32> for TangibleId {
     fn from(id: u32) -> Self {
         Self(id)
+    }
+}
+
+impl FromStr for TangibleId {
+    type Err = ParseIntError;
+
+    /// Parses the numeric tracking ID (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u32>().map(Self::new)
     }
 }
 

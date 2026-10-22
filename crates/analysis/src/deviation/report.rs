@@ -14,9 +14,9 @@ use tangible_objects_model::PointSet;
 use super::DistanceStats;
 use super::PatternAcc;
 use super::PatternDeviation;
-use super::best_subset::BestSubset;
 use crate::Percentiles;
 use crate::Recording;
+use tangible_objects_model::BestScore;
 
 /// Automated deviation detail analysis over a recording.
 ///
@@ -87,7 +87,7 @@ impl DeviationReport {
                 // Only the best-fitting subset counts per frame - foreign
                 // contacts (hands, other objects) would otherwise inflate
                 // the deviation statistics with non-figure geometry.
-                let mut best = BestSubset::default();
+                let mut best = BestScore::default();
                 for subset in Self::combinations(touches.len(), pattern.num_points.as_usize()) {
                     let points: Vec<_> = subset.iter().map(|&index| touches[index]).collect();
                     let deviations = PointSet::new(&points)
@@ -96,7 +96,7 @@ impl DeviationReport {
                     let score = pattern.score_of(&deviations);
                     best.consider(deviations, score);
                 }
-                if let Some((deviations, score)) = best.into_eval() {
+                if let Some((deviations, score)) = best.into_inner() {
                     let entry = acc
                         .entry(pattern.id)
                         .or_insert_with(|| PatternAcc::new(pattern.name.clone()));

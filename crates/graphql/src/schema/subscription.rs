@@ -2,6 +2,7 @@ use async_graphql::Context;
 use async_graphql::Result;
 use async_graphql::Subscription;
 use futures_core::Stream;
+use tangible_objects_model::FieldSetName;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_runtime::EngineHandle;
@@ -100,7 +101,7 @@ impl SubscriptionRoot {
     async fn field_events(
         &self,
         ctx: &Context<'_>,
-        set: Option<String>,
+        set: Option<FieldSetName>,
     ) -> Result<impl Stream<Item = TangibleEvent>> {
         let handle = ctx.data::<EngineHandle>()?;
         Ok(Self::stream(

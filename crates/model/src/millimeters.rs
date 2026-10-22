@@ -87,3 +87,6 @@ impl Display for Millimeters {
         self.0.fmt(f)
     }
 }
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(Millimeters);

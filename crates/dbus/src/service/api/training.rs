@@ -10,7 +10,7 @@ use crate::service::engine_service::EngineService;
 pub(crate) async fn train_profile(service: &EngineService, name: PatternName) -> fdo::Result<()> {
     service
         .handle
-        .send_command(ControlCommand::TrainProfile(name.to_string()))
+        .send_command(ControlCommand::TrainProfile(name))
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }

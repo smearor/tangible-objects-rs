@@ -77,7 +77,7 @@ pub(crate) async fn register_pattern(
         .handle
         .send_command(ControlCommand::Register {
             registration: Box::new(Registration::Pattern(profile)),
-            owner: Some(service.session_owner(owner.as_str(), header)),
+            owner: Some(service.session_owner(owner, header)),
             lifetime: if persistent {
                 Lifetime::Persistent
             } else {

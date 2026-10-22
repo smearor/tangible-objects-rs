@@ -11,6 +11,7 @@ mod engine_event;
 mod event_kind;
 mod lifecycle_event;
 mod stream_event;
+mod stream_event_parse_error;
 mod tangible_event;
 
 pub use domain_event::DomainEvent;
@@ -18,4 +19,5 @@ pub use engine_event::EngineEvent;
 pub use event_kind::EventKind;
 pub use lifecycle_event::LifecycleEvent;
 pub use stream_event::StreamEvent;
+pub use stream_event_parse_error::StreamEventParseError;
 pub use tangible_event::TangibleEvent;

@@ -10,6 +10,8 @@ use tangible_objects_engine::EngineFrame;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
+use tangible_objects_model::ProfileFile;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::SetTracker;
 use tangible_objects_model::TangibleSet;
@@ -262,17 +264,14 @@ impl EngineRuntime {
 
     /// Arms remote profile capture (`TrainProfile` command) - the
     /// device loops tick [`TrainingState`] with each frame's touches.
-    pub fn start_training(&mut self, name: &str) {
+    pub fn start_training(&mut self, name: &PatternName) {
         self.training = Some(TrainingState::new(name));
     }
 
     /// Advances remote training with this frame's touches; returns the
     /// captured [`ProfileFile`] once the contact set stayed stable
     /// (and clears the request).
-    pub fn training_tick(
-        &mut self,
-        touches: &[TouchPoint],
-    ) -> Option<tangible_objects_model::ProfileFile> {
+    pub fn training_tick(&mut self, touches: &[TouchPoint]) -> Option<ProfileFile> {
         let state = self.training.as_mut()?;
         let profile = state.tick(touches)?;
         self.training = None;

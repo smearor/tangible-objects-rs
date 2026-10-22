@@ -26,7 +26,7 @@ pub(crate) async fn register_field_set(
         .handle
         .send_command(ControlCommand::Register {
             registration: Box::new(Registration::FieldSet(set)),
-            owner: Some(service.session_owner(owner.as_str(), header)),
+            owner: Some(service.session_owner(owner, header)),
             lifetime: if persistent {
                 Lifetime::Persistent
             } else {
@@ -44,9 +44,7 @@ pub(crate) async fn unregister_field_set(
 ) -> fdo::Result<()> {
     service
         .handle
-        .send_command(ControlCommand::UnregisterFieldSet {
-            name: name.to_string(),
-        })
+        .send_command(ControlCommand::UnregisterFieldSet { name })
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }

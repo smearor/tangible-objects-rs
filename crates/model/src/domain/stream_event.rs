@@ -4,7 +4,9 @@ use crate::schema;
 use serde::Deserialize;
 #[cfg(not(feature = "cynic"))]
 use serde::Serialize;
+use std::str::FromStr;
 
+use super::StreamEventParseError;
 use super::event_kind::EventKind;
 
 /// Event kind a client may request via `eventStream(kinds: ...)`.
@@ -102,6 +104,42 @@ impl StreamEvent {
             Self::RecordingStarted => EventKind::RecordingStarted,
             Self::RecordingStopped => EventKind::RecordingStopped,
             Self::ConfigReloaded => EventKind::ConfigReloaded,
+        }
+    }
+}
+
+impl FromStr for StreamEvent {
+    type Err = StreamEventParseError;
+
+    /// Parses a request kind - case-insensitive `SCREAMING_SNAKE` wire
+    /// names (`"tangible_added"`, `"TANGIBLE_ADDED"` both work; the CLI's
+    /// comma-separated `--kinds` values).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "TANGIBLE_ADDED" => Ok(Self::TangibleAdded),
+            "TANGIBLE_MOVED" => Ok(Self::TangibleMoved),
+            "TANGIBLE_REMOVED" => Ok(Self::TangibleRemoved),
+            "TOUCH_POINTS_UPDATED" => Ok(Self::TouchPointsUpdated),
+            "FIELD_PLACED" => Ok(Self::FieldPlaced),
+            "FIELD_LIFTED" => Ok(Self::FieldLifted),
+            "FIELD_COUNT_CHANGED" => Ok(Self::FieldCountChanged),
+            "SET_ADDED" => Ok(Self::SetAdded),
+            "SET_REMOVED" => Ok(Self::SetRemoved),
+            "OBJECT_ADDED" => Ok(Self::ObjectAdded),
+            "OBJECT_REMOVED" => Ok(Self::ObjectRemoved),
+            "OBJECT_MOVED" => Ok(Self::ObjectMoved),
+            "PROFILE_REGISTERED" => Ok(Self::ProfileRegistered),
+            "PROFILE_UNREGISTERED" => Ok(Self::ProfileUnregistered),
+            "FIELD_SET_REGISTERED" => Ok(Self::FieldSetRegistered),
+            "FIELD_SET_UNREGISTERED" => Ok(Self::FieldSetUnregistered),
+            "STAGE_REGISTERED" => Ok(Self::StageRegistered),
+            "STAGE_UNREGISTERED" => Ok(Self::StageUnregistered),
+            "COMPLETION_CHANGED" => Ok(Self::CompletionChanged),
+            "FILTER_MODE_CHANGED" => Ok(Self::FilterModeChanged),
+            "RECORDING_STARTED" => Ok(Self::RecordingStarted),
+            "RECORDING_STOPPED" => Ok(Self::RecordingStopped),
+            "CONFIG_RELOADED" => Ok(Self::ConfigReloaded),
+            _ => Err(StreamEventParseError::new(s)),
         }
     }
 }

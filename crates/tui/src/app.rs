@@ -87,11 +87,10 @@ impl App {
                 }
                 _ = tokio::time::sleep(TICK) => {
                     while event::poll(Duration::ZERO).unwrap_or(false) {
-                        if let Event::Key(key) = event::read().unwrap_or(Event::Resize(0, 0)) {
-                            if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
+                        if let Event::Key(key) = event::read().unwrap_or(Event::Resize(0, 0))
+                            && (key.code == KeyCode::Char('q') || key.code == KeyCode::Esc) {
                                 return Ok(());
                             }
-                        }
                     }
                 }
             }
@@ -131,15 +130,15 @@ impl App {
 
     /// Reads surface bounds from `deviceInfo` (mm via axis ranges).
     async fn bounds(&mut self) {
-        if let Ok(Some(info)) = self.client.device_info().await {
-            if let (Some(x_res), Some(y_res), Some(x_min), Some(x_max), Some(y_min), Some(y_max)) = (
+        if let Ok(Some(info)) = self.client.device_info().await
+            && let (Some(x_res), Some(y_res), Some(x_min), Some(x_max), Some(y_min), Some(y_max)) = (
                 info.x_res, info.y_res, info.x_min, info.x_max, info.y_min, info.y_max,
-            ) {
-                self.bounds_mm = (
-                    (x_max.as_f64() - x_min.as_f64()) / x_res.as_f64(),
-                    (y_max.as_f64() - y_min.as_f64()) / y_res.as_f64(),
-                );
-            }
+            )
+        {
+            self.bounds_mm = (
+                (x_max.as_f64() - x_min.as_f64()) / x_res.as_f64(),
+                (y_max.as_f64() - y_min.as_f64()) / y_res.as_f64(),
+            );
         }
     }
 

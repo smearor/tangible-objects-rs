@@ -35,13 +35,8 @@ pub(crate) async fn completion(
     if let Some(persist) = args.persist {
         config.persist = persist;
     }
-    if let Some(mode) = &args.mode {
-        config.mode =
-            serde_json::from_value(serde_json::json!(mode.replace('-', "_").to_uppercase()))
-                .or_else(|_| serde_json::from_value(serde_json::json!(mode)))
-                .map_err(|e| {
-                    ClientError::Protocol(format!("unknown completion mode {mode}: {e}"))
-                })?;
+    if let Some(mode) = args.mode {
+        config.mode = mode;
     }
     client.set_completion(&config).await?;
     Ok(())

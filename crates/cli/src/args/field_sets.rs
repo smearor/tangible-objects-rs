@@ -1,6 +1,10 @@
 //! `field-sets` args - occupancy field-set registration.
 
 use clap::Subcommand;
+use std::path::PathBuf;
+use tangible_objects_model::FieldSetName;
+use tangible_objects_model::Lifetime;
+use tangible_objects_model::Owner;
 
 /// `field-sets` subcommands.
 #[derive(Debug, clap::Args)]
@@ -16,17 +20,17 @@ pub enum FieldSetsCommand {
     /// Register a field-set file (`registerFieldSet`).
     Register {
         /// Path to the field-set `.toml`.
-        file: String,
+        file: PathBuf,
         /// Owning application.
         #[arg(long)]
-        owner: Option<String>,
+        owner: Option<Owner>,
         /// `session` (default) or `persistent`.
         #[arg(long)]
-        lifetime: Option<String>,
+        lifetime: Option<Lifetime>,
     },
     /// Remove a field set (`unregisterFieldSet`).
     Unregister {
         /// Field-set name.
-        name: String,
+        name: FieldSetName,
     },
 }
