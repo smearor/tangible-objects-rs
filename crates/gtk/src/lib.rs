@@ -123,5 +123,8 @@ pub fn run_gui(
         window.add_controller(key_controller);
     });
 
-    app.run();
+    // `run()` would hand `std::env::args` to `g_application_run` - GTK
+    // would reject daemon flags like `--gui`/`--device` as unknown
+    // options ("Unbekannte Option"), so only argv[0] is passed.
+    app.run_with_args(&["tangible-objects"]);
 }

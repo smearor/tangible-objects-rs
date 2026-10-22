@@ -15,4 +15,4 @@ gtk4.workspace = true
 libc.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
-tangible-objects-runtime.workspace = true
+tangible-objects-runtime = { workspace = true, features = ["gui"] }
