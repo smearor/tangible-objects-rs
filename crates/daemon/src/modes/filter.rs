@@ -182,6 +182,9 @@ pub fn run_filter(
             break;
         }
         if ready == 0 {
+            // Interfaces (GraphQL/D-Bus/MCP) still see the live state
+            // while the device idles - same wake-up path as --live.
+            runtime.publish_snapshot(engine.touches(), engine.tracked());
             continue;
         }
 
@@ -199,6 +202,10 @@ pub fn run_filter(
                 continue;
             };
             frame += 1;
+            // Feed the interface-visible engine state: the set tracker
+            // generates field events and snapshots carry touches,
+            // tangibles, metrics and the device calibration.
+            runtime.publish(&engine_frame, engine.tracked());
 
             // Exact matches always suppress; under CompletionMode::Exact a
             // completed partial suppresses its matched *and* claimed slots.
