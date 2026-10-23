@@ -95,7 +95,10 @@ pub fn run_record(
     runtime.set_completion(config.completion);
     runtime.set_field_sets(engine.field_sets().to_vec());
     spawn_interfaces(&handle, &interfaces);
-    runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
+    // Report the calibration the engine actually uses (profile override
+    // applied), not the firmware-reported one - clients size their field
+    // sets from these millimeter bounds.
+    runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
 
     let mut frame_no: u64 = 0;
     let session_start = Instant::now();

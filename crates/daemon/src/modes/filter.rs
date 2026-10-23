@@ -82,7 +82,10 @@ pub fn run_filter(
     runtime.set_completion(config.completion);
     runtime.set_field_sets(engine.field_sets().to_vec());
     spawn_interfaces(&handle, &interfaces);
-    runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
+    // Report the calibration the engine actually uses (profile override
+    // applied), not the firmware-reported one - clients size their field
+    // sets from these millimeter bounds.
+    runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
 
     let mut pipeline = Pipeline::new();
     // Edge ghosts leak to the virtual device unless suppressed - the
