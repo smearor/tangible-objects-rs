@@ -28,17 +28,26 @@ impl EngineMcp {
     ) -> Result<CallToolResult, ErrorData> {
         let set = toml::from_str::<FieldSet>(&args.toml)
             .map_err(|e| ErrorData::invalid_params(format!("invalid field set TOML: {e}"), None))?;
+        let (command, rx) = ControlCommand::register(
+            Registration::FieldSet(set),
+            args.owner,
+            parse_lifetime(&args.lifetime)?,
+        );
         self.handle
-            .send_command(ControlCommand::Register {
-                registration: Box::new(Registration::FieldSet(set)),
-                owner: args.owner,
-                lifetime: parse_lifetime(&args.lifetime)?,
-            })
+            .send_command(command)
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
-        Ok(CallToolResult::success(vec![ContentBlock::text(
-            "field set registration queued",
-        )]))
+        match rx.await {
+            Ok(Ok(())) => Ok(CallToolResult::success(vec![ContentBlock::text(
+                "field set registered".to_string(),
+            )])),
+            Ok(Err(reason)) => Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                "rejected: {reason}"
+            ))])),
+            Err(_) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                "device loop closed the registration reply".to_string(),
+            )])),
+        }
     }
 
     /// Removes a field set by name.

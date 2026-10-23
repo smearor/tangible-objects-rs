@@ -277,8 +277,12 @@ impl Engine {
         set: FieldSet,
         owner: Option<Owner>,
     ) -> Result<(), RegistrationError> {
-        if !set.is_disjoint() {
-            return Err(RegistrationError::FieldsOverlap(set.name.clone()));
+        if let Some((a, b)) = set.overlap_pair() {
+            return Err(RegistrationError::FieldsOverlap(
+                set.name.clone(),
+                a.clone(),
+                b.clone(),
+            ));
         }
         if self
             .fields
@@ -302,6 +306,16 @@ impl Engine {
     /// All active field sets (static plus dynamically registered).
     pub fn field_sets(&self) -> &[FieldSet] {
         self.fields.sets()
+    }
+
+    /// Fields currently holding a confirmed (debounced) contact.
+    pub fn occupied_field_count(&self) -> usize {
+        self.fields.occupied_count()
+    }
+
+    /// Total occupancy fields across all loaded sets.
+    pub fn field_count(&self) -> usize {
+        self.fields.field_count()
     }
 
     /// Slots inside fields of `suppress`-enabled sets - merged into the

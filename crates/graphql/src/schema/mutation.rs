@@ -176,15 +176,20 @@ impl MutationRoot {
         lifetime: Option<Lifetime>,
     ) -> Result<bool> {
         let profile = ProfileFile::try_from(&input)?;
+        let (command, rx) = ControlCommand::register(
+            Registration::Pattern(profile),
+            owner,
+            lifetime.unwrap_or_default(),
+        );
         ctx.data::<EngineHandle>()?
-            .send_command(ControlCommand::Register {
-                registration: Box::new(Registration::Pattern(profile)),
-                owner,
-                lifetime: lifetime.unwrap_or_default(),
-            })
+            .send_command(command)
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
-        Ok(true)
+        match rx.await {
+            Ok(Ok(())) => Ok(true),
+            Ok(Err(reason)) => Err(Error::new(format!("registration rejected: {reason}"))),
+            Err(_) => Err(Error::new("device loop closed the registration reply")),
+        }
     }
 
     /// Replaces a registered pattern's geometry/name while keeping its
@@ -233,15 +238,20 @@ impl MutationRoot {
         lifetime: Option<Lifetime>,
     ) -> Result<bool> {
         let set = FieldSet::from(&input);
+        let (command, rx) = ControlCommand::register(
+            Registration::FieldSet(set),
+            owner,
+            lifetime.unwrap_or_default(),
+        );
         ctx.data::<EngineHandle>()?
-            .send_command(ControlCommand::Register {
-                registration: Box::new(Registration::FieldSet(set)),
-                owner,
-                lifetime: lifetime.unwrap_or_default(),
-            })
+            .send_command(command)
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
-        Ok(true)
+        match rx.await {
+            Ok(Ok(())) => Ok(true),
+            Ok(Err(reason)) => Err(Error::new(format!("registration rejected: {reason}"))),
+            Err(_) => Err(Error::new("device loop closed the registration reply")),
+        }
     }
 
     /// Removes a field set by name.

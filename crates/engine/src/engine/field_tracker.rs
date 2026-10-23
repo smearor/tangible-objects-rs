@@ -56,6 +56,21 @@ impl FieldTracker {
         !self.sets.is_empty()
     }
 
+    /// Fields currently holding a confirmed contact (debounced
+    /// `stable_count > 0`) - feeds the status line's occupancy count.
+    pub fn occupied_count(&self) -> usize {
+        self.states
+            .iter()
+            .flat_map(|cells| cells.iter())
+            .filter(|cell| !cell.stable_count.is_zero())
+            .count()
+    }
+
+    /// Total field count across all loaded sets.
+    pub fn field_count(&self) -> usize {
+        self.sets.iter().map(|set| set.fields.len()).sum()
+    }
+
     /// The loaded field sets.
     pub fn sets(&self) -> &[FieldSet] {
         &self.sets

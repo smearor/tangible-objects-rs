@@ -242,11 +242,16 @@ pub fn run_filter(
             tick_training(&mut runtime, &mut engine, &engine_frame.touches);
             sync_stages(&mut runtime, &mut pipeline, &engine);
 
+            let forwarded = engine_frame.touches.len().saturating_sub(suppressed);
             print!(
-                "\rFrame {frame} | {} Touch | {} Figur | {} unterdrückt     ",
+                "\rFrame {frame} | {} Touch | {} Figur | {} unterdrückt | {} weitergeleitet | {} Sets | {} Felder | {} belegt     ",
                 engine_frame.touches.len(),
                 engine_frame.matches.len(),
-                suppressed
+                suppressed,
+                forwarded,
+                engine.field_sets().len(),
+                engine.field_count(),
+                engine.occupied_field_count(),
             );
             std::io::stdout().flush().ok();
         }

@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::Field;
+use super::FieldName;
 use super::FieldSetName;
 use super::WindowAnchor;
 use crate::FrameCount;
@@ -73,14 +74,20 @@ impl FieldSet {
     /// Whether all fields are mutually disjoint (no overlapping cells).
     /// Registration of an overlapping set is rejected.
     pub fn is_disjoint(&self) -> bool {
+        self.overlap_pair().is_none()
+    }
+
+    /// The first overlapping field pair, if any - names the offenders
+    /// for a rejection message ("why"), not just a boolean.
+    pub fn overlap_pair(&self) -> Option<(&FieldName, &FieldName)> {
         for (i, a) in self.fields.iter().enumerate() {
             for b in &self.fields[i + 1..] {
                 if a.region.overlaps(&b.region) {
-                    return false;
+                    return Some((&a.name, &b.name));
                 }
             }
         }
-        true
+        None
     }
 
     /// Loads a field set from a `.toml` file.

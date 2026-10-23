@@ -70,18 +70,27 @@ impl EngineMcp {
             args.spawn_stability,
             &args.stage,
         )?;
+        let (command, rx) = ControlCommand::register(
+            Registration::Pattern(profile),
+            args.owner,
+            parse_lifetime(&args.lifetime)?,
+        );
         self.handle
-            .send_command(ControlCommand::Register {
-                registration: Box::new(Registration::Pattern(profile)),
-                owner: args.owner,
-                lifetime: parse_lifetime(&args.lifetime)?,
-            })
+            .send_command(command)
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
-        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-            "registration queued: {}",
-            args.name
-        ))]))
+        match rx.await {
+            Ok(Ok(())) => Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+                "registered: {}",
+                args.name
+            ))])),
+            Ok(Err(reason)) => Ok(CallToolResult::error(vec![ContentBlock::text(format!(
+                "rejected: {reason}"
+            ))])),
+            Err(_) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                "device loop closed the registration reply".to_string(),
+            )])),
+        }
     }
 
     /// Replaces a registered pattern's geometry while keeping its ID.

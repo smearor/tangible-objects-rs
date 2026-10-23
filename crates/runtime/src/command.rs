@@ -19,7 +19,7 @@ use tangible_objects_model::StageName;
 /// ([`crate::EngineRuntime::try_recv_command`]); the concrete behavior is
 /// implemented where the owning functionality lands (e.g. filter mode in
 /// Phase 4, remote training with the interface crates).
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ControlCommand {
     /// Switch the filter proxy's suppression policy
     /// ([`FilterMode::Off`] = transparent passthrough). `stability`
@@ -92,6 +92,10 @@ pub enum ControlCommand {
         /// `Session` (default) or `Persistent` - persistent registrations
         /// are written to the daemon's runtime store on apply.
         lifetime: Lifetime,
+        /// Receives the applied outcome - `Ok` on success, the rejection
+        /// reason on failure - so interface callers answer with the real
+        /// result instead of a fire-and-forget "queued".
+        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
     },
     /// Replace a registered pattern's geometry/name while keeping its
     /// ID (`UpdateProfile`). Applies to new matches; tracked tangibles
@@ -124,4 +128,27 @@ pub enum ControlCommand {
     /// daemons without the `gui` feature ignore it (the runtime's
     /// `gui_visible` state is feature-gated).
     SetGuiVisible(bool),
+}
+
+impl ControlCommand {
+    /// Builds a `Register` command plus the receiver its caller awaits
+    /// for the applied outcome. Internal callers that never await simply
+    /// drop the receiver - `reply.send` in the device loop tolerates a
+    /// closed channel.
+    pub fn register(
+        registration: Registration,
+        owner: Option<Owner>,
+        lifetime: Lifetime,
+    ) -> (Self, tokio::sync::oneshot::Receiver<Result<(), String>>) {
+        let (reply, rx) = tokio::sync::oneshot::channel();
+        (
+            Self::Register {
+                registration: Box::new(registration),
+                owner,
+                lifetime,
+                reply,
+            },
+            rx,
+        )
+    }
 }

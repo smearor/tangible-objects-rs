@@ -113,8 +113,9 @@ pub(crate) fn apply_registration(
             registration,
             owner,
             lifetime,
+            reply,
         } => {
-            match *registration {
+            let result = match *registration {
                 Registration::Pattern(ref profile) => {
                     match engine.add_pattern(profile, owner.clone()) {
                         Ok(id) => {
@@ -164,10 +165,11 @@ pub(crate) fn apply_registration(
                                 name: profile.name.clone(),
                                 owner,
                             });
+                            Ok(())
                         }
                         Err(reason) => {
                             println!("\nProfil-Registrierung abgelehnt: {reason}");
-                            return;
+                            Err(reason.to_string())
                         }
                     }
                 }
@@ -183,17 +185,19 @@ pub(crate) fn apply_registration(
                                 name: name.clone(),
                                 owner: owner.clone(),
                             });
+                            Ok(())
                         }
                         Err(reason) => {
                             println!("\nFeld-Set abgelehnt: {reason}");
-                            return;
+                            Err(reason.to_string())
                         }
                     }
                 }
-            }
-            if lifetime == Lifetime::Persistent {
+            };
+            if result.is_ok() && lifetime == Lifetime::Persistent {
                 persist_registration(&registration);
             }
+            let _ = reply.send(result);
         }
         ControlCommand::UpdateProfile { id, profile } => {
             match engine.update_pattern(id, &profile) {
@@ -287,15 +291,9 @@ pub(crate) fn tick_training(
     if let Some(profile) = runtime.training_tick(touches) {
         println!("\nTraining abgeschlossen: {}", profile.name);
         runtime.set_message(None);
-        apply_registration(
-            runtime,
-            engine,
-            ControlCommand::Register {
-                registration: Box::new(Registration::Pattern(profile)),
-                owner: None,
-                lifetime: Lifetime::Persistent,
-            },
-        );
+        let (command, _rx) =
+            ControlCommand::register(Registration::Pattern(profile), None, Lifetime::Persistent);
+        apply_registration(runtime, engine, command);
     }
 }
 
@@ -308,15 +306,9 @@ pub(crate) fn register_profile_hook(
     engine: &mut Engine,
     profile: ProfileFile,
 ) {
-    apply_registration(
-        runtime,
-        engine,
-        ControlCommand::Register {
-            registration: Box::new(Registration::Pattern(profile)),
-            owner: None,
-            lifetime: Lifetime::Persistent,
-        },
-    );
+    let (command, _rx) =
+        ControlCommand::register(Registration::Pattern(profile), None, Lifetime::Persistent);
+    apply_registration(runtime, engine, command);
 }
 
 /// Live snapshot of a recording session for the interface-facing status.
