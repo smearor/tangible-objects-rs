@@ -214,6 +214,14 @@ impl Pipeline {
         let union: HashSet<TouchPointSlot> = matched.values().flatten().copied().collect();
         self.emit.finish(&mut self.stages, &union)
     }
+
+    /// Union of every stage's suppressed slots after the last
+    /// `finish`/`finish_scoped` - includes the stateless stages
+    /// (edge/zone/field) alongside the tangible stage, so callers can
+    /// report the real forwarded/suppressed split.
+    pub fn suppressed_slots(&self) -> impl Iterator<Item = TouchPointSlot> + '_ {
+        self.stages.suppressed_slots()
+    }
 }
 
 #[cfg(test)]

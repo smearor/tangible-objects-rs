@@ -233,9 +233,12 @@ pub fn run_filter(
             // `suppress`-enabled field sets suppress via the pipeline's
             // field stage (SINGLE_CONTACT_FIELD.md) - the daemon merge is
             // gone.
-            let suppressed: usize = scoped.values().map(HashSet::len).sum();
             let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;
+            // The real suppression view is the union across all pipeline
+            // stages - including the stateless edge/zone/field stages,
+            // which `scoped` alone does not cover.
+            let suppressed = pipeline.suppressed_slots().count();
 
             // A completed capture registers the profile persistently -
             // its stage scope may need the pipeline sync.
