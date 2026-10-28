@@ -1,3 +1,5 @@
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -10,6 +12,17 @@ use crate::Region;
 /// Serialized flattened - a TOML `[[fields]]` entry carries `name` plus
 /// the region bounds directly.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "Field",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct Field {
     /// Cell name (e.g. `"a1"` on a chess board).
     pub name: FieldName,

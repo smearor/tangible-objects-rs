@@ -272,6 +272,25 @@ enum EventKind {
 }
 
 """
+A single occupancy cell of a [`crate::FieldSet`]: a named region whose
+touch contacts count as occupation.
+
+Serialized flattened - a TOML `[[fields]]` entry carries `name` plus
+the region bounds directly.
+"""
+type Field {
+	"""
+	Cell name (e.g. `"a1"` on a chess board).
+	"""
+	name: FieldName!
+	"""
+	Cell bounds in the set's coordinate space (screen mm, or
+	window-relative / normalized when the set has an anchor).
+	"""
+	region: Region!
+}
+
+"""
 One occupancy cell.
 """
 input FieldInput {
@@ -299,6 +318,55 @@ input FieldInput {
 }
 
 scalar FieldName
+
+"""
+A named set of occupancy fields - the application-supplied board.
+
+Loaded from a `.toml` field-set file:
+
+```toml
+name = "chess"
+stability = 2
+
+[window]          # optional: fields are window-relative
+x_offset = 50.0
+y_offset = 30.0
+
+[[fields]]
+name = "a1"
+x_min = 0.0
+y_min = 0.0
+x_max = 100.0
+y_max = 100.0
+```
+"""
+type FieldSet {
+	"""
+	Human-readable set name - the namespace of its fields.
+	"""
+	name: FieldSetName!
+	"""
+	Optional window anchor: field coordinates are interpreted
+	relative to the application window instead of screen-absolute.
+	"""
+	window: WindowAnchor
+	"""
+	Consecutive frames required to confirm a count transition
+	(debouncing, symmetric for place and lift). Default 2.
+	"""
+	stability: FrameCount!
+	"""
+	The occupancy cells of this set. Must be mutually disjoint -
+	see [`Self::is_disjoint`].
+	"""
+	fields: [Field!]!
+	"""
+	Whether contacts inside this set's fields are suppressed by the
+	filter proxy (they never reach the OS). Default `false` -
+	occupancy is informational only.
+	"""
+	suppress: Boolean!
+}
 
 scalar FieldSetName
 
@@ -571,6 +639,11 @@ type QueryRoot {
 	"""
 	message: String
 	"""
+	All registered occupancy field sets with their cells - the
+	"what can be occupied" counterpart of `touchPoints`/`tangibles`.
+	"""
+	fieldSets: [FieldSet!]!
+	"""
 	Reads a recording artifact produced by this daemon.
 	
 	Restricted to known recording extensions (`.jsonl`, `.evtest`,
@@ -622,6 +695,32 @@ type RecordingStatus {
 	Raw events dropped on a full raw-sink buffer.
 	"""
 	droppedEvents: EventCount!
+}
+
+"""
+A rectangular detection region in millimeters.
+
+Regions restrict where a figure pattern is allowed to match:
+all touch points of a candidate must lie inside the union of the
+pattern's regions (PROFILE_REGIONS.md). The bounds are inclusive.
+"""
+type Region {
+	"""
+	Left bound of the region, in millimeters.
+	"""
+	xMin: Millimeters!
+	"""
+	Top bound of the region, in millimeters.
+	"""
+	yMin: Millimeters!
+	"""
+	Right bound of the region, in millimeters.
+	"""
+	xMax: Millimeters!
+	"""
+	Bottom bound of the region, in millimeters.
+	"""
+	yMax: Millimeters!
 }
 
 """
@@ -998,6 +1097,34 @@ type TrackedTangible {
 scalar TrackingId
 
 scalar UnitsPerMm
+
+"""
+Window anchor of a [`crate::FieldSet`]: the top-left corner of the
+application's window in screen millimeters.
+
+Field coordinates are interpreted window-relative. When `width` and
+`height` are present, field bounds are normalized `0.0..=1.0` values
+scaled to the window size; otherwise they are plain millimeters
+relative to the anchor.
+"""
+type WindowAnchor {
+	"""
+	Window's left edge on screen, in millimeters.
+	"""
+	xOffset: Millimeters!
+	"""
+	Window's top edge on screen, in millimeters.
+	"""
+	yOffset: Millimeters!
+	"""
+	Window width in millimeters - enables normalized field bounds.
+	"""
+	width: Millimeters
+	"""
+	Window height in millimeters - enables normalized field bounds.
+	"""
+	height: Millimeters
+}
 
 """
 Window anchor for a field set.

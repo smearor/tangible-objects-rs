@@ -1,3 +1,5 @@
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -12,6 +14,17 @@ use crate::Vec2;
 /// scaled to the window size; otherwise they are plain millimeters
 /// relative to the anchor.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "WindowAnchor",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct WindowAnchor {
     /// Window's left edge on screen, in millimeters.
     pub x_offset: Millimeters,

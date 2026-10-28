@@ -1,3 +1,5 @@
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -10,6 +12,17 @@ use crate::Vec2;
 /// all touch points of a candidate must lie inside the union of the
 /// pattern's regions (PROFILE_REGIONS.md). The bounds are inclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "Region",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct Region {
     /// Left bound of the region, in millimeters.
     pub x_min: Millimeters,

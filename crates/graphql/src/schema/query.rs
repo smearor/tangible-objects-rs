@@ -8,6 +8,7 @@ use tangible_objects_analysis::Recording;
 use tangible_objects_analysis::SimilarityReport;
 use tangible_objects_model::AnalysisMode;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
@@ -99,6 +100,12 @@ impl QueryRoot {
     /// User-facing message currently shown by the GUI.
     async fn message(&self, ctx: &Context<'_>) -> Result<Option<String>> {
         Ok(ctx.data::<EngineHandle>()?.snapshot().message)
+    }
+
+    /// All registered occupancy field sets with their cells - the
+    /// "what can be occupied" counterpart of `touchPoints`/`tangibles`.
+    async fn field_sets(&self, ctx: &Context<'_>) -> Result<Vec<FieldSet>> {
+        Ok(ctx.data::<EngineHandle>()?.snapshot().field_sets)
     }
 
     /// Reads a recording artifact produced by this daemon.

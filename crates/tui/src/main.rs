@@ -3,11 +3,15 @@
 //! touches the evdev device itself.
 
 mod app;
+mod event_log;
+mod tab;
 mod view;
 
 use std::io;
 
 use crate::app::App;
+use crate::event_log::EventLog;
+use crate::tab::Tab;
 use clap::Parser;
 use crossterm::event::DisableMouseCapture;
 use crossterm::execute;

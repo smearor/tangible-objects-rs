@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -37,6 +39,17 @@ pub fn default_stability() -> FrameCount {
 /// y_max = 100.0
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "FieldSet",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct FieldSet {
     /// Human-readable set name - the namespace of its fields.
     pub name: FieldSetName,
