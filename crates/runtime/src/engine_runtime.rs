@@ -182,6 +182,7 @@ impl EngineRuntime {
             &frame.matches,
             tracked,
             touches_changed,
+            frame.ran_generic,
         );
         self.snapshot.send_replace(EngineSnapshot {
             tracked: tracked.to_vec(),
@@ -352,6 +353,7 @@ mod tests {
             touches: Vec::new(),
             events,
             candidates: Vec::new(),
+            ran_generic: true,
         }
     }
 

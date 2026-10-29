@@ -33,6 +33,10 @@ pub struct SessionMetrics {
     pub contacts: ContactCount,
     /// Frames where the touch set changed (activity measure).
     pub active_frames: FrameCount,
+    /// Frames that ran the generic matching pass
+    /// (SKIP_UNCHANGED.md): `frames - generic_frames` is the
+    /// idle-skip count - the gate's observability.
+    pub generic_frames: FrameCount,
     /// Distinct tracking IDs observed per slot - counts pin flapping
     /// (`1` = perfectly stable contact).
     pub slot_churn: HashMap<TouchPointSlot, ContactCount>,
@@ -58,13 +62,15 @@ impl SessionMetrics {
     ///
     /// `touches_changed` is `true` when the frame produced a
     /// `TouchPointsUpdated` event (the caller knows; keeps this type
-    /// free of engine-event dependencies).
+    /// free of engine-event dependencies). `ran_generic` is the frame's
+    /// generic-pass flag (`EngineFrame::ran_generic`).
     pub fn record(
         &mut self,
         touches: TouchSet<'_>,
         matches: &[PatternMatch],
         tracked: TrackedSet<'_>,
         touches_changed: bool,
+        ran_generic: bool,
     ) {
         self.frames += 1;
         if !tracked.is_empty() {
@@ -72,6 +78,9 @@ impl SessionMetrics {
         }
         if touches_changed {
             self.active_frames += 1;
+        }
+        if ran_generic {
+            self.generic_frames += 1;
         }
         self.contacts += ContactCount::from(touches.len());
 
@@ -187,18 +196,21 @@ mod tests {
             &[matcher(false)],
             (&[tracked(0)]).into(),
             true,
+            true,
         );
         metrics.record(
             (&[touch(0, 9)]).into(),
             &[matcher(true)],
             (&[tracked(0)]).into(),
             true,
+            true,
         );
-        metrics.record((&[]).into(), &[], (&[]).into(), false);
+        metrics.record((&[]).into(), &[], (&[]).into(), false, false);
 
         assert_eq!(metrics.frames, FrameCount::new(3));
         assert_eq!(metrics.tracked_frames, FrameCount::new(2));
         assert_eq!(metrics.active_frames, FrameCount::new(2));
+        assert_eq!(metrics.generic_frames, FrameCount::new(2));
         assert_eq!(metrics.contacts.as_u32(), 2);
         assert_eq!(metrics.tangible_count.as_u64(), 1);
         assert_eq!(metrics.slot_churn[&TouchPointSlot::new(0)].as_u32(), 2);

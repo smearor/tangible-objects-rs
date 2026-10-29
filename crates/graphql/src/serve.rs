@@ -116,6 +116,7 @@ mod tests {
                 touches: Vec::new(),
                 events: vec![EngineEvent::TangibleAdded(tracked()[0].clone())],
                 candidates: Vec::new(),
+                ran_generic: true,
             },
             (&tracked()).into(),
         );
@@ -193,6 +194,7 @@ mod tests {
                         touches: Vec::new(),
                         events: vec![EngineEvent::TouchPointsUpdated],
                         candidates: Vec::new(),
+                        ran_generic: true,
                     },
                     (&[]).into(),
                 );

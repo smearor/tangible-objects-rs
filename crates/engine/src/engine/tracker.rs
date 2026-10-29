@@ -242,6 +242,14 @@ impl Tracker {
     }
 
     /// All currently tracked tangibles.
+    /// Whether any tracked tangible is a pending spawn - a partial
+    /// match still collecting its `spawn_stability` frames. Gates the
+    /// generic matching pass (SKIP_UNCHANGED.md): a pending spawn must
+    /// keep matching until it resolves.
+    pub fn has_pending(&self) -> bool {
+        self.active().iter().any(|t| t.pending)
+    }
+
     pub fn active(&self) -> TrackedSet<'_> {
         (&self.tracked).into()
     }

@@ -20,4 +20,9 @@ pub struct EngineFrame {
     /// empty unless the frame was produced by
     /// [`Engine::process_with_diagnostics`](crate::Engine::process_with_diagnostics).
     pub candidates: Vec<CandidateReport>,
+    /// Whether the generic matching pass ran this frame
+    /// (SKIP_UNCHANGED.md): `false` on idle-board frames where the
+    /// contact set was unchanged, no spawn was pending and no matcher
+    /// input changed.
+    pub ran_generic: bool,
 }

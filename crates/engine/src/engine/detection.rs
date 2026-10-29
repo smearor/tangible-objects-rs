@@ -84,6 +84,11 @@ pub struct Engine {
     /// Last smoothed position per slot, keyed with the tracking ID so a
     /// new contact on the same slot restarts at its raw position.
     smoothed: SmoothedContacts,
+    /// A matching-relevant input changed outside the touch set
+    /// (SKIP_UNCHANGED.md): pattern registration, completion config or
+    /// edge margin. Consumed by one generic pass in `process_inner` so
+    /// a changed configuration re-runs matching even on a still board.
+    matching_dirty: bool,
 }
 
 impl Engine {
@@ -109,6 +114,7 @@ impl Engine {
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
             smoothed: SmoothedContacts::default(),
+            matching_dirty: false,
         }
     }
 
@@ -138,6 +144,7 @@ impl Engine {
     /// (TRACKING_STABILIZATION.md).
     pub fn set_completion(&mut self, completion: CompletionConfig) {
         self.completion = completion;
+        self.matching_dirty = true;
     }
 
     /// The active completion configuration.
@@ -161,6 +168,7 @@ impl Engine {
         self.next_pattern_id = id.next();
         self.pattern_owners.insert(id, owner);
         self.patterns.push(profile.to_pattern(id));
+        self.matching_dirty = true;
         Ok(id)
     }
 
@@ -179,6 +187,7 @@ impl Engine {
         self.check_pattern_collision(profile, Some(id))?;
         if let Some(pattern) = self.patterns.by_id_mut(id) {
             *pattern = profile.to_pattern(id);
+            self.matching_dirty = true;
         }
         Ok(())
     }
@@ -207,7 +216,12 @@ impl Engine {
         self.pattern_owners.remove(&id);
         let before = self.patterns.len();
         self.patterns.retain(|pattern| pattern.id != id);
-        self.patterns.len() != before
+        if self.patterns.len() != before {
+            self.matching_dirty = true;
+            true
+        } else {
+            false
+        }
     }
 
     /// Owner recorded for a pattern, if any.
@@ -331,6 +345,7 @@ impl Engine {
 
     pub fn set_edge_margin(&mut self, margin: Millimeters) {
         self.edge_margin = margin;
+        self.matching_dirty = true;
     }
 
     /// The loaded figure patterns.
@@ -398,6 +413,12 @@ impl Engine {
         touches.sort_by_key(|touch| touch.slot);
         touches.retain(|touch| !self.is_edge_ghost(touch));
         self.smooth_touches(&mut touches);
+        // Compared before matching (SKIP_UNCHANGED.md): the generic pass
+        // is a pure function of the smoothed touch set, so it only runs
+        // when it can find something new - changed contacts, a pending
+        // spawn still collecting stability frames, or a changed matcher
+        // input (`matching_dirty`).
+        let touches_changed = touches != self.prev_touches;
 
         // Slot affinity (TRACKING_STABILIZATION.md): every tracked
         // tangible re-matches on the slots it owned in the previous
@@ -474,24 +495,29 @@ impl Engine {
             }
         }
 
-        let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
-            Some(out) => self.patterns().find_matches_with_diagnostics(
-                touch_set,
-                &mut **out,
-                &reserved,
-                &self.completion,
-            ),
-            None => self
-                .patterns()
-                .find_matches_excluding(touch_set, &reserved, &self.completion),
-        };
-        matches.extend(generic);
+        let ran_generic = touches_changed || self.matching_dirty || self.tracker.has_pending();
+        if ran_generic {
+            let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
+                Some(out) => self.patterns().find_matches_with_diagnostics(
+                    touch_set,
+                    &mut **out,
+                    &reserved,
+                    &self.completion,
+                ),
+                None => {
+                    self.patterns()
+                        .find_matches_excluding(touch_set, &reserved, &self.completion)
+                }
+            };
+            matches.extend(generic);
+        }
+        self.matching_dirty = false;
 
         let mut events = self
             .tracker
             .update(&matches, touch_set, self.completion.persist);
         events.extend(self.fields.update(touch_set));
-        if touches != self.prev_touches {
+        if touches_changed {
             self.prev_touches.clone_from(&touches);
             events.push(EngineEvent::TouchPointsUpdated);
         }
@@ -505,6 +531,7 @@ impl Engine {
             touches,
             events,
             candidates: diagnostics.map(std::mem::take).unwrap_or_default(),
+            ran_generic,
         })
     }
 
@@ -932,6 +959,71 @@ mod tests {
         assert!(
             frame.matches.is_empty(),
             "strict matching must reject the deviation"
+        );
+    }
+
+    /// Identical contact sets skip the generic pass (SKIP_UNCHANGED.md) -
+    /// the gate closes the frame after the set stabilises.
+    #[test]
+    fn identical_frame_skips_generic_matching() {
+        let mut engine = Engine::new(vec![]);
+        contact(&mut engine, 0, 1, 100, 100);
+        assert!(
+            syn(&mut engine).expect("frame").ran_generic,
+            "first frame runs generic matching"
+        );
+        assert!(
+            !syn(&mut engine).expect("frame").ran_generic,
+            "unchanged contact set skips generic matching"
+        );
+    }
+
+    /// A matching-relevant config change reopens the gate for exactly
+    /// one frame - `SetCompletion` semantics on a still board.
+    #[test]
+    fn matching_dirty_forces_one_generic_pass() {
+        let mut engine = Engine::new(vec![]);
+        contact(&mut engine, 0, 1, 100, 100);
+        syn(&mut engine);
+        assert!(!syn(&mut engine).expect("frame").ran_generic);
+
+        engine.set_completion(tangible_objects_model::CompletionConfig::default());
+        assert!(
+            syn(&mut engine).expect("frame").ran_generic,
+            "dirty matcher input must run generic once"
+        );
+        assert!(
+            !syn(&mut engine).expect("frame").ran_generic,
+            "dirty flag is consumed by one pass"
+        );
+    }
+
+    /// A pending partial spawn keeps generic matching alive on
+    /// identical frames until its stability run resolves.
+    #[test]
+    fn pending_spawn_keeps_generic_running() {
+        let square = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(40.0, 40.0),
+            Vec2::new(0.0, 40.0),
+        ];
+        let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
+        pattern.spawn_on_partial = true;
+        let mut engine = Engine::new(vec![pattern]);
+        // Three of the four square corners: a partial spawn starts
+        // pending and needs consecutive matched frames to resolve.
+        contact(&mut engine, 0, 1, 0, 0);
+        contact(&mut engine, 1, 2, 40, 0);
+        contact(&mut engine, 2, 3, 40, 40);
+        assert!(syn(&mut engine).expect("frame").ran_generic);
+        assert!(
+            syn(&mut engine).expect("frame").ran_generic,
+            "a pending spawn must keep generic matching alive"
+        );
+        assert!(
+            syn(&mut engine).expect("frame").ran_generic,
+            "pending stability has not resolved yet"
         );
     }
 }
