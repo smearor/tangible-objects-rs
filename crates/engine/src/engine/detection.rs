@@ -89,7 +89,19 @@ pub struct Engine {
     /// edge margin. Consumed by one generic pass in `process_inner` so
     /// a changed configuration re-runs matching even on a still board.
     matching_dirty: bool,
+    /// Touches as of the last generic matching pass (SKIP_UNCHANGED.md
+    /// jitter fallback): the gate compares against this baseline, not
+    /// the previous frame - cumulative drift beyond
+    /// [`GENERIC_MIN_MOVEMENT`] still re-runs matching, while per-frame
+    /// panel noise below the threshold keeps it closed.
+    generic_touches: Vec<TouchPoint>,
 }
+
+/// Movement per contact that counts as "changed" for the generic
+/// matching gate (SKIP_UNCHANGED.md): above typical panel position
+/// jitter, far below meaningful figure movement (tolerances are 3-5 mm).
+/// Tune if the target panel jitters harder.
+const GENERIC_MIN_MOVEMENT: Millimeters = Millimeters::new(1.0);
 
 impl Engine {
     /// Creates an engine with the given figure patterns and default
@@ -115,6 +127,7 @@ impl Engine {
             edge_margin: Millimeters::new(0.0),
             smoothed: SmoothedContacts::default(),
             matching_dirty: false,
+            generic_touches: Vec::new(),
         }
     }
 
@@ -417,7 +430,10 @@ impl Engine {
         // is a pure function of the smoothed touch set, so it only runs
         // when it can find something new - changed contacts, a pending
         // spawn still collecting stability frames, or a changed matcher
-        // input (`matching_dirty`).
+        // input (`matching_dirty`). `touches_changed` is the exact diff
+        // (`TouchPointsUpdated` semantics); the generic gate uses the
+        // jitter-tolerant `significantly_changed` against the last
+        // evaluated baseline instead.
         let touches_changed = touches != self.prev_touches;
 
         // Slot affinity (TRACKING_STABILIZATION.md): every tracked
@@ -495,7 +511,9 @@ impl Engine {
             }
         }
 
-        let ran_generic = touches_changed || self.matching_dirty || self.tracker.has_pending();
+        let ran_generic = self.matching_dirty
+            || self.tracker.has_pending()
+            || Self::significantly_changed(&self.generic_touches, &touches);
         if ran_generic {
             let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
                 Some(out) => self.patterns().find_matches_with_diagnostics(
@@ -510,6 +528,7 @@ impl Engine {
                 }
             };
             matches.extend(generic);
+            self.generic_touches.clone_from(&touches);
         }
         self.matching_dirty = false;
 
@@ -532,6 +551,25 @@ impl Engine {
             events,
             candidates: diagnostics.map(std::mem::take).unwrap_or_default(),
             ran_generic,
+        })
+    }
+
+    /// Jitter-tolerant change detector for the generic gate
+    /// (SKIP_UNCHANGED.md): `true` when set sizes, slots, tracking IDs
+    /// or any position's movement since `prev` (the last evaluated
+    /// baseline, not the last frame) crosses [`GENERIC_MIN_MOVEMENT`].
+    /// Comparing against the baseline keeps slow cumulative drift
+    /// visible - per-frame noise below the threshold never opens the
+    /// gate, a slowly sliding figure re-triggers it once the total
+    /// movement passes ε.
+    fn significantly_changed(prev: &[TouchPoint], next: &[TouchPoint]) -> bool {
+        if prev.len() != next.len() {
+            return true;
+        }
+        prev.iter().zip(next.iter()).any(|(a, b)| {
+            a.slot != b.slot
+                || a.tracking_id != b.tracking_id
+                || a.pos.distance(&b.pos) >= GENERIC_MIN_MOVEMENT
         })
     }
 
@@ -975,6 +1013,32 @@ mod tests {
         assert!(
             !syn(&mut engine).expect("frame").ran_generic,
             "unchanged contact set skips generic matching"
+        );
+    }
+
+    /// Sub-epsilon jitter keeps the gate closed, but drift past
+    /// [`GENERIC_MIN_MOVEMENT`] against the *last evaluated baseline*
+    /// reopens it - a slowly sliding figure cannot starve matching.
+    #[test]
+    fn sub_epsilon_noise_skips_but_cumulative_drift_runs() {
+        let mut engine = Engine::new(vec![]);
+        contact(&mut engine, 0, 1, 100, 100);
+        assert!(syn(&mut engine).expect("frame").ran_generic);
+        assert!(!syn(&mut engine).expect("frame").ran_generic);
+
+        // A 1 mm step: smoothed to 0.6 mm of movement - below ε, the
+        // gate stays closed.
+        contact(&mut engine, 0, 1, 100, 101);
+        assert!(
+            !syn(&mut engine).expect("frame").ran_generic,
+            "a 1 mm step must not reopen the gate"
+        );
+        // Second 1 mm step: cumulative smoothed drift ~1.4 mm vs the
+        // last evaluated baseline - the gate reopens.
+        contact(&mut engine, 0, 1, 100, 102);
+        assert!(
+            syn(&mut engine).expect("frame").ran_generic,
+            "cumulative drift beyond ε must run generic matching"
         );
     }
 
