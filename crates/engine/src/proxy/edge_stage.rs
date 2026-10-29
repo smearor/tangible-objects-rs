@@ -88,3 +88,68 @@ impl Stage for EdgeStage {
         &self.metrics
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::EdgeStage;
+    use super::Stage;
+    use crate::proxy::stage_frame::StageFrame;
+    use tangible_objects_model::Millimeters;
+    use tangible_objects_model::Region;
+    use tangible_objects_model::SlotSet;
+    use tangible_objects_model::TouchPoint;
+    use tangible_objects_model::TouchPointSlot;
+    use tangible_objects_model::TrackingId;
+    use tangible_objects_model::Vec2;
+
+    fn surface() -> Region {
+        Region {
+            x_min: Millimeters::new(0.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(100.0),
+            y_max: Millimeters::new(100.0),
+        }
+    }
+
+    fn touch(slot: u32, x: f64, y: f64) -> TouchPoint {
+        TouchPoint {
+            slot: TouchPointSlot::new(slot),
+            tracking_id: TrackingId::new(slot as i32),
+            pos: Vec2::new(x, y),
+        }
+    }
+
+    /// Contacts in the margin are ghost-suppressed; interior contacts
+    /// pass through.
+    #[test]
+    fn classify_suppresses_edge_band_only() {
+        let mut stage = EdgeStage::new(Millimeters::new(10.0), surface());
+        let matched = SlotSet::default();
+        let touches = vec![touch(0, 5.0, 50.0), touch(1, 50.0, 50.0)];
+        stage.classify(&StageFrame {
+            matched: &matched,
+            touches: (&touches).into(),
+        });
+        assert!(stage.suppresses(TouchPointSlot::new(0)));
+        assert!(!stage.suppresses(TouchPointSlot::new(1)));
+    }
+
+    /// The stage is stateless - a contact that moved into the interior
+    /// is unsuppressed the same frame.
+    #[test]
+    fn classify_unsuppresses_on_move_inward() {
+        let mut stage = EdgeStage::new(Millimeters::new(10.0), surface());
+        let matched = SlotSet::default();
+        let edge = vec![touch(0, 5.0, 50.0)];
+        stage.classify(&StageFrame {
+            matched: &matched,
+            touches: (&edge).into(),
+        });
+        let inner = vec![touch(0, 50.0, 50.0)];
+        stage.classify(&StageFrame {
+            matched: &matched,
+            touches: (&inner).into(),
+        });
+        assert!(!stage.suppresses(TouchPointSlot::new(0)));
+    }
+}

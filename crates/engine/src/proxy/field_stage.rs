@@ -103,3 +103,88 @@ impl Stage for FieldStage {
         &self.metrics
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::FieldStage;
+    use super::Stage;
+    use crate::proxy::stage_frame::StageFrame;
+    use tangible_objects_model::Field;
+    use tangible_objects_model::FieldSet;
+    use tangible_objects_model::Millimeters;
+    use tangible_objects_model::Region;
+    use tangible_objects_model::SlotSet;
+    use tangible_objects_model::TouchPoint;
+    use tangible_objects_model::TouchPointSlot;
+    use tangible_objects_model::TrackingId;
+    use tangible_objects_model::Vec2;
+
+    fn cell() -> Field {
+        Field {
+            name: "cell".into(),
+            region: Region {
+                x_min: Millimeters::new(10.0),
+                y_min: Millimeters::new(10.0),
+                x_max: Millimeters::new(20.0),
+                y_max: Millimeters::new(20.0),
+            },
+        }
+    }
+
+    fn set(suppress: bool) -> FieldSet {
+        FieldSet {
+            name: "board".into(),
+            window: None,
+            stability: Default::default(),
+            fields: vec![cell()],
+            suppress,
+        }
+    }
+
+    fn touch(slot: u32, x: f64, y: f64) -> TouchPoint {
+        TouchPoint {
+            slot: TouchPointSlot::new(slot),
+            tracking_id: TrackingId::new(slot as i32),
+            pos: Vec2::new(x, y),
+        }
+    }
+
+    fn classify(stage: &mut FieldStage, touches: &[TouchPoint]) {
+        let matched = SlotSet::default();
+        stage.classify(&StageFrame {
+            matched: &matched,
+            touches: touches.into(),
+        });
+    }
+
+    /// A `suppress` set masks contacts inside its fields.
+    #[test]
+    fn classify_suppresses_inside_suppress_set() {
+        let mut stage = FieldStage::new();
+        stage.set_fields(vec![set(true)]);
+        let touches = vec![touch(0, 15.0, 15.0), touch(1, 50.0, 50.0)];
+        classify(&mut stage, &touches);
+        assert!(stage.suppresses(TouchPointSlot::new(0)));
+        assert!(!stage.suppresses(TouchPointSlot::new(1)));
+    }
+
+    /// A non-`suppress` set leaves contacts inside its fields
+    /// un-suppressed - occupancy events still flow via `FieldTracker`.
+    #[test]
+    fn classify_ignores_non_suppress_set() {
+        let mut stage = FieldStage::new();
+        stage.set_fields(vec![set(false)]);
+        let touches = vec![touch(0, 15.0, 15.0)];
+        classify(&mut stage, &touches);
+        assert!(!stage.suppresses(TouchPointSlot::new(0)));
+    }
+
+    /// No registered sets suppress nothing.
+    #[test]
+    fn empty_sets_suppress_nothing() {
+        let mut stage = FieldStage::new();
+        let touches = vec![touch(0, 15.0, 15.0)];
+        classify(&mut stage, &touches);
+        assert!(!stage.suppresses(TouchPointSlot::new(0)));
+    }
+}

@@ -74,3 +74,74 @@ impl Stage for ZoneStage {
         &self.metrics
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Stage;
+    use super::ZoneStage;
+    use crate::proxy::stage_frame::StageFrame;
+    use tangible_objects_model::Millimeters;
+    use tangible_objects_model::Region;
+    use tangible_objects_model::SlotSet;
+    use tangible_objects_model::TouchPoint;
+    use tangible_objects_model::TouchPointSlot;
+    use tangible_objects_model::TrackingId;
+    use tangible_objects_model::Vec2;
+
+    fn zone() -> Region {
+        Region {
+            x_min: Millimeters::new(10.0),
+            y_min: Millimeters::new(10.0),
+            x_max: Millimeters::new(20.0),
+            y_max: Millimeters::new(20.0),
+        }
+    }
+
+    fn touch(slot: u32, x: f64, y: f64) -> TouchPoint {
+        TouchPoint {
+            slot: TouchPointSlot::new(slot),
+            tracking_id: TrackingId::new(slot as i32),
+            pos: Vec2::new(x, y),
+        }
+    }
+
+    fn classify(stage: &mut ZoneStage, touches: &[TouchPoint]) {
+        let matched = SlotSet::default();
+        stage.classify(&StageFrame {
+            matched: &matched,
+            touches: touches.into(),
+        });
+    }
+
+    /// A contact inside the zone is suppressed; one outside passes.
+    #[test]
+    fn classify_suppresses_inside_zone_only() {
+        let mut stage = ZoneStage::new(vec![zone()]);
+        let touches = vec![touch(0, 15.0, 15.0), touch(1, 50.0, 50.0)];
+        classify(&mut stage, &touches);
+        assert!(stage.suppresses(TouchPointSlot::new(0)));
+        assert!(!stage.suppresses(TouchPointSlot::new(1)));
+    }
+
+    /// The stage is stateless - a contact that moved out of the zone
+    /// is unsuppressed the same frame.
+    #[test]
+    fn classify_unsuppresses_on_move_out() {
+        let mut stage = ZoneStage::new(vec![zone()]);
+        let inside = vec![touch(0, 15.0, 15.0)];
+        classify(&mut stage, &inside);
+        let outside = vec![touch(0, 50.0, 50.0)];
+        classify(&mut stage, &outside);
+        assert!(!stage.suppresses(TouchPointSlot::new(0)));
+    }
+
+    /// `release` drops the slot from the suppressed set.
+    #[test]
+    fn release_clears_suppression() {
+        let mut stage = ZoneStage::new(vec![zone()]);
+        let touches = vec![touch(0, 15.0, 15.0)];
+        classify(&mut stage, &touches);
+        stage.release(TouchPointSlot::new(0));
+        assert!(!stage.suppresses(TouchPointSlot::new(0)));
+    }
+}

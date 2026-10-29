@@ -42,3 +42,36 @@ impl SmoothedContact {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SmoothedContact;
+    use tangible_objects_model::SmoothingAlpha;
+    use tangible_objects_model::TrackingId;
+    use tangible_objects_model::Vec2;
+
+    /// A matching tracking ID EMA-blends toward the stored position.
+    #[test]
+    fn blend_ema_when_ids_match() {
+        let state = SmoothedContact::new(TrackingId::new(1), Vec2::new(10.0, 20.0));
+        let blended = state.blend(
+            SmoothingAlpha::new(0.5),
+            TrackingId::new(1),
+            Vec2::new(30.0, 40.0),
+        );
+        assert_eq!(blended, Vec2::new(20.0, 30.0));
+    }
+
+    /// A slot reuse by a new contact must not inherit the old contact's
+    /// smoothed position - the raw `pos` is returned.
+    #[test]
+    fn blend_returns_raw_on_id_mismatch() {
+        let state = SmoothedContact::new(TrackingId::new(1), Vec2::new(10.0, 20.0));
+        let blended = state.blend(
+            SmoothingAlpha::new(0.5),
+            TrackingId::new(2),
+            Vec2::new(30.0, 40.0),
+        );
+        assert_eq!(blended, Vec2::new(30.0, 40.0));
+    }
+}
