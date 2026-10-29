@@ -63,3 +63,48 @@ impl Deref for Deviations {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Deviations;
+    use crate::Deviation;
+    use crate::Millimeters;
+
+    /// Per-index tolerances: `deviation[i] / tolerance(i)` - the worst
+    /// (highest) normalized score wins.
+    #[test]
+    fn max_score_uses_per_index_tolerance() {
+        let deviations = Deviations::from(vec![
+            Deviation::new(Millimeters::new(5.0)),
+            Deviation::new(Millimeters::new(10.0)),
+            Deviation::new(Millimeters::new(2.0)),
+        ]);
+        // Index-wise: 5/10, 10/20, 2/0.5 → 0.5, 0.5, 4.0 → max = 4.0.
+        let score = deviations.max_score(|i| match i {
+            0 => Millimeters::new(10.0),
+            1 => Millimeters::new(20.0),
+            _ => Millimeters::new(0.5),
+        });
+        assert_eq!(score.as_f64(), 4.0);
+    }
+
+    /// A constant tolerance closure is the partial-matching case:
+    /// `dev / tol` against the same widened baseline.
+    #[test]
+    fn max_score_constant_tolerance() {
+        let deviations = Deviations::from(vec![
+            Deviation::new(Millimeters::new(3.0)),
+            Deviation::new(Millimeters::new(9.0)),
+            Deviation::new(Millimeters::new(4.5)),
+        ]);
+        let score = deviations.max_score(|_| Millimeters::new(4.5));
+        assert_eq!(score.as_f64(), 2.0);
+    }
+
+    /// An empty vector aggregates to the `max` identity `0.0`.
+    #[test]
+    fn max_score_empty_is_zero() {
+        let score = Deviations::default().max_score(|_| Millimeters::new(1.0));
+        assert_eq!(score.as_f64(), 0.0);
+    }
+}

@@ -63,3 +63,45 @@ impl From<RotationRad> for f64 {
 
 #[cfg(feature = "async-graphql")]
 async_graphql::scalar!(RotationRad);
+
+#[cfg(test)]
+mod tests {
+    use super::RotationRad;
+    use crate::SmoothingAlpha;
+    use std::f64::consts::PI;
+
+    /// `alpha = 1` makes the blend pure `new` - history has no weight.
+    #[test]
+    fn ema_full_weight_is_new() {
+        let result = RotationRad::ema(
+            RotationRad::new(1.0),
+            RotationRad::new(2.0),
+            SmoothingAlpha::new(1.0),
+        );
+        assert_eq!(result.as_f64(), 2.0);
+    }
+
+    /// `alpha = 0` keeps `old` - a frozen pose ignores measurement.
+    #[test]
+    fn ema_zero_weight_is_old() {
+        let result = RotationRad::ema(
+            RotationRad::new(1.0),
+            RotationRad::new(2.0),
+            SmoothingAlpha::new(0.0),
+        );
+        assert_eq!(result.as_f64(), 1.0);
+    }
+
+    /// The shortest arc crosses ±π upward: `3.0 → -3.0` passes over
+    /// π, not back through 0.
+    #[test]
+    fn ema_crosses_pi_boundary_shortest_way() {
+        let result = RotationRad::ema(
+            RotationRad::new(3.0),
+            RotationRad::new(-3.0),
+            SmoothingAlpha::new(0.5),
+        );
+        assert!(result.as_f64() > 3.0);
+        assert!(result.as_f64() <= PI + 1e-9);
+    }
+}

@@ -123,3 +123,50 @@ impl zvariant::Type for PinCount {
 
 #[cfg(feature = "async-graphql")]
 async_graphql::scalar!(PinCount);
+
+#[cfg(test)]
+mod tests {
+    use super::PinCount;
+
+    /// C(4, 1) enumerates the four singleton skips.
+    #[test]
+    fn skip_combinations_one_of_four() {
+        let skips = PinCount::new(4).skip_combinations(1);
+        let combos: Vec<&[usize]> = skips
+            .iter()
+            .map(|c| c.as_combination().as_slice())
+            .collect();
+        assert_eq!(combos, vec![&[0], &[1], &[2], &[3]]);
+    }
+
+    /// C(4, 2) enumerates six distinct pairs.
+    #[test]
+    fn skip_combinations_two_of_four() {
+        let skips = PinCount::new(4).skip_combinations(2);
+        assert_eq!(skips.len(), 6);
+        let combos: Vec<&[usize]> = skips
+            .iter()
+            .map(|c| c.as_combination().as_slice())
+            .collect();
+        assert_eq!(
+            combos,
+            vec![&[0, 1], &[0, 2], &[0, 3], &[1, 2], &[1, 3], &[2, 3]]
+        );
+    }
+
+    /// C(n, n) is exactly the full-set combination.
+    #[test]
+    fn skip_combinations_all_is_full_set() {
+        let skips = PinCount::new(3).skip_combinations(3);
+        assert_eq!(skips.len(), 1);
+        assert_eq!(skips[0].as_combination().as_slice(), &[0, 1, 2]);
+    }
+
+    /// C(n, 0) is exactly the empty combination.
+    #[test]
+    fn skip_combinations_zero_is_empty() {
+        let skips = PinCount::new(4).skip_combinations(0);
+        assert_eq!(skips.len(), 1);
+        assert!(skips[0].as_combination().as_slice().is_empty());
+    }
+}

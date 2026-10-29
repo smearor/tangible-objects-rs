@@ -202,6 +202,7 @@ mod tests {
     use super::RefPoints;
     use crate::Millimeters;
     use crate::PatternTolerance;
+    use crate::PointSet;
     use crate::RefIndex;
     use crate::RefIndices;
     use crate::Vec2;
@@ -262,5 +263,153 @@ mod tests {
             second.as_ref().map(|fit| fit.angle)
         );
         assert!(first.is_some());
+    }
+
+    /// A scalene triangle admits exactly one distance-consistent
+    /// correspondence - the identity mapping.
+    #[test]
+    fn correspondences_unique_for_irregular_shape() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(30.0, 0.0),
+            Vec2::new(10.0, 50.0),
+        ]
+        .into();
+        let measured = moved(&refs, 0.0);
+        let correspondences = refs.correspondences((&measured).into(), PatternTolerance::from(1.0));
+        assert_eq!(correspondences.len(), 1);
+        assert_eq!(
+            correspondences[0].as_combination().as_slice(),
+            &[0, 1, 2],
+            "irregular geometry must admit only the identity mapping"
+        );
+    }
+
+    /// A genuinely irregular quadrilateral - every vertex carries a
+    /// distinct distance multiset, so only the identity mapping is
+    /// consistent. (Not a parallelogram: opposite vertices would share
+    /// multisets then.)
+    #[test]
+    fn correspondences_unique_for_irregular_quad() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(60.0, 3.0),
+            Vec2::new(75.0, 52.0),
+            Vec2::new(8.0, 47.0),
+        ]
+        .into();
+        let measured = moved(&refs, 0.0);
+        let correspondences = refs.correspondences((&measured).into(), PatternTolerance::from(1.0));
+        assert_eq!(correspondences.len(), 1);
+        assert_eq!(
+            correspondences[0].as_combination().as_slice(),
+            &[0, 1, 2, 3],
+            "irregular quad must admit only the identity mapping"
+        );
+    }
+
+    /// A square admits several rotations - every vertex carries the
+    /// same distance multiset, so the enumeration finds multiple
+    /// consistent mappings.
+    #[test]
+    fn correspondences_multiple_for_symmetric_shape() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(40.0, 40.0),
+            Vec2::new(0.0, 40.0),
+        ]
+        .into();
+        let measured = moved(&refs, 0.0);
+        let correspondences = refs.correspondences((&measured).into(), PatternTolerance::from(1.0));
+        assert!(
+            correspondences.len() > 1,
+            "a square's symmetry must admit more than one mapping"
+        );
+    }
+
+    /// Mismatched point counts produce no correspondence at all.
+    #[test]
+    fn correspondences_empty_on_length_mismatch() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(60.0, 5.0),
+            Vec2::new(70.0, 50.0),
+            Vec2::new(10.0, 45.0),
+        ]
+        .into();
+        let measured = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(0.0, 1.0),
+        ];
+        assert!(
+            refs.correspondences((&measured).into(), PatternTolerance::from(1.0))
+                .is_empty()
+        );
+    }
+
+    /// An identity fit rotates by zero and reproduces each point.
+    #[test]
+    fn similarity_transform_identity() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(60.0, 5.0),
+            Vec2::new(70.0, 50.0),
+            Vec2::new(10.0, 45.0),
+        ]
+        .into();
+        let mapping: Vec<usize> = (0..4).collect();
+        let measured: PointSet<'_> = (&refs[..]).into();
+        let transform = refs
+            .similarity_transform(measured, (&mapping).into())
+            .expect("identity must solve");
+        assert!(
+            transform.angle.as_f64().abs() < 1e-9,
+            "identity must not rotate"
+        );
+        for point in refs.iter() {
+            let applied = transform.apply(*point);
+            assert!(
+                applied.distance(point).as_f64() < 1e-9,
+                "identity transform must reproduce {point:?}"
+            );
+        }
+    }
+
+    /// Coincident points admit no rotation - `dot` and `cross` vanish.
+    #[test]
+    fn similarity_transform_degenerate_none() {
+        let refs: RefPoints = vec![
+            Vec2::new(1.0, 1.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(1.0, 1.0),
+        ]
+        .into();
+        let mapping: Vec<usize> = (0..3).collect();
+        let measured: PointSet<'_> = (&refs[..]).into();
+        assert!(
+            refs.similarity_transform(measured, (&mapping).into())
+                .is_none()
+        );
+    }
+
+    /// A kept subset with fewer refs than measured positions cannot
+    /// solve - `fit_rotation` stays `None`.
+    #[test]
+    fn fit_rotation_none_on_subset_mismatch() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(60.0, 5.0),
+            Vec2::new(70.0, 50.0),
+            Vec2::new(10.0, 45.0),
+        ]
+        .into();
+        let kept: RefIndices = (0..3).map(RefIndex::new).collect();
+        let measured = moved(&refs, 0.2);
+        assert!(
+            refs.fit_rotation(&kept, (&measured).into(), PatternTolerance::from(5.0))
+                .is_none()
+        );
     }
 }

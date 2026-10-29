@@ -96,3 +96,44 @@ impl Deref for CombinationBuf {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CombinationBuf;
+    use crate::RefIndex;
+    use crate::RefIndices;
+
+    /// `corresponding` pairs combo positions with refs index-wise.
+    #[test]
+    fn corresponding_pairs_positions_with_refs() {
+        let combo = CombinationBuf::from(&[2, 4, 1][..]);
+        let refs: RefIndices = vec![RefIndex::new(5), RefIndex::new(7), RefIndex::new(3)].into();
+        let pairs: Vec<(usize, RefIndex)> = combo.corresponding(&refs).collect();
+        assert_eq!(
+            pairs,
+            vec![
+                (2, RefIndex::new(5)),
+                (4, RefIndex::new(7)),
+                (1, RefIndex::new(3))
+            ]
+        );
+    }
+
+    /// Positions beyond `refs` are skipped - a partial solve binds
+    /// fewer than `len` positions.
+    #[test]
+    fn corresponding_skips_unmapped_positions() {
+        let combo = CombinationBuf::from(&[0, 3, 7][..]);
+        let refs: RefIndices = vec![RefIndex::new(1)].into();
+        let pairs: Vec<(usize, RefIndex)> = combo.corresponding(&refs).collect();
+        assert_eq!(pairs, vec![(0, RefIndex::new(1))]);
+    }
+
+    /// `ref_indices` reinterprets the index values as pin identities.
+    #[test]
+    fn ref_indices_reinterprets_positions() {
+        let combo = CombinationBuf::from(&[0, 2, 5][..]);
+        let values: Vec<usize> = combo.ref_indices().iter().map(|i| i.as_usize()).collect();
+        assert_eq!(values, vec![0, 2, 5]);
+    }
+}

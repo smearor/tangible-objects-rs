@@ -76,3 +76,50 @@ impl Deref for RefIndices {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::RefIndices;
+    use crate::PinCount;
+    use crate::RefIndex;
+    use crate::RefPoints;
+    use crate::Vec2;
+
+    /// `all` produces the full `0..n` pin range.
+    #[test]
+    fn all_covers_the_full_set() {
+        let all = RefIndices::all(PinCount::new(4));
+        let values: Vec<usize> = all.iter().map(|i| i.as_usize()).collect();
+        assert_eq!(values, vec![0, 1, 2, 3]);
+    }
+
+    /// `complement` is `all` minus `self` - the missing pins.
+    #[test]
+    fn complement_is_all_minus_kept() {
+        let kept: RefIndices = vec![RefIndex::new(0), RefIndex::new(2)].into();
+        let missing = kept.complement(PinCount::new(4));
+        let values: Vec<usize> = missing.iter().map(|i| i.as_usize()).collect();
+        assert_eq!(values, vec![1, 3]);
+    }
+
+    /// `points_of` projects pin identities to their positions.
+    #[test]
+    fn points_of_projects_to_positions() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ]
+        .into();
+        let pins: RefIndices = vec![RefIndex::new(1), RefIndex::new(0)].into();
+        let points = pins.points_of(&refs);
+        assert_eq!(&points[..], &[Vec2::new(50.0, 0.0), Vec2::new(0.0, 0.0)]);
+    }
+
+    /// A full set has an empty complement.
+    #[test]
+    fn complement_of_full_is_empty() {
+        let all = RefIndices::all(PinCount::new(3));
+        assert!(all.complement(PinCount::new(3)).is_empty());
+    }
+}
