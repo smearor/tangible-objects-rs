@@ -130,6 +130,20 @@ impl TangiblePattern {
                 .all(|(i, (m, t))| (*m - *t).abs() <= self.tolerance_at(i).as_millimeters())
     }
 
+    /// The pattern's spatial footprint - the largest span a matching
+    /// candidate's pairwise diameter may reach, `max_ij(s_ij + tol_ij)`
+    /// (SPATIAL_CLUSTERING.md). Combinations spanning more than this can
+    /// never satisfy the distance fingerprint; the matcher prunes them
+    /// before evaluation.
+    pub fn footprint(&self) -> Millimeters {
+        self.sorted_distances
+            .iter()
+            .enumerate()
+            .map(|(i, s)| *s + self.tolerance_at(i).as_millimeters())
+            .max_by(Millimeters::total_cmp)
+            .unwrap_or_default()
+    }
+
     /// Normalized deviation score of a measured fingerprint: the largest
     /// deviation-to-tolerance ratio across all distance indices.
     ///

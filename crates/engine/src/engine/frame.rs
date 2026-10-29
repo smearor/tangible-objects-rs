@@ -1,3 +1,4 @@
+use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
@@ -25,4 +26,8 @@ pub struct EngineFrame {
     /// contact set was unchanged, no spawn was pending and no matcher
     /// input changed.
     pub ran_generic: bool,
+    /// Candidate combinations evaluated in this frame's generic pass -
+    /// the pruning ratio is observable as this count versus the
+    /// unpruned C(touches, k) per pattern (SPATIAL_CLUSTERING.md).
+    pub candidates_tested: CandidateCount,
 }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateIndices;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::CompletionConfig;
@@ -514,17 +515,29 @@ impl Engine {
         let ran_generic = self.matching_dirty
             || self.tracker.has_pending()
             || Self::significantly_changed(&self.generic_touches, &touches);
+        let mut candidates_tested = CandidateCount::default();
         if ran_generic {
             let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
-                Some(out) => self.patterns().find_matches_with_diagnostics(
-                    touch_set,
-                    &mut **out,
-                    &reserved,
-                    &self.completion,
-                ),
+                Some(out) => {
+                    let generic = self.patterns().find_matches_with_diagnostics(
+                        touch_set,
+                        &mut **out,
+                        &reserved,
+                        &self.completion,
+                    );
+                    candidates_tested = CandidateCount::from(out.len() as u64);
+                    generic
+                }
                 None => {
-                    self.patterns()
-                        .find_matches_excluding(touch_set, &reserved, &self.completion)
+                    let mut tested = 0usize;
+                    let generic = self.patterns().find_matches_excluding_counted(
+                        touch_set,
+                        &reserved,
+                        &self.completion,
+                        &mut tested,
+                    );
+                    candidates_tested = CandidateCount::from(tested as u64);
+                    generic
                 }
             };
             matches.extend(generic);
@@ -551,6 +564,7 @@ impl Engine {
             events,
             candidates: diagnostics.map(std::mem::take).unwrap_or_default(),
             ran_generic,
+            candidates_tested,
         })
     }
 

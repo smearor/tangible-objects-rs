@@ -169,6 +169,7 @@ mod tests {
             }],
             events: Vec::new(),
             ran_generic: true,
+            candidates_tested: 0.into(),
             candidates: vec![CandidateReport {
                 pattern_id: PatternId::new(5),
                 pattern_name: "TestFigur-5P".into(),

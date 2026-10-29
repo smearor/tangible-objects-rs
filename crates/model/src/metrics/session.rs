@@ -4,9 +4,11 @@ use std::collections::HashSet;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::CandidateCount;
 use crate::ContactCount;
 use crate::FrameCount;
 use crate::PatternMatch;
+use crate::PatternName;
 use crate::TangibleCount;
 use crate::TangibleId;
 use crate::TouchSet;
@@ -37,11 +39,15 @@ pub struct SessionMetrics {
     /// (SKIP_UNCHANGED.md): `frames - generic_frames` is the
     /// idle-skip count - the gate's observability.
     pub generic_frames: FrameCount,
+    /// Candidate combinations evaluated by generic matching over the
+    /// session (SPATIAL_CLUSTERING.md): the pruning ratio is this count
+    /// versus the unpruned C(touches, k) per pattern.
+    pub candidates_tested: CandidateCount,
     /// Distinct tracking IDs observed per slot - counts pin flapping
     /// (`1` = perfectly stable contact).
     pub slot_churn: HashMap<TouchPointSlot, ContactCount>,
     /// Per-pattern counters keyed by pattern name.
-    pub patterns: HashMap<crate::PatternName, PatternMetrics>,
+    pub patterns: HashMap<PatternName, PatternMetrics>,
     /// Distinct tangible identities ever tracked (churn numerator).
     pub tangible_count: TangibleCount,
 
@@ -54,7 +60,7 @@ pub struct SessionMetrics {
     /// Internal: distinct IDs per pattern name (source of
     /// `PatternMetrics::tangible_count`).
     #[serde(skip)]
-    pattern_ids: HashMap<crate::PatternName, HashSet<TangibleId>>,
+    pattern_ids: HashMap<PatternName, HashSet<TangibleId>>,
 }
 
 impl SessionMetrics {
@@ -63,7 +69,8 @@ impl SessionMetrics {
     /// `touches_changed` is `true` when the frame produced a
     /// `TouchPointsUpdated` event (the caller knows; keeps this type
     /// free of engine-event dependencies). `ran_generic` is the frame's
-    /// generic-pass flag (`EngineFrame::ran_generic`).
+    /// generic-pass flag (`EngineFrame::ran_generic`); `tested` the
+    /// frame's evaluated candidate count (`EngineFrame::candidates_tested`).
     pub fn record(
         &mut self,
         touches: TouchSet<'_>,
@@ -71,6 +78,7 @@ impl SessionMetrics {
         tracked: TrackedSet<'_>,
         touches_changed: bool,
         ran_generic: bool,
+        tested: CandidateCount,
     ) {
         self.frames += 1;
         if !tracked.is_empty() {
@@ -82,6 +90,7 @@ impl SessionMetrics {
         if ran_generic {
             self.generic_frames += 1;
         }
+        self.candidates_tested += tested;
         self.contacts += ContactCount::from(touches.len());
 
         for touch in touches {
@@ -197,6 +206,7 @@ mod tests {
             (&[tracked(0)]).into(),
             true,
             true,
+            10.into(),
         );
         metrics.record(
             (&[touch(0, 9)]).into(),
@@ -204,13 +214,15 @@ mod tests {
             (&[tracked(0)]).into(),
             true,
             true,
+            5.into(),
         );
-        metrics.record((&[]).into(), &[], (&[]).into(), false, false);
+        metrics.record((&[]).into(), &[], (&[]).into(), false, false, 0.into());
 
         assert_eq!(metrics.frames, FrameCount::new(3));
         assert_eq!(metrics.tracked_frames, FrameCount::new(2));
         assert_eq!(metrics.active_frames, FrameCount::new(2));
         assert_eq!(metrics.generic_frames, FrameCount::new(2));
+        assert_eq!(metrics.candidates_tested.as_u64(), 15);
         assert_eq!(metrics.contacts.as_u32(), 2);
         assert_eq!(metrics.tangible_count.as_u64(), 1);
         assert_eq!(metrics.slot_churn[&TouchPointSlot::new(0)].as_u32(), 2);

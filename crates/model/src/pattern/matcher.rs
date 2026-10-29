@@ -12,6 +12,7 @@ use super::PatternSet;
 use crate::BestScore;
 use crate::CandidateReport;
 use crate::Combination;
+use crate::CombinationBuf;
 use crate::Combinations;
 use crate::CompletionConfig;
 use crate::MatchScore;
@@ -21,6 +22,7 @@ use crate::PointSet;
 use crate::RefIndices;
 use crate::TangiblePattern;
 use crate::TouchSet;
+use crate::Vec2;
 
 impl<'a> PatternSet<'a> {
     /// Finds all pattern matches in the current set of touch points.
@@ -45,6 +47,7 @@ impl<'a> PatternSet<'a> {
             &TakenIndices::default(),
             &CompletionConfig::default(),
         )
+        .0
     }
 
     /// Like [`Self::find_matches`], excluding `exclude` touch indices
@@ -57,6 +60,7 @@ impl<'a> PatternSet<'a> {
         completion: &CompletionConfig,
     ) -> Vec<PatternMatch> {
         self.find_matches_inner(touches, &mut NoDiagnostics, exclude, completion)
+            .0
     }
 
     /// Like [`Self::find_matches`], additionally reporting every
@@ -73,6 +77,23 @@ impl<'a> PatternSet<'a> {
         completion: &CompletionConfig,
     ) -> Vec<PatternMatch> {
         self.find_matches_inner(touches, diagnostics, exclude, completion)
+            .0
+    }
+
+    /// Like [`Self::find_matches_excluding`], additionally returning the
+    /// number of candidate combinations actually evaluated - the
+    /// `candidates_tested` metric source (SPATIAL_CLUSTERING.md).
+    pub fn find_matches_excluding_counted(
+        self,
+        touches: TouchSet<'_>,
+        exclude: &TakenIndices,
+        completion: &CompletionConfig,
+        tested: &mut usize,
+    ) -> Vec<PatternMatch> {
+        let (matches, count) =
+            self.find_matches_inner(touches, &mut NoDiagnostics, exclude, completion);
+        *tested += count;
+        matches
     }
 
     fn find_matches_inner(
@@ -81,8 +102,9 @@ impl<'a> PatternSet<'a> {
         diagnostics: &mut impl CandidateDiagnostics,
         exclude: &TakenIndices,
         completion: &CompletionConfig,
-    ) -> Vec<PatternMatch> {
+    ) -> (Vec<PatternMatch>, usize) {
         let mut matches = Vec::new();
+        let mut tested = 0usize;
         let mut used_indices = TakenIndices::default();
 
         // Sort by pattern ID for a deterministic evaluation order.
@@ -104,6 +126,7 @@ impl<'a> PatternSet<'a> {
             // reserved by an incumbent slot binding (slot affinity).
             let taken = used_indices.union(exclude);
             let available = touches.available_indices(&taken);
+            let pos_of = |i: usize| touches[i].pos;
 
             if available.len() < pattern.num_points
                 && !(partial_possible && available.len() + 1 >= pattern.num_points)
@@ -113,7 +136,13 @@ impl<'a> PatternSet<'a> {
 
             let mut best = BestScore::default();
 
-            for combo in combinations(&available, pattern.num_points.as_usize()) {
+            for combo in combinations_within(
+                &available,
+                pattern.num_points.as_usize(),
+                &pos_of,
+                pattern.footprint(),
+            ) {
+                tested += 1;
                 let points = touches.positions_of(&combo);
 
                 let matched =
@@ -154,7 +183,10 @@ impl<'a> PatternSet<'a> {
                 let max_missing = (completion.max_missing as usize).min(pattern.num_points - 1);
                 for missing in 1..=max_missing {
                     let partial_n = pattern.num_points - missing;
-                    for combo in combinations(&available, partial_n) {
+                    for combo in
+                        combinations_within(&available, partial_n, &pos_of, pattern.footprint())
+                    {
+                        tested += 1;
                         let points = touches.positions_of(&combo);
 
                         let result = pattern
@@ -225,7 +257,7 @@ impl<'a> PatternSet<'a> {
             }
         }
 
-        matches
+        (matches, tested)
     }
 }
 
@@ -291,7 +323,92 @@ fn partial_report(
     }
 }
 
-/// Generates all k-element index combinations of `items`.
+/// DFS context for [`combinations_within`] (SPATIAL_CLUSTERING.md):
+/// the fixed enumeration inputs - item pool, arity, position lookup
+/// and the pattern's span bound - kept out of the recursion's
+/// parameter list.
+struct SpanSearch<'a> {
+    /// Item pool to draw indices from (touch indices of the frame).
+    items: &'a [usize],
+    /// Combination arity - how many indices each candidate holds.
+    arity: usize,
+    /// Position lookup: item (touch index) -> surface position in mm.
+    pos_of: &'a dyn Fn(usize) -> Vec2<Millimeters>,
+    /// Pairwise-diameter bound - extending beyond prunes the branch.
+    max_span: Millimeters,
+}
+
+impl SpanSearch<'_> {
+    /// Depth-first combination walk: `start` is the next item position,
+    /// `combo`/`span` the accumulating prefix and its pairwise diameter.
+    fn descend(
+        &self,
+        start: usize,
+        combo: &mut Vec<usize>,
+        span: &mut Millimeters,
+        result: &mut Vec<CombinationBuf>,
+    ) {
+        if combo.len() == self.arity {
+            result.push(combo.clone().into());
+            return;
+        }
+        let needed = self.arity - combo.len();
+        for (offset, &item) in self.items[start..].iter().enumerate() {
+            if self.items.len() - (start + offset) < needed {
+                break;
+            }
+            let pos = (self.pos_of)(item);
+            let new_span = combo
+                .iter()
+                .map(|&c| pos.distance(&(self.pos_of)(c)))
+                .fold(*span, |acc, d| if d > acc { d } else { acc });
+            if new_span > self.max_span {
+                continue;
+            }
+            let old_span = *span;
+            *span = new_span;
+            combo.push(item);
+            self.descend(start + offset + 1, combo, span, result);
+            combo.pop();
+            *span = old_span;
+        }
+    }
+}
+
+/// Span-pruned k-combination enumeration (SPATIAL_CLUSTERING.md):
+/// `pos_of` maps each item to its position; a partial combination
+/// whose pairwise diameter exceeds `max_span` prunes the whole branch -
+/// adding points never shrinks a diameter, so every superposition
+/// would fail the fingerprint anyway. Emits the same lexicographic
+/// order as [`combinations`], minus provably impossible candidates.
+fn combinations_within(
+    items: &[usize],
+    k: usize,
+    pos_of: &impl Fn(usize) -> Vec2<Millimeters>,
+    max_span: Millimeters,
+) -> Combinations {
+    if k == 0 {
+        return Combinations::one_empty();
+    }
+    let mut result = Vec::new();
+    SpanSearch {
+        items,
+        arity: k,
+        pos_of,
+        max_span,
+    }
+    .descend(
+        0,
+        &mut Vec::with_capacity(k),
+        &mut Millimeters::default(),
+        &mut result,
+    );
+    result.into()
+}
+
+/// Generates all k-element index combinations of `items` - the
+/// unpruned baseline kept for tests.
+#[cfg(test)]
 fn combinations(items: &[usize], k: usize) -> Combinations {
     if k == 0 {
         return Combinations::one_empty();
@@ -316,7 +433,11 @@ fn combinations(items: &[usize], k: usize) -> Combinations {
 #[cfg(test)]
 mod tests {
     use super::combinations;
+    use super::combinations_within;
+    use crate::CompletionConfig;
+    use crate::Millimeters;
     use crate::PatternSet;
+    use crate::Region;
     use crate::TakenIndices;
     use crate::TangiblePattern;
     use crate::TouchPoint;
@@ -393,6 +514,117 @@ mod tests {
     }
 
     #[test]
+    fn combinations_within_prunes_far_spans() {
+        // Points at 0 / 50 / 500 mm: with a 60 mm span limit only the
+        // {0,1} pair can ever satisfy a small-figure fingerprint.
+        let positions = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(500.0, 0.0),
+        ];
+        let pos_of = |i: usize| positions[i];
+        let combos = combinations_within(&[0, 1, 2], 2, &pos_of, 60.0.into());
+        assert_eq!(combos.len(), 1);
+        assert_eq!(&combos[0][..], &[0, 1]);
+    }
+
+    #[test]
+    fn combinations_within_degenerates_to_full_enumeration() {
+        // A span limit beyond every pairwise distance keeps all
+        // combinations - the worst case degrades to full enumeration.
+        let positions = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(500.0, 0.0),
+        ];
+        let pos_of = |i: usize| positions[i];
+        let combos = combinations_within(&[0, 1, 2], 2, &pos_of, 1000.0.into());
+        assert_eq!(combos.len(), 3);
+    }
+
+    /// Soundness invariant (SPATIAL_CLUSTERING.md golden property):
+    /// every pruned combination's pairwise diameter provably exceeds
+    /// the footprint - pruning can never reject a matching candidate.
+    #[test]
+    fn pruned_combinations_provably_exceed_footprint() {
+        let positions = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(80.0, 40.0),
+            Vec2::new(500.0, 0.0),
+            Vec2::new(520.0, 60.0),
+            Vec2::new(900.0, 900.0),
+        ];
+        let pos_of = |i: usize| positions[i];
+        let span = Millimeters::new(75.0);
+
+        let full: Vec<_> = combinations(&[0, 1, 2, 3, 4, 5], 3)
+            .iter()
+            .cloned()
+            .collect();
+        let pruned = combinations_within(&[0, 1, 2, 3, 4, 5], 3, &pos_of, span);
+
+        // Pruned output is a strict subset of full enumeration.
+        assert!(pruned.len() < full.len());
+        assert!(pruned.iter().all(|c| full.contains(c)));
+        // Every dropped combination's diameter exceeds the span bound.
+        for combo in full.iter().filter(|c| !pruned.contains(c)) {
+            let diameter = combo
+                .iter()
+                .flat_map(|&a| combo.iter().map(move |&b| pos_of(a).distance(&pos_of(b))))
+                .max_by(Millimeters::total_cmp)
+                .unwrap_or_default();
+            assert!(
+                diameter > span,
+                "pruned combo {combo:?} has diameter {diameter:?} <= {span:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn footprint_is_max_distance_plus_tolerance() {
+        // Square 40 mm sides, 56.57 mm diagonals + 5 mm tolerance.
+        let square = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(40.0, 0.0),
+            Vec2::new(40.0, 40.0),
+            Vec2::new(0.0, 40.0),
+        ];
+        let pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
+        let footprint = pattern.footprint().as_f64();
+        let expected = (40.0f64 * 2.0f64.sqrt()) + 5.0;
+        assert!((footprint - expected).abs() < 0.01);
+    }
+
+    #[test]
+    fn match_inside_footprint_still_finds_the_pattern() {
+        // A candidate spanning right at the footprint boundary must
+        // still match - pruning is exact, never an approximation.
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let patterns = vec![TangiblePattern::from_points(
+            1,
+            "triangle",
+            (&reference).into(),
+            5.0,
+        )];
+        // 1.05x scaled: span 52.5*sqrt(2) = 74.25 <= footprint 75.7
+        // (70.7 + 5) - the boundary candidate stays inside the prune.
+        let touches = vec![
+            touch_point(0, 100.0, 100.0),
+            touch_point(1, 152.5, 100.0),
+            touch_point(2, 100.0, 152.5),
+            touch_point(3, 999.0, 999.0), // distractor, always pruned
+        ];
+        let matches = PatternSet::from(&patterns[..]).find_matches((&touches).into());
+        assert_eq!(matches.len(), 1);
+        assert_eq!(&matches[0].touch_indices[..], &[0, 1, 2]);
+    }
+
+    #[test]
     fn diagnostics_report_every_tested_combination() {
         let reference = vec![
             Vec2::new(0.0, 0.0),
@@ -417,12 +649,15 @@ mod tests {
             (&touches).into(),
             &mut reports,
             &TakenIndices::default(),
-            &crate::CompletionConfig::default(),
+            &CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
-        // C(4,3) combinations: one matches, three are rejected.
-        assert_eq!(reports.len(), 4);
+        // Span pruning (SPATIAL_CLUSTERING.md): combos containing the
+        // (999,999) touch exceed the triangle footprint and are never
+        // evaluated - diagnostics stay sparse: only the surviving
+        // C(3,3) candidate reports.
+        assert_eq!(reports.len(), 1);
         assert_eq!(reports.iter().filter(|report| report.matched).count(), 1);
         assert!(reports.iter().all(|report| !report.partial));
 
@@ -465,7 +700,7 @@ mod tests {
             (&touches).into(),
             &mut reports,
             &TakenIndices::default(),
-            &crate::CompletionConfig::default(),
+            &CompletionConfig::default(),
         );
 
         assert!(matches.is_empty());
@@ -504,15 +739,18 @@ mod tests {
             (&touches).into(),
             &mut reports,
             &TakenIndices::default(),
-            &crate::CompletionConfig::default(),
+            &CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
         assert!(matches[0].pattern_name.as_str().ends_with("(partial)"));
-        // C(4,4) = 1 exact candidate + C(4,3) = 4 partial candidates.
-        assert_eq!(reports.len(), 5);
+        // Span pruning (SPATIAL_CLUSTERING.md): the exact {0,1,2,3}
+        // combo and every partial containing the (999,999) touch exceed
+        // the square footprint - only the surviving {0,1,2} partial
+        // reports.
+        assert_eq!(reports.len(), 1);
         let partials: Vec<_> = reports.iter().filter(|report| report.partial).collect();
-        assert_eq!(partials.len(), 4);
+        assert_eq!(partials.len(), 1);
         assert_eq!(partials.iter().filter(|report| report.matched).count(), 1);
         // A 3-pin subset has C(3,2) = 3 distances.
         assert!(partials.iter().all(|report| report.deviations.len() == 3));
@@ -520,7 +758,6 @@ mod tests {
 
     #[test]
     fn region_rejects_a_geometrically_valid_match() {
-        use crate::Region;
         let reference = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(50.0, 0.0),
@@ -529,10 +766,10 @@ mod tests {
         let mut pattern = TangiblePattern::from_points(1, "triangle", (&reference).into(), 5.0);
         // Only the left half of the surface may match.
         pattern.regions = vec![Region {
-            x_min: crate::Millimeters::new(0.0),
-            y_min: crate::Millimeters::new(0.0),
-            x_max: crate::Millimeters::new(200.0),
-            y_max: crate::Millimeters::new(1000.0),
+            x_min: Millimeters::new(0.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(200.0),
+            y_max: Millimeters::new(1000.0),
         }];
         let patterns = vec![pattern];
 
@@ -563,7 +800,6 @@ mod tests {
 
     #[test]
     fn region_boundary_point_rejects_the_candidate() {
-        use crate::Region;
         let reference = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(50.0, 0.0),
@@ -571,10 +807,10 @@ mod tests {
         ];
         let mut pattern = TangiblePattern::from_points(1, "triangle", (&reference).into(), 5.0);
         pattern.regions = vec![Region {
-            x_min: crate::Millimeters::new(0.0),
-            y_min: crate::Millimeters::new(0.0),
-            x_max: crate::Millimeters::new(200.0),
-            y_max: crate::Millimeters::new(1000.0),
+            x_min: Millimeters::new(0.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(200.0),
+            y_max: Millimeters::new(1000.0),
         }];
         let patterns = vec![pattern];
 
@@ -629,7 +865,7 @@ mod tests {
             (&touches).into(),
             &mut reports,
             &TakenIndices::default(),
-            &crate::CompletionConfig::default(),
+            &CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
@@ -666,7 +902,7 @@ mod tests {
         let matches = PatternSet::from(&patterns[..]).find_matches_excluding(
             (&touches).into(),
             &TakenIndices::default(),
-            &crate::CompletionConfig::default(),
+            &CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);
@@ -710,7 +946,7 @@ mod tests {
         let matches = PatternSet::from(&patterns[..]).find_matches_excluding(
             (&touches).into(),
             &TakenIndices::default(),
-            &crate::CompletionConfig::default(),
+            &CompletionConfig::default(),
         );
 
         assert_eq!(matches.len(), 1);

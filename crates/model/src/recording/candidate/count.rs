@@ -31,6 +31,12 @@ impl AddAssign<u64> for CandidateCount {
     }
 }
 
+impl AddAssign<CandidateCount> for CandidateCount {
+    fn add_assign(&mut self, rhs: CandidateCount) {
+        self.0 += rhs.0;
+    }
+}
+
 impl From<u64> for CandidateCount {
     fn from(count: u64) -> Self {
         Self(count)
