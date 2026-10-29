@@ -5,7 +5,10 @@ use std::path::PathBuf;
 
 use tangible_objects_model::ABS_MT_POSITION_X;
 use tangible_objects_model::ABS_MT_POSITION_Y;
+use tangible_objects_model::ABS_MT_SLOT;
+use tangible_objects_model::ABS_MT_TRACKING_ID;
 use tangible_objects_model::Calibration;
+use tangible_objects_model::EventType;
 use tangible_objects_model::RawEvent;
 
 use super::DeviceEntry;
@@ -130,11 +133,71 @@ impl TouchDevice {
     }
 
     /// Fetches all pending input events converted to [`RawEvent`]s.
+    ///
+    /// On `SYN_DROPPED` (the kernel's resync signal: the event queue
+    /// overflowed and terminations may have been lost) the kernel MT
+    /// slot state is queried via `EVIOCGMTSLOTS` and appended as an
+    /// authoritative resync batch: the marker followed by every open
+    /// slot's state and a `SYN_REPORT`. `TouchState` lifts every held
+    /// contact absent from that batch at frame end - stale slots die
+    /// where they were created, not by heuristic watchdog. When the
+    /// ioctl fails no marker is emitted (stale view beats a wipe).
     pub fn fetch_events(&mut self) -> Result<Vec<RawEvent>, EngineError> {
         let mut events = Vec::new();
+        let mut dropped = false;
         for event in self.device.fetch_events()? {
-            events.push(RawEvent::from(&event));
+            let raw = RawEvent::from(&event);
+            if raw.is_syn_dropped() {
+                dropped = true;
+                continue;
+            }
+            events.push(raw);
+        }
+        if dropped && let Ok(resync) = self.resync_events() {
+            events.extend(resync);
         }
         Ok(events)
+    }
+
+    /// Builds the authoritative resync batch from kernel MT slot state:
+    /// the `SYN_DROPPED` marker, `SLOT`/`TRACKING_ID`/`POSITION_X/Y`
+    /// for every kernel-open contact, then `SYN_REPORT`.
+    fn resync_events(&self) -> Result<Vec<RawEvent>, EngineError> {
+        let abs = self.device.get_abs_state()?;
+        let num_slots = abs[ABS_MT_SLOT.as_u16() as usize].maximum as usize + 1;
+        let tracking = self.mt_slots(ABS_MT_TRACKING_ID.as_u16(), num_slots)?;
+        let pos_x = self.mt_slots(ABS_MT_POSITION_X.as_u16(), num_slots)?;
+        let pos_y = self.mt_slots(ABS_MT_POSITION_Y.as_u16(), num_slots)?;
+
+        let mut events = vec![RawEvent::syn_dropped()];
+        for slot in 0..num_slots {
+            if tracking[slot] == -1 {
+                continue;
+            }
+            events.extend([
+                RawEvent::new(EventType::Abs, ABS_MT_SLOT, slot as i32),
+                RawEvent::new(EventType::Abs, ABS_MT_TRACKING_ID, tracking[slot]),
+                RawEvent::new(EventType::Abs, ABS_MT_POSITION_X, pos_x[slot]),
+                RawEvent::new(EventType::Abs, ABS_MT_POSITION_Y, pos_y[slot]),
+            ]);
+        }
+        events.push(RawEvent::syn_report());
+        Ok(events)
+    }
+
+    /// `EVIOCGMTSLOTS(code)` ioctl: current kernel values of one
+    /// `ABS_MT_*` axis across all slots - the resync source of truth.
+    fn mt_slots(&self, code: u16, num_slots: usize) -> Result<Vec<i32>, EngineError> {
+        let mut data = vec![0i32; num_slots + 1];
+        data[0] = i32::from(code);
+        // _IOC(_IOC_READ, 'E', 0x0a, 4 + 4 * num_slots)
+        let size = 4 + 4 * num_slots;
+        let request = 0x80000000_u64 | (u64::from(b'E') << 8) | 0x0A | ((size as u64) << 16);
+        let rc = unsafe { libc::ioctl(self.device.as_raw_fd(), request, data.as_mut_ptr()) };
+        if rc < 0 {
+            return Err(EngineError::Io(std::io::Error::last_os_error()));
+        }
+        data.remove(0);
+        Ok(data)
     }
 }

@@ -21,6 +21,7 @@ pub use input::ABS_MT_TRACKING_ID;
 pub use input::ABS_X;
 pub use input::ABS_Y;
 pub use input::BTN_TOUCH;
+pub use input::SYN_DROPPED;
 pub use input::SYN_REPORT;
 pub use named::NamedEventCode;
 pub use raw::RawEvent;

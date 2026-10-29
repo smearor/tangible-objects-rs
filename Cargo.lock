@@ -3256,6 +3256,7 @@ name = "tangible-objects-engine"
 version = "0.1.0"
 dependencies = [
  "evdev",
+ "libc",
  "serde_json",
  "tangible-objects-model",
  "thiserror 2.0.21",

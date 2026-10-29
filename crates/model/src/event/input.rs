@@ -8,6 +8,12 @@ use super::EventCode;
 /// Synchronization code delimiting one input frame.
 pub const SYN_REPORT: EventCode = EventCode::new(0x00);
 
+/// `SYN_DROPPED` - the kernel's resync signal: the reader's event queue
+/// overflowed, events were dropped and the client's accumulated state
+/// may diverge from kernel truth (STALE_SLOTS root cause). The correct
+/// client response is an `EVIOCGMTSLOTS` resync, never heuristics.
+pub const SYN_DROPPED: EventCode = EventCode::new(0x03);
+
 /// Absolute multitouch code selecting the active slot.
 pub const ABS_MT_SLOT: EventCode = EventCode::new(47);
 

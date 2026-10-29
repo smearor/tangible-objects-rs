@@ -631,6 +631,7 @@ mod tests {
     use tangible_objects_model::ProfileFile;
     use tangible_objects_model::RawEvent;
     use tangible_objects_model::TangiblePattern;
+    use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::Vec2;
 
     fn triangle_pattern() -> TangiblePattern {
@@ -1103,5 +1104,25 @@ mod tests {
             syn(&mut engine).expect("frame").ran_generic,
             "pending stability has not resolved yet"
         );
+    }
+
+    /// SYN_DROPPED resync (kernel queue overflow): the synthesized
+    /// authoritative batch reconciles touch_state - contacts absent
+    /// from the kernel state vanish at frame end.
+    #[test]
+    fn syn_dropped_resync_reconciles_touch_state() {
+        let mut engine = Engine::new(vec![]);
+        contact(&mut engine, 0, 100, 10, 10);
+        contact(&mut engine, 1, 101, 20, 20);
+        contact(&mut engine, 2, 102, 30, 30);
+        syn(&mut engine);
+        assert_eq!(engine.touch_count(), 3);
+
+        // Kernel truth after the drop: only slot 1 survives.
+        engine.process(&RawEvent::syn_dropped());
+        contact(&mut engine, 1, 101, 20, 20);
+        let frame = syn(&mut engine).expect("frame");
+        assert_eq!(frame.touches.len(), 1);
+        assert_eq!(frame.touches[0].slot, TouchPointSlot::new(1));
     }
 }

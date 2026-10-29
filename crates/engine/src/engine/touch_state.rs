@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use tangible_objects_model::ABS_MT_POSITION_X;
 use tangible_objects_model::ABS_MT_POSITION_Y;
@@ -27,6 +28,13 @@ pub struct TouchState {
     /// Raw-to-millimeter conversion for position updates; `None` leaves
     /// positions in raw device units.
     calibration: Option<Calibration>,
+    /// A `SYN_DROPPED` marker opened an authoritative resync frame:
+    /// the kernel's full slot state follows, and every slot absent
+    /// from it must be lifted at the next `SYN_REPORT`.
+    resync_pending: bool,
+    /// Slots addressed since the resync marker - survivors of the
+    /// reconcile.
+    updated: HashSet<TouchPointSlot>,
 }
 
 impl TouchState {
@@ -36,6 +44,8 @@ impl TouchState {
             slots: HashMap::new(),
             current_slot: TouchPointSlot::new(0),
             calibration: None,
+            resync_pending: false,
+            updated: HashSet::new(),
         }
     }
 
@@ -46,7 +56,29 @@ impl TouchState {
 
     /// Feeds a single raw event into the state machine.
     pub fn process(&mut self, event: &RawEvent) {
+        // SYN_DROPPED resync (kernel queue overflow): the frame after
+        // the marker carries the full kernel slot state - any held
+        // contact absent from it is dropped state and lifted at the
+        // frame's SYN_REPORT.
+        if event.is_syn_dropped() {
+            self.resync_pending = true;
+            self.updated.clear();
+            return;
+        }
+        if event.is_syn_report() {
+            if self.resync_pending {
+                self.slots.retain(|slot, _| self.updated.contains(slot));
+                self.resync_pending = false;
+            }
+            return;
+        }
         if event.event_type == EventType::Abs {
+            if self.resync_pending && event.code != ABS_MT_SLOT {
+                // Slot-targeted data marks the already-selected slot -
+                // ABS_MT_SLOT itself must not mark: current_slot still
+                // holds the previous slot at that point.
+                self.updated.insert(self.current_slot);
+            }
             match event.code {
                 ABS_MT_SLOT => self.current_slot = TouchPointSlot::new(event.value.max(0) as u32),
                 ABS_MT_TRACKING_ID => {
@@ -168,5 +200,52 @@ mod tests {
         state.process(&tracking_id(-1));
         assert_eq!(state.active_count(), 1);
         assert_eq!(state.active_touches()[0].slot, TouchPointSlot::new(1));
+    }
+
+    /// SYN_DROPPED resync (kernel queue overflow): the frame after the
+    /// marker is authoritative - held contacts absent from the kernel
+    /// state are lifted at SYN_REPORT.
+    #[test]
+    fn syn_dropped_resync_lifts_contacts_absent_from_kernel_state() {
+        let mut state = TouchState::new();
+        // Three contacts held - one real, two dropped-state zombies.
+        state.process(&slot(0));
+        state.process(&tracking_id(100));
+        state.process(&slot(1));
+        state.process(&tracking_id(101));
+        state.process(&slot(2));
+        state.process(&tracking_id(102));
+        assert_eq!(state.active_count(), 3);
+
+        // Kernel truth: only slot 1 survives.
+        state.process(&RawEvent::syn_dropped());
+        state.process(&slot(1));
+        state.process(&tracking_id(101));
+        state.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_X, 50));
+        state.process(&RawEvent::new(EventType::Abs, ABS_MT_POSITION_Y, 60));
+        state.process(&RawEvent::syn_report());
+
+        assert_eq!(state.active_count(), 1);
+        let touches = state.active_touches();
+        assert_eq!(touches[0].slot, TouchPointSlot::new(1));
+        assert_eq!(touches[0].tracking_id, TrackingId::new(101));
+
+        // The next frame is normal again - no wipe semantics linger.
+        state.process(&RawEvent::syn_report());
+        assert_eq!(state.active_count(), 1);
+    }
+
+    /// A resync batch reporting zero contacts lifts every held contact -
+    /// the kernel really did lose all of them.
+    #[test]
+    fn syn_dropped_with_empty_kernel_state_lifts_everything() {
+        let mut state = TouchState::new();
+        state.process(&slot(0));
+        state.process(&tracking_id(100));
+        assert_eq!(state.active_count(), 1);
+
+        state.process(&RawEvent::syn_dropped());
+        state.process(&RawEvent::syn_report());
+        assert_eq!(state.active_count(), 0);
     }
 }

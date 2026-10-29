@@ -1,5 +1,6 @@
 use super::EventCode;
 use super::EventType;
+use super::SYN_DROPPED;
 use super::SYN_REPORT;
 
 /// Device-agnostic raw input event as `(type, code, value)` triple.
@@ -29,6 +30,22 @@ impl RawEvent {
     /// Returns true when this event is a `SYN_REPORT` frame delimiter.
     pub fn is_syn_report(&self) -> bool {
         self.event_type == EventType::Syn && self.code == SYN_REPORT
+    }
+
+    /// Returns true when this event is a `SYN_DROPPED` resync signal -
+    /// the kernel dropped queued events, so accumulated client state
+    /// may diverge from kernel truth.
+    pub fn is_syn_dropped(&self) -> bool {
+        self.event_type == EventType::Syn && self.code == SYN_DROPPED
+    }
+
+    /// The `SYN_DROPPED` resync signal event.
+    pub const fn syn_dropped() -> Self {
+        Self {
+            event_type: EventType::Syn,
+            code: SYN_DROPPED,
+            value: 0,
+        }
     }
 
     /// The `SYN_REPORT` frame delimiter event - the canonical closing
