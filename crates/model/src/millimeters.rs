@@ -34,6 +34,21 @@ impl Millimeters {
         Self(self.0.abs())
     }
 
+    /// The smaller of two values (`f64::min` semantics for NaN inputs).
+    pub fn min(self, other: Self) -> Self {
+        Self(self.0.min(other.0))
+    }
+
+    /// The larger of two values (`f64::max` semantics for NaN inputs).
+    pub fn max(self, other: Self) -> Self {
+        Self(self.0.max(other.0))
+    }
+
+    /// Clamps the value into the inclusive `[min, max]` range.
+    pub fn clamp(self, min: Self, max: Self) -> Self {
+        Self(self.0.clamp(min.0, max.0))
+    }
+
     /// Total ordering comparison (no NaN pitfalls when sorting).
     pub fn total_cmp(&self, other: &Self) -> Ordering {
         self.0.total_cmp(&other.0)
