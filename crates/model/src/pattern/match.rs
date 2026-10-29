@@ -1,4 +1,6 @@
 use super::PatternId;
+use super::RefIndices;
+use super::RefPoints;
 use crate::ClaimedIndices;
 use crate::CombinationBuf;
 use crate::FrameCount;
@@ -6,9 +8,12 @@ use crate::Millimeters;
 use crate::PatternName;
 use crate::PointSet;
 use crate::RotationRad;
+use crate::SlotSet;
+use crate::TangiblePattern;
 use crate::TouchPointSlot;
 use crate::TouchSet;
 use crate::Vec2;
+use std::collections::HashMap;
 
 /// A successful pattern match within a single input frame.
 #[derive(Debug, Clone)]
@@ -19,16 +24,28 @@ pub struct PatternMatch {
     pub pattern_name: PatternName,
     /// Centroid of the matched touch points.
     pub center: Vec2<Millimeters>,
-    /// Estimated figure orientation in radians.
+    /// Estimated figure orientation in radians - correspondence-fitted
+    /// when [`Self::correspondence`] is solved, else the
+    /// [`PointSet::rotation_of`] estimate.
     pub rotation_rad: RotationRad,
     /// Indices into the frame's touch point list that belong to this figure.
     pub touch_indices: CombinationBuf,
+    /// Solved pin identity: `correspondence[i]` is the reference pin of
+    /// `touch_indices[i]` (ROTATION.md). Empty when unsolved - no
+    /// `ref_points` on the pattern, degenerate geometry, or the
+    /// incumbent path that never solves.
+    pub correspondence: RefIndices,
+    /// The pattern's reference pin geometry, resolved once together
+    /// with [`Self::correspondence`] - the tracker persists it so the
+    /// incumbent path needs no pattern lookup.
+    pub ref_points: Option<RefPoints>,
     /// Whether the match used a partial (`num_points - k`) fingerprint.
     /// `true` also for completed partials - see `claimed_indices`.
     pub partial: bool,
-    /// Touch indices claimed by missing-pin completion - pins predicted
-    /// from the matched geometry and assigned to this figure even though
-    /// they did not satisfy the fingerprint (TRACKING_STABILIZATION.md).
+    /// [`Claim`]s of missing-pin completion - measured touches bound
+    /// to the reference pins they fill, predicted from the matched
+    /// geometry and assigned to this figure even though they did not
+    /// satisfy the fingerprint (TRACKING_STABILIZATION.md).
     /// Empty when completion did not run or found nothing.
     pub claimed_indices: ClaimedIndices,
     /// Frames a partial *spawn* must hold before the tangible is
@@ -51,17 +68,49 @@ impl PatternMatch {
     pub fn all_indices(&self) -> impl Iterator<Item = usize> + '_ {
         self.touch_indices
             .iter()
-            .chain(self.claimed_indices.iter())
             .copied()
+            .chain(self.claimed_indices.touch_indices())
+    }
+
+    /// Solves the pin correspondence of this match's measured points
+    /// against `pattern`'s reference geometry (ROTATION.md) and
+    /// replaces `rotation_rad` with the fitted angle. `kept_refs` are
+    /// the reference indices `points` correspond to - the full set for
+    /// exact matches, the surviving subset for partials. No-op without
+    /// `ref_points` or on degenerate input; the `rotation_of`
+    /// estimate then stands.
+    pub fn resolve_correspondence(
+        &mut self,
+        pattern: &TangiblePattern,
+        points: PointSet<'_>,
+        kept_refs: &RefIndices,
+    ) {
+        let Some(ref_points) = &pattern.ref_points else {
+            return;
+        };
+        let Some(fit) = ref_points.fit_rotation(kept_refs, points, pattern.tolerance) else {
+            return;
+        };
+        self.rotation_rad = fit.angle;
+        self.correspondence = fit.correspondence;
+        self.ref_points = Some(ref_points.clone());
+    }
+
+    /// The genuine slot→pin binding of this match - `touch_indices`
+    /// paired with their solved [`Self::correspondence`] pins and
+    /// resolved through `touches` to slot identities (ROTATION.md).
+    /// The seed of a persisted `PinMap`.
+    pub fn genuine_map(&self, touches: TouchSet<'_>) -> HashMap<TouchPointSlot, crate::RefIndex> {
+        self.touch_indices
+            .corresponding(&self.correspondence)
+            .map(|(touch_index, ref_index)| (touches[touch_index].slot, ref_index))
+            .collect()
     }
 
     /// Resolves `touch_indices` to the slots of the touched points -
     /// the genuine-match set used for incumbent re-matching (claimed
     /// indices excluded: a claimed pin did not satisfy the fingerprint).
-    pub fn matched_slots(
-        &self,
-        touches: TouchSet<'_>,
-    ) -> std::collections::HashSet<TouchPointSlot> {
+    pub fn matched_slots(&self, touches: TouchSet<'_>) -> SlotSet {
         self.touch_indices
             .iter()
             .map(|&index| touches[index].slot)
@@ -71,103 +120,32 @@ impl PatternMatch {
     /// Resolves `touch_indices` (plus `claimed_indices` when
     /// `bind_claimed`) to the slots of the touched points - the slot
     /// binding a tracked figure holds over its contacts.
-    pub fn slots_of(
-        &self,
-        touches: TouchSet<'_>,
-        bind_claimed: bool,
-    ) -> std::collections::HashSet<TouchPointSlot> {
-        let claimed = if bind_claimed {
-            self.claimed_indices.as_slice()
+    pub fn slots_of(&self, touches: TouchSet<'_>, bind_claimed: bool) -> SlotSet {
+        let claimed: Vec<usize> = if bind_claimed {
+            self.claimed_indices.touch_indices().collect()
         } else {
-            &[]
+            Vec::new()
         };
         self.touch_indices
             .iter()
-            .chain(claimed.iter())
-            .map(|&index| touches[index].slot)
+            .copied()
+            .chain(claimed)
+            .map(|index| touches[index].slot)
             .collect()
-    }
-
-    /// Computes the figure orientation from its matched points.
-    ///
-    /// For 3 points the vertex opposite the shortest side defines the
-    /// orientation; for 4+ points the point farthest from the centroid is used.
-    /// Returns 0.0 for empty point sets.
-    pub fn rotation_of(points: PointSet<'_>, center: &Vec2<Millimeters>) -> RotationRad {
-        if points.is_empty() {
-            return RotationRad::new(0.0);
-        }
-        if points.len() == 3 {
-            let d01 = points[0].distance(&points[1]);
-            let d12 = points[1].distance(&points[2]);
-            let d02 = points[0].distance(&points[2]);
-
-            let ref_index = if d01 <= d12 && d01 <= d02 {
-                2 // side 0-1 shortest, opposite vertex is 2
-            } else if d12 <= d01 && d12 <= d02 {
-                0 // side 1-2 shortest, opposite vertex is 0
-            } else {
-                1 // side 0-2 shortest, opposite vertex is 1
-            };
-
-            let p = &points[ref_index];
-            RotationRad::new((p.y - center.y).atan2(p.x - center.x))
-        } else {
-            let farthest = points
-                .iter()
-                .max_by(|a, b| a.distance(center).total_cmp(&b.distance(center)));
-            match farthest {
-                Some(p) => RotationRad::new((p.y - center.y).atan2(p.x - center.x)),
-                None => RotationRad::new(0.0),
-            }
-        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::PatternMatch;
+    use crate::Claim;
     use crate::ClaimedIndices;
     use crate::DEFAULT_SPAWN_STABILITY;
     use crate::PatternId;
+    use crate::RefIndex;
+    use crate::RefIndices;
     use crate::RotationRad;
     use crate::Vec2;
-
-    #[test]
-    fn rotation_of_triangle_uses_opposite_vertex() {
-        // Shortest side is 0-2 (length 30), so vertex 1 defines orientation.
-        let points = vec![
-            Vec2::new(0.0, 0.0),
-            Vec2::new(0.0, 50.0),
-            Vec2::new(30.0, 0.0),
-        ];
-        let center = Vec2::centroid(&points);
-        let rotation = PatternMatch::rotation_of((&points).into(), &center).as_f64();
-        // Vertex 1 at (0, 50), center at (10, 50/3): direction points up-left.
-        assert!(rotation > std::f64::consts::PI / 2.0);
-    }
-
-    #[test]
-    fn rotation_of_four_points_uses_farthest() {
-        let points = vec![
-            Vec2::new(0.0, 0.0),
-            Vec2::new(10.0, 0.0),
-            Vec2::new(0.0, 10.0),
-            Vec2::new(100.0, 0.0),
-        ];
-        let center = Vec2::centroid(&points);
-        let rotation = PatternMatch::rotation_of((&points).into(), &center).as_f64();
-        // Farthest point (100, 0) lies to the right of the centroid.
-        assert!(rotation.abs() < std::f64::consts::PI / 2.0);
-    }
-
-    #[test]
-    fn rotation_of_empty_set_is_zero() {
-        assert_eq!(
-            PatternMatch::rotation_of((&[]).into(), &Vec2::new(0.0, 0.0)).as_f64(),
-            0.0
-        );
-    }
 
     #[test]
     fn partial_flag_and_all_indices() {
@@ -177,6 +155,8 @@ mod tests {
             center: Vec2::new(0.0, 0.0),
             rotation_rad: RotationRad::new(0.0),
             touch_indices: vec![0, 1, 2].into(),
+            correspondence: RefIndices::default(),
+            ref_points: None,
             partial: false,
             claimed_indices: ClaimedIndices::default(),
             spawn_stability: DEFAULT_SPAWN_STABILITY,
@@ -184,7 +164,7 @@ mod tests {
         assert!(!pattern_match.is_partial());
         assert_eq!(pattern_match.all_indices().count(), 3);
         pattern_match.partial = true;
-        pattern_match.claimed_indices = vec![5].into();
+        pattern_match.claimed_indices = vec![Claim::new(5, RefIndex::new(0))].into();
         assert!(pattern_match.is_partial());
         assert_eq!(
             pattern_match.all_indices().collect::<Vec<usize>>(),

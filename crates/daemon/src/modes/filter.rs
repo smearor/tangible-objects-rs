@@ -15,8 +15,8 @@ use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternSet;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::StageName;
-use tangible_objects_model::TouchPointSlot;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
@@ -215,7 +215,7 @@ pub fn run_filter(
             // Scoped by stage: a match of a `stage = "x"` pattern feeds
             // only that stage's classification (EVENT_PIPELINE.md).
             let completion_exact = engine.completion().mode == CompletionMode::Exact;
-            let mut scoped: HashMap<Option<StageName>, HashSet<TouchPointSlot>> = HashMap::new();
+            let mut scoped: HashMap<Option<StageName>, SlotSet> = HashMap::new();
             for matched in &engine_frame.matches {
                 if !matched.is_partial()
                     || (completion_exact && !matched.claimed_indices.is_empty())

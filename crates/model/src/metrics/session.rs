@@ -133,6 +133,7 @@ mod tests {
     use crate::FrameCount;
     use crate::PatternId;
     use crate::PatternMatch;
+    use crate::RefIndices;
     use crate::RotationRad;
     use crate::TangibleId;
     use crate::TouchPoint;
@@ -156,6 +157,8 @@ mod tests {
             center: Vec2::new(0.0, 0.0),
             rotation_rad: RotationRad::new(0.0),
             touch_indices: vec![0].into(),
+            correspondence: RefIndices::default(),
+            ref_points: None,
             partial,
             claimed_indices: Default::default(),
             spawn_stability: DEFAULT_SPAWN_STABILITY,

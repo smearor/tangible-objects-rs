@@ -3,6 +3,7 @@ use std::fmt::Display;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::AffinityFactor;
 use crate::Millimeters;
 
 /// Matching tolerance for a figure pattern.
@@ -29,6 +30,14 @@ impl PatternTolerance {
     /// The numeric tolerance value.
     pub const fn as_f64(self) -> f64 {
         self.0.as_f64()
+    }
+
+    /// Missing-pin acceptance tolerance - `1.5 ×` widened for the
+    /// reduced fingerprint (SPAWN_AS_PARTIAL.md), then `affinity`-scaled
+    /// for incumbent re-matching (TRACKING_STABILIZATION.md). `neutral`
+    /// affinity is the unscaled partial baseline.
+    pub fn partial(self, affinity: AffinityFactor) -> Millimeters {
+        (self.0.as_f64() * 1.5 * affinity.as_f64()).into()
     }
 }
 

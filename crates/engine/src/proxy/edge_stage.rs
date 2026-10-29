@@ -1,9 +1,8 @@
-use std::collections::HashSet;
-
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Region;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
@@ -36,7 +35,7 @@ pub(crate) struct EdgeStage {
     /// Usable surface in millimeters (from the device calibration).
     surface: Region,
     /// Slots suppressed this frame - rebuilt by `classify`.
-    suppressed: HashSet<TouchPointSlot>,
+    suppressed: SlotSet,
     /// Per-stage counters - updated in `classify`.
     metrics: StageMetrics,
 }
@@ -48,7 +47,7 @@ impl EdgeStage {
         Self {
             margin,
             surface,
-            suppressed: HashSet::new(),
+            suppressed: SlotSet::default(),
             metrics: StageMetrics::default(),
         }
     }

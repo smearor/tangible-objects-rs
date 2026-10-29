@@ -70,12 +70,12 @@ mod tests {
         std::env::temp_dir().join(format!("robofigure-analysis-{name}-{}", std::process::id()))
     }
 
-    fn write_lines(path: &std::path::Path, lines: &[&str]) {
-        std::fs::write(path, lines.join("\n") + "\n").expect("write fixture");
+    fn write_lines(path: &std::path::Path, lines: &[&str]) -> std::io::Result<()> {
+        std::fs::write(path, lines.join("\n") + "\n")
     }
 
     #[test]
-    fn loads_valid_recording() {
+    fn loads_valid_recording() -> Result<(), Box<dyn std::error::Error>> {
         let path = temp_path("valid.jsonl");
         write_lines(
             &path,
@@ -84,39 +84,44 @@ mod tests {
                 "",
                 r#"{"v":1,"frame":1,"timestamp_ms":8,"label":"fig","calibration":null,"touches":[],"candidates":[],"tracked":[],"raw_dropped":0}"#,
             ],
-        );
-        let recording = Recording::load(&path).expect("load");
+        )?;
+        let recording = Recording::load(&path)?;
         assert_eq!(recording.frames().len(), 2);
         assert_eq!(recording.frames()[1].frame.0, 1);
         std::fs::remove_file(&path).ok();
+        Ok(())
     }
 
     #[test]
-    fn rejects_unknown_schema_version() {
+    fn rejects_unknown_schema_version() -> Result<(), Box<dyn std::error::Error>> {
         let path = temp_path("bad-version.jsonl");
         write_lines(
             &path,
             &[
                 r#"{"v":2,"frame":0,"timestamp_ms":0,"label":null,"calibration":null,"touches":[],"candidates":[],"tracked":[],"raw_dropped":0}"#,
             ],
-        );
-        match Recording::load(&path) {
-            Err(AnalysisError::UnsupportedVersion { line, found, .. }) => {
-                assert_eq!((line, found), (1, 2));
-            }
-            other => panic!("expected UnsupportedVersion, got {other:?}"),
-        }
+        )?;
+        assert!(matches!(
+            Recording::load(&path),
+            Err(AnalysisError::UnsupportedVersion {
+                line: 1,
+                found: 2,
+                ..
+            })
+        ));
         std::fs::remove_file(&path).ok();
+        Ok(())
     }
 
     #[test]
-    fn rejects_malformed_line() {
+    fn rejects_malformed_line() -> Result<(), Box<dyn std::error::Error>> {
         let path = temp_path("malformed.jsonl");
-        write_lines(&path, &["{not json"]);
+        write_lines(&path, &["{not json"])?;
         assert!(matches!(
             Recording::load(&path),
             Err(AnalysisError::Parse { line: 1, .. })
         ));
         std::fs::remove_file(&path).ok();
+        Ok(())
     }
 }

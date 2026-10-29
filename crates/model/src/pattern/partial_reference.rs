@@ -1,4 +1,5 @@
 use crate::Distances;
+use crate::RefIndices;
 
 /// Reference subset with its reduced fingerprint - the pins that remain
 /// after dropping `skips` for partial matching.
@@ -8,8 +9,8 @@ use crate::Distances;
 /// expected positions.
 #[derive(Debug, Clone)]
 pub struct PartialReference {
-    /// Indices of the kept reference points, in reference order.
-    pub kept_indices: Vec<usize>,
+    /// Pin identities of the kept reference points, in reference order.
+    pub kept_indices: RefIndices,
     /// Sorted pairwise distances of the kept subset - the reduced
     /// fingerprint the measured points are compared against.
     pub distances: Distances,

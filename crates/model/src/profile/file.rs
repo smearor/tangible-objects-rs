@@ -132,7 +132,7 @@ impl ProfileFile {
             tolerance: self.tolerance,
             tolerances: self.tolerances.clone(),
             ref_points: if self.points.len() == self.num_points {
-                Some(self.points.clone())
+                Some(self.points.clone().into())
             } else {
                 None
             },
@@ -232,7 +232,7 @@ mod tests {
     use crate::Vec2;
 
     #[test]
-    fn toml_round_trip_preserves_fields() {
+    fn toml_round_trip_preserves_fields() -> Result<(), Box<dyn std::error::Error>> {
         let points = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(50.0, 0.0),
@@ -240,14 +240,8 @@ mod tests {
         ];
         let profile = ProfileFile::from_points("triangle", &points, 5.0);
 
-        let serialized = match toml::to_string(&profile) {
-            Ok(s) => s,
-            Err(_) => panic!("serialization failed"),
-        };
-        let loaded: ProfileFile = match toml::from_str(&serialized) {
-            Ok(p) => p,
-            Err(_) => panic!("deserialization failed"),
-        };
+        let serialized = toml::to_string(&profile)?;
+        let loaded: ProfileFile = toml::from_str(&serialized)?;
 
         assert_eq!(loaded.name.as_str(), "triangle");
         assert_eq!(loaded.num_points, 3);
@@ -257,10 +251,11 @@ mod tests {
         // Empty tolerances stay absent - backward-compatible TOML.
         assert!(!serialized.contains("tolerances"));
         assert!(loaded.tolerances.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn tolerances_round_trip_and_reach_the_pattern() {
+    fn tolerances_round_trip_and_reach_the_pattern() -> Result<(), toml::de::Error> {
         let toml = r#"
             name = "square"
             num_points = 4
@@ -268,15 +263,13 @@ mod tests {
             tolerances = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
             sorted_sides = [40.0, 40.0, 40.0, 40.0, 56.57, 56.57]
         "#;
-        let profile: ProfileFile = match toml::from_str(toml) {
-            Ok(p) => p,
-            Err(_) => panic!("deserialization failed"),
-        };
+        let profile: ProfileFile = toml::from_str(toml)?;
         assert_eq!(profile.tolerances.len(), 6);
         let pattern = profile.to_pattern(PatternId::new(1));
         assert_eq!(pattern.tolerances.len(), 6);
         assert_eq!(pattern.tolerance_at(0).as_f64(), 1.0);
         assert_eq!(pattern.tolerance_at(6).as_f64(), 3.0); // scalar fallback
+        Ok(())
     }
 
     #[test]
@@ -292,11 +285,11 @@ mod tests {
         assert_eq!(pattern.id, PatternId::new(7));
         assert_eq!(pattern.name.as_str(), "triangle");
         assert_eq!(pattern.num_points, 3);
-        assert_eq!(pattern.ref_points, Some(points));
+        assert_eq!(pattern.ref_points, Some(points.into()));
     }
 
     #[test]
-    fn regions_round_trip_and_reach_the_pattern() {
+    fn regions_round_trip_and_reach_the_pattern() -> Result<(), toml::de::Error> {
         let toml = r#"
             name = "left-pawn"
             num_points = 3
@@ -309,10 +302,7 @@ mod tests {
             x_max = 400.0
             y_max = 800.0
         "#;
-        let profile: ProfileFile = match toml::from_str(toml) {
-            Ok(p) => p,
-            Err(_) => panic!("deserialization failed"),
-        };
+        let profile: ProfileFile = toml::from_str(toml)?;
         assert_eq!(profile.regions.len(), 1);
         let pattern = profile.to_pattern(PatternId::new(1));
         assert_eq!(pattern.regions.len(), 1);
@@ -336,6 +326,7 @@ mod tests {
                     .into()
             )
         );
+        Ok(())
     }
 
     #[test]

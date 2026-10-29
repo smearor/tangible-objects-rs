@@ -140,15 +140,12 @@ mod tests {
     use super::FieldSet;
     use crate::Vec2;
 
-    fn parse(toml: &str) -> FieldSet {
-        match toml::from_str(toml) {
-            Ok(set) => set,
-            Err(_) => panic!("deserialization failed"),
-        }
+    fn parse(toml: &str) -> Result<FieldSet, toml::de::Error> {
+        toml::from_str(toml)
     }
 
     #[test]
-    fn toml_parses_fields_and_defaults() {
+    fn toml_parses_fields_and_defaults() -> Result<(), Box<dyn std::error::Error>> {
         let set = parse(
             r#"
             name = "chess"
@@ -160,16 +157,17 @@ mod tests {
             x_max = 100.0
             y_max = 100.0
             "#,
-        );
+        )?;
         assert_eq!(set.name.as_str(), "chess");
         assert_eq!(set.stability.as_u64(), 2);
         assert!(set.window.is_none());
         assert_eq!(set.fields.len(), 1);
         assert!(set.is_disjoint());
+        Ok(())
     }
 
     #[test]
-    fn window_anchor_and_normalized_fields() {
+    fn window_anchor_and_normalized_fields() -> Result<(), Box<dyn std::error::Error>> {
         let set = parse(
             r#"
             name = "board"
@@ -186,17 +184,18 @@ mod tests {
             x_max = 0.5
             y_max = 0.5
             "#,
-        );
-        let anchor = set.window.expect("window anchor expected");
+        )?;
+        let anchor = set.window.ok_or("window anchor expected")?;
         let local = anchor.to_local(&Vec2::new(250.0, 230.0));
         assert_eq!(local, Vec2::new(0.5, 0.5));
         assert!(set.fields[0].region.contains(&local));
         let outside = anchor.to_local(&Vec2::new(350.0, 230.0));
         assert!(!set.fields[0].region.contains(&outside));
+        Ok(())
     }
 
     #[test]
-    fn overlapping_fields_are_detected() {
+    fn overlapping_fields_are_detected() -> Result<(), Box<dyn std::error::Error>> {
         let set = parse(
             r#"
             name = "bad"
@@ -213,7 +212,8 @@ mod tests {
             x_max = 150.0
             y_max = 150.0
             "#,
-        );
+        )?;
         assert!(!set.is_disjoint());
+        Ok(())
     }
 }

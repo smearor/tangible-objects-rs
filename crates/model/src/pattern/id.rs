@@ -20,6 +20,12 @@ impl PatternId {
         Self(id)
     }
 
+    /// The ID following this one - the successor a sequential
+    /// registration counter assigns next.
+    pub fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+
     /// The raw numeric ID.
     pub const fn as_u32(self) -> u32 {
         self.0

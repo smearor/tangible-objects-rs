@@ -1,8 +1,7 @@
-use std::collections::HashSet;
-
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
@@ -27,7 +26,7 @@ pub(crate) struct FieldStage {
     /// `set_fields`.
     sets: Vec<FieldSet>,
     /// Slots suppressed this frame - rebuilt by `classify`.
-    suppressed: HashSet<TouchPointSlot>,
+    suppressed: SlotSet,
     /// Per-stage counters - updated in `classify`.
     metrics: StageMetrics,
 }
@@ -37,7 +36,7 @@ impl FieldStage {
     pub fn new() -> Self {
         Self {
             sets: Vec::new(),
-            suppressed: HashSet::new(),
+            suppressed: SlotSet::default(),
             metrics: StageMetrics::default(),
         }
     }

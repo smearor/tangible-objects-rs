@@ -8,12 +8,14 @@
 
 mod cell_state;
 mod detection;
-mod diagnostics;
 mod error;
 pub(crate) mod field_tracker;
 mod frame;
-mod matching;
+mod pin_map;
+mod pin_maps;
 mod registration_error;
+mod smoothed_contact;
+mod smoothed_contacts;
 mod touch_state;
 mod tracker;
 

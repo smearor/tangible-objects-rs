@@ -1,9 +1,11 @@
-use std::collections::HashSet;
 use std::ops::Deref;
 
+use super::SlotSet;
 use super::TouchPoint;
-use super::TouchPointSlot;
+use crate::CandidateIndices;
+use crate::CombinationBuf;
 use crate::PointBuf;
+use crate::TakenIndices;
 
 /// The active contacts of one frame - a borrowed view, not an
 /// allocation.
@@ -43,12 +45,31 @@ impl TouchSet<'_> {
         PointBuf(indices.iter().map(|&i| self.0[i].pos).collect())
     }
 
+    /// Touch indices of the contacts whose slot is in `slots` - the
+    /// reverse lookup of [`Self::positions_of`]: bound slots → the
+    /// combination a re-match tries (TRACKING_STABILIZATION.md).
+    pub fn indices_of_slots(&self, slots: &SlotSet) -> CombinationBuf {
+        self.0
+            .iter()
+            .enumerate()
+            .filter(|(_, touch)| slots.contains(&touch.slot))
+            .map(|(index, _)| index)
+            .collect()
+    }
+
+    /// Indices of touch points not in `excluded` - the free candidate
+    /// positions of a matching pass (TRACKING_STABILIZATION.md):
+    /// the caller unions incumbent-reserved and already-matched
+    /// indices into one taken set.
+    pub fn available_indices(&self, excluded: &TakenIndices) -> CandidateIndices {
+        (0..self.len())
+            .filter(|index| !excluded.contains(index))
+            .collect()
+    }
+
     /// Slots of the contacts satisfying `predicate` - positional stages
     /// express their mask as one filter and let the view do the walk.
-    pub fn slots_where(
-        self,
-        mut predicate: impl FnMut(&TouchPoint) -> bool,
-    ) -> HashSet<TouchPointSlot> {
+    pub fn slots_where(self, mut predicate: impl FnMut(&TouchPoint) -> bool) -> SlotSet {
         self.0
             .iter()
             .filter(|touch| predicate(touch))

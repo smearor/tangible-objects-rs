@@ -2,6 +2,7 @@ use tangible_objects_model::ContactCount;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchSet;
 
 use tracing::warn;
@@ -101,10 +102,7 @@ impl FieldTracker {
     ///
     /// Suppression is immediate, not debounced: a marker contact is
     /// withheld from the very first frame it appears inside a field.
-    pub fn suppressed_slots(
-        &self,
-        touches: TouchSet<'_>,
-    ) -> std::collections::HashSet<tangible_objects_model::TouchPointSlot> {
+    pub fn suppressed_slots(&self, touches: TouchSet<'_>) -> SlotSet {
         touches
             .iter()
             .filter(|touch| {

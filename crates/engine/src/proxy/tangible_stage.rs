@@ -127,7 +127,7 @@ impl Stage for TangibleStage {
         self.metrics.matched_total += matched.len().into();
         match self.mode {
             FilterMode::Immediate => {
-                for &slot in matched {
+                for &slot in matched.iter() {
                     if !self.suppressed.contains_key(&slot) {
                         self.metrics.suppressed_total += ContactCount::new(1);
                     }
@@ -136,7 +136,7 @@ impl Stage for TangibleStage {
             }
             FilterMode::Gated | FilterMode::Guarded => {
                 self.pending.retain(|slot, _| matched.contains(slot));
-                for &slot in matched {
+                for &slot in matched.iter() {
                     if let std::collections::hash_map::Entry::Occupied(mut suppressed) =
                         self.suppressed.entry(slot)
                     {

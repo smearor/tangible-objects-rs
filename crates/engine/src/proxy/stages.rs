@@ -11,6 +11,7 @@ use super::stage::Stage;
 use super::stage_frame::ScopedMatches;
 use super::stage_frame::StageFrame;
 use crate::StageMetrics;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TouchSet;
 
@@ -79,7 +80,7 @@ impl Stages {
     /// receives the `scoped` subset keyed by its own `scope()` plus the
     /// shared touches (EVENT_PIPELINE.md phase 4 input masking).
     pub fn classify(&mut self, scoped: &ScopedMatches, touches: TouchSet<'_>) {
-        let empty = HashSet::new();
+        let empty = SlotSet::default();
         for stage in &mut self.0 {
             let matched = scoped.get(stage.scope()).unwrap_or(&empty);
             stage.classify(&StageFrame { matched, touches });

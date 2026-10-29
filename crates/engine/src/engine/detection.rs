@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::CandidateIndices;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSet;
@@ -16,14 +17,14 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
+use tangible_objects_model::SlotSet;
+use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::StageName;
+use tangible_objects_model::TakenIndices;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
-use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::TrackedSet;
-use tangible_objects_model::TrackingId;
-use tangible_objects_model::Vec2;
 use tracing::debug;
 
 use super::EngineEvent;
@@ -31,11 +32,11 @@ use super::EngineFrame;
 use super::FieldTracker;
 use super::TouchState;
 use super::Tracker;
-use super::matching;
 use super::registration_error::RegistrationError;
+use super::smoothed_contacts::SmoothedContacts;
 
 /// Default EMA smoothing factor for tracked poses.
-pub const DEFAULT_EMA_ALPHA: f64 = 0.4;
+pub const DEFAULT_EMA_ALPHA: SmoothingAlpha = SmoothingAlpha::new(0.4);
 
 /// Default association radius between a match and a tracked tangible.
 pub const DEFAULT_MAX_CENTER_DISTANCE: Millimeters = Millimeters::new(200.0);
@@ -82,7 +83,7 @@ pub struct Engine {
     edge_margin: Millimeters,
     /// Last smoothed position per slot, keyed with the tracking ID so a
     /// new contact on the same slot restarts at its raw position.
-    smoothed: HashMap<TouchPointSlot, (TrackingId, Vec2<Millimeters>)>,
+    smoothed: SmoothedContacts,
 }
 
 impl Engine {
@@ -90,11 +91,7 @@ impl Engine {
     /// tracker parameters.
     pub fn new(patterns: impl Into<PatternBuf>) -> Self {
         let patterns: PatternBuf = patterns.into();
-        let next_pattern_id = patterns
-            .iter()
-            .map(|pattern| pattern.id.as_u32())
-            .max()
-            .map_or(PatternId::new(0), |max| PatternId::new(max + 1));
+        let next_pattern_id = patterns.next_id();
         Self {
             touch_state: TouchState::new(),
             patterns,
@@ -111,7 +108,7 @@ impl Engine {
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
-            smoothed: HashMap::new(),
+            smoothed: SmoothedContacts::default(),
         }
     }
 
@@ -161,7 +158,7 @@ impl Engine {
     ) -> Result<PatternId, RegistrationError> {
         self.check_pattern_collision(profile, None)?;
         let id = self.next_pattern_id;
-        self.next_pattern_id = PatternId::new(id.as_u32() + 1);
+        self.next_pattern_id = id.next();
         self.pattern_owners.insert(id, owner);
         self.patterns.push(profile.to_pattern(id));
         Ok(id)
@@ -176,11 +173,11 @@ impl Engine {
         id: PatternId,
         profile: &ProfileFile,
     ) -> Result<(), RegistrationError> {
-        if !self.patterns.iter().any(|pattern| pattern.id == id) {
+        if self.patterns.by_id(id).is_none() {
             return Err(RegistrationError::PatternNotFound(id));
         }
         self.check_pattern_collision(profile, Some(id))?;
-        if let Some(pattern) = self.patterns.iter_mut().find(|pattern| pattern.id == id) {
+        if let Some(pattern) = self.patterns.by_id_mut(id) {
             *pattern = profile.to_pattern(id);
         }
         Ok(())
@@ -195,11 +192,7 @@ impl Engine {
     ) -> Result<(), RegistrationError> {
         let pattern = profile.to_pattern(PatternId::new(0));
         if let Some(points) = pattern.ref_points.as_deref()
-            && let Some(existing) = self
-                .patterns
-                .iter()
-                .filter(|existing| Some(existing.id) != except)
-                .find(|existing| existing.matches(points.into()))
+            && let Some(existing) = self.patterns.find_matching(points.into(), except)
         {
             return Err(RegistrationError::FingerprintCollision(
                 existing.name.clone(),
@@ -224,7 +217,7 @@ impl Engine {
 
     /// The pattern with `id`, if registered.
     pub fn pattern(&self, id: PatternId) -> Option<&TangiblePattern> {
-        self.patterns.iter().find(|pattern| pattern.id == id)
+        self.patterns.by_id(id)
     }
 
     /// Distinct pipeline stage scopes present on registered patterns
@@ -250,8 +243,7 @@ impl Engine {
             .filter(|(_, o)| o.as_ref() == Some(owner))
             .filter_map(|(id, _)| {
                 self.patterns
-                    .iter()
-                    .find(|pattern| pattern.id == *id)
+                    .by_id(*id)
                     .map(|pattern| (*id, pattern.name.clone()))
             })
             .collect();
@@ -320,7 +312,7 @@ impl Engine {
 
     /// Slots inside fields of `suppress`-enabled sets - merged into the
     /// proxy's suppression set in `--filter` mode.
-    pub fn field_suppressed_slots(&self, touches: TouchSet<'_>) -> HashSet<TouchPointSlot> {
+    pub fn field_suppressed_slots(&self, touches: TouchSet<'_>) -> SlotSet {
         self.fields.suppressed_slots(touches)
     }
 
@@ -334,27 +326,7 @@ impl Engine {
     /// changed restarts at its raw position; dead slots are dropped so
     /// stale smoothed state can never leak into a new contact.
     fn smooth_touches(&mut self, touches: &mut [TouchPoint]) {
-        let alpha = self.completion.smoothing_alpha.as_f64();
-        if alpha <= 0.0 || alpha >= 1.0 {
-            return;
-        }
-        self.smoothed.retain(|slot, (id, _)| {
-            touches
-                .iter()
-                .any(|t| t.slot == *slot && t.tracking_id == *id)
-        });
-        for touch in touches.iter_mut() {
-            let smoothed = match self.smoothed.get(&touch.slot) {
-                Some((id, prev)) if *id == touch.tracking_id => Vec2::new(
-                    alpha * touch.pos.x + (1.0 - alpha) * prev.x,
-                    alpha * touch.pos.y + (1.0 - alpha) * prev.y,
-                ),
-                _ => Vec2::new(touch.pos.x, touch.pos.y),
-            };
-            self.smoothed
-                .insert(touch.slot, (touch.tracking_id, smoothed));
-            touch.pos = smoothed;
-        }
+        self.smoothed.step(self.completion.smoothing_alpha, touches);
     }
 
     pub fn set_edge_margin(&mut self, margin: Millimeters) {
@@ -389,7 +361,7 @@ impl Engine {
     /// Finds all pattern matches in a given set of touch points without
     /// touching engine state.
     pub fn find_matches(&self, touches: TouchSet<'_>) -> Vec<PatternMatch> {
-        matching::find_matches(touches, self.patterns())
+        self.patterns().find_matches(touches)
     }
 
     /// Feeds one raw event into the engine.
@@ -436,7 +408,7 @@ impl Engine {
         // later incumbent owns (the claim pool must exclude every
         // tracked tangible's bindings, not just the ones already seen).
         let mut matches = Vec::new();
-        let mut reserved: HashSet<usize> = HashSet::new();
+        let mut reserved = TakenIndices::default();
         for tangible in self.tracker.active() {
             if let Some(slot_set) = self.tracker.slot_set(tangible.id) {
                 reserved.extend(
@@ -452,26 +424,17 @@ impl Engine {
         // Pass 2: incumbent re-match on the genuinely matched slots only
         // (`match_set` excludes claimed pins - a wrong claim stays
         // reserved but can never make the incumbent fail to match).
+        let touch_set: TouchSet = (&touches).into();
         for tangible in self.tracker.active() {
-            let Some(pattern) = self.patterns.iter().find(|p| p.id == tangible.pattern_id) else {
+            let Some(pattern) = self.patterns.by_id(tangible.pattern_id) else {
                 continue;
             };
             let Some(match_set) = self.tracker.match_set(tangible.id) else {
                 continue;
             };
-            let indices: Vec<usize> = touches
-                .iter()
-                .enumerate()
-                .filter(|(_, touch)| match_set.contains(&touch.slot))
-                .map(|(index, _)| index)
-                .collect();
+            let indices = touch_set.indices_of_slots(match_set);
             let affinity_match = if indices.len() == pattern.num_points {
-                matching::try_pattern(
-                    pattern,
-                    (&indices).into(),
-                    (&touches).into(),
-                    &self.completion,
-                )
+                pattern.try_exact(indices.as_combination(), touch_set, &self.completion)
             } else if indices.len() + self.completion.max_missing as usize >= pattern.num_points
                 && pattern.num_points >= 4
             {
@@ -480,30 +443,28 @@ impl Engine {
                 // this figure claimed last frame must stay claimable
                 // for it (reserving it from others must not unclaim it
                 // for its owner, otherwise the binding would oscillate).
-                let own_reserved: HashSet<usize> = self
+                let own_reserved: TakenIndices = self
                     .tracker
                     .slot_set(tangible.id)
                     .map(|slot_set| {
-                        touches
+                        touch_set
+                            .indices_of_slots(slot_set)
                             .iter()
-                            .enumerate()
-                            .filter(|(_, touch)| slot_set.contains(&touch.slot))
-                            .map(|(index, _)| index)
+                            .copied()
                             .collect()
                     })
                     .unwrap_or_default();
-                let pool: Vec<usize> = touches
+                let pool: CandidateIndices = touches
                     .iter()
                     .enumerate()
                     .filter(|(index, _)| !reserved.contains(index) || own_reserved.contains(index))
                     .map(|(index, _)| index)
                     .collect();
-                matching::try_partial(
-                    pattern,
-                    (&indices).into(),
-                    (&touches).into(),
+                pattern.try_partial(
+                    indices.as_combination(),
+                    touch_set,
                     &self.completion,
-                    (&pool).into(),
+                    pool.as_claim_pool(),
                 )
             } else {
                 None
@@ -514,26 +475,22 @@ impl Engine {
         }
 
         let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
-            Some(out) => matching::find_matches_with_diagnostics(
-                (&touches).into(),
-                self.patterns(),
+            Some(out) => self.patterns().find_matches_with_diagnostics(
+                touch_set,
                 &mut **out,
                 &reserved,
                 &self.completion,
             ),
-            None => matching::find_matches_excluding(
-                (&touches).into(),
-                self.patterns(),
-                &reserved,
-                &self.completion,
-            ),
+            None => self
+                .patterns()
+                .find_matches_excluding(touch_set, &reserved, &self.completion),
         };
         matches.extend(generic);
 
         let mut events = self
             .tracker
-            .update(&matches, (&touches).into(), self.completion.persist);
-        events.extend(self.fields.update((&touches).into()));
+            .update(&matches, touch_set, self.completion.persist);
+        events.extend(self.fields.update(touch_set));
         if touches != self.prev_touches {
             self.prev_touches.clone_from(&touches);
             events.push(EngineEvent::TouchPointsUpdated);
@@ -924,7 +881,7 @@ mod tests {
             .position(|t| t.slot.as_u32() == 6)
             .expect("b pin present");
         assert!(
-            !match_a.claimed_indices.contains(&b_pin),
+            !match_a.claimed_indices.contains_touch(b_pin),
             "A must not claim an incumbent-owned slot"
         );
         // B still matches on all four of its slots.

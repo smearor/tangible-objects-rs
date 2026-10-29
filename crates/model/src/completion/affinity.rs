@@ -18,6 +18,14 @@ impl AffinityFactor {
         Self(factor)
     }
 
+    /// The neutral factor `1.0` - the multiplicative identity: no
+    /// widening at all. The unscaled baseline of partial matching
+    /// (spawn-time fingerprints have no slot-binding evidence and
+    /// must not inherit the incumbent relaxation).
+    pub const fn neutral() -> Self {
+        Self(1.0)
+    }
+
     /// The widening factor (`match_score <= factor`).
     pub fn as_f64(&self) -> f64 {
         self.0

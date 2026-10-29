@@ -3,25 +3,27 @@ use crate::MatchScore;
 /// The best-scoring candidate seen so far during an enumeration -
 /// `None` until the first candidate is considered.
 ///
-/// Score-based ranking (TRAINING.md 3.2): the lowest normalized
-/// deviation score wins, so a later candidate replaces the incumbent
-/// only when it strictly improves. Shared by the engine's match
-/// selection (`PatternMatch` candidates) and the deviation analysis'
-/// best-subset evaluation (`Deviations`).
+/// Score-based ranking (TRAINING.md 3.2): the lowest score wins, so a
+/// later candidate replaces the incumbent only when it strictly
+/// improves. `S` is the ranking measure - `MatchScore` for
+/// tolerance-normalized candidate selection (the matcher's
+/// `PatternMatch` ranking), a raw `f64` residual for transform fits.
+/// Shared by the engine's match selection and the deviation analysis'
+/// best-subset evaluation.
 #[derive(Debug)]
-pub struct BestScore<T>(Option<(T, MatchScore)>);
+pub struct BestScore<T, S = MatchScore>(Option<(T, S)>);
 
-impl<T> Default for BestScore<T> {
+impl<T, S> Default for BestScore<T, S> {
     /// Starts with no best - the first `consider` always wins.
     fn default() -> Self {
         Self(None)
     }
 }
 
-impl<T> BestScore<T> {
+impl<T, S: PartialOrd> BestScore<T, S> {
     /// Keeps `value` when it scores strictly better than the current
     /// best.
-    pub fn consider(&mut self, value: T, score: MatchScore) {
+    pub fn consider(&mut self, value: T, score: S) {
         let better = self
             .0
             .as_ref()
@@ -38,7 +40,7 @@ impl<T> BestScore<T> {
 
     /// Consumes the selection and returns the winning value with its
     /// score.
-    pub fn into_inner(self) -> Option<(T, MatchScore)> {
+    pub fn into_inner(self) -> Option<(T, S)> {
         self.0
     }
 

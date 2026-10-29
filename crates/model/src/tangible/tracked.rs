@@ -4,6 +4,7 @@ use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
 use crate::RotationRad;
+use crate::SmoothingAlpha;
 use crate::Vec2;
 #[cfg(feature = "cynic")]
 use crate::schema;
@@ -116,6 +117,20 @@ impl<'de> Deserialize<'de> for TrackedTangible {
             spawn_stability: FrameCount::default(),
             frames_since_match: FrameCount::default(),
         })
+    }
+}
+
+impl TrackedTangible {
+    /// EMA-blends the center toward `measured` with `alpha`
+    /// (TRACKING_STABILIZATION.md): `alpha` is the weight of the
+    /// fresh measurement, `1 - alpha` the weight of the stored
+    /// position.
+    pub fn smooth_center(&mut self, alpha: SmoothingAlpha, measured: Vec2<Millimeters>) {
+        let alpha = alpha.as_f64();
+        self.center = Vec2::new(
+            alpha * measured.x + (1.0 - alpha) * self.center.x,
+            alpha * measured.y + (1.0 - alpha) * self.center.y,
+        );
     }
 }
 

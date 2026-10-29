@@ -8,6 +8,7 @@ use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::Region;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
@@ -192,11 +193,7 @@ impl Pipeline {
 
     /// Finishes the buffered frame with `matched` treated as the general
     /// stage's set - the unscoped convenience for single-scope setups.
-    pub fn finish(
-        &mut self,
-        matched: &HashSet<TouchPointSlot>,
-        touches: TouchSet<'_>,
-    ) -> Vec<InputEvent> {
+    pub fn finish(&mut self, matched: &SlotSet, touches: TouchSet<'_>) -> Vec<InputEvent> {
         let scoped = ScopedMatches::from([(None, matched.clone())]);
         self.finish_scoped(&scoped, touches)
     }
@@ -211,7 +208,7 @@ impl Pipeline {
         touches: TouchSet<'_>,
     ) -> Vec<InputEvent> {
         self.stages.classify(matched, touches);
-        let union: HashSet<TouchPointSlot> = matched.values().flatten().copied().collect();
+        let union: SlotSet = matched.values().flatten().copied().collect();
         self.emit.finish(&mut self.stages, &union)
     }
 
@@ -247,6 +244,7 @@ mod tests {
     use tangible_objects_model::RawEvent;
     use tangible_objects_model::Region;
     use tangible_objects_model::SYN_REPORT;
+    use tangible_objects_model::SlotSet;
     use tangible_objects_model::StageName;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
@@ -274,7 +272,7 @@ mod tests {
     }
 
     /// Feeds a minimal frame for `slot` and finishes it with `matched`.
-    fn matched_frame(pipeline: &mut Pipeline, slot: i32, matched: HashSet<TouchPointSlot>) {
+    fn matched_frame(pipeline: &mut Pipeline, slot: i32, matched: SlotSet) {
         for ev in [abs(ABS_MT_SLOT, slot), abs(ABS_MT_POSITION_X, 1), syn()] {
             pipeline.push(ev);
         }
@@ -284,7 +282,7 @@ mod tests {
     /// Runs `slot` through the stability gate: two consecutive matched
     /// frames, which is what suppression requires.
     fn suppress(pipeline: &mut Pipeline, slot: u32) {
-        let matched = HashSet::from([TouchPointSlot::new(slot)]);
+        let matched = SlotSet::from([TouchPointSlot::new(slot)]);
         matched_frame(pipeline, slot as i32, matched.clone());
         matched_frame(pipeline, slot as i32, matched);
     }
@@ -309,7 +307,7 @@ mod tests {
         pipeline.push(abs(ABS_MT_TRACKING_ID, 42));
         pipeline.push(abs(ABS_MT_POSITION_X, 100));
         pipeline.push(syn());
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         // SLOT + TRACKING_ID + POSITION_X + SYN_REPORT
         assert_eq!(out.len(), 4);
         assert_eq!(out[0].code(), ABS_MT_SLOT.as_u16());
@@ -323,7 +321,7 @@ mod tests {
         // One matched frame is not enough - the slot must match in a
         // second consecutive frame before suppression starts.
         contact_frame(&mut pipeline, 0, 7, 500);
-        let out = pipeline.finish(&HashSet::from([TouchPointSlot::new(0)]), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::from([TouchPointSlot::new(0)]), TouchSet::EMPTY);
         assert!(out.iter().any(|e| e.value() == 500));
     }
 
@@ -333,7 +331,7 @@ mod tests {
         pipeline.set_mode(FilterMode::Gated, None, None);
         // Slot 0: finger (kept), slot 1: tangible - suppressed after the
         // second consecutive matched frame.
-        let matched = HashSet::from([TouchPointSlot::new(1)]);
+        let matched = SlotSet::from([TouchPointSlot::new(1)]);
         for ev in [
             abs(ABS_MT_SLOT, 0),
             abs(ABS_MT_TRACKING_ID, 10),
@@ -374,17 +372,17 @@ mod tests {
         ] {
             pipeline.push(ev);
         }
-        pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         // Frames 2+3: the matcher decides slot 2 is a tangible twice in a
         // row - on the second frame the suppression graduates.
         for ev in [abs(ABS_MT_SLOT, 2), abs(ABS_MT_POSITION_X, 300), syn()] {
             pipeline.push(ev);
         }
-        pipeline.finish(&HashSet::from([TouchPointSlot::new(2)]), TouchSet::EMPTY);
+        pipeline.finish(&SlotSet::from([TouchPointSlot::new(2)]), TouchSet::EMPTY);
         for ev in [abs(ABS_MT_SLOT, 2), abs(ABS_MT_POSITION_X, 301), syn()] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::from([TouchPointSlot::new(2)]), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::from([TouchPointSlot::new(2)]), TouchSet::EMPTY);
         // Injection: SLOT 2 + TRACKING_ID -1, then SYN_REPORT.
         assert_eq!(out.len(), 3);
         assert_eq!(out[0].code(), ABS_MT_SLOT.as_u16());
@@ -403,7 +401,7 @@ mod tests {
         for ev in [abs(ABS_MT_SLOT, 0), abs(ABS_MT_POSITION_X, 321), syn()] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().all(|e| e.value() != 321));
     }
 
@@ -417,12 +415,12 @@ mod tests {
             for ev in [abs(ABS_MT_SLOT, 0), abs(ABS_MT_POSITION_X, 1), syn()] {
                 pipeline.push(ev);
             }
-            pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+            pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         }
         for ev in [abs(ABS_MT_SLOT, 0), abs(ABS_MT_POSITION_X, 321), syn()] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().any(|e| e.value() == 321));
     }
 
@@ -435,7 +433,7 @@ mod tests {
         for ev in [abs(ABS_MT_SLOT, 0), abs(ABS_MT_TRACKING_ID, -1), syn()] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().any(|e| e.value() == -1));
     }
 
@@ -444,16 +442,16 @@ mod tests {
         let mut pipeline = Pipeline::new(); // Guarded is the default
         // Frame 1: new contact - withheld entirely.
         contact_frame(&mut pipeline, 0, 7, 500);
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().all(|e| e.value() != 500 && e.value() != 7));
         // Frame 2: first unmatched frame - still held (gate symmetric).
         contact_frame(&mut pipeline, 0, 7, 501);
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().all(|e| e.value() != 500 && e.value() != 501));
         // Frame 3: second consecutive unmatched frame reaches the gate -
         // the contact is replayed and flows.
         contact_frame(&mut pipeline, 0, 7, 502);
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().any(|e| e.value() == 500));
         assert!(out.iter().any(|e| e.value() == 501));
         assert!(out.iter().any(|e| e.value() == 502));
@@ -468,7 +466,7 @@ mod tests {
             None,
         );
         // With a gate of 3 a slot matched twice still passes through.
-        let matched = HashSet::from([TouchPointSlot::new(0)]);
+        let matched = SlotSet::from([TouchPointSlot::new(0)]);
         matched_frame(&mut pipeline, 0, matched.clone());
         for ev in [abs(ABS_MT_SLOT, 0), abs(ABS_MT_POSITION_X, 321), syn()] {
             pipeline.push(ev);
@@ -487,7 +485,7 @@ mod tests {
     #[test]
     fn guarded_never_leaks_a_tangible() {
         let mut pipeline = Pipeline::new();
-        let matched = HashSet::from([TouchPointSlot::new(0)]);
+        let matched = SlotSet::from([TouchPointSlot::new(0)]);
         // Frames 1+2: the contact matches - its events are withheld and
         // then dropped on graduation; the clone never sees the contact.
         contact_frame(&mut pipeline, 0, 7, 500);
@@ -507,7 +505,7 @@ mod tests {
         let mut pipeline = Pipeline::new();
         pipeline.set_mode(FilterMode::TangiblesOnly, None, None);
         contact_frame(&mut pipeline, 0, 7, 500);
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         // Only the closing SYN survives - no contact events at all.
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].code(), SYN_REPORT.as_u16());
@@ -519,18 +517,18 @@ mod tests {
         pipeline.set_mode(FilterMode::Gated, None, None);
         // Frame 1 in Gated: a finger contact is emitted live.
         contact_frame(&mut pipeline, 0, 7, 500);
-        pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         // Switch to TangiblesOnly: the live contact is retracted once.
         pipeline.set_mode(FilterMode::TangiblesOnly, None, None);
         contact_frame(&mut pipeline, 0, 7, 501);
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(
             out.iter()
                 .any(|e| e.code() == ABS_MT_TRACKING_ID.as_u16() && e.value() == -1)
         );
         // Frame 2 in TangiblesOnly: quiet - only SYN.
         contact_frame(&mut pipeline, 0, 7, 502);
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert_eq!(out.len(), 1);
     }
 
@@ -550,7 +548,7 @@ mod tests {
         ] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert_eq!(out.len(), 1); // SYN only
     }
 
@@ -569,7 +567,7 @@ mod tests {
         ] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().any(is_legacy_axis));
         assert!(out.iter().any(is_btn_touch));
     }
@@ -582,7 +580,7 @@ mod tests {
         contact_frame(&mut pipeline, 0, 7, 100);
         pipeline.push(abs(ABS_X, 100));
         pipeline.push(RawEvent::new(EventType::Key, BTN_TOUCH, 1));
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().all(|e| !is_legacy_axis(e)));
         assert!(out.iter().all(|e| !is_btn_touch(e)));
     }
@@ -594,7 +592,7 @@ mod tests {
         pipeline.set_legacy_mode(super::LegacyMode::Always);
         pipeline.push(abs(ABS_X, 77));
         pipeline.push(syn());
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().any(is_legacy_axis));
     }
 
@@ -605,7 +603,7 @@ mod tests {
         // Finger down: contact emitted live, BTN_TOUCH=1 passes.
         contact_frame(&mut pipeline, 0, 7, 100);
         pipeline.push(RawEvent::new(EventType::Key, BTN_TOUCH, 1));
-        pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         // Finger up: the frame ends with no live contact, but BTN_TOUCH=0
         // must still pass so the clone clears its key state (otherwise it
         // stays stuck at 1).
@@ -617,7 +615,7 @@ mod tests {
         ] {
             pipeline.push(ev);
         }
-        let out = pipeline.finish(&HashSet::new(), TouchSet::EMPTY);
+        let out = pipeline.finish(&SlotSet::default(), TouchSet::EMPTY);
         assert!(out.iter().any(|e| is_btn_touch(e) && e.value() == 0));
     }
 
@@ -656,7 +654,7 @@ mod tests {
             pipeline.push(ev);
         }
         let touches = [touch_point(0, 5.0, 50.0), touch_point(1, 50.0, 50.0)];
-        let out = pipeline.finish(&HashSet::new(), (&touches[..]).into());
+        let out = pipeline.finish(&SlotSet::default(), (&touches[..]).into());
         // Ghost's position gone, finger's survives.
         assert!(out.iter().all(|e| e.value() != 5));
         assert!(out.iter().any(|e| e.value() == 500));
@@ -685,7 +683,7 @@ mod tests {
             pipeline.push(ev);
         }
         let touches = [touch_point(0, 100.0, 50.0), touch_point(1, 400.0, 50.0)];
-        let out = pipeline.finish(&HashSet::new(), (&touches[..]).into());
+        let out = pipeline.finish(&SlotSet::default(), (&touches[..]).into());
         assert!(out.iter().all(|e| e.value() != 700));
         assert!(out.iter().any(|e| e.value() == 900));
     }
@@ -723,7 +721,7 @@ mod tests {
             pipeline.push(ev);
         }
         let touches = [touch_point(0, 50.0, 50.0), touch_point(1, 400.0, 50.0)];
-        let out = pipeline.finish(&HashSet::new(), (&touches[..]).into());
+        let out = pipeline.finish(&SlotSet::default(), (&touches[..]).into());
         assert!(out.iter().all(|e| e.value() != 700));
         assert!(out.iter().any(|e| e.value() == 900));
     }
@@ -745,7 +743,7 @@ mod tests {
         let mut pipeline = Pipeline::new();
         pipeline.set_mode(FilterMode::Gated, Some(FrameCount::new(1)), None);
         contact_frame(&mut pipeline, 0, 7, 500);
-        pipeline.finish(&HashSet::from([TouchPointSlot::new(0)]), TouchSet::EMPTY);
+        pipeline.finish(&SlotSet::from([TouchPointSlot::new(0)]), TouchSet::EMPTY);
         let metrics: Vec<_> = pipeline.stage_metrics().cloned().collect();
         // The general stage is the only stage - one suppressed slot,
         // one matched slot, one classified frame.
@@ -776,7 +774,7 @@ mod tests {
         ] {
             pipeline.push(ev);
         }
-        let mut scoped = HashMap::<Option<StageName>, HashSet<TouchPointSlot>>::new();
+        let mut scoped = HashMap::<Option<StageName>, SlotSet>::new();
         scoped
             .entry(Some("game".into()))
             .or_default()

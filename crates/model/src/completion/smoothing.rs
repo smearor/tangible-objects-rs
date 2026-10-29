@@ -14,13 +14,20 @@ pub struct SmoothingAlpha(f64);
 
 impl SmoothingAlpha {
     /// Creates a smoothing factor.
-    pub fn new(alpha: f64) -> Self {
+    pub const fn new(alpha: f64) -> Self {
         Self(alpha)
     }
 
     /// The EMA weight of the raw position.
     pub fn as_f64(&self) -> f64 {
         self.0
+    }
+
+    /// Whether running the smoothing algorithm changes anything -
+    /// `0.0` freezes the position (disabled), `1.0` passes raw
+    /// positions through (identity); only `0 < alpha < 1` blends.
+    pub fn is_effective(&self) -> bool {
+        self.0 > 0.0 && self.0 < 1.0
     }
 }
 

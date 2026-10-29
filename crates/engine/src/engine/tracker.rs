@@ -1,21 +1,21 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RotationRad;
+use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TouchSet;
 
-use tangible_objects_model::TouchPointSlot;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::TrackedBuf;
 use tangible_objects_model::TrackedSet;
 use tangible_objects_model::TrackedTangible;
-use tangible_objects_model::Vec2;
 use tracing::debug;
 
 use super::EngineEvent;
+use super::pin_maps::PinMaps;
 
 /// Frame-to-frame tracker using nearest-neighbor association and EMA
 /// smoothing.
@@ -35,16 +35,20 @@ pub struct Tracker {
     tracked: TrackedBuf,
     /// Slot bindings per tangible ID - the slots of its last match,
     /// including persistent completion claims (the *reservation* set).
-    slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
+    slots: HashMap<TangibleId, SlotSet>,
     /// Only the genuinely matched slots (no claimed pins) - the
     /// candidate set the incumbent re-match is verified against. A
     /// wrongly claimed contact is reserved but can never make a
     /// re-match fail.
-    matched_slots: HashMap<TangibleId, HashSet<TouchPointSlot>>,
+    matched_slots: HashMap<TangibleId, SlotSet>,
+    /// Persistent slot→pin binding per tangible (ROTATION.md) -
+    /// solved once at spawn, reused for rotation on every incumbent
+    /// frame instead of the argmax `rotation_of` estimate.
+    pin_map: PinMaps,
     /// Smoothing factor of the exponential moving average applied to
-    /// center and rotation on every associated match (`0..1`; higher =
+    /// center and rotation on every associated match (higher =
     /// faster, more jitter).
-    ema_alpha: f64,
+    ema_alpha: SmoothingAlpha,
     /// Maximum distance between a match's center and a tracked
     /// tangible's center for nearest-neighbor association.
     max_center_distance: Millimeters,
@@ -58,11 +62,11 @@ pub struct Tracker {
 impl Tracker {
     /// Creates a tracker.
     ///
-    /// `ema_alpha` is the smoothing factor (0..1), `max_center_distance` the
+    /// `ema_alpha` is the smoothing factor, `max_center_distance` the
     /// association radius, `max_frames_without_match` the expiry hysteresis in
     /// frames.
     pub fn new(
-        ema_alpha: f64,
+        ema_alpha: SmoothingAlpha,
         max_center_distance: impl Into<Millimeters>,
         max_frames_without_match: impl Into<FrameCount>,
     ) -> Self {
@@ -70,6 +74,7 @@ impl Tracker {
             tracked: TrackedBuf::default(),
             slots: HashMap::new(),
             matched_slots: HashMap::new(),
+            pin_map: PinMaps::default(),
             ema_alpha,
             max_center_distance: max_center_distance.into(),
             max_frames_without_match: max_frames_without_match.into(),
@@ -79,20 +84,20 @@ impl Tracker {
 
     /// The slots bound to a tangible by its last match, if any
     /// (reservation set - includes persistent claims).
-    pub fn slot_set(&self, id: TangibleId) -> Option<&HashSet<TouchPointSlot>> {
+    pub fn slot_set(&self, id: TangibleId) -> Option<&SlotSet> {
         self.slots.get(&id)
     }
 
     /// Only the genuinely matched slots of the last match - the
     /// candidate set for incumbent re-matching. Claimed pins are
     /// reserved but not required to re-match.
-    pub fn match_set(&self, id: TangibleId) -> Option<&HashSet<TouchPointSlot>> {
+    pub fn match_set(&self, id: TangibleId) -> Option<&SlotSet> {
         self.matched_slots.get(&id)
     }
 
     /// All slots currently bound to any tracked tangible - the reserved
     /// set excluded from generic matching.
-    pub fn bound_slots(&self) -> HashSet<TouchPointSlot> {
+    pub fn bound_slots(&self) -> SlotSet {
         self.slots.values().flatten().copied().collect()
     }
 
@@ -134,22 +139,26 @@ impl Tracker {
                 used_matches[match_index] = true;
                 used_tracked[ti] = true;
                 let tangible = &mut self.tracked[ti];
-                tangible.center = Vec2::new(
-                    self.ema_alpha * pattern_match.center.x
-                        + (1.0 - self.ema_alpha) * tangible.center.x,
-                    self.ema_alpha * pattern_match.center.y
-                        + (1.0 - self.ema_alpha) * tangible.center.y,
-                );
-                tangible.rotation_rad = RotationRad::new(ema_angle(
-                    tangible.rotation_rad.as_f64(),
-                    pattern_match.rotation_rad.as_f64(),
-                    self.ema_alpha,
-                ));
+                tangible.smooth_center(self.ema_alpha, pattern_match.center);
+                // Rotation comes from the persisted slot→pin map
+                // when one exists (deterministic, argmax-proof) -
+                // the match's own angle is the fallback otherwise.
+                let rotation = self
+                    .pin_map
+                    .rotation_of(tangible.id, touches)
+                    .unwrap_or(pattern_match.rotation_rad);
+                tangible.rotation_rad =
+                    RotationRad::ema(tangible.rotation_rad, rotation, self.ema_alpha);
                 tangible.frames_since_match = FrameCount::new(0);
+                let genuine_slots = pattern_match.matched_slots(touches);
                 self.matched_slots
-                    .insert(tangible.id, pattern_match.matched_slots(touches));
+                    .insert(tangible.id, genuine_slots.clone());
                 self.slots
                     .insert(tangible.id, pattern_match.slots_of(touches, bind_claimed));
+                // Map refresh: the genuine slot set changed (mass slot
+                // churn) → re-bind from the fresh solved match; claims
+                // always follow their current pairs.
+                self.pin_map.sync(tangible.id, pattern_match, touches);
                 if tangible.pending {
                     // Confirmation: an exact match on the same slot set
                     // confirms immediately; a held partial match counts
@@ -198,6 +207,7 @@ impl Tracker {
                     .insert(tangible.id, pattern_match.matched_slots(touches));
                 self.slots
                     .insert(tangible.id, pattern_match.slots_of(touches, bind_claimed));
+                self.pin_map.sync(tangible.id, pattern_match, touches);
                 debug!(pattern = %tangible.pattern_name, id = %tangible.id, "tangible added");
                 self.tracked.push(tangible.clone());
                 if !pending {
@@ -225,6 +235,7 @@ impl Tracker {
             debug!(pattern = %tangible.pattern_name, "tangible removed");
             self.slots.remove(&tangible.id);
             self.matched_slots.remove(&tangible.id);
+            self.pin_map.remove(&tangible.id);
             events.push(EngineEvent::TangibleRemoved(tangible));
         }
         events
@@ -243,28 +254,17 @@ impl Tracker {
     }
 }
 
-/// EMA for angles with wraparound handling.
-fn ema_angle(old: f64, new: f64, alpha: f64) -> f64 {
-    let mut diff = new - old;
-    while diff > std::f64::consts::PI {
-        diff -= 2.0 * std::f64::consts::PI;
-    }
-    while diff < -std::f64::consts::PI {
-        diff += 2.0 * std::f64::consts::PI;
-    }
-    old + alpha * diff
-}
-
 #[cfg(test)]
 mod tests {
-    use super::Tracker;
-    use super::ema_angle;
+    use super::*;
     use crate::EngineEvent;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
+    use tangible_objects_model::RefIndices;
     use tangible_objects_model::RotationRad;
+    use tangible_objects_model::SmoothingAlpha;
     use tangible_objects_model::Vec2;
 
     fn pattern_match(id: u32, x: f64, y: f64) -> PatternMatch {
@@ -274,6 +274,8 @@ mod tests {
             center: Vec2::new(x, y),
             rotation_rad: RotationRad::new(0.0),
             touch_indices: Default::default(),
+            correspondence: RefIndices::default(),
+            ref_points: None,
             partial: false,
             claimed_indices: Default::default(),
             spawn_stability: DEFAULT_SPAWN_STABILITY,
@@ -286,7 +288,7 @@ mod tests {
 
     #[test]
     fn new_match_creates_tracked_tangible() {
-        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.4), 200.0, FrameCount::new(30));
         let events = tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
         assert_eq!(tracker.active().len(), 1);
         assert_eq!(tracker.active()[0].pattern_id, PatternId::new(1));
@@ -295,7 +297,7 @@ mod tests {
 
     #[test]
     fn nearby_match_associates_and_smooths() {
-        let mut tracker = Tracker::new(0.5, 200.0, FrameCount::new(30));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.5), 200.0, FrameCount::new(30));
         tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
         tracker.update(&[pattern_match(1, 20.0, 20.0)], (&touches()).into(), true);
         // EMA(0.5) of 10 and 20 → 15.
@@ -304,7 +306,7 @@ mod tests {
 
     #[test]
     fn distant_match_creates_second_tangible() {
-        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.4), 200.0, FrameCount::new(30));
         tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
         tracker.update(&[pattern_match(1, 500.0, 500.0)], (&touches()).into(), true);
         assert_eq!(tracker.active().len(), 2);
@@ -312,7 +314,7 @@ mod tests {
 
     #[test]
     fn tangible_expires_after_max_frames() {
-        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(2));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.4), 200.0, FrameCount::new(2));
         tracker.update(&[pattern_match(1, 10.0, 20.0)], (&touches()).into(), true);
         tracker.update(&[], (&touches()).into(), true);
         tracker.update(&[], (&touches()).into(), true);
@@ -326,7 +328,7 @@ mod tests {
 
     #[test]
     fn partial_spawn_is_pending_until_spawn_stability() {
-        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.4), 200.0, FrameCount::new(30));
         let mut partial = pattern_match(1, 10.0, 20.0);
         partial.partial = true;
         partial.spawn_stability = FrameCount::new(3);
@@ -351,7 +353,7 @@ mod tests {
 
     #[test]
     fn pending_exact_match_confirms_immediately() {
-        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.4), 200.0, FrameCount::new(30));
         let mut partial = pattern_match(1, 10.0, 20.0);
         partial.partial = true;
         partial.spawn_stability = DEFAULT_SPAWN_STABILITY;
@@ -368,7 +370,7 @@ mod tests {
 
     #[test]
     fn pending_counter_resets_on_missed_frame() {
-        let mut tracker = Tracker::new(0.4, 200.0, FrameCount::new(30));
+        let mut tracker = Tracker::new(SmoothingAlpha::new(0.4), 200.0, FrameCount::new(30));
         let mut partial = pattern_match(1, 10.0, 20.0);
         partial.partial = true;
         partial.spawn_stability = FrameCount::new(2);
@@ -385,7 +387,12 @@ mod tests {
     fn ema_angle_wraps_around() {
         // Crossing the -PI/+PI boundary takes the short path: 3.0 -> ~PI,
         // not down through 0.
-        let smoothed = ema_angle(3.0, -3.0, 0.5);
+        let smoothed = RotationRad::ema(
+            RotationRad::new(3.0),
+            RotationRad::new(-3.0),
+            SmoothingAlpha::new(0.5),
+        )
+        .as_f64();
         assert!(smoothed > 3.0);
         assert!(smoothed <= std::f64::consts::PI + 1e-9);
     }

@@ -1,8 +1,7 @@
-use std::collections::HashSet;
-
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Region;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchPointSlot;
 
 use super::stage::Stage;
@@ -24,7 +23,7 @@ pub(crate) struct ZoneStage {
     /// Masked areas in millimeters - any contact inside is suppressed.
     zones: Vec<Region>,
     /// Slots suppressed this frame - rebuilt by `classify`.
-    suppressed: HashSet<TouchPointSlot>,
+    suppressed: SlotSet,
     /// Per-stage counters - updated in `classify`.
     metrics: StageMetrics,
 }
@@ -34,7 +33,7 @@ impl ZoneStage {
     pub(crate) fn new(zones: Vec<Region>) -> Self {
         Self {
             zones,
-            suppressed: HashSet::new(),
+            suppressed: SlotSet::default(),
             metrics: StageMetrics::default(),
         }
     }

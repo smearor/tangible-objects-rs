@@ -3,6 +3,8 @@ use serde::Serialize;
 use std::fmt::Display;
 use std::ops::Sub;
 
+use crate::Combinations;
+
 /// Number of contact pins a figure must have - a structural property of
 /// the pattern, not a measured observation.
 ///
@@ -28,6 +30,36 @@ impl PinCount {
     /// `ProfileInfo::num_points` in the runtime crate).
     pub const fn as_u32(self) -> u32 {
         self.0 as u32
+    }
+
+    /// All `missing`-element pin subsets of `0..self` - the reference
+    /// positions a partial fingerprint skips. Returned as positional
+    /// combinations (ref indices, not touch indices).
+    pub fn skip_combinations(self, missing: usize) -> Combinations {
+        let mut result = Vec::new();
+        let mut combo = Vec::with_capacity(missing);
+        enumerate_subsets(self.0, missing, 0, &mut combo, &mut result);
+        result.into()
+    }
+}
+
+/// Subset backtracking of `skip_combinations`: `combo` accumulates
+/// `missing` positions from `start..n`, recursing to `start + 1`.
+fn enumerate_subsets(
+    n: usize,
+    missing: usize,
+    start: usize,
+    combo: &mut Vec<usize>,
+    out: &mut Vec<crate::CombinationBuf>,
+) {
+    if combo.len() == missing {
+        out.push(combo.clone().into());
+        return;
+    }
+    for i in start..n {
+        combo.push(i);
+        enumerate_subsets(n, missing, i + 1, combo, out);
+        combo.pop();
     }
 }
 

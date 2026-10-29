@@ -1,8 +1,6 @@
-use std::collections::HashSet;
-
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::TouchPointSlot;
+use tangible_objects_model::SlotSet;
 
 /// Per-stage counters (EVENT_PIPELINE.md phase 6).
 ///
@@ -28,11 +26,7 @@ impl StageMetrics {
     /// counts the newly suppressed slots into `suppressed_total`,
     /// refreshes the `suppressed` gauge and swaps `new` into the stage's
     /// set - the shared tail of rebuild-style `classify` impls.
-    pub fn record_frame(
-        &mut self,
-        suppressed: &mut HashSet<TouchPointSlot>,
-        new: HashSet<TouchPointSlot>,
-    ) {
+    pub fn record_frame(&mut self, suppressed: &mut SlotSet, new: SlotSet) {
         self.frames += 1;
         self.suppressed_total += new.difference(suppressed).count().into();
         self.suppressed = new.len().into();

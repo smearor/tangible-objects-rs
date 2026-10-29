@@ -1,5 +1,8 @@
 use serde::Deserialize;
 use serde::Serialize;
+use std::f64::consts::PI;
+
+use crate::SmoothingAlpha;
 
 /// A rotation angle in radians.
 ///
@@ -23,6 +26,26 @@ impl RotationRad {
     /// The angle converted to degrees.
     pub fn to_degrees(self) -> f64 {
         self.0.to_degrees()
+    }
+
+    /// `(sin, cos)` of the angle - trigonomtrie for transforms and
+    /// geometry (the `f64::sin_cos` delegate).
+    pub fn sin_cos(self) -> (f64, f64) {
+        self.0.sin_cos()
+    }
+
+    /// Wraparound-aware EMA blend - `old + alpha * diff(new, old)`,
+    /// where `diff` is the shortest signed arc between the angles
+    /// (modulo 2π). `alpha` is the weight of `new`.
+    pub fn ema(old: RotationRad, new: RotationRad, alpha: SmoothingAlpha) -> RotationRad {
+        let mut diff = new.0 - old.0;
+        while diff > PI {
+            diff -= 2.0 * PI;
+        }
+        while diff < -PI {
+            diff += 2.0 * PI;
+        }
+        Self(old.0 + alpha.as_f64() * diff)
     }
 }
 

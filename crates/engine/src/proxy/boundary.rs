@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use evdev::InputEvent;
 
@@ -10,6 +9,7 @@ use tangible_objects_model::EventType;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::RawEvent;
+use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchPointSlot;
 
 use super::LegacyMode;
@@ -27,7 +27,7 @@ pub(crate) struct EmitBoundary {
     /// Events of the frame currently accumulating.
     frame: Vec<RawEvent>,
     /// Source slots with a live contact on the virtual device.
-    emitted: HashSet<TouchPointSlot>,
+    emitted: SlotSet,
     /// Withheld events of unclassified new contacts (`Guarded` mode):
     /// a new contact's events are buffered until classification -
     /// matched slots stay held (candidate tangible), slots unmatched for
@@ -61,7 +61,7 @@ impl EmitBoundary {
     pub fn new() -> Self {
         Self {
             frame: Vec::new(),
-            emitted: HashSet::new(),
+            emitted: SlotSet::default(),
             held: HashMap::new(),
             legacy: LegacyMode::default(),
         }
@@ -90,11 +90,7 @@ impl EmitBoundary {
     /// globally when *any* stage carries it, `Guarded` withholds when any
     /// stage is guarded (released by that stage's own gate), and a lift
     /// releases the slot on every stage.
-    pub fn finish(
-        &mut self,
-        stages: &mut Stages,
-        matched: &HashSet<TouchPointSlot>,
-    ) -> Vec<InputEvent> {
+    pub fn finish(&mut self, stages: &mut Stages, matched: &SlotSet) -> Vec<InputEvent> {
         let mode = stages.merged_mode();
         let stability_gate = stages.merged_gate();
 
