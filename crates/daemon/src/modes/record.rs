@@ -49,6 +49,9 @@ pub fn run_record(
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
+    if config.import_slots {
+        device.queue_state_import();
+    }
 
     println!("Record-Modus: {}", path.display());
     if let Some(name) = device.name() {

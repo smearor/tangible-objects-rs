@@ -22,13 +22,30 @@ pub struct TouchDevice {
     /// The opened evdev device - source of raw events and target of
     /// `EVIOCGRAB`/`ungrab`/`EVIOCGABS` ioctls.
     device: evdev::Device,
+    /// Queued events emitted ahead of the next `fetch_events` batch -
+    /// the startup kernel-state import.
+    pending: Vec<RawEvent>,
 }
 
 impl TouchDevice {
     /// Opens an evdev device node (usually requires root or `input` group).
     pub fn open(path: &Path) -> Result<Self, EngineError> {
         let device = evdev::Device::open(path)?;
-        Ok(Self { device })
+        Ok(Self {
+            device,
+            pending: Vec::new(),
+        })
+    }
+
+    /// Queues the kernel's current MT slot state for emission on the
+    /// next `fetch_events` call - the startup import
+    /// (`DetectionConfig::import_slots`). Contacts held open before the
+    /// reader attached become engine-visible immediately; an ioctl
+    /// failure queues nothing (the stream is then the only source).
+    pub fn queue_state_import(&mut self) {
+        if let Ok(events) = self.resync_events() {
+            self.pending = events;
+        }
     }
 
     /// Lists all `/dev/input/event*` devices that can be opened.
@@ -143,7 +160,7 @@ impl TouchDevice {
     /// where they were created, not by heuristic watchdog. When the
     /// ioctl fails no marker is emitted (stale view beats a wipe).
     pub fn fetch_events(&mut self) -> Result<Vec<RawEvent>, EngineError> {
-        let mut events = Vec::new();
+        let mut events = std::mem::take(&mut self.pending);
         let mut dropped = false;
         for event in self.device.fetch_events()? {
             let raw = RawEvent::from(&event);

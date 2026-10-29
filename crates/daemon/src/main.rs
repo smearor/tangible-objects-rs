@@ -96,6 +96,10 @@ struct Cli {
     /// JSON-Report-Datei für --similarity
     #[arg(long, requires = "similarity", value_name = "file")]
     similarity_json: Option<PathBuf>,
+    /// Kernel-MT-Slot-State beim Start nicht importieren (offene
+    /// Kontakte vor dem Daemon-Start bleiben unsichtbar)
+    #[arg(long)]
+    no_import_slots: bool,
     /// Zielprofil oder TOML-Datei für --convert-device
     #[arg(long, value_name = "profile|file.toml")]
     to: Option<String>,
@@ -186,6 +190,7 @@ fn main() -> Result<()> {
             fields: modes::load_field_sets(cli.fields.as_deref()),
             completion,
             zones: cli.zone.clone(),
+            import_slots: !cli.no_import_slots,
         })
     };
     let interfaces = || -> Result<Interfaces> {
@@ -253,6 +258,7 @@ fn main() -> Result<()> {
             tol,
             cli.profiles.as_deref(),
             device_profiles,
+            !cli.no_import_slots,
         );
     }
     #[cfg(feature = "gui")]

@@ -36,6 +36,9 @@ pub fn run_live(
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
+    if config.import_slots {
+        device.queue_state_import();
+    }
 
     println!("Live-Modus: {}", path.display());
     if let Some(name) = device.name() {

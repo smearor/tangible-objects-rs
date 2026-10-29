@@ -50,6 +50,9 @@ pub fn run_filter(
     device_profiles: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
+    if config.import_slots {
+        device.queue_state_import();
+    }
     println!("Filter-Proxy: {}", path.display());
     if let Some(name) = device.name() {
         println!("Gerät: {name}");

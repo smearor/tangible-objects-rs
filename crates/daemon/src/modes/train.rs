@@ -23,9 +23,13 @@ pub fn run_train(
     tolerance: impl Into<Millimeters>,
     profiles_dir: Option<&str>,
     device_profiles: Option<&Path>,
+    import_slots: bool,
 ) -> Result<()> {
     let tolerance = tolerance.into();
     let mut device = TouchDevice::open(path).into_diagnostic()?;
+    if import_slots {
+        device.queue_state_import();
+    }
 
     println!("Trainingsmodus: {} - Figur \"{}\"", path.display(), name);
     if let Some(dev_name) = device.name() {

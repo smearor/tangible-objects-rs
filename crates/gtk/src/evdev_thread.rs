@@ -46,6 +46,9 @@ pub fn evdev_thread(
             return;
         }
     };
+    if config.import_slots {
+        device.queue_state_import();
+    }
 
     let mut engine = Engine::new(patterns);
     if let Some(mm) = config.edge {
