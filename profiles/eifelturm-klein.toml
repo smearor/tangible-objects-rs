@@ -1,5 +1,6 @@
 name = "Eifelturm klein"
-enabled = true
+# Used by quai-des-orfévres 36
+enabled = false
 spawn_on_partial = false
 spawn_stability = 15
 num_points = 4
