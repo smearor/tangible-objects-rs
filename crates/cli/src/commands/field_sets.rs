@@ -3,6 +3,7 @@
 use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::RegisterFieldSetResult;
 
 use crate::args::FieldSetsArgs;
 use crate::args::FieldSetsCommand;
@@ -20,9 +21,23 @@ pub(crate) async fn field_sets(
         } => {
             let set = FieldSet::load(file)
                 .map_err(|e| ClientError::Protocol(format!("field-set load: {e}")))?;
-            client
+            match client
                 .register_field_set(&set, owner.as_ref(), lifetime.unwrap_or_default())
-                .await?;
+                .await?
+            {
+                RegisterFieldSetResult::Registered(registered) => {
+                    println!("registered: {}", registered.name);
+                }
+                RegisterFieldSetResult::Rejected(rejected) => {
+                    if let Some(overlap) = &rejected.overlap {
+                        println!(
+                            "rejected: '{}' overlaps '{}' in region {}",
+                            overlap.first, overlap.second, overlap.region
+                        );
+                    }
+                    return Err(ClientError::Protocol(rejected.reason));
+                }
+            }
         }
         FieldSetsCommand::Unregister { name } => {
             client.unregister_field_set(name).await?;

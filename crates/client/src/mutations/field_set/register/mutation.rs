@@ -1,6 +1,7 @@
 //! `RegisterFieldSet` - the cynic fragment for the
 //! `registerFieldSet` mutation.
 
+use crate::mutations::field_set::register::result::RegisterFieldSetResultFragment;
 use crate::mutations::field_set::register::variables::RegisterFieldSetVariablesFields;
 use cynic::QueryFragment;
 
@@ -14,8 +15,9 @@ use cynic::QueryFragment;
     variables = "RegisterFieldSetVariables"
 )]
 pub(crate) struct RegisterFieldSet {
-    /// `registerFieldSet` field.
+    /// `registerFieldSet` field - union decode (`__typename` picks the
+    /// member).
     #[cynic(rename = "registerFieldSet")]
     #[arguments(input: $input, owner: $owner, lifetime: $lifetime)]
-    register_field_set: bool,
+    register_field_set: RegisterFieldSetResultFragment,
 }

@@ -18,6 +18,7 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
+use tangible_objects_model::RegistrationError;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::StageName;
@@ -33,7 +34,6 @@ use super::EngineFrame;
 use super::FieldTracker;
 use super::TouchState;
 use super::Tracker;
-use super::registration_error::RegistrationError;
 use super::smoothed_contacts::SmoothedContacts;
 
 /// Default EMA smoothing factor for tracked poses.

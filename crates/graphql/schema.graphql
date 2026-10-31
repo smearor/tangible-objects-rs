@@ -320,6 +320,26 @@ input FieldInput {
 scalar FieldName
 
 """
+Structured overlap detail of a `FIELDS_OVERLAP` registration
+rejection: the offending field pair plus their intersection region -
+the client can highlight the collision without parsing text.
+"""
+type FieldOverlap {
+	"""
+	First overlapping field.
+	"""
+	first: FieldName!
+	"""
+	Second overlapping field.
+	"""
+	second: FieldName!
+	"""
+	Intersection region of the two fields (millimeters).
+	"""
+	region: Region!
+}
+
+"""
 A named set of occupancy fields - the application-supplied board.
 
 Loaded from a `.toml` field-set file:
@@ -369,6 +389,17 @@ type FieldSet {
 }
 
 scalar FieldSetName
+
+"""
+`registerFieldSet` applied - echoes the registered set name so union
+clients can bind the acknowledgement without tracking variables.
+"""
+type FieldSetRegistered {
+	"""
+	Name of the registered field set.
+	"""
+	name: FieldSetName!
+}
 
 """
 Suppression policy of the filter proxy (FILTER_PROXY_VIRTUAL.md).
@@ -513,9 +544,11 @@ type MutationRoot {
 	"""
 	unregisterOwner(owner: Owner!): Boolean!
 	"""
-	Registers an occupancy field set at runtime.
+	Registers an occupancy field set at runtime. The result union
+	carries the typed rejection - `FIELDS_OVERLAP` exposes the
+	offending field pair and intersection region (DYNAMIC_PROFILES.md).
 	"""
-	registerFieldSet(input: RegisterFieldSetInput!, owner: Owner, lifetime: Lifetime): Boolean!
+	registerFieldSet(input: RegisterFieldSetInput!, owner: Owner, lifetime: Lifetime): RegisterFieldSetResult!
 	"""
 	Removes a field set by name.
 	"""
@@ -751,6 +784,17 @@ input RegisterFieldSetInput {
 }
 
 """
+`registerFieldSet` result union - the applied outcome either
+registered the set or carries the typed rejection (structured
+overlap detail for `FIELDS_OVERLAP`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union RegisterFieldSetResult = FieldSetRegistered | RegistrationRejected
+
+"""
 Input for `registerPattern`: a figure defined by its pin positions.
 """
 input RegisterPatternInput {
@@ -781,6 +825,52 @@ input RegisterPatternInput {
 	(EVENT_PIPELINE.md); `null` = the general stage.
 	"""
 	stage: StageName
+}
+
+"""
+A rejected registration - `reason` is the human-readable error
+string, `kind` the machine category; structured payloads ride per
+kind (`overlap` for `FIELDS_OVERLAP`).
+"""
+type RegistrationRejected {
+	"""
+	Human-readable rejection reason (the `RegistrationError`
+	message).
+	"""
+	reason: String!
+	"""
+	Machine-readable rejection category.
+	"""
+	kind: RejectionKind!
+	"""
+	Field-overlap detail - `Some` iff `kind == FIELDS_OVERLAP`.
+	"""
+	overlap: FieldOverlap
+}
+
+"""
+Machine-readable category of a [`RegistrationRejected`] result -
+mirrors the `RegistrationError` variants so clients can switch on the
+kind without parsing the `reason` string.
+"""
+enum RejectionKind {
+	"""
+	The referenced pattern ID is not registered.
+	"""
+	PATTERN_NOT_FOUND
+	"""
+	The profile fingerprint collides with a registered profile.
+	"""
+	FINGERPRINT_COLLISION
+	"""
+	The field set contains overlapping fields - `overlap` carries
+	the structured detail.
+	"""
+	FIELDS_OVERLAP
+	"""
+	A field set with this name is already registered.
+	"""
+	DUPLICATE_FIELD_SET
 }
 
 scalar RotationRad

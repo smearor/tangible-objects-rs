@@ -1,12 +1,17 @@
-use tangible_objects_model::FieldName;
-use tangible_objects_model::FieldSetName;
-use tangible_objects_model::PatternId;
-use tangible_objects_model::PatternName;
-use tangible_objects_model::Region;
+use crate::FieldName;
+use crate::FieldSetName;
+use crate::PatternId;
+use crate::PatternName;
+use crate::Region;
+use thiserror::Error;
 
 /// Errors produced by runtime profile and field-set registration
 /// (DYNAMIC_PROFILES.md).
-#[derive(Debug, thiserror::Error)]
+///
+/// Lives in `model` so the control-command reply channel can carry the
+/// typed rejection to interface crates (GraphQL/D-Bus/MCP) instead of a
+/// pre-formatted string.
+#[derive(Debug, Error)]
 pub enum RegistrationError {
     /// The referenced pattern ID is not registered.
     #[error("pattern {0} not found")]

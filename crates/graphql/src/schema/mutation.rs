@@ -7,6 +7,7 @@ use async_graphql::Result;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetName;
+use tangible_objects_model::FieldSetRegistered;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Lifetime;
@@ -15,6 +16,7 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::RegisterFieldSetResult;
 use tangible_objects_model::Registration;
 use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
@@ -229,15 +231,18 @@ impl MutationRoot {
         Ok(true)
     }
 
-    /// Registers an occupancy field set at runtime.
+    /// Registers an occupancy field set at runtime. The result union
+    /// carries the typed rejection - `FIELDS_OVERLAP` exposes the
+    /// offending field pair and intersection region (DYNAMIC_PROFILES.md).
     async fn register_field_set(
         &self,
         ctx: &Context<'_>,
         input: RegisterFieldSetInput,
         owner: Option<Owner>,
         lifetime: Option<Lifetime>,
-    ) -> Result<bool> {
+    ) -> Result<RegisterFieldSetResult> {
         let set = FieldSet::from(&input);
+        let name = set.name.clone();
         let (command, rx) = ControlCommand::register(
             Registration::FieldSet(set),
             owner,
@@ -248,8 +253,10 @@ impl MutationRoot {
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         match rx.await {
-            Ok(Ok(())) => Ok(true),
-            Ok(Err(reason)) => Err(Error::new(format!("registration rejected: {reason}"))),
+            Ok(Ok(())) => Ok(RegisterFieldSetResult::Registered(FieldSetRegistered {
+                name,
+            })),
+            Ok(Err(error)) => Ok(RegisterFieldSetResult::Rejected(error.into())),
             Err(_) => Err(Error::new("device loop closed the registration reply")),
         }
     }

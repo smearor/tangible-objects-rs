@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FilterMode;
@@ -11,7 +10,9 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
+use tangible_objects_model::RegistrationError;
 use tangible_objects_model::StageName;
+use tokio::sync::oneshot;
 
 /// Control command sent by an interface back to the daemon's device loop.
 ///
@@ -92,10 +93,10 @@ pub enum ControlCommand {
         /// `Session` (default) or `Persistent` - persistent registrations
         /// are written to the daemon's runtime store on apply.
         lifetime: Lifetime,
-        /// Receives the applied outcome - `Ok` on success, the rejection
-        /// reason on failure - so interface callers answer with the real
-        /// result instead of a fire-and-forget "queued".
-        reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+        /// Receives the applied outcome - `Ok` on success, the typed
+        /// rejection on failure - so interface callers answer with the
+        /// real result instead of a fire-and-forget "queued".
+        reply: oneshot::Sender<Result<(), RegistrationError>>,
     },
     /// Replace a registered pattern's geometry/name while keeping its
     /// ID (`UpdateProfile`). Applies to new matches; tracked tangibles
@@ -139,8 +140,8 @@ impl ControlCommand {
         registration: Registration,
         owner: Option<Owner>,
         lifetime: Lifetime,
-    ) -> (Self, tokio::sync::oneshot::Receiver<Result<(), String>>) {
-        let (reply, rx) = tokio::sync::oneshot::channel();
+    ) -> (Self, oneshot::Receiver<Result<(), RegistrationError>>) {
+        let (reply, rx) = oneshot::channel();
         (
             Self::Register {
                 registration: Box::new(registration),

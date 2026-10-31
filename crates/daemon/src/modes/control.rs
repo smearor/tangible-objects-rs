@@ -169,7 +169,7 @@ pub(crate) fn apply_registration(
                         }
                         Err(reason) => {
                             println!("\nProfil-Registrierung abgelehnt: {reason}");
-                            Err(reason.to_string())
+                            Err(reason)
                         }
                     }
                 }
@@ -189,7 +189,7 @@ pub(crate) fn apply_registration(
                         }
                         Err(reason) => {
                             println!("\nFeld-Set abgelehnt: {reason}");
-                            Err(reason.to_string())
+                            Err(reason)
                         }
                     }
                 }
