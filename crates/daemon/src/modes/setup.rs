@@ -13,6 +13,7 @@ use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
+use tracing::info;
 use tracing::warn;
 
 use super::store::runtime_store_dir;
@@ -37,8 +38,8 @@ pub fn effective_calibration(
     let id = device.inner().input_id();
     let profile = registry.find_by_ids(id.vendor(), id.product())?;
     let (x_res, y_res) = profile.resolution_override()?;
-    println!(
-        "Resolution-Override aus Geräteprofil: X={:.3}, Y={:.3} units/mm",
+    info!(
+        "resolution override from device profile: X={:.3}, Y={:.3} units/mm",
         x_res.as_f64(),
         y_res.as_f64()
     );
@@ -67,29 +68,22 @@ pub fn load_patterns(profiles_dir: Option<&str>) -> PatternBuf {
     }
     for (_, profile) in &dir_result.profiles {
         if profile.enabled {
-            println!(
-                "Profil geladen: {} ({} Punkte, {} Abstände)",
+            info!(
+                "profile loaded: {} ({} points, {} distances)",
                 profile.name,
                 profile.num_points,
                 profile.sorted_sides.len()
             );
         } else {
-            println!("Profil deaktiviert: {}", profile.name);
+            info!("profile disabled: {}", profile.name);
         }
     }
     for (path, error) in &dir_result.errors {
-        eprintln!(
-            "Warnung: Profil {} konnte nicht geladen werden: {}",
-            path.display(),
-            error
-        );
+        warn!(path = %path.display(), error = %error, "profile could not be loaded");
     }
     let patterns = dir_result.into_patterns();
     if patterns.is_empty() {
-        eprintln!(
-            "Warnung: Keine Profile in {} gefunden. Erstelle ein Profil mit --train.",
-            dir
-        );
+        warn!("no profiles found in {dir} - create one with --train");
     }
     patterns
 }
@@ -115,8 +109,8 @@ pub fn load_completion() -> CompletionConfig {
     match std::fs::read_to_string(&path) {
         Ok(contents) => match toml::from_str::<CompletionConfig>(&contents) {
             Ok(config) => {
-                println!(
-                    "Completion-Config geladen: {} (mode={} radius={} max-missing={} persist={})",
+                info!(
+                    "completion config loaded: {} (mode={} radius={} max-missing={} persist={})",
                     path.display(),
                     config.mode,
                     config.radius_factor,
@@ -147,10 +141,7 @@ pub fn load_field_sets(path: Option<&str>) -> Vec<FieldSet> {
     {
         let (stored, errors) = FieldSet::load_dir(&store);
         for (file, error) in &errors {
-            eprintln!(
-                "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
-                file.display()
-            );
+            warn!(file = %file.display(), %error, "field set could not be loaded");
         }
         sets.extend(stored);
     }
@@ -161,28 +152,22 @@ pub fn load_field_sets(path: Option<&str>) -> Vec<FieldSet> {
     let file_sets = if path.is_dir() {
         let (file_sets, errors) = FieldSet::load_dir(path);
         for (file, error) in &errors {
-            eprintln!(
-                "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
-                file.display()
-            );
+            warn!(file = %file.display(), %error, "field set could not be loaded");
         }
         file_sets
     } else {
         match FieldSet::load(path) {
             Ok(set) => vec![set],
             Err(error) => {
-                eprintln!(
-                    "Warnung: Feld-Set {} konnte nicht geladen werden: {error}",
-                    path.display()
-                );
+                warn!(path = %path.display(), %error, "field set could not be loaded");
                 Vec::new()
             }
         }
     };
     sets.extend(file_sets);
     for set in &sets {
-        println!(
-            "Feld-Set geladen: {} ({} Felder)",
+        info!(
+            "field set loaded: {} ({} fields)",
             set.name,
             set.fields.len()
         );
@@ -206,8 +191,8 @@ pub fn resolve_device(device: Option<String>, profiles_dir: Option<&Path>) -> Re
     let profile = registry
         .find_by_ids(entry.vendor, entry.product)
         .expect("detected entry matches a profile");
-    println!(
-        "Gerät erkannt: {} ({}) → {}",
+    info!(
+        "device detected: {} ({}) -> {}",
         profile.name,
         entry.name,
         entry.path.display()
@@ -219,7 +204,7 @@ pub fn resolve_device(device: Option<String>, profiles_dir: Option<&Path>) -> Re
 pub fn list_devices() {
     let entries = TouchDevice::enumerate();
     if entries.is_empty() {
-        eprintln!("Keine Eingabegeräte in /dev/input/ gefunden.");
+        warn!("no input devices found in /dev/input/");
         return;
     }
     for entry in entries {

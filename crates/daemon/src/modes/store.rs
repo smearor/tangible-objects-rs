@@ -5,6 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use tangible_objects_model::Registration;
+use tracing::info;
 use tracing::warn;
 
 use super::setup::completion_config_path;
@@ -45,7 +46,7 @@ pub(crate) fn persist_registration(registration: &Registration) {
         ),
     };
     match result {
-        Ok(()) => println!("\nGespeichert: {name}"),
+        Ok(()) => info!(name, "registration persisted"),
         Err(e) => warn!(error = %e, name, "persist failed"),
     }
 }

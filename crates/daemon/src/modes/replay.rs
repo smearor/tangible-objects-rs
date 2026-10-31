@@ -13,6 +13,8 @@ use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::RecordLabel;
+use tracing::info;
+use tracing::warn;
 
 /// Replays an `evtest` recording through the detection pipeline.
 ///
@@ -30,15 +32,13 @@ pub fn run_replay(
     let mut engine = Engine::new(patterns.to_vec());
 
     if let Some(cal) = replay.calibration() {
-        println!(
-            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+        info!(
+            "calibration: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
         );
         engine.set_calibration(cal);
     } else {
-        eprintln!(
-            "Warnung: Keine Kalibrierung im evtest-Header gefunden. Profile müssen in Rohkoordinaten vorliegen."
-        );
+        warn!("no calibration in evtest header - profiles must be in raw coordinates");
     }
 
     let mut session = match record_base {
@@ -78,20 +78,20 @@ pub fn run_replay(
         for engine_event in &frame.events {
             match engine_event {
                 EngineEvent::TangibleAdded(_) => println!(
-                    "[Frame {frame_no}] Figur erkannt ({} aktiv)",
+                    "[Frame {frame_no}] figure detected ({} active)",
                     engine.tracked().len()
                 ),
                 EngineEvent::TangibleRemoved(_) if engine.tracked().is_empty() => {
-                    println!("[Frame {frame_no}] Figur verloren");
+                    println!("[Frame {frame_no}] figure lost");
                 }
                 EngineEvent::FieldPlaced { set, field } => {
-                    println!("[Frame {frame_no}] Feld belegt: {set}.{field}")
+                    println!("[Frame {frame_no}] field occupied: {set}.{field}")
                 }
                 EngineEvent::FieldLifted { set, field } => {
-                    println!("[Frame {frame_no}] Feld frei: {set}.{field}")
+                    println!("[Frame {frame_no}] field free: {set}.{field}")
                 }
                 EngineEvent::FieldCountChanged { set, field, count } => {
-                    println!("[Frame {frame_no}] Feld {set}.{field}: {count} Kontakt(e)")
+                    println!("[Frame {frame_no}] field {set}.{field}: {count} contact(s)")
                 }
                 _ => {}
             }
@@ -121,16 +121,16 @@ pub fn run_replay(
         frame_no += 1;
     }
 
-    println!("\n--- Zusammenfassung ---");
-    println!("Frames gesamt: {frame_no}");
-    println!("Frames mit Erkennung: {detected_frames}");
+    println!("\n--- summary ---");
+    println!("frames total: {frame_no}");
+    println!("frames with detection: {detected_frames}");
     if let Some(session) = session {
         let recorded = session.recorded_frames();
         let dropped_frames = session.dropped_frames();
         let dropped_events = session.dropped_events();
         session.finish().into_diagnostic()?;
         println!(
-            "Aufzeichnung: {recorded} Frames (gedroppt: {dropped_frames} Frames, {dropped_events} Events)"
+            "recording: {recorded} frames (dropped: {dropped_frames} frames, {dropped_events} events)"
         );
     }
     Ok(())

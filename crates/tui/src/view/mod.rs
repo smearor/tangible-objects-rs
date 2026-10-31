@@ -31,7 +31,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         ])
         .split(frame.area());
 
-    let tabs = Tabs::new(Tab::TITLES)
+    let tabs = Tabs::new(Tab::titles())
         .select(app.tab().index())
         .highlight_style(Style::default().fg(Color::Yellow))
         .divider(" | ");

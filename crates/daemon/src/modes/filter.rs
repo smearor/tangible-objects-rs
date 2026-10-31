@@ -29,6 +29,8 @@ use super::control::tick_training;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
 use tangible_objects_model::DetectionConfig;
+use tracing::error;
+use tracing::info;
 
 /// Filter-proxy mode (FILTER_PROXY_VIRTUAL.md): grabs the real device and
 /// re-emits its event stream on a uinput clone, minus the slots a matched
@@ -53,32 +55,32 @@ pub fn run_filter(
     if config.import_slots {
         device.queue_state_import();
     }
-    println!("Filter-Proxy: {}", path.display());
+    info!(device = %path.display(), "filter proxy");
     if let Some(name) = device.name() {
-        println!("Gerät: {name}");
+        info!("device: {name}");
     }
 
     let mut engine = Engine::new(patterns.to_vec());
     let calibration = effective_calibration(&device, device_profiles);
     if let Some(cal) = calibration {
-        println!(
-            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+        info!(
+            "calibration: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
         );
         engine.set_calibration(cal);
     }
     if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
-        println!("Edge-Filter: {mm} mm");
+        info!("edge filter: {mm} mm");
     }
     engine.set_fields(config.fields);
     engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
     device.grab().into_diagnostic()?;
-    println!("EVIOCGRAB aktiv - alle Events laufen über die Proxy");
-    println!("uinput-Klon erstellt - Tangibles werden unterdrückt");
-    println!("Ctrl+C zum Beenden\n");
+    info!("EVIOCGRAB active - all events flow through the proxy");
+    info!("uinput clone created - tangibles are suppressed");
+    info!("Ctrl+C to quit\n");
 
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
@@ -99,7 +101,7 @@ pub fn run_filter(
     }
     if !config.zones.is_empty() {
         pipeline.push_zone_stage(config.zones.clone());
-        println!("Zonen-Maskierung: {} Region(en)", config.zones.len());
+        info!("zone masking: {} region(s)", config.zones.len());
     }
     // A stage exists per scope tagged on any pattern - lazily kept in
     // sync as registrations introduce new scope names.
@@ -112,11 +114,11 @@ pub fn run_filter(
             Some(gate),
             None,
         );
-        println!("Stabilitäts-Gate: {gate} Frames");
+        info!("stability gate: {gate} frames");
     }
     if let Some(legacy_mode) = legacy {
         pipeline.set_legacy_mode(legacy_mode);
-        println!("Legacy-Events (BTN_TOUCH/ABS_X/Y): {legacy_mode}");
+        info!("legacy events (BTN_TOUCH/ABS_X/Y): {legacy_mode}");
     }
     let mut frame: u64 = 0;
     let device_fd = device.as_raw_fd();
@@ -133,19 +135,19 @@ pub fn run_filter(
                     pipeline.set_mode(mode, stability, stage.as_ref());
                     runtime.emit_lifecycle(LifecycleEvent::FilterModeChanged(mode));
                     match &stage {
-                        Some(stage) => println!("\nFilter-Modus: {mode} (Stage {stage})"),
-                        None => println!("\nFilter-Modus: {mode}"),
+                        Some(stage) => info!("filter mode: {mode} (stage {stage})"),
+                        None => info!("filter mode: {mode}"),
                     }
                 }
                 ControlCommand::RegisterStage { name } => {
                     if pipeline.register_stage(name.clone()) {
-                        println!("\nStage registriert: {name}");
+                        info!(%name, "stage registered");
                         runtime.emit_lifecycle(LifecycleEvent::StageRegistered { name });
                     }
                 }
                 ControlCommand::UnregisterStage { name } => {
                     if pipeline.unregister_stage(&name) {
-                        println!("\nStage entfernt: {name}");
+                        info!(%name, "stage removed");
                         runtime.emit_lifecycle(LifecycleEvent::StageUnregistered { name });
                     }
                 }
@@ -153,15 +155,15 @@ pub fn run_filter(
                     engine.set_completion(config);
                     runtime.set_completion(config);
                     runtime.emit_lifecycle(LifecycleEvent::CompletionChanged(config));
-                    println!(
-                        "\nCompletion: mode={} radius={} max-missing={} persist={}",
+                    info!(
+                        "completion: mode={} radius={} max-missing={} persist={}",
                         config.mode, config.radius_factor, config.max_missing, config.persist
                     );
                 }
                 ControlCommand::TrainProfile(name) => {
                     runtime.start_training(&name);
                     runtime.set_message(Some(format!(
-                        "Training '{name}': Figur auflegen und still halten"
+                        "Training '{name}': place the figure and hold still"
                     )));
                 }
                 other => {
@@ -184,7 +186,7 @@ pub fn run_filter(
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 continue;
             }
-            eprintln!("poll Fehler");
+            error!("poll error - filter loop exits");
             break;
         }
         if ready == 0 {
@@ -197,7 +199,7 @@ pub fn run_filter(
         let events = match device.fetch_events() {
             Ok(events) => events,
             Err(e) => {
-                eprintln!("Lesefehler: {e}");
+                error!(error = %e, "device read failed - filter loop exits");
                 break;
             }
         };
@@ -250,7 +252,7 @@ pub fn run_filter(
 
             let forwarded = engine_frame.touches.len().saturating_sub(suppressed);
             print!(
-                "\rFrame {frame} | {} Touch | {} Figur | {} unterdrückt | {} weitergeleitet | {} Sets | {} Felder | {} belegt     ",
+                "\rFrame {frame} | {} touch | {} figure | {} suppressed | {} forwarded | {} sets | {} fields | {} occupied     ",
                 engine_frame.touches.len(),
                 engine_frame.matches.len(),
                 suppressed,
@@ -273,11 +275,11 @@ fn sync_stages(runtime: &mut EngineRuntime, pipeline: &mut Pipeline, engine: &En
     let scopes: HashSet<StageName> = engine.stage_scopes().cloned().collect();
     let changes = pipeline.sync_scopes(&scopes);
     for scope in changes.registered {
-        println!("\nStage registriert: {scope}");
+        info!(%scope, "stage registered");
         runtime.emit_lifecycle(LifecycleEvent::StageRegistered { name: scope });
     }
     for scope in changes.unregistered {
-        println!("\nStage entfernt: {scope}");
+        info!(%scope, "stage removed");
         runtime.emit_lifecycle(LifecycleEvent::StageUnregistered { name: scope });
     }
 }

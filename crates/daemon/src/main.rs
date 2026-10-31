@@ -31,122 +31,122 @@ fn parse_legacy(value: &str) -> std::result::Result<LegacyMode, String> {
         .map_err(|_| "must be one of: auto, always, never".to_string())
 }
 
-/// kapazitive Touchfiguren-Prototyp - Erkennung, Aufzeichnung und
-/// Analyse greifbarer Figuren auf Multitouch-Oberflächen.
+/// Capacitive touch-figure prototype - detection, recording and
+/// analysis of tangible figures on multitouch surfaces.
 ///
-/// Genau ein Modus-Flag wählt die Aktion; alle weiteren Optionen
-/// konfigurieren sie. `--record` ist doppeldeutig: als einziges Argument
-/// ein eigener Modus, neben `--live`/`--replay` ein Modifier.
+/// Exactly one mode flag selects the action; all other options
+/// configure it. `--record` is ambiguous: alone it is a mode of its
+/// own, next to `--live`/`--replay` it is a modifier.
 #[derive(Parser)]
 #[command(name = "tangible-objects", version, about)]
 struct Cli {
-    /// Replay einer evtest-Aufzeichnung
+    /// Replay an evtest recording
     #[arg(long, group = "mode")]
     replay: bool,
-    /// Live von einem Eingabegerät
+    /// Live from an input device
     #[arg(long, group = "mode")]
     live: bool,
-    /// Eingabegeräte auflisten
+    /// List input devices
     #[arg(long, group = "mode")]
     list: bool,
-    /// Profil aufnehmen und speichern (braucht --name)
+    /// Record and save a profile (requires --name)
     #[arg(long, group = "mode")]
     train: bool,
-    /// GTK Fullscreen-Visualisierung (Feature gui)
+    /// GTK fullscreen visualization (gui feature)
     #[cfg(feature = "gui")]
     #[arg(long, group = "mode")]
     gui: bool,
-    /// Filter-Proxy: Grab + uinput-Klon, Tangibles unterdrückt
+    /// Filter proxy: grab + uinput clone, tangibles suppressed
     #[arg(long, group = "mode")]
     filter: bool,
-    /// Aufzeichnung analysieren (Phase 2+3)
+    /// Analyze a recording (phase 2+3)
     #[arg(long, group = "mode", value_name = "recording.jsonl")]
     analyze: Option<PathBuf>,
-    /// Profil-Ähnlichkeit / Kollisionsfläche analysieren
+    /// Analyze profile similarity / collision surface
     #[arg(long, group = "mode", value_name = "profiles-dir")]
     similarity: Option<PathBuf>,
-    /// Gelabeltes Dataset exportieren (Phase 3)
+    /// Export a labeled dataset (phase 3)
     #[arg(long, group = "mode", value_name = "recording.jsonl")]
     export_dataset: Option<PathBuf>,
-    /// evtest-Aufzeichnung in ein anderes Geräteprofil konvertieren
+    /// Convert an evtest recording to another device profile
     #[arg(long, group = "mode", value_name = "in.evtest")]
     convert_device: Option<PathBuf>,
 
-    /// evdev-Gerät (Standard: Auto-Detect über Geräte-Registry)
+    /// evdev device (default: auto-detect via device registry)
     #[arg(long, value_name = "/dev/input/eventX")]
     device: Option<String>,
-    /// Eingabedatei für --replay
+    /// Input file for --replay
     #[arg(long, value_name = "file")]
     file: Option<PathBuf>,
-    /// Profil-Verzeichnis
+    /// Profile directory
     #[arg(long, value_name = "dir")]
     profiles: Option<String>,
-    /// Figurenname (für --train)
+    /// Figure name (for --train)
     #[arg(long)]
     name: Option<String>,
-    /// Toleranz für Musterabgleich in mm (Standard: 30.0)
+    /// Pattern-matching tolerance in mm (default: 30.0)
     #[arg(long, value_name = "mm")]
     tolerance: Option<f64>,
-    /// Aufzeichnungs-Basis: <base>.jsonl + <base>.evtest
+    /// Recording base: <base>.jsonl + <base>.evtest
     #[arg(long, value_name = "base")]
     record: Option<PathBuf>,
-    /// Ground-Truth-Label für --record
+    /// Ground-truth label for --record
     #[arg(long)]
     record_label: Option<String>,
-    /// JSON-Report-Datei für --similarity
+    /// JSON report file for --similarity
     #[arg(long, requires = "similarity", value_name = "file")]
     similarity_json: Option<PathBuf>,
-    /// Kernel-MT-Slot-State beim Start nicht importieren (offene
-    /// Kontakte vor dem Daemon-Start bleiben unsichtbar)
+    /// Do not import kernel MT slot state at startup (contacts open
+    /// before the daemon starts stay invisible)
     #[arg(long)]
     no_import_slots: bool,
-    /// Zielprofil oder TOML-Datei für --convert-device
+    /// Target profile or TOML file for --convert-device
     #[arg(long, value_name = "profile|file.toml")]
     to: Option<String>,
-    /// Verzeichnis mit Geräteprofilen (TOML)
+    /// Directory with device profiles (TOML)
     #[arg(long, value_name = "dir")]
     device_profiles: Option<PathBuf>,
-    /// GraphQL-Endpunkt (z.B. 127.0.0.1:8080)
+    /// GraphQL endpoint (e.g. 127.0.0.1:8080)
     #[arg(long, value_name = "addr")]
     graphql_listen: Option<SocketAddr>,
-    /// MCP-HTTP-Endpunkt (z.B. 127.0.0.1:8090)
+    /// MCP HTTP endpoint (e.g. 127.0.0.1:8090)
     #[arg(long, value_name = "addr")]
     mcp_listen: Option<SocketAddr>,
-    /// D-Bus-Interface (Session-Bus)
+    /// D-Bus interface (session bus)
     #[arg(long)]
     dbus: bool,
-    /// BTN_TOUCH/ABS_X/Y-Handling (--filter)
+    /// BTN_TOUCH/ABS_X/Y handling (--filter)
     #[arg(long, value_name = "auto|always|never", value_parser = parse_legacy)]
     legacy: Option<LegacyMode>,
-    /// Konsekutive Match-Frames vor Suppression (--filter, Default: 2)
+    /// Consecutive match frames before suppression (--filter, default: 2)
     #[arg(long, value_name = "n")]
     stability_frames: Option<u64>,
-    /// Geister-Kontakte am Rand verwerfen (--live/--record/--gui)
+    /// Drop ghost contacts near the edge (--live/--record/--gui)
     #[arg(long, value_name = "mm")]
     edge_filter_mm: Option<f64>,
-    /// Zone maskieren (x_min,y_min,x_max,y_max in mm, wiederholbar;
+    /// Mask a zone (x_min,y_min,x_max,y_max in mm, repeatable;
     /// --filter)
     #[arg(long, value_name = "x0,y0,x1,y1")]
     zone: Vec<Region>,
-    /// Occupancy-Feld-Sets laden (TOML-Datei oder -Verzeichnis)
+    /// Load occupancy field sets (TOML file or directory)
     #[arg(long, value_name = "file|dir")]
     fields: Option<String>,
-    /// Completion-Modus (Default: match)
+    /// Completion mode (default: match)
     #[arg(long, value_name = "match|exact")]
     completion_mode: Option<CompletionMode>,
-    /// Claim-Radius × Toleranz (Default: 2.0)
+    /// Claim radius x tolerance (default: 2.0)
     #[arg(long, value_name = "f")]
     completion_radius: Option<f64>,
-    /// Fehlende Pins, die Completion ergänzen darf (Default: 1)
+    /// Missing pins completion may add (default: 1)
     #[arg(long, value_name = "1|2", value_parser = clap::value_parser!(u32).range(1..=2))]
     completion_max_missing: Option<u32>,
-    /// Geclaimte Slots nicht binden
+    /// Do not bind claimed slots
     #[arg(long)]
     completion_no_persist: bool,
-    /// Incumbent-Toleranz-Faktor (Default 2.0, 1.0 = aus)
+    /// Incumbent tolerance factor (default 2.0, 1.0 = off)
     #[arg(long, value_name = "f")]
     affinity_factor: Option<f64>,
-    /// Kontakt-Positionsglättung EMA (Default 0.6, 0 = aus)
+    /// Contact position smoothing EMA (default 0.6, 0 = off)
     #[arg(long, value_name = "a")]
     smoothing_alpha: Option<f64>,
 }
@@ -155,7 +155,7 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
 

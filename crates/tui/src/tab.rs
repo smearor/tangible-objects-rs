@@ -11,8 +11,14 @@ pub enum Tab {
 }
 
 impl Tab {
-    /// Titles rendered in the tab bar, in page order.
-    pub const TITLES: [&'static str; 2] = ["[1] overview", "[2] live"];
+    /// Titles rendered in the tab bar, in page order - localized at
+    /// call time (not `const`: `fl!` needs runtime lookup).
+    pub fn titles() -> [String; 2] {
+        [
+            i18n_embed_fl::fl!(crate::i18n::language_loader(), "tab-overview"),
+            i18n_embed_fl::fl!(crate::i18n::language_loader(), "tab-live"),
+        ]
+    }
 
     /// Renders a key in the `Tabs` widget.
     pub fn index(self) -> usize {

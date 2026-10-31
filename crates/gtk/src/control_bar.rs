@@ -15,13 +15,17 @@ use gtk4::Label;
 use gtk4::Orientation;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
+use i18n_embed_fl::fl;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Vec2;
+use tracing::error;
+use tracing::info;
 
 use crate::evdev_thread::STABLE_THRESHOLD;
 use crate::gui_mode::GuiMode;
+use crate::language_loader;
 use crate::shared_state::SharedState;
 
 /// Tolerance the saved profile takes (scalar mm).
@@ -42,17 +46,17 @@ pub fn create_control_bar(
     bar.set_spacing(8);
 
     // Mode toggle.
-    let mode_btn = Button::with_label("Modus: Live");
+    let mode_btn = Button::with_label(&fl!(language_loader(), "mode-live"));
     mode_btn.add_css_class("suggested-action");
 
     // Name entry.
     let name_entry = Entry::new();
-    name_entry.set_placeholder_text(Some("Figurenname..."));
+    name_entry.set_placeholder_text(Some(&fl!(language_loader(), "figure-name-placeholder")));
     name_entry.set_width_chars(20);
     name_entry.set_sensitive(false);
 
     // Save button.
-    let save_btn = Button::with_label("Profil speichern");
+    let save_btn = Button::with_label(&fl!(language_loader(), "save-profile"));
     save_btn.set_sensitive(false);
 
     // Status label.
@@ -80,11 +84,12 @@ pub fn create_control_bar(
             Err(_) => return,
         };
 
-        mode_btn_clone.set_label(if is_training {
-            "Modus: Training"
+        let label = if is_training {
+            fl!(language_loader(), "mode-training")
         } else {
-            "Modus: Live"
-        });
+            fl!(language_loader(), "mode-live")
+        };
+        mode_btn_clone.set_label(&label);
         name_entry_clone.set_sensitive(is_training);
         save_btn_clone.set_sensitive(false);
     });
@@ -120,8 +125,8 @@ pub fn create_control_bar(
         let filepath = PathBuf::from(&filename);
 
         match profile.save(&filepath) {
-            Ok(()) => eprintln!("Profil gespeichert: {}", filepath.display()),
-            Err(e) => eprintln!("Fehler beim Speichern: {e}"),
+            Ok(()) => info!(path = %filepath.display(), "profile saved"),
+            Err(e) => error!(error = %e, "profile save failed"),
         }
     });
 
@@ -144,22 +149,30 @@ pub fn create_control_bar(
         match s.mode {
             GuiMode::Live => {
                 let n = s.matches.len();
-                status_clone.set_label(&format!(
-                    "{} Figur(en) erkannt | {} Touch-Punkt(e)",
-                    n, count
+                status_clone.set_label(&fl!(
+                    language_loader(),
+                    "live-status",
+                    figures = (n as i64),
+                    touches = (count as i64)
                 ));
             }
             GuiMode::Training => {
                 if let Some(err) = &s.device_error {
                     status_clone.set_label(err);
                 } else if count < 3 {
-                    status_clone.set_label(&format!("Warte auf ≥3 Punkte... ({})", count));
+                    status_clone.set_label(&fl!(
+                        language_loader(),
+                        "wait-for-points",
+                        count = (count as i64)
+                    ));
                 } else if s.stable {
-                    status_clone.set_label("STABIL - Name eingeben und Speichern klicken");
+                    status_clone.set_label(&fl!(language_loader(), "stable-hint"));
                 } else {
-                    status_clone.set_label(&format!(
-                        "Stabilisiere... {}/{}",
-                        s.stable_frames, STABLE_THRESHOLD
+                    status_clone.set_label(&fl!(
+                        language_loader(),
+                        "stabilizing",
+                        stable = (s.stable_frames as i64),
+                        threshold = (STABLE_THRESHOLD as i64)
                     ));
                 }
                 save_btn_status.set_sensitive(s.stable);

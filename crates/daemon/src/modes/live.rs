@@ -23,6 +23,9 @@ use super::control::tick_training;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
 use tangible_objects_model::DetectionConfig;
+use tracing::error;
+use tracing::info;
+use tracing::warn;
 
 /// Live detection loop on a real evdev device.
 ///
@@ -40,30 +43,28 @@ pub fn run_live(
         device.queue_state_import();
     }
 
-    println!("Live-Modus: {}", path.display());
+    info!(device = %path.display(), "live mode");
     if let Some(name) = device.name() {
-        println!("Gerät: {name}");
+        info!("device: {name}");
     }
 
     let mut engine = Engine::new(patterns.to_vec());
     if let Some(cal) = effective_calibration(&device, device_profiles) {
-        println!(
-            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+        info!(
+            "calibration: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
         );
         engine.set_calibration(cal);
     } else {
-        eprintln!(
-            "Warnung: Keine Kalibrierung vom Gerät lesbar. Profile müssen in Rohkoordinaten vorliegen."
-        );
+        warn!("no calibration readable from device - profiles must be in raw coordinates");
     }
     if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
-        println!("Edge-Filter: {mm} mm");
+        info!("edge filter: {mm} mm");
     }
     engine.set_fields(config.fields);
     engine.set_completion(config.completion);
-    println!("Ctrl+C zum Beenden\n");
+    info!("Ctrl+C to quit\n");
 
     // Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
     // No set definitions are loaded yet - the set tracker idles.
@@ -96,7 +97,7 @@ pub fn run_live(
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 continue;
             }
-            eprintln!("poll Fehler");
+            error!("poll error - event loop exits");
             break;
         }
         if ready == 0 {
@@ -109,7 +110,7 @@ pub fn run_live(
         let events = match device.fetch_events() {
             Ok(events) => events,
             Err(e) => {
-                eprintln!("Lesefehler: {e}");
+                error!(error = %e, "device read failed - event loop exits");
                 break;
             }
         };
@@ -142,16 +143,16 @@ pub fn run_live(
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
                 println!(
-                    "Frame {frame} | {} Touch-Punkt(e) | {} Figur(en) | Rec: {}",
+                    "Frame {frame} | {} touch point(s) | {} figure(s) | Rec: {}",
                     engine.touch_count(),
                     active.len(),
                     recording
                         .as_ref()
                         .and_then(|s| s.label().map(|l| l.as_str().to_string()))
                         .unwrap_or_else(|| if recording.is_some() {
-                            "an".to_string()
+                            "on".to_string()
                         } else {
-                            "aus".to_string()
+                            "off".to_string()
                         }),
                 );
                 for t in active {

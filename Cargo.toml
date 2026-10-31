@@ -56,6 +56,12 @@ tabled = "0.20"
 clap = { version = "4.6.7", features = ["derive"] }
 ratatui = "0.29"
 crossterm = "0.28"
+# i18n (Fluent) - GUI + TUI surfaces
+fluent-bundle = "0.16"
+i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"] }
+i18n-embed-fl = "0.10"
+rust-embed = "8"
+unic-langid = "0.9"
 gtk4 = "0.11"
 gio = "0.22"
 glib = "0.22"

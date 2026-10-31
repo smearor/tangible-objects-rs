@@ -4,6 +4,7 @@
 
 mod app;
 mod event_log;
+mod i18n;
 mod tab;
 mod view;
 

@@ -18,8 +18,12 @@ use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
 
 use crate::GuiHooks;
+use crate::language_loader;
 use crate::shared_state::SharedState;
 use crate::shared_state::mode_is_live;
+use i18n_embed_fl::fl;
+use tracing::error;
+use tracing::info;
 
 /// Consecutive same-size frames before a point set counts as stable
 /// for profile capture.
@@ -41,7 +45,11 @@ pub fn evdev_thread(
         Ok(d) => d,
         Err(e) => {
             if let Ok(mut s) = state.lock() {
-                s.device_error = Some(format!("Gerät konnte nicht geöffnet werden: {e}"));
+                s.device_error = Some(fl!(
+                    language_loader(),
+                    "device-error",
+                    error = e.to_string()
+                ));
             }
             return;
         }
@@ -97,7 +105,7 @@ pub fn evdev_thread(
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 continue;
             }
-            eprintln!("poll Fehler");
+            error!("poll error - evdev loop exits");
             break;
         }
         if ready == 0 {
@@ -119,7 +127,7 @@ pub fn evdev_thread(
         let events = match device.fetch_events() {
             Ok(events) => events,
             Err(e) => {
-                eprintln!("Lesefehler: {e}");
+                error!(error = %e, "device read failed - evdev loop exits");
                 break;
             }
         };
@@ -156,7 +164,7 @@ pub fn evdev_thread(
                     s.visible = runtime.gui_visible();
                 }
                 if let Some(profile) = runtime.training_tick(&frame.touches) {
-                    println!("\nTraining abgeschlossen: {}", profile.name);
+                    info!(name = %profile.name, "training completed");
                     runtime.set_message(None);
                     (hooks.register_profile)(&mut runtime, &mut engine, profile);
                 }

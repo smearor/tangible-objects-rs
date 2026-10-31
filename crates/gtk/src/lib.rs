@@ -13,6 +13,7 @@ mod draw;
 mod evdev_thread;
 mod gui_hooks;
 mod gui_mode;
+mod i18n;
 mod shared_state;
 
 use std::path::PathBuf;
@@ -25,11 +26,13 @@ use gtk4::DrawingArea;
 use gtk4::glib::ControlFlow;
 use gtk4::glib::Propagation;
 use gtk4::prelude::*;
+use i18n_embed_fl::fl;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
 
 pub use gui_hooks::GuiHooks;
 pub use gui_mode::GuiMode;
+pub use i18n::language_loader;
 pub use shared_state::SharedState;
 
 /// Fullscreen GTK visualization with control bar and evdev-driven
@@ -89,7 +92,7 @@ pub fn run_gui(
 
         let window = ApplicationWindow::builder()
             .application(app)
-            .title("Tangible Objects - Surface Monitor")
+            .title(fl!(language_loader(), "window-title"))
             .default_width(1600)
             .default_height(1200)
             .child(&overlay)

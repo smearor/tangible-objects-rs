@@ -11,8 +11,13 @@ description = "Daemon-embedded GTK4/Cairo visualization for tangible object dete
 
 [dependencies]
 cairo-rs.workspace = true
+fluent-bundle.workspace = true
 gtk4.workspace = true
+i18n-embed.workspace = true
+i18n-embed-fl.workspace = true
 libc.workspace = true
+rust-embed.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
+tracing.workspace = true
 tangible-objects-runtime = { workspace = true, features = ["gui"] }

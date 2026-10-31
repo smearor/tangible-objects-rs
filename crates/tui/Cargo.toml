@@ -12,8 +12,12 @@ description = "Terminal dashboard for the tangible-objects daemon - live surface
 [dependencies]
 clap = { workspace = true, features = ["env"] }
 crossterm.workspace = true
+fluent-bundle.workspace = true
 futures-lite.workspace = true
+i18n-embed.workspace = true
+i18n-embed-fl.workspace = true
 ratatui.workspace = true
+rust-embed.workspace = true
 tangible-objects-client.workspace = true
 tangible-objects-model.workspace = true
 tokio.workspace = true

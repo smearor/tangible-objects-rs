@@ -9,6 +9,7 @@ use crossterm::event;
 use crossterm::event::Event;
 use crossterm::event::KeyCode;
 use futures_lite::StreamExt;
+use i18n_embed_fl::fl;
 use ratatui::Terminal;
 use ratatui::backend::Backend;
 use tangible_objects_client::ClientError;
@@ -28,6 +29,7 @@ use tangible_objects_model::TrackedTangible;
 
 use crate::EventLog;
 use crate::Tab;
+use crate::i18n::language_loader;
 use crate::view;
 
 /// Live-view dashboard state - the rendered snapshot plus the surface
@@ -85,7 +87,7 @@ impl App {
             tab: Tab::Overview,
             log: EventLog::new(),
             bounds_mm: FALLBACK_MM,
-            status: "connecting…".into(),
+            status: fl!(language_loader(), "status-connecting"),
         }
     }
 
@@ -189,7 +191,11 @@ impl App {
         match self.client.set_filter_mode(next, None, None).await {
             Ok(true) => self.filter_mode = Some(next),
             Ok(false) | Err(_) => {
-                self.status = format!("setFilterMode {next} rejected");
+                self.status = fl!(
+                    language_loader(),
+                    "status-filter-rejected",
+                    mode = next.to_string()
+                );
             }
         }
     }
@@ -210,14 +216,19 @@ impl App {
         match self.client.tangibles().await {
             Ok(tangibles) => {
                 self.tangibles = tangibles;
-                self.status = format!(
-                    "{} touch points, {} tangibles - f filter  r refresh  q quit",
-                    self.touches.len(),
-                    self.tangibles.len()
+                self.status = fl!(
+                    language_loader(),
+                    "status-ready",
+                    touches = (self.touches.len() as i64),
+                    tangibles = (self.tangibles.len() as i64)
                 );
             }
             Err(e) => {
-                self.status = format!("daemon error: {e}");
+                self.status = fl!(
+                    language_loader(),
+                    "status-daemon-error",
+                    error = e.to_string()
+                );
             }
         }
     }

@@ -12,6 +12,8 @@ use ratatui::widgets::ListItem;
 use ratatui::widgets::Paragraph;
 
 use crate::app::App;
+use crate::i18n::language_loader;
+use i18n_embed_fl::fl;
 
 /// Renders the loaded profiles as `name pins stage owner` rows.
 pub fn draw_profiles(frame: &mut Frame, app: &App, area: Rect) {
@@ -31,11 +33,11 @@ pub fn draw_profiles(frame: &mut Frame, app: &App, area: Rect) {
             ))
         })
         .collect();
-    let list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!("profiles ({})", app.profiles().len())),
-    );
+    let list = List::new(items).block(Block::default().borders(Borders::ALL).title(fl!(
+        language_loader(),
+        "title-profiles",
+        count = (app.profiles().len() as i64)
+    )));
     frame.render_widget(list, area);
 }
 
@@ -46,22 +48,29 @@ pub fn draw_metrics(frame: &mut Frame, app: &App, area: Rect) {
         .map(|m| m.to_string())
         .unwrap_or_else(|| "?".to_string());
     let mut lines = vec![
-        Line::from(format!("filter: {mode}   [f cycles]")),
-        Line::from(format!(
-            "stages: {}",
-            app.profiles().iter().filter(|p| p.stage.is_some()).count()
+        Line::from(fl!(
+            language_loader(),
+            "metrics-filter",
+            mode = mode.clone()
+        )),
+        Line::from(fl!(
+            language_loader(),
+            "metrics-stages",
+            count = (app.profiles().iter().filter(|p| p.stage.is_some()).count() as i64)
         )),
     ];
     if let Some(metrics) = app.metrics() {
-        lines.push(Line::from(format!(
-            "frames {} tracked {}",
-            metrics.frames.as_u64(),
-            metrics.tracked_frames.as_u64()
+        lines.push(Line::from(fl!(
+            language_loader(),
+            "metrics-frames",
+            frames = (metrics.frames.as_u64() as i64),
+            tracked = (metrics.tracked_frames.as_u64() as i64)
         )));
-        lines.push(Line::from(format!(
-            "contacts {} tangibles {}",
-            metrics.contacts.as_u32(),
-            metrics.tangible_count.as_u64()
+        lines.push(Line::from(fl!(
+            language_loader(),
+            "metrics-contacts",
+            contacts = (metrics.contacts.as_u32() as i64),
+            tangibles = (metrics.tangible_count.as_u64() as i64)
         )));
     }
     let pane = Paragraph::new(lines)
@@ -69,7 +78,7 @@ pub fn draw_metrics(frame: &mut Frame, app: &App, area: Rect) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("filter/metrics"),
+                .title(fl!(language_loader(), "title-filter-metrics")),
         );
     frame.render_widget(pane, area);
 }

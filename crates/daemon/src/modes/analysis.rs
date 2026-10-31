@@ -20,6 +20,8 @@ use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::ProfileFile;
 
 use super::setup::load_patterns;
+use tracing::info;
+use tracing::warn;
 
 /// Converts a `.evtest` recording into the raw event stream of another
 /// touchscreen profile (TRAINING.md device conversion).
@@ -33,14 +35,11 @@ pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path
         registry = registry.with_dir(dir);
     }
     for (path, error) in &registry.errors {
-        eprintln!(
-            "Warnung: Geräteprofil {} konnte nicht geladen werden: {error}",
-            path.display()
-        );
+        warn!(path = %path.display(), %error, "device profile could not be loaded");
     }
     let profile = registry.resolve(target).ok_or_else(|| {
         miette::miette!(
-            "Geräteprofil '{target}' nicht gefunden (bekannt: {})",
+            "device profile '{target}' not found (known: {})",
             registry
                 .profiles
                 .iter()
@@ -57,7 +56,7 @@ pub fn run_convert_device(input: &Path, target: &str, profiles_dir: Option<&Path
     let converter = DeviceConverter::new(profile.clone());
     let stats = converter.convert(input, &out).into_diagnostic()?;
     println!(
-        "Konvertiert: {} → {} ({} Events: {} übernommen, {} gedroppt, {} geclampt)",
+        "converted: {} -> {} ({} events: {} kept, {} dropped, {} clamped)",
         input.display(),
         out.display(),
         stats.events,
@@ -85,7 +84,7 @@ pub fn run_export_dataset(path: &Path) -> Result<()> {
         dataset.feature_width
     );
     if dataset.rows.is_empty() {
-        println!("  (keine gelabelten Frames - mit --record-label aufzeichnen)");
+        println!("  (no labeled frames - record with --record-label)");
     }
     Ok(())
 }
@@ -97,7 +96,7 @@ pub fn run_export_dataset(path: &Path) -> Result<()> {
 pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
     let recording = Recording::load(path).into_diagnostic()?;
     println!(
-        "Analyse: {} ({} Frames)\n",
+        "analysis: {} ({} frames)\n",
         path.display(),
         recording.frames().len()
     );
@@ -122,12 +121,12 @@ pub fn run_analyze(path: &Path, profiles_dir: Option<&str>) -> Result<()> {
 pub fn run_similarity(dir: &Path, json_out: Option<&Path>) -> Result<()> {
     let loaded = ProfileFile::load_dir(dir);
     for (file, error) in &loaded.errors {
-        eprintln!("{}: {error}", file.display());
+        warn!(file = %file.display(), %error, "profile could not be loaded");
     }
     let patterns = loaded.into_patterns();
     let report = SimilarityReport::analyze(patterns.as_pattern_set());
     println!(
-        "Aehnlichkeits-Analyse: {} ({} Profile)\n",
+        "similarity analysis: {} ({} profiles)\n",
         dir.display(),
         patterns.len()
     );
@@ -135,7 +134,7 @@ pub fn run_similarity(dir: &Path, json_out: Option<&Path>) -> Result<()> {
     if let Some(path) = json_out {
         let json = serde_json::to_string_pretty(&report).into_diagnostic()?;
         std::fs::write(path, json).into_diagnostic()?;
-        println!("Report gespeichert: {}", path.display());
+        info!(path = %path.display(), "report saved");
     }
     Ok(())
 }

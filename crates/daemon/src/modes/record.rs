@@ -19,6 +19,8 @@ use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::LifecycleEvent;
 use tangible_objects_runtime::ProfileInfo;
+use tracing::error;
+use tracing::info;
 use tracing::warn;
 
 use super::control::apply_registration;
@@ -53,26 +55,24 @@ pub fn run_record(
         device.queue_state_import();
     }
 
-    println!("Record-Modus: {}", path.display());
+    info!(device = %path.display(), "record mode");
     if let Some(name) = device.name() {
-        println!("Gerät: {name}");
+        info!("device: {name}");
     }
 
     let mut engine = Engine::new(patterns.to_vec());
     if let Some(cal) = effective_calibration(&device, device_profiles) {
-        println!(
-            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+        info!(
+            "calibration: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
         );
         engine.set_calibration(cal);
     } else {
-        eprintln!(
-            "Warnung: Keine Kalibrierung vom Gerät lesbar. Positionen werden als Rohwerte aufgezeichnet."
-        );
+        warn!("no calibration readable from device - positions recorded as raw values");
     }
     if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
-        println!("Edge-Filter: {mm} mm");
+        info!("edge filter: {mm} mm");
     }
     engine.set_fields(config.fields);
     engine.set_completion(config.completion);
@@ -84,14 +84,12 @@ pub fn run_record(
         label,
     )
     .into_diagnostic()?;
-    println!(
-        "Aufzeichnung: {}.jsonl + {}.evtest",
+    info!(
+        "recording: {}.jsonl + {}.evtest",
         base.display(),
         base.display()
     );
-    println!(
-        "Enter ohne Text beendet - <label>+Enter labelt die nächsten {LABEL_FRAME_COUNT} Frames.\n"
-    );
+    info!("empty Enter stops - <label>+Enter labels the next {LABEL_FRAME_COUNT} frames.\n");
 
     let profiles: Vec<ProfileInfo> = patterns.iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
@@ -130,7 +128,7 @@ pub fn run_record(
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 continue;
             }
-            eprintln!("poll Fehler");
+            error!("poll error - recording loop exits");
             break;
         }
 
@@ -159,8 +157,8 @@ pub fn run_record(
                     engine.set_completion(config);
                     runtime.set_completion(config);
                     runtime.emit_lifecycle(LifecycleEvent::CompletionChanged(config));
-                    println!(
-                        "\nCompletion: mode={} radius={} max-missing={} persist={}",
+                    info!(
+                        "completion: mode={} radius={} max-missing={} persist={}",
                         config.mode, config.radius_factor, config.max_missing, config.persist
                     );
                 }
@@ -183,9 +181,7 @@ pub fn run_record(
                                 break 'recording;
                             }
                             session.mark_label(RecordLabel::new(&text), LABEL_FRAME_COUNT);
-                            println!(
-                                "\nLabel \"{text}\" für die nächsten {LABEL_FRAME_COUNT} Frames"
-                            );
+                            info!("label \"{text}\" for the next {LABEL_FRAME_COUNT} frames");
                         }
                         _ => stdin_line.push(byte as char),
                     }
@@ -197,7 +193,7 @@ pub fn run_record(
             let events = match device.fetch_events() {
                 Ok(events) => events,
                 Err(e) => {
-                    eprintln!("Lesefehler: {e}");
+                    error!(error = %e, "device read failed - recording loop exits");
                     break;
                 }
             };
@@ -221,7 +217,7 @@ pub fn run_record(
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
                 println!(
-                    "Frame {frame_no} | {} Touch-Punkt(e) | {} Figur(en) | Label: {}",
+                    "Frame {frame_no} | {} touch point(s) | {} figure(s) | Label: {}",
                     engine.touch_count(),
                     active.len(),
                     session.label().map(|l| l.as_str()).unwrap_or("-"),
@@ -243,8 +239,8 @@ pub fn run_record(
     let frame_drops = session.dropped_frames();
     let raw_drops = session.dropped_events();
     session.finish().into_diagnostic()?;
-    println!("\n--- Aufzeichnung beendet ---");
-    println!("Frames: {frame_no} (aufgezeichnet: {recorded}, gedroppt: {frame_drops})");
-    println!("Raw-Events gedroppt: {raw_drops}");
+    info!("--- recording stopped ---");
+    info!("frames: {frame_no} (recorded: {recorded}, dropped: {frame_drops})");
+    info!("raw events dropped: {raw_drops}");
     Ok(())
 }

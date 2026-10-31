@@ -4,6 +4,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use i18n_embed_fl::fl;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
@@ -14,6 +15,7 @@ use tangible_objects_model::Vec2;
 
 use crate::evdev_thread::STABLE_THRESHOLD;
 use crate::gui_mode::GuiMode;
+use crate::language_loader;
 use crate::shared_state::SharedState;
 
 /// Per-figure accent color - stable hash over the pattern ID.
@@ -69,8 +71,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
             cr.set_source_rgb(0.8, 0.8, 0.8);
             cr.set_font_size(20.0);
             cr.move_to(20.0, 40.0);
-            let _ = cr
-                .show_text("Keine Kalibrierung verfügbar - GUI ohne Auflösungsinfo nicht nutzbar");
+            let _ = cr.show_text(&fl!(language_loader(), "no-calibration"));
             return;
         }
     };
@@ -113,7 +114,7 @@ fn draw_training(
         cr.set_source_rgb(0.6, 0.6, 0.6);
         cr.set_font_size(22.0);
         cr.move_to(20.0, 40.0);
-        let _ = cr.show_text("Lege die Figur auf die Touchfläche...");
+        let _ = cr.show_text(&fl!(language_loader(), "place-figure"));
         return;
     }
 
@@ -155,13 +156,16 @@ fn draw_training(
     cr.set_font_size(20.0);
     cr.move_to(20.0, 30.0);
     let status_text = if count < 3 {
-        format!("Warte auf ≥3 Punkte... ({})", count)
+        fl!(language_loader(), "wait-for-points", count = (count as i64))
     } else if s.stable {
-        format!("STABIL: {} Punkte - Name eingeben und Speichern", count)
+        fl!(language_loader(), "stable-status", count = (count as i64))
     } else {
-        format!(
-            "Stabilisiere... {}/{} ({} Punkte)",
-            s.stable_frames, STABLE_THRESHOLD, count
+        fl!(
+            language_loader(),
+            "stabilizing-status",
+            stable = (s.stable_frames as i64),
+            threshold = (STABLE_THRESHOLD as i64),
+            count = (count as i64)
         )
     };
     let _ = cr.show_text(&status_text);
@@ -172,7 +176,13 @@ fn draw_training(
     for (i, tp) in touches.iter().enumerate() {
         let p = to_screen(&tp.pos);
         cr.move_to(p.x + 16.0, p.y - 12.0);
-        let _ = cr.show_text(&format!("P{} ({:.0},{:.0})", i, tp.pos.x, tp.pos.y));
+        let _ = cr.show_text(&fl!(
+            language_loader(),
+            "pin-label",
+            index = (i as i64),
+            x = (tp.pos.x.round() as i64),
+            y = (tp.pos.y.round() as i64)
+        ));
     }
 }
 
@@ -269,9 +279,10 @@ fn draw_live(
     cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
     cr.set_font_size(16.0);
     cr.move_to(20.0, 30.0);
-    let _ = cr.show_text(&format!(
-        "{} Figur(en) | {} Touch-Punkt(e)",
-        matches.len(),
-        touches.len()
+    let _ = cr.show_text(&fl!(
+        language_loader(),
+        "live-info",
+        figures = (matches.len() as i64),
+        touches = (touches.len() as i64)
     ));
 }

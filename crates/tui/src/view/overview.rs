@@ -13,6 +13,8 @@ use ratatui::widgets::List;
 use ratatui::widgets::ListItem;
 
 use crate::app::App;
+use crate::i18n::language_loader;
+use i18n_embed_fl::fl;
 
 /// Renders the four occupancy columns.
 pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
@@ -45,11 +47,11 @@ fn draw_slots(frame: &mut Frame, app: &App, area: Rect) {
             ))
         })
         .collect();
-    let list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!("slots ({})", app.touches().len())),
-    );
+    let list = List::new(items).block(Block::default().borders(Borders::ALL).title(fl!(
+        language_loader(),
+        "title-slots",
+        count = (app.touches().len() as i64)
+    )));
     frame.render_widget(list, area);
 }
 
@@ -65,15 +67,19 @@ fn draw_tangibles(frame: &mut Frame, app: &App, area: Rect) {
                 tang.id.as_u32(),
                 tang.center.x,
                 tang.center.y,
-                if tang.pending { " pending" } else { "" }
+                if tang.pending {
+                    format!(" {}", fl!(language_loader(), "marker-pending"))
+                } else {
+                    String::new()
+                }
             ))
         })
         .collect();
-    let list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!("tangibles ({})", app.tangibles().len())),
-    );
+    let list = List::new(items).block(Block::default().borders(Borders::ALL).title(fl!(
+        language_loader(),
+        "title-tangibles",
+        count = (app.tangibles().len() as i64)
+    )));
     frame.render_widget(list, area);
 }
 
@@ -97,7 +103,11 @@ fn draw_fields(frame: &mut Frame, app: &App, area: Rect) {
             })
         })
         .collect();
-    let list = List::new(items).block(Block::default().borders(Borders::ALL).title("fields"));
+    let list = List::new(items).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(fl!(language_loader(), "title-fields")),
+    );
     frame.render_widget(list, area);
 }
 
@@ -112,15 +122,23 @@ fn draw_field_sets(frame: &mut Frame, app: &App, area: Rect) {
                 set.name.as_str(),
                 set.fields.len(),
                 set.stability.as_u64(),
-                if set.suppress { "suppress" } else { "info" },
-                if set.window.is_some() { " +window" } else { "" }
+                if set.suppress {
+                    fl!(language_loader(), "field-suppress")
+                } else {
+                    fl!(language_loader(), "field-info")
+                },
+                if set.window.is_some() {
+                    format!(" {}", fl!(language_loader(), "marker-window"))
+                } else {
+                    String::new()
+                }
             ))
         })
         .collect();
-    let list = List::new(items).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!("field sets ({})", app.field_sets().len())),
-    );
+    let list = List::new(items).block(Block::default().borders(Borders::ALL).title(fl!(
+        language_loader(),
+        "title-field-sets",
+        count = (app.field_sets().len() as i64)
+    )));
     frame.render_widget(list, area);
 }

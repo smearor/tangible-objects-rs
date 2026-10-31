@@ -10,6 +10,8 @@ use ratatui::widgets::canvas::Canvas;
 use ratatui::widgets::canvas::Points;
 
 use crate::app::App;
+use crate::i18n::language_loader;
+use i18n_embed_fl::fl;
 
 /// Renders the braille surface canvas into `area`.
 pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
@@ -27,11 +29,12 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let tangibles = app.tangibles();
 
     let canvas = Canvas::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(format!("surface {mm_x:.0}x{mm_y:.0} mm")),
-        )
+        .block(Block::default().borders(Borders::ALL).title(fl!(
+            language_loader(),
+            "title-surface",
+            width = (mm_x.round() as i64),
+            height = (mm_y.round() as i64)
+        )))
         .marker(Marker::Braille)
         .x_bounds([0.0, mm_x])
         .y_bounds([0.0, mm_y])

@@ -15,6 +15,7 @@ use tangible_objects_runtime::EngineRuntime;
 use tangible_objects_runtime::LifecycleEvent;
 use tangible_objects_runtime::ProfileInfo;
 use tangible_objects_runtime::RecordingStatus;
+use tracing::info;
 use tracing::warn;
 
 use super::interfaces::Interfaces;
@@ -44,7 +45,7 @@ pub(crate) fn drain_control_commands(
             ControlCommand::TrainProfile(name) => {
                 runtime.start_training(&name);
                 runtime.set_message(Some(format!(
-                    "Training '{name}': Figur auflegen und still halten"
+                    "Training '{name}': place the figure and hold still"
                 )));
             }
             ControlCommand::StartRecording { base_path, label } => {
@@ -58,7 +59,7 @@ pub(crate) fn drain_control_commands(
                         label,
                     ) {
                         Ok(started) => {
-                            println!("\nAufzeichnung gestartet: {}", started.base_path.display());
+                            info!(path = %started.base_path.display(), "recording started");
                             *recording = Some(started);
                             runtime.emit_lifecycle(LifecycleEvent::RecordingStarted);
                         }
@@ -73,7 +74,7 @@ pub(crate) fn drain_control_commands(
                         warn!(error = %e, "recording flush failed");
                     }
                     runtime.emit_lifecycle(LifecycleEvent::RecordingStopped { frames: recorded });
-                    println!("\nAufzeichnung gestoppt: {recorded} Frames");
+                    info!(%recorded, "recording stopped");
                 }
                 None => warn!("no recording active - StopRecording ignored"),
             },
@@ -85,8 +86,8 @@ pub(crate) fn drain_control_commands(
                 engine.set_completion(config);
                 runtime.set_completion(config);
                 runtime.emit_lifecycle(LifecycleEvent::CompletionChanged(config));
-                println!(
-                    "\nCompletion: mode={} radius={} max-missing={} persist={}",
+                info!(
+                    "completion: mode={} radius={} max-missing={} persist={}",
                     config.mode, config.radius_factor, config.max_missing, config.persist
                 );
             }
@@ -94,7 +95,7 @@ pub(crate) fn drain_control_commands(
                 runtime.reset_metrics();
             }
             ControlCommand::ShowMessage(text) => {
-                println!("\n{}", text);
+                info!(%text, "message");
                 runtime.set_message((!text.is_empty()).then_some(text));
             }
             other => apply_registration(runtime, engine, other),
@@ -120,9 +121,9 @@ pub(crate) fn apply_registration(
                 Registration::Pattern(ref profile) => {
                     match engine.add_pattern(profile, owner.clone()) {
                         Ok(id) => {
-                            println!(
-                                "\nProfil registriert: {} (id {}, owner {:?}, {})",
-                                profile.name, id, owner, lifetime
+                            info!(
+                                name = %profile.name, %id, ?owner, %lifetime,
+                                "profile registered"
                             );
                             // Warn when the new profile's fingerprint is
                             // geometrically close to an existing one - the
@@ -140,14 +141,12 @@ pub(crate) fn apply_registration(
                                         )
                                         && pair.risk != tangible_objects_analysis::MatchRisk::Safe
                                     {
-                                        println!(
-                                            "\nWarnung: {} kollidiert mit {} \
-                                             (k={}, min-dev {:.2}mm, {:?})",
-                                            pair.a.as_str(),
-                                            pair.b.as_str(),
-                                            pair.contact_count,
-                                            pair.min_max_deviation.as_f64(),
-                                            pair.risk
+                                        warn!(
+                                            a = %pair.a, b = %pair.b,
+                                            k = %pair.contact_count,
+                                            min_dev_mm = %pair.min_max_deviation.as_f64(),
+                                            risk = ?pair.risk,
+                                            "profile fingerprint collision risk"
                                         );
                                     }
                                 }
@@ -169,7 +168,7 @@ pub(crate) fn apply_registration(
                             Ok(RegistrationApplied::Profile(id))
                         }
                         Err(reason) => {
-                            println!("\nProfil-Registrierung abgelehnt: {reason}");
+                            warn!(%reason, "profile registration rejected");
                             Err(reason)
                         }
                     }
@@ -178,9 +177,7 @@ pub(crate) fn apply_registration(
                     let name = set.name.clone();
                     match engine.add_field_set(set.clone(), owner.clone()) {
                         Ok(()) => {
-                            println!(
-                                "\nFeld-Set registriert: {name} (owner {owner:?}, {lifetime})"
-                            );
+                            info!(%name, ?owner, %lifetime, "field set registered");
                             runtime.set_field_sets(engine.field_sets().to_vec());
                             runtime.emit_lifecycle(LifecycleEvent::FieldSetRegistered {
                                 name: name.clone(),
@@ -189,7 +186,7 @@ pub(crate) fn apply_registration(
                             Ok(RegistrationApplied::FieldSet)
                         }
                         Err(reason) => {
-                            println!("\nFeld-Set abgelehnt: {reason}");
+                            warn!(%reason, "field set rejected");
                             Err(reason)
                         }
                     }
@@ -203,7 +200,7 @@ pub(crate) fn apply_registration(
         ControlCommand::UpdateProfile { id, profile } => {
             match engine.update_pattern(id, &profile) {
                 Ok(()) => {
-                    println!("\nProfil aktualisiert: {id} -> {}", profile.name);
+                    info!(%id, name = %profile.name, "profile updated");
                     let owner = engine.pattern_owner(id).cloned();
                     runtime.remove_profile(id);
                     runtime.add_profile(ProfileInfo {
@@ -221,7 +218,7 @@ pub(crate) fn apply_registration(
                         owner,
                     });
                 }
-                Err(reason) => println!("\nProfil-Update abgelehnt: {reason}"),
+                Err(reason) => warn!(%reason, "profile update rejected"),
             }
         }
         ControlCommand::UnregisterPattern { id } => {
@@ -236,9 +233,9 @@ pub(crate) fn apply_registration(
                     unpersist("profiles.d", name.as_str());
                 }
                 runtime.emit_lifecycle(LifecycleEvent::ProfileUnregistered { pattern_id: id });
-                println!("\nProfil entfernt: {id}");
+                info!(%id, "profile removed");
             } else {
-                println!("\nProfil {id} nicht gefunden");
+                warn!(%id, "profile not found");
             }
         }
         ControlCommand::UnregisterFieldSet { name } => {
@@ -246,9 +243,9 @@ pub(crate) fn apply_registration(
                 runtime.set_field_sets(engine.field_sets().to_vec());
                 unpersist("fields.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
-                println!("\nFeld-Set entfernt: {name}");
+                info!(%name, "field set removed");
             } else {
-                println!("\nFeld-Set {name} nicht gefunden");
+                warn!(%name, "field set not found");
             }
         }
         ControlCommand::UnregisterOwner { owner } => {
@@ -263,15 +260,14 @@ pub(crate) fn apply_registration(
                 runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
             }
             runtime.set_field_sets(engine.field_sets().to_vec());
-            println!(
-                "\nOwner {owner} bereinigt: {} Profile, {} Feld-Sets entfernt",
-                patterns.len(),
-                field_sets.len()
+            info!(
+                %owner, profiles = patterns.len(), field_sets = field_sets.len(),
+                "owner cleaned up"
             );
         }
         ControlCommand::ResetMetrics => runtime.reset_metrics(),
         ControlCommand::ShowMessage(text) => {
-            println!("\n{}", text);
+            info!(%text, "message");
             runtime.set_message((!text.is_empty()).then_some(text));
         }
         #[cfg(feature = "gui")]
@@ -290,7 +286,7 @@ pub(crate) fn tick_training(
     touches: &[tangible_objects_model::TouchPoint],
 ) {
     if let Some(profile) = runtime.training_tick(touches) {
-        println!("\nTraining abgeschlossen: {}", profile.name);
+        info!(name = %profile.name, "training completed");
         runtime.set_message(None);
         let (command, _rx) =
             ControlCommand::register(Registration::Pattern(profile), None, Lifetime::Persistent);
@@ -326,18 +322,18 @@ pub(crate) fn status_of_session(session: &RecordingSession) -> RecordingStatus {
 pub(crate) fn spawn_interfaces(handle: &EngineHandle, interfaces: &Interfaces) {
     if let Some(addr) = interfaces.graphql_addr {
         tangible_objects_graphql::spawn(handle.clone(), addr);
-        println!("GraphQL: http://{addr}/ (Endpoint: /graphql)");
+        info!(%addr, "GraphQL endpoint listening (http://{addr}/graphql)");
     }
     if interfaces.dbus {
         tangible_objects_dbus::spawn(handle.clone());
-        println!(
-            "D-Bus: {} ({})",
-            tangible_objects_dbus::BUS_NAME,
-            tangible_objects_dbus::OBJECT_PATH
+        info!(
+            bus = tangible_objects_dbus::BUS_NAME,
+            path = tangible_objects_dbus::OBJECT_PATH,
+            "D-Bus interface listening"
         );
     }
     if let Some(addr) = interfaces.mcp_addr {
         tangible_objects_mcp::spawn_http(handle.clone(), addr);
-        println!("MCP: http://{addr}/mcp");
+        info!(%addr, "MCP endpoint listening (http://{addr}/mcp)");
     }
 }

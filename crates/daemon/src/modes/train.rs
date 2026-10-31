@@ -14,6 +14,9 @@ use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Vec2;
 
 use super::setup::effective_calibration;
+use tracing::error;
+use tracing::info;
+use tracing::warn;
 
 /// Training mode: waits for a stable set of >=3 touch points (same count over
 /// [`STABLE_THRESHOLD`] frames), then saves the profile on Enter.
@@ -31,24 +34,22 @@ pub fn run_train(
         device.queue_state_import();
     }
 
-    println!("Trainingsmodus: {} - Figur \"{}\"", path.display(), name);
+    info!(device = %path.display(), name, "training mode");
     if let Some(dev_name) = device.name() {
-        println!("Gerät: {dev_name}");
+        info!("device: {dev_name}");
     }
-    println!("Lege die Figur auf die Touchfläche und halte sie still.");
-    println!("Drücke Enter zum Erfassen, Ctrl+C zum Abbrechen.\n");
+    info!("place the figure on the touch surface and hold it still.");
+    info!("press Enter to capture, Ctrl+C to abort.\n");
 
     let mut engine = Engine::new(Vec::new());
     if let Some(cal) = effective_calibration(&device, device_profiles) {
-        println!(
-            "Kalibrierung: X={:.1} units/mm, Y={:.1} units/mm",
+        info!(
+            "calibration: X={:.1} units/mm, Y={:.1} units/mm",
             cal.x_res, cal.y_res
         );
         engine.set_calibration(cal);
     } else {
-        eprintln!(
-            "Warnung: Keine Kalibrierung vom Gerät lesbar. Profil wird in Rohkoordinaten gespeichert."
-        );
+        warn!("no calibration readable from device - profile saved in raw coordinates");
     }
 
     const STABLE_THRESHOLD: u32 = 10;
@@ -82,7 +83,7 @@ pub fn run_train(
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 continue;
             }
-            eprintln!("poll Fehler");
+            error!("poll error - training loop exits");
             break;
         }
 
@@ -104,7 +105,7 @@ pub fn run_train(
             let events = match device.fetch_events() {
                 Ok(events) => events,
                 Err(e) => {
-                    eprintln!("Lesefehler: {e}");
+                    error!(error = %e, "device read failed - training loop exits");
                     break;
                 }
             };
@@ -123,18 +124,18 @@ pub fn run_train(
                     }
 
                     print!("\x1b[2J\x1b[H");
-                    println!("Trainingsmodus: \"{}\" | {} Touch-Punkt(e)", name, count);
+                    println!("training \"{}\": {} touch point(s)", name, count);
                     if count >= 3 {
                         if stable_frames >= STABLE_THRESHOLD {
-                            println!("STABIL - Drücke Enter zum Speichern");
+                            println!("STABLE - press Enter to save");
                         } else {
-                            println!("Stabilisiere... {}/{}", stable_frames, STABLE_THRESHOLD);
+                            println!("stabilizing... {}/{}", stable_frames, STABLE_THRESHOLD);
                         }
                         for (i, t) in touches.iter().enumerate() {
-                            println!("  Punkt {i}: ({:.1}, {:.1}) mm", t.pos.x, t.pos.y);
+                            println!("  point {i}: ({:.1}, {:.1}) mm", t.pos.x, t.pos.y);
                         }
                     } else {
-                        println!("Warte auf mindestens 3 Touch-Punkte...");
+                        println!("waiting for at least 3 touch points...");
                     }
                     std::io::stdout().flush().ok();
 
@@ -168,11 +169,11 @@ pub fn run_train(
         let filename = format!("{}/{}.toml", dir, name.to_lowercase().replace(' ', "-"));
         let filepath = PathBuf::from(&filename);
 
-        println!("\nProfil gespeichert: {}", filepath.display());
-        println!("  Name: {}", profile.name);
-        println!("  Punkte: {}", profile.num_points);
-        println!(
-            "  Abstände ({}): {:?}",
+        info!(path = %filepath.display(), "profile saved");
+        info!("  name: {}", profile.name);
+        info!("  points: {}", profile.num_points);
+        info!(
+            "  distances ({}): {:?}",
             profile.sorted_sides.len(),
             profile
                 .sorted_sides
@@ -180,16 +181,14 @@ pub fn run_train(
                 .map(|d| d.as_f64())
                 .collect::<Vec<_>>()
         );
-        println!("  Toleranz: {}", profile.tolerance);
+        info!("  tolerance: {}", profile.tolerance);
 
         match profile.save(&filepath) {
-            Ok(()) => {
-                println!("\nErfolgreich! Profil kann mit --live oder --replay verwendet werden.")
-            }
-            Err(e) => eprintln!("Fehler beim Speichern: {e}"),
+            Ok(()) => info!("success! profile usable with --live or --replay"),
+            Err(e) => error!(error = %e, "profile save failed"),
         }
     } else {
-        eprintln!("\nTraining abgebrochen.");
+        info!("training aborted.");
     }
     Ok(())
 }

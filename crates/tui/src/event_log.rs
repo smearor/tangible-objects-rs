@@ -3,6 +3,8 @@
 
 use std::collections::VecDeque;
 
+use crate::i18n::language_loader;
+use i18n_embed_fl::fl;
 use tangible_objects_model::EventKind;
 use tangible_objects_model::TangibleEvent;
 
@@ -53,12 +55,12 @@ fn describe(event: &TangibleEvent) -> Option<String> {
         | EventKind::TangibleMoved
         | EventKind::TangibleRemoved => return None,
         EventKind::SetAdded | EventKind::SetRemoved => {
-            format!("{} set {}", kind_name(event.kind), event.set_id?.as_u32())
+            format!("{} set {}", event.kind, event.set_id?.as_u32())
         }
         EventKind::ObjectAdded | EventKind::ObjectRemoved | EventKind::ObjectMoved => {
             format!(
                 "{} set {} tang {}",
-                kind_name(event.kind),
+                event.kind,
                 event.set_id?.as_u32(),
                 event
                     .tangible
@@ -69,7 +71,7 @@ fn describe(event: &TangibleEvent) -> Option<String> {
         }
         EventKind::FieldPlaced | EventKind::FieldLifted => format!(
             "{} {} {}",
-            kind_name(event.kind),
+            event.kind,
             event
                 .field_set
                 .as_ref()
@@ -78,7 +80,8 @@ fn describe(event: &TangibleEvent) -> Option<String> {
             event.field.as_ref().map(|f| f.as_str()).unwrap_or_default()
         ),
         EventKind::FieldCountChanged => format!(
-            "field_count_changed {} {} = {}",
+            "{} {} {} = {}",
+            event.kind,
             event
                 .field_set
                 .as_ref()
@@ -88,61 +91,33 @@ fn describe(event: &TangibleEvent) -> Option<String> {
             event.count?.as_u32()
         ),
         EventKind::ProfileRegistered => format!(
-            "profile_registered {name} id{} {}",
+            "{} {name} id{} {}",
+            event.kind,
             event.pattern_id?.as_u32(),
             event.owner.as_ref().map(|o| o.as_str()).unwrap_or_default()
         ),
         EventKind::ProfileUnregistered => {
-            format!("profile_unregistered id{}", event.pattern_id?.as_u32())
+            format!("{} id{}", event.kind, event.pattern_id?.as_u32())
         }
         EventKind::FieldSetRegistered
         | EventKind::FieldSetUnregistered
         | EventKind::StageRegistered
-        | EventKind::StageUnregistered => format!("{} {name}", kind_name(event.kind)),
+        | EventKind::StageUnregistered => format!("{} {name}", event.kind),
         EventKind::CompletionChanged | EventKind::FilterModeChanged => {
-            format!("{} {detail}", kind_name(event.kind))
+            format!("{} {detail}", event.kind)
         }
-        EventKind::RecordingStarted => "recording_started".to_string(),
+        EventKind::RecordingStarted => event.kind.to_string(),
         EventKind::RecordingStopped => {
-            format!("recording_stopped {} frames", event.frames?.as_u64())
+            format!("{} {} frames", event.kind, event.frames?.as_u64())
         }
-        EventKind::ConfigReloaded => "config_reloaded".to_string(),
-        EventKind::Lagged => format!(
-            "lagged - {} events skipped",
-            event.skipped.map(|s| s.as_u64()).unwrap_or_default()
+        EventKind::ConfigReloaded => event.kind.to_string(),
+        EventKind::Lagged => fl!(
+            language_loader(),
+            "log-lagged",
+            count = (event.skipped.map(|s| s.as_u64()).unwrap_or_default() as i64)
         ),
     };
     Some(line)
-}
-
-/// `SCREAMING_SNAKE` kind name for the log line.
-fn kind_name(kind: EventKind) -> &'static str {
-    match kind {
-        EventKind::SetAdded => "set_added",
-        EventKind::SetRemoved => "set_removed",
-        EventKind::ObjectAdded => "object_added",
-        EventKind::ObjectRemoved => "object_removed",
-        EventKind::ObjectMoved => "object_moved",
-        EventKind::FieldPlaced => "field_placed",
-        EventKind::FieldLifted => "field_lifted",
-        EventKind::FieldCountChanged => "field_count_changed",
-        EventKind::ProfileRegistered => "profile_registered",
-        EventKind::ProfileUnregistered => "profile_unregistered",
-        EventKind::FieldSetRegistered => "field_set_registered",
-        EventKind::FieldSetUnregistered => "field_set_unregistered",
-        EventKind::StageRegistered => "stage_registered",
-        EventKind::StageUnregistered => "stage_unregistered",
-        EventKind::CompletionChanged => "completion_changed",
-        EventKind::FilterModeChanged => "filter_mode_changed",
-        EventKind::RecordingStarted => "recording_started",
-        EventKind::RecordingStopped => "recording_stopped",
-        EventKind::ConfigReloaded => "config_reloaded",
-        EventKind::Lagged => "lagged",
-        EventKind::TouchPointsUpdated
-        | EventKind::TangibleAdded
-        | EventKind::TangibleMoved
-        | EventKind::TangibleRemoved => "",
-    }
 }
 
 #[cfg(test)]

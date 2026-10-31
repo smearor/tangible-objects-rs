@@ -72,3 +72,38 @@ pub enum EventKind {
     /// event, never requestable via `kinds`; `skipped` carries the count.
     Lagged,
 }
+
+/// `snake_case` text name of the kind - the wire form stays
+/// `SCREAMING_SNAKE_CASE` (serde/cynic); `Display` is what log lines and
+/// event descriptions print.
+impl std::fmt::Display for EventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Self::TouchPointsUpdated => "touch_points_updated",
+            Self::TangibleAdded => "tangible_added",
+            Self::TangibleMoved => "tangible_moved",
+            Self::TangibleRemoved => "tangible_removed",
+            Self::SetAdded => "set_added",
+            Self::SetRemoved => "set_removed",
+            Self::ObjectAdded => "object_added",
+            Self::ObjectRemoved => "object_removed",
+            Self::ObjectMoved => "object_moved",
+            Self::FieldPlaced => "field_placed",
+            Self::FieldLifted => "field_lifted",
+            Self::FieldCountChanged => "field_count_changed",
+            Self::ProfileRegistered => "profile_registered",
+            Self::ProfileUnregistered => "profile_unregistered",
+            Self::FieldSetRegistered => "field_set_registered",
+            Self::FieldSetUnregistered => "field_set_unregistered",
+            Self::StageRegistered => "stage_registered",
+            Self::StageUnregistered => "stage_unregistered",
+            Self::CompletionChanged => "completion_changed",
+            Self::FilterModeChanged => "filter_mode_changed",
+            Self::RecordingStarted => "recording_started",
+            Self::RecordingStopped => "recording_stopped",
+            Self::ConfigReloaded => "config_reloaded",
+            Self::Lagged => "lagged",
+        };
+        f.write_str(name)
+    }
+}
