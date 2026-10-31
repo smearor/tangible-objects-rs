@@ -1,8 +1,11 @@
+use crate::SmoothingAlpha;
 use serde::Deserialize;
 use serde::Serialize;
 use std::f64::consts::PI;
-
-use crate::SmoothingAlpha;
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Neg;
+use std::ops::Sub;
 
 /// A rotation angle in radians.
 ///
@@ -58,6 +61,40 @@ impl From<f64> for RotationRad {
 impl From<RotationRad> for f64 {
     fn from(rotation: RotationRad) -> Self {
         rotation.0
+    }
+}
+
+impl Add for RotationRad {
+    type Output = RotationRad;
+
+    /// Composes two rotations.
+    fn add(self, other: RotationRad) -> RotationRad {
+        RotationRad(self.0 + other.0)
+    }
+}
+
+impl AddAssign for RotationRad {
+    /// Adds a rotation in place.
+    fn add_assign(&mut self, other: RotationRad) {
+        self.0 += other.0;
+    }
+}
+
+impl Sub for RotationRad {
+    type Output = RotationRad;
+
+    /// The signed difference between two rotations.
+    fn sub(self, other: RotationRad) -> RotationRad {
+        RotationRad(self.0 - other.0)
+    }
+}
+
+impl Neg for RotationRad {
+    type Output = RotationRad;
+
+    /// The inverse rotation.
+    fn neg(self) -> RotationRad {
+        RotationRad(-self.0)
     }
 }
 
