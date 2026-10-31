@@ -107,7 +107,10 @@ fn describe(event: &TangibleEvent) -> Option<String> {
             format!("recording_stopped {} frames", event.frames?.as_u64())
         }
         EventKind::ConfigReloaded => "config_reloaded".to_string(),
-        EventKind::Lagged => format!("lagged - {} events skipped", event.skipped.unwrap_or(0)),
+        EventKind::Lagged => format!(
+            "lagged - {} events skipped",
+            event.skipped.map(|s| s.as_u64()).unwrap_or_default()
+        ),
     };
     Some(line)
 }

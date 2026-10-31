@@ -3,6 +3,7 @@ use super::engine_event::EngineEvent;
 use super::event_kind::EventKind;
 use super::lifecycle_event::LifecycleEvent;
 use crate::ContactCount;
+use crate::EventCount;
 use crate::FieldName;
 use crate::FieldSetName;
 use crate::FrameCount;
@@ -61,7 +62,7 @@ pub struct TangibleEvent {
     /// `mode radius max_missing persist`, `FILTER_MODE_CHANGED` = mode).
     pub detail: Option<String>,
     /// Events dropped because the subscription lagged (`LAGGED` kind).
-    pub skipped: Option<i32>,
+    pub skipped: Option<EventCount>,
 }
 
 impl TangibleEvent {
@@ -88,9 +89,9 @@ impl TangibleEvent {
     /// resubscribe (SUBSCRIPTIONS.md reconnect semantics).
     /// Synthetic `LAGGED` control event - emitted by the subscription
     /// machinery when this client dropped buffered events.
-    pub fn lagged(skipped: u64) -> Self {
+    pub fn lagged(skipped: EventCount) -> Self {
         Self {
-            skipped: Some(skipped as i32),
+            skipped: Some(skipped),
             ..Self::blank(EventKind::Lagged)
         }
     }

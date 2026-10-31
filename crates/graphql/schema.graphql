@@ -974,7 +974,7 @@ type TangibleEvent {
 	"""
 	Events dropped because the subscription lagged (`LAGGED` kind).
 	"""
-	skipped: Int
+	skipped: EventCount
 }
 
 scalar TangibleId

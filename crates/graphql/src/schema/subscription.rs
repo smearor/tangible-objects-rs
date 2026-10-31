@@ -2,6 +2,7 @@ use async_graphql::Context;
 use async_graphql::Result;
 use async_graphql::Subscription;
 use futures_core::Stream;
+use tangible_objects_model::EventCount;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::TangibleSetId;
@@ -32,7 +33,7 @@ impl SubscriptionRoot {
             .filter_map(|result| match result {
                 Ok(event) => Some(TangibleEvent::from(&event)),
                 Err(BroadcastStreamRecvError::Lagged(skipped)) => {
-                    Some(TangibleEvent::lagged(skipped))
+                    Some(TangibleEvent::lagged(EventCount::from(skipped)))
                 }
             })
             .filter(move |event| filter.accepts(event))
