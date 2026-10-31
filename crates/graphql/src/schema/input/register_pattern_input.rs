@@ -60,7 +60,9 @@ impl RegisterPatternInput {
         }
         Ok(self
             .points
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| Vec2::new(pair[0].as_f64(), pair[1].as_f64()))
             .collect())
     }

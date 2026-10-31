@@ -35,7 +35,9 @@ fn build_profile(
         ));
     }
     let points: Vec<Vec2<Millimeters>> = points
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| Vec2::new(pair[0], pair[1]))
         .collect();
     let mut profile = ProfileFile::from_points(name.as_str(), &points, tolerance);
