@@ -64,6 +64,20 @@ impl<U> Vec2<U> {
     }
 }
 
+impl<U> From<Vec2<U>> for [f64; 2] {
+    /// The point as `[x, y]`.
+    fn from(v: Vec2<U>) -> Self {
+        [v.x, v.y]
+    }
+}
+
+impl<U> From<[f64; 2]> for Vec2<U> {
+    /// The pair as a `Vec2` in the unit `U`.
+    fn from([x, y]: [f64; 2]) -> Self {
+        Self::new(x, y)
+    }
+}
+
 #[cfg(feature = "cynic")]
 impl<U> cynic::QueryFragment for Vec2<U> {
     type SchemaType = schema::Point;
@@ -78,6 +92,30 @@ impl<U> cynic::QueryFragment for Vec2<U> {
         let mut builder = builder;
         let _ = builder.select_field::<schema::__fields::Point::x, f64>();
         let _ = builder.select_field::<schema::__fields::Point::y, f64>();
+    }
+}
+
+/// Serde adapter for `#[serde(with)]`: `Vec2<U>` as a compact
+/// `[x, y]` pair instead of the default `{"x": .., "y": ..}` map.
+///
+/// Dataset-style formats like figure profiles or game maps often
+/// prefer the tighter pair shape; downstream crates use this module as
+/// `#[serde(with = "tangible_objects_model::serde_pair")]`.
+pub mod serde_pair {
+    use super::Vec2;
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde::Serialize;
+    use serde::Serializer;
+
+    /// Serializes the point as `[x, y]`.
+    pub fn serialize<U, S: Serializer>(v: &Vec2<U>, serializer: S) -> Result<S::Ok, S::Error> {
+        [v.x, v.y].serialize(serializer)
+    }
+
+    /// Deserializes `[x, y]` into a `Vec2` in the unit `U`.
+    pub fn deserialize<'de, U, D: Deserializer<'de>>(deserializer: D) -> Result<Vec2<U>, D::Error> {
+        <[f64; 2]>::deserialize(deserializer).map(Vec2::from)
     }
 }
 
@@ -109,5 +147,28 @@ mod tests {
     fn centroid_of_empty_set_is_origin() {
         let empty: Vec<Vec2<Millimeters>> = Vec::new();
         assert_eq!(Vec2::centroid(&empty), Vec2::new(0.0, 0.0));
+    }
+
+    #[test]
+    fn array_conversions_roundtrip() {
+        let v = Vec2::<Millimeters>::new(1.5, -2.25);
+        let arr: [f64; 2] = v.into();
+        assert_eq!(arr, [1.5, -2.25]);
+        assert_eq!(Vec2::<Millimeters>::from(arr), v);
+    }
+
+    #[test]
+    fn serde_pair_serializes_as_pair() {
+        #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        struct Row {
+            #[serde(with = "crate::serde_pair")]
+            pos: Vec2<Millimeters>,
+        }
+        let row = Row {
+            pos: Vec2::new(80.0, 220.0),
+        };
+        let json = serde_json::to_string(&row).unwrap_or_default();
+        assert_eq!(json, r#"{"pos":[80.0,220.0]}"#);
+        assert_eq!(serde_json::from_str::<Row>(&json).ok(), Some(row));
     }
 }

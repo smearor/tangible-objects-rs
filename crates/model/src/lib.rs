@@ -166,3 +166,4 @@ pub use touch_point::TouchSet;
 pub use touch_point::TrackingId;
 pub use units_per_mm::UnitsPerMm;
 pub use vec2::Vec2;
+pub use vec2::serde_pair;
