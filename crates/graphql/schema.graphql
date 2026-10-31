@@ -525,11 +525,11 @@ type MutationRoot {
 	"""
 	setGuiVisible(visible: Boolean!): Boolean!
 	"""
-	Registers a figure profile at runtime (DYNAMIC_PROFILES.md).
-	Queued to the device loop - fingerprint collisions are rejected
-	there; verify via the `profiles` query.
+	Registers a figure profile at runtime (DYNAMIC_PROFILES.md). The
+	result union carries the assigned pattern ID or the typed
+	rejection (`FINGERPRINT_COLLISION`, `PATTERN_NOT_FOUND`).
 	"""
-	registerPattern(input: RegisterPatternInput!, owner: Owner, lifetime: Lifetime): Boolean!
+	registerPattern(input: RegisterPatternInput!, owner: Owner, lifetime: Lifetime): RegisterPatternResult!
 	"""
 	Replaces a registered pattern's geometry/name while keeping its
 	ID. Applies to new matches only.
@@ -560,6 +560,18 @@ scalar Owner
 scalar PatternId
 
 scalar PatternName
+
+"""
+`registerPattern` applied - carries the assigned pattern ID so the
+client learns the registration's identity directly instead of
+re-listing profiles.
+"""
+type PatternRegistered {
+	"""
+	Pattern ID assigned to the registered profile.
+	"""
+	patternId: PatternId!
+}
 
 scalar PatternTolerance
 
@@ -828,6 +840,17 @@ input RegisterPatternInput {
 }
 
 """
+`registerPattern` result union - the applied outcome either
+registered the profile (carrying its pattern ID) or carries the
+typed rejection (`FINGERPRINT_COLLISION`, `PATTERN_NOT_FOUND`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union RegisterPatternResult = PatternRegistered | RegistrationRejected
+
+"""
 A rejected registration - `reason` is the human-readable error
 string, `kind` the machine category; structured payloads ride per
 kind (`overlap` for `FIELDS_OVERLAP`).
@@ -849,7 +872,7 @@ type RegistrationRejected {
 }
 
 """
-Machine-readable category of a [`RegistrationRejected`] result -
+Machine-readable category of a [`crate::RegistrationRejected`] result -
 mirrors the `RegistrationError` variants so clients can switch on the
 kind without parsing the `reason` string.
 """

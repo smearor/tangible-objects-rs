@@ -37,7 +37,9 @@ pub(crate) async fn register_field_set(
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))?;
     match rx.await {
-        Ok(result) => result.map_err(|reason| fdo::Error::Failed(format!("rejected: {reason}"))),
+        Ok(result) => result
+            .map(|_| ())
+            .map_err(|reason| fdo::Error::Failed(format!("rejected: {reason}"))),
         Err(_) => Err(fdo::Error::Failed(
             "device loop closed the registration reply".to_string(),
         )),

@@ -82,7 +82,7 @@ impl EngineMcp {
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         match rx.await {
-            Ok(Ok(())) => Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            Ok(Ok(_)) => Ok(CallToolResult::success(vec![ContentBlock::text(format!(
                 "registered: {}",
                 args.name
             ))])),

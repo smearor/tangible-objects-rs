@@ -5,10 +5,12 @@ use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::RegisterPatternResult;
 
 use crate::ClientError;
 use crate::GraphQLClient;
 use crate::mutations::pattern::register::mutation::RegisterPattern;
+use crate::mutations::pattern::register::result::RegisterPatternResultFragment;
 use crate::mutations::pattern::register::variables::RegisterPatternVariables;
 use crate::mutations::pattern::unregister::mutation::UnregisterPattern;
 use crate::mutations::pattern::unregister::variables::UnregisterPatternVariables;
@@ -20,22 +22,25 @@ use crate::mutations::pattern::update::variables::UpdateProfileVariables;
 impl GraphQLClient {
     /// Registers a profile at runtime (`registerPattern`) - the
     /// `ProfileFile`'s geometry is flattened into the InputObject's
-    /// `[x0, y0, x1, y1, ...]` form.
+    /// `[x0, y0, x1, y1, ...]` form. The result union carries the
+    /// assigned pattern ID or the typed rejection.
     pub async fn register_pattern(
         &self,
         profile: &ProfileFile,
         owner: Option<&Owner>,
         lifetime: Lifetime,
-    ) -> Result<bool, ClientError> {
-        self.call_mutation::<RegisterPattern, _, _>(
-            "registerPattern",
-            RegisterPatternVariables {
-                input: profile.into(),
-                owner: owner.cloned(),
-                lifetime: Some(lifetime),
-            },
-        )
-        .await
+    ) -> Result<RegisterPatternResult, ClientError> {
+        let fragment: RegisterPatternResultFragment = self
+            .call_mutation::<RegisterPattern, _, _>(
+                "registerPattern",
+                RegisterPatternVariables {
+                    input: profile.into(),
+                    owner: owner.cloned(),
+                    lifetime: Some(lifetime),
+                },
+            )
+            .await?;
+        fragment.into_result()
     }
 
     /// Replaces a registered pattern's geometry (`updateProfile`).

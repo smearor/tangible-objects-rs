@@ -1,6 +1,7 @@
 //! `RegisterPattern` - the cynic fragment for the `registerPattern`
 //! mutation.
 
+use crate::mutations::pattern::register::result::RegisterPatternResultFragment;
 use crate::mutations::pattern::register::variables::RegisterPatternVariablesFields;
 use cynic::QueryFragment;
 
@@ -14,8 +15,9 @@ use cynic::QueryFragment;
     variables = "RegisterPatternVariables"
 )]
 pub(crate) struct RegisterPattern {
-    /// `registerPattern` field.
+    /// `registerPattern` field - union decode (`__typename` picks the
+    /// member).
     #[cynic(rename = "registerPattern")]
     #[arguments(input: $input, owner: $owner, lifetime: $lifetime)]
-    register_pattern: bool,
+    register_pattern: RegisterPatternResultFragment,
 }

@@ -8,6 +8,7 @@ use tangible_objects_model::PinCount;
 #[cfg(feature = "gui")]
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
+use tangible_objects_model::RegistrationApplied;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::EngineRuntime;
@@ -165,7 +166,7 @@ pub(crate) fn apply_registration(
                                 name: profile.name.clone(),
                                 owner,
                             });
-                            Ok(())
+                            Ok(RegistrationApplied::Profile(id))
                         }
                         Err(reason) => {
                             println!("\nProfil-Registrierung abgelehnt: {reason}");
@@ -185,7 +186,7 @@ pub(crate) fn apply_registration(
                                 name: name.clone(),
                                 owner: owner.clone(),
                             });
-                            Ok(())
+                            Ok(RegistrationApplied::FieldSet)
                         }
                         Err(reason) => {
                             println!("\nFeld-Set abgelehnt: {reason}");

@@ -7,6 +7,7 @@ use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
 use tangible_objects_client::ProfileQuery;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::RegisterPatternResult;
 
 use crate::args::Cli;
 use crate::args::ProfilesArgs;
@@ -67,9 +68,17 @@ pub(crate) async fn profiles(
             lifetime,
         } => {
             let profile = load_profile(file)?;
-            client
+            match client
                 .register_pattern(&profile, owner.as_ref(), *lifetime)
-                .await?;
+                .await?
+            {
+                RegisterPatternResult::Registered(registered) => {
+                    println!("registered: {}", registered.pattern_id);
+                }
+                RegisterPatternResult::Rejected(rejected) => {
+                    return Err(ClientError::Protocol(rejected.reason));
+                }
+            }
         }
         ProfilesCommand::Update { id, file } => {
             let profile = load_profile(file)?;

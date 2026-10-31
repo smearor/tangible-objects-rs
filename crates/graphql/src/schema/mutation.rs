@@ -14,10 +14,13 @@ use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
+use tangible_objects_model::PatternRegistered;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::RegisterFieldSetResult;
+use tangible_objects_model::RegisterPatternResult;
 use tangible_objects_model::Registration;
+use tangible_objects_model::RegistrationApplied;
 use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
@@ -167,16 +170,16 @@ impl MutationRoot {
         Ok(true)
     }
 
-    /// Registers a figure profile at runtime (DYNAMIC_PROFILES.md).
-    /// Queued to the device loop - fingerprint collisions are rejected
-    /// there; verify via the `profiles` query.
+    /// Registers a figure profile at runtime (DYNAMIC_PROFILES.md). The
+    /// result union carries the assigned pattern ID or the typed
+    /// rejection (`FINGERPRINT_COLLISION`, `PATTERN_NOT_FOUND`).
     async fn register_pattern(
         &self,
         ctx: &Context<'_>,
         input: RegisterPatternInput,
         owner: Option<Owner>,
         lifetime: Option<Lifetime>,
-    ) -> Result<bool> {
+    ) -> Result<RegisterPatternResult> {
         let profile = ProfileFile::try_from(&input)?;
         let (command, rx) = ControlCommand::register(
             Registration::Pattern(profile),
@@ -188,8 +191,15 @@ impl MutationRoot {
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         match rx.await {
-            Ok(Ok(())) => Ok(true),
-            Ok(Err(reason)) => Err(Error::new(format!("registration rejected: {reason}"))),
+            Ok(Ok(RegistrationApplied::Profile(pattern_id))) => {
+                Ok(RegisterPatternResult::Registered(PatternRegistered {
+                    pattern_id,
+                }))
+            }
+            Ok(Ok(_)) => Err(Error::new(
+                "device loop returned a mismatched registration result",
+            )),
+            Ok(Err(error)) => Ok(RegisterPatternResult::Rejected(error.into())),
             Err(_) => Err(Error::new("device loop closed the registration reply")),
         }
     }
@@ -253,9 +263,14 @@ impl MutationRoot {
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         match rx.await {
-            Ok(Ok(())) => Ok(RegisterFieldSetResult::Registered(FieldSetRegistered {
-                name,
-            })),
+            Ok(Ok(RegistrationApplied::FieldSet)) => {
+                Ok(RegisterFieldSetResult::Registered(FieldSetRegistered {
+                    name,
+                }))
+            }
+            Ok(Ok(_)) => Err(Error::new(
+                "device loop returned a mismatched registration result",
+            )),
             Ok(Err(error)) => Ok(RegisterFieldSetResult::Rejected(error.into())),
             Err(_) => Err(Error::new("device loop closed the registration reply")),
         }

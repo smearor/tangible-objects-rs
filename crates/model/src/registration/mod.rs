@@ -1,17 +1,23 @@
+mod applied;
 mod error;
 mod kind;
 mod lifetime;
 mod overlap;
 mod owner;
+mod pattern_registered;
+mod pattern_result;
 mod payload;
 mod rejected;
 mod result;
 
+pub use applied::RegistrationApplied;
 pub use error::RegistrationError;
 pub use kind::RejectionKind;
 pub use lifetime::Lifetime;
 pub use overlap::FieldOverlap;
 pub use owner::Owner;
+pub use pattern_registered::PatternRegistered;
+pub use pattern_result::RegisterPatternResult;
 pub use payload::Registration;
 pub use rejected::RegistrationRejected;
 pub use result::FieldSetRegistered;
