@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run tangible-objects" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+  <configuration default="false" name="Run Daemon (Filter Mode)" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
     <option name="command" value="run --package tangible-objects --bin tangible-objects -- --filter --device /dev/input/event4 --graphql-listen 127.0.0.1:8080 --mcp-listen 127.0.0.1:8090 --profiles profiles/" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
