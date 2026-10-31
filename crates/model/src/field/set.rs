@@ -7,10 +7,10 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::Field;
-use super::FieldName;
 use super::FieldSetName;
 use super::WindowAnchor;
 use crate::FrameCount;
+use crate::Region;
 use crate::TouchPoint;
 use crate::Vec2;
 
@@ -90,13 +90,14 @@ impl FieldSet {
         self.overlap_pair().is_none()
     }
 
-    /// The first overlapping field pair, if any - names the offenders
-    /// for a rejection message ("why"), not just a boolean.
-    pub fn overlap_pair(&self) -> Option<(&FieldName, &FieldName)> {
+    /// The first overlapping field pair plus its intersection region -
+    /// carries the fields (names + regions) so a rejection can say
+    /// *where* they collide, not just which.
+    pub fn overlap_pair(&self) -> Option<(&Field, &Field, Region)> {
         for (i, a) in self.fields.iter().enumerate() {
             for b in &self.fields[i + 1..] {
-                if a.region.overlaps(&b.region) {
-                    return Some((&a.name, &b.name));
+                if let Some(overlap) = a.region.intersection(&b.region) {
+                    return Some((a, b, overlap));
                 }
             }
         }

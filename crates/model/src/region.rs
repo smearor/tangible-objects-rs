@@ -89,6 +89,34 @@ impl Region {
             && self.y_max > other.y_min
     }
 
+    /// The rectangular intersection of two overlapping regions -
+    /// `None` when they are disjoint. Used by the field-set overlap
+    /// diagnostics to say *where* fields collide, not just that.
+    pub fn intersection(&self, other: &Region) -> Option<Region> {
+        self.overlaps(other).then(|| Region {
+            x_min: if self.x_min > other.x_min {
+                self.x_min
+            } else {
+                other.x_min
+            },
+            y_min: if self.y_min > other.y_min {
+                self.y_min
+            } else {
+                other.y_min
+            },
+            x_max: if self.x_max < other.x_max {
+                self.x_max
+            } else {
+                other.x_max
+            },
+            y_max: if self.y_max < other.y_max {
+                self.y_max
+            } else {
+                other.y_max
+            },
+        })
+    }
+
     /// The region shrunk by `margin` on every side - negative or
     /// degenerate results are clamped to an empty region.
     pub fn inset(&self, margin: Millimeters) -> Region {
@@ -135,6 +163,18 @@ pub mod serde_quad {
             x_max: Millimeters::new(x_max),
             y_max: Millimeters::new(y_max),
         })
+    }
+}
+
+/// `Display` emits the `FromStr` shape: `x_min,y_min,x_max,y_max` in
+/// millimeters - the same string a `--zone` argument accepts.
+impl std::fmt::Display for Region {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{},{},{},{}",
+            self.x_min, self.y_min, self.x_max, self.y_max
+        )
     }
 }
 
@@ -249,5 +289,49 @@ mod tests {
         let json = serde_json::to_string(&row).unwrap_or_default();
         assert_eq!(json, r#"{"region":[0.0,0.0,600.0,420.0]}"#);
         assert_eq!(serde_json::from_str::<Row>(&json).ok(), Some(row));
+    }
+
+    #[test]
+    fn intersection_is_the_overlap_rect() {
+        let a = Region {
+            x_min: Millimeters::new(0.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(100.0),
+            y_max: Millimeters::new(100.0),
+        };
+        let b = Region {
+            x_min: Millimeters::new(50.0),
+            y_min: Millimeters::new(25.0),
+            x_max: Millimeters::new(150.0),
+            y_max: Millimeters::new(75.0),
+        };
+        assert_eq!(
+            a.intersection(&b),
+            Some(Region {
+                x_min: Millimeters::new(50.0),
+                y_min: Millimeters::new(25.0),
+                x_max: Millimeters::new(100.0),
+                y_max: Millimeters::new(75.0),
+            })
+        );
+        // Disjoint regions intersect to None.
+        let far = Region {
+            x_min: Millimeters::new(200.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(300.0),
+            y_max: Millimeters::new(10.0),
+        };
+        assert_eq!(a.intersection(&far), None);
+    }
+
+    #[test]
+    fn display_mirrors_from_str_format() {
+        let region = Region {
+            x_min: Millimeters::new(10.0),
+            y_min: Millimeters::new(20.0),
+            x_max: Millimeters::new(110.0),
+            y_max: Millimeters::new(70.0),
+        };
+        assert_eq!(region.to_string(), "10,20,110,70");
     }
 }

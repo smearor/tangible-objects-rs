@@ -297,11 +297,12 @@ impl Engine {
         set: FieldSet,
         owner: Option<Owner>,
     ) -> Result<(), RegistrationError> {
-        if let Some((a, b)) = set.overlap_pair() {
+        if let Some((a, b, overlap)) = set.overlap_pair() {
             return Err(RegistrationError::FieldsOverlap(
                 set.name.clone(),
-                a.clone(),
-                b.clone(),
+                a.name.clone(),
+                b.name.clone(),
+                overlap,
             ));
         }
         if self
