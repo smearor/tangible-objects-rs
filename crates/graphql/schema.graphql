@@ -166,6 +166,39 @@ type DeviceInfo {
 	yMax: RawAxisValue
 }
 
+"""
+Quarter-turn rotation of the *display output* relative to the touch
+panel's native orientation.
+
+The evdev device always reports sensor coordinates in the panel's
+physical landscape frame - rotating the picture (e.g. GNOME portrait
+mode) does not rotate the input stream. `DisplayRotation` bridges the
+two: applied to millimeter positions before the mm-to-pixel scale so
+rendered contacts match what the user sees on the rotated screen.
+
+The direction is **clockwise as seen by the viewer**: `Deg90` is the
+panel's native landscape top edge displayed on the viewer's right.
+When the desktop is rotated the other way, use `Deg270`.
+"""
+enum DisplayRotation {
+	"""
+	Display orientation matches the panel's native orientation.
+	"""
+	DEG_0
+	"""
+	Display rotated 90° clockwise relative to the panel.
+	"""
+	DEG_90
+	"""
+	Display upside down relative to the panel.
+	"""
+	DEG_180
+	"""
+	Display rotated 270° clockwise relative to the panel.
+	"""
+	DEG_270
+}
+
 scalar EventCount
 
 """
@@ -524,6 +557,12 @@ type MutationRoot {
 	`--gui` mode) - the command is ignored on headless daemons.
 	"""
 	setGuiVisible(visible: Boolean!): Boolean!
+	"""
+	Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
+	needed when the desktop shows the touchscreen rotated. Ignored
+	on headless daemons.
+	"""
+	setDisplayRotation(rotation: DisplayRotation!): Boolean!
 	"""
 	Registers a figure profile at runtime (DYNAMIC_PROFILES.md). The
 	result union carries the assigned pattern ID or the typed

@@ -4,7 +4,7 @@ use async_graphql::Context;
 use async_graphql::Error;
 use async_graphql::Object;
 use async_graphql::Result;
-use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::{CompletionConfig, DisplayRotation};
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FieldSetRegistered;
@@ -165,6 +165,21 @@ impl MutationRoot {
     async fn set_gui_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
         ctx.data::<EngineHandle>()?
             .send_command(ControlCommand::SetGuiVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
+    /// needed when the desktop shows the touchscreen rotated. Ignored
+    /// on headless daemons.
+    async fn set_display_rotation(
+        &self,
+        ctx: &Context<'_>,
+        rotation: DisplayRotation,
+    ) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetDisplayRotation(rotation))
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

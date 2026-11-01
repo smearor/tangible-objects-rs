@@ -6,9 +6,11 @@ use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
+use crate::tool_args::SetDisplayRotationArgs;
 use crate::tool_args::SetGuiVisibleArgs;
 
 /// Daemon-GUI visibility tools.
@@ -29,6 +31,28 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "gui visible: {}",
             args.visible
+        ))]))
+    }
+
+    /// Quarter-turn the GUI canvas renders (0/90/180/270 clockwise) -
+    /// needed when the desktop shows the touchscreen rotated.
+    #[tool(
+        description = "Set the daemon-embedded GUI canvas rotation (--gui mode): '0', '90', '180' or '270' degrees clockwise from the viewer's perspective; no-op for headless daemons."
+    )]
+    async fn set_display_rotation(
+        &self,
+        Parameters(args): Parameters<SetDisplayRotationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let rotation: DisplayRotation = args
+            .rotation
+            .parse()
+            .map_err(|message: String| ErrorData::invalid_params(message, None))?;
+        self.handle
+            .send_command(ControlCommand::SetDisplayRotation(rotation))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "display rotation: {rotation}"
         ))]))
     }
 }

@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::{CompletionConfig, DisplayRotation};
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
@@ -131,6 +131,10 @@ pub enum ControlCommand {
     /// daemons without the `gui` feature ignore it (the runtime's
     /// `gui_visible` state is feature-gated).
     SetGuiVisible(bool),
+    /// Quarter-turn the GUI canvas renders (`--display-rotation`).
+    /// Same availability as [`Self::SetGuiVisible`] - headless daemons
+    /// ignore it.
+    SetDisplayRotation(DisplayRotation),
 }
 
 impl ControlCommand {

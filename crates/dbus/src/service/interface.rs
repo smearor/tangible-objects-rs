@@ -267,6 +267,13 @@ impl EngineService {
         api::gui::set_gui_visible(self, visible).await
     }
 
+    /// Quarter-turn the GUI canvas renders: `"0"`, `"90"`, `"180"` or
+    /// `"270"` degrees clockwise from the viewer's perspective -
+    /// ignored on headless daemons.
+    async fn set_display_rotation(&self, rotation: &str) -> fdo::Result<()> {
+        api::gui::set_display_rotation(self, rotation).await
+    }
+
     /// Registers a figure profile at runtime: `points` is the flat pin
     /// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
     /// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps

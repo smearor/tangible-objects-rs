@@ -1,6 +1,13 @@
 use std::fmt;
 use std::str::FromStr;
 
+#[cfg(feature = "cynic")]
+use crate::schema;
+#[cfg(not(feature = "cynic"))]
+use serde::Deserialize;
+#[cfg(not(feature = "cynic"))]
+use serde::Serialize;
+
 use crate::Millimeters;
 use crate::Vec2;
 
@@ -17,15 +24,32 @@ use crate::Vec2;
 /// panel's native landscape top edge displayed on the viewer's right.
 /// When the desktop is rotated the other way, use `Deg270`.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+#[cfg_attr(not(feature = "cynic"), derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "cynic", derive(cynic::Enum))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        rename_all = "SCREAMING_SNAKE_CASE"
+    )
+)]
+// Under `cynic` the derive owns serde (SCREAMING_SNAKE wire form
+// matching the schema); without it, serde serializes the Rust variant
+// names - same convention as `FilterMode`.
 pub enum DisplayRotation {
     /// Display orientation matches the panel's native orientation.
     #[default]
+    #[cfg_attr(feature = "cynic", cynic(rename = "DEG_0"))]
     Deg0,
     /// Display rotated 90° clockwise relative to the panel.
+    #[cfg_attr(feature = "cynic", cynic(rename = "DEG_90"))]
     Deg90,
     /// Display upside down relative to the panel.
+    #[cfg_attr(feature = "cynic", cynic(rename = "DEG_180"))]
     Deg180,
     /// Display rotated 270° clockwise relative to the panel.
+    #[cfg_attr(feature = "cynic", cynic(rename = "DEG_270"))]
     Deg270,
 }
 

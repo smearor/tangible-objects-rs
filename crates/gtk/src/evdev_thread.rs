@@ -9,7 +9,7 @@ use tangible_objects_engine::Engine;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::TouchState;
-use tangible_objects_model::DetectionConfig;
+use tangible_objects_model::{DetectionConfig, DisplayRotation};
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::PatternBuf;
@@ -38,6 +38,7 @@ pub fn evdev_thread(
     patterns: PatternBuf,
     state: Arc<Mutex<SharedState>>,
     config: DetectionConfig,
+    rotation: DisplayRotation,
     device_profiles: Option<Arc<PathBuf>>,
     hooks: GuiHooks,
 ) {
@@ -71,6 +72,7 @@ pub fn evdev_thread(
     let profiles: Vec<ProfileInfo> = engine.patterns().iter().map(ProfileInfo::from).collect();
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     runtime.set_completion(config.completion);
+    runtime.set_display_rotation(rotation);
     runtime.set_field_sets(engine.field_sets().to_vec());
     (hooks.spawn_interfaces)(&handle);
     runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
@@ -119,6 +121,7 @@ pub fn evdev_thread(
             if let Ok(mut s) = state.lock() {
                 s.message = runtime.message().map(str::to_string);
                 s.visible = runtime.gui_visible();
+                s.rotation = runtime.display_rotation();
             }
             runtime.publish_snapshot(engine.touches(), engine.tracked());
             continue;
@@ -162,6 +165,7 @@ pub fn evdev_thread(
                 if let Ok(mut s) = state.lock() {
                     s.message = runtime.message().map(str::to_string);
                     s.visible = runtime.gui_visible();
+                    s.rotation = runtime.display_rotation();
                 }
                 if let Some(profile) = runtime.training_tick(&frame.touches) {
                     info!(name = %profile.name, "training completed");

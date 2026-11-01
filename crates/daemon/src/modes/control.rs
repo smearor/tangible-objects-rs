@@ -272,6 +272,11 @@ pub(crate) fn apply_registration(
         }
         #[cfg(feature = "gui")]
         ControlCommand::SetGuiVisible(visible) => runtime.set_gui_visible(visible),
+        #[cfg(feature = "gui")]
+        ControlCommand::SetDisplayRotation(rotation) => {
+            info!(%rotation, "display rotation changed");
+            runtime.set_display_rotation(rotation);
+        }
         other => warn!(?other, "command ignored"),
     }
 }

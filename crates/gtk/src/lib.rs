@@ -61,6 +61,7 @@ pub fn run_gui(
             patterns,
             state_clone,
             config,
+            options.rotation,
             device_profiles_arc,
             hooks,
         );

@@ -7,7 +7,7 @@ use tokio::sync::watch;
 
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
-use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::{CompletionConfig, DisplayRotation};
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
@@ -77,6 +77,10 @@ pub struct EngineRuntime {
     /// (`SetGuiVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     gui_visible: bool,
+    /// Quarter turns the GUI canvas renders (`SetDisplayRotation`
+    /// command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    display_rotation: DisplayRotation,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -122,6 +126,8 @@ impl EngineRuntime {
             message: None,
             #[cfg(feature = "gui")]
             gui_visible: true,
+            #[cfg(feature = "gui")]
+            display_rotation: DisplayRotation::default(),
             training: None,
         };
         let handle = EngineHandle::new(events, snapshot_rx, command_tx, Arc::new(sets), profiles);
@@ -262,6 +268,19 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn gui_visible(&self) -> bool {
         self.gui_visible
+    }
+
+    /// Quarter turns the GUI canvas applies (`SetDisplayRotation`
+    /// command). Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_display_rotation(&mut self, rotation: DisplayRotation) {
+        self.display_rotation = rotation;
+    }
+
+    /// The GUI canvas rotation. Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn display_rotation(&self) -> DisplayRotation {
+        self.display_rotation
     }
 
     /// Arms remote profile capture (`TrainProfile` command) - the
