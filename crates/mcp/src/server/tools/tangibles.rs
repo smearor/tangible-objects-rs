@@ -14,6 +14,19 @@ use crate::tool_args::GetPoseArgs;
 /// Tangible query tools.
 #[tool_router(router = tangibles_router, vis = "pub(crate)")]
 impl EngineMcp {
+    /// All active contact slots with slot id, tracking id and position
+    /// (calibrated millimeters; raw device units when uncalibrated) -
+    /// contact-level truth before matching.
+    #[tool(
+        description = "List all active touch contacts (slot, tracking id, calibrated mm position) on the multitouch surface."
+    )]
+    async fn touch_points(&self) -> Result<CallToolResult, ErrorData> {
+        let snapshot = self.handle.snapshot();
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            json_pretty(&snapshot.touches)?,
+        )]))
+    }
+
     /// All currently tracked tangibles with smoothed pose.
     #[tool(description = "List all tangibles currently tracked on the multitouch surface.")]
     async fn list_tangibles(&self) -> Result<CallToolResult, ErrorData> {

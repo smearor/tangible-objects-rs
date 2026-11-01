@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
@@ -34,12 +35,15 @@ pub struct SharedState {
     pub message: Option<String>,
     /// Whether the window should be shown (`SetGuiVisible`).
     pub visible: bool,
+    /// Display rotation the mm→px mapping applies (`--display-rotation`)
+    /// - the evdev stream always speaks the panel's native frame.
+    pub rotation: DisplayRotation,
 }
 
 impl SharedState {
     /// Initial state - hidden-only devices start visible (the
     /// `--gui` flag semantics), `SetGuiVisible` toggles afterwards.
-    pub fn new(visible: bool) -> Arc<Mutex<Self>> {
+    pub fn new(visible: bool, rotation: DisplayRotation) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             touches: Vec::new(),
             matches: Vec::new(),
@@ -51,6 +55,7 @@ impl SharedState {
             device_error: None,
             message: None,
             visible,
+            rotation,
         }))
     }
 }

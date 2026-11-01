@@ -25,32 +25,47 @@ use super::store::runtime_store_dir;
 /// physical resolution wins - some panels misreport their units/mm in
 /// firmware (e.g. the SiS panel reporting 7/12 while driving a 65" display).
 /// Returns the reported calibration when the device has no profile or the
-/// profile has no override.
+/// profile has no override; when the firmware reports no resolution at all,
+/// the profile's documented values are the only source. `None` only when
+/// neither source exists.
 pub fn effective_calibration(
     device: &TouchDevice,
     device_profiles: Option<&Path>,
 ) -> Option<Calibration> {
-    let reported = device.calibration()?;
+    let reported = device.calibration();
     let mut registry = DeviceRegistry::builtin();
     if let Some(dir) = device_profiles {
         registry = registry.with_dir(dir);
     }
     let id = device.inner().input_id();
-    let profile = registry.find_by_ids(id.vendor(), id.product())?;
-    let (x_res, y_res) = profile.resolution_override()?;
-    info!(
-        "resolution override from device profile: X={:.3}, Y={:.3} units/mm",
-        x_res.as_f64(),
-        y_res.as_f64()
-    );
-    Some(Calibration::with_bounds(
-        x_res,
-        y_res,
-        reported.x_min,
-        reported.x_max,
-        reported.y_min,
-        reported.y_max,
-    ))
+    let profile = registry.find_by_ids(id.vendor(), id.product());
+    match (reported, profile) {
+        // Firmware reports a resolution - it wins unless the profile
+        // declares a measured override (panels that misreport units/mm).
+        (Some(reported), Some(profile)) => match profile.resolution_override() {
+            Some((x_res, y_res)) => {
+                info!(
+                    "resolution override from device profile: X={:.3}, Y={:.3} units/mm",
+                    x_res.as_f64(),
+                    y_res.as_f64()
+                );
+                Some(Calibration::with_bounds(
+                    x_res,
+                    y_res,
+                    reported.x_min,
+                    reported.x_max,
+                    reported.y_min,
+                    reported.y_max,
+                ))
+            }
+            None => Some(reported),
+        },
+        // No firmware resolution at all - the profile's documented
+        // values (including overrides) are the only source left.
+        (None, Some(profile)) => Some(profile.calibration()),
+        (Some(reported), None) => Some(reported),
+        (None, None) => None,
+    }
 }
 
 /// Loads figure patterns from a profile directory (default: `profiles/`).

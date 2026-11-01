@@ -13,6 +13,7 @@ mod draw;
 mod evdev_thread;
 mod gui_hooks;
 mod gui_mode;
+mod gui_options;
 mod i18n;
 mod shared_state;
 
@@ -32,6 +33,7 @@ use tangible_objects_model::PatternBuf;
 
 pub use gui_hooks::GuiHooks;
 pub use gui_mode::GuiMode;
+pub use gui_options::GuiOptions;
 pub use i18n::language_loader;
 pub use shared_state::SharedState;
 
@@ -45,10 +47,10 @@ pub fn run_gui(
     patterns: PatternBuf,
     device_profiles: Option<PathBuf>,
     config: DetectionConfig,
-    visible: bool,
+    options: GuiOptions,
     hooks: GuiHooks,
 ) {
-    let state = SharedState::new(visible);
+    let state = SharedState::new(options.visible, options.rotation);
 
     // Spawn evdev thread - the in-process engine loop.
     let state_clone = state.clone();
@@ -70,7 +72,7 @@ pub fn run_gui(
 
     let state_app = state.clone();
     let profiles_dir_app = profiles_dir.clone();
-    let visible_app = visible;
+    let visible_app = options.visible;
     app.connect_activate(move |app| {
         let drawing_area = DrawingArea::new();
         drawing_area.set_hexpand(true);

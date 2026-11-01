@@ -19,6 +19,7 @@ use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::DetectionConfig;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Region;
@@ -149,6 +150,12 @@ struct Cli {
     /// Contact position smoothing EMA (default 0.6, 0 = off)
     #[arg(long, value_name = "a")]
     smoothing_alpha: Option<f64>,
+    /// Display rotation for the GTK canvas (--gui): quarter turns the
+    /// evdev positions get before rendering - needed when the desktop
+    /// shows the panel rotated (e.g. GNOME portrait on a landscape
+    /// touchscreen)
+    #[arg(long, value_name = "0|90|180|270")]
+    display_rotation: Option<DisplayRotation>,
 }
 
 fn main() -> Result<()> {
@@ -271,6 +278,7 @@ fn main() -> Result<()> {
             cli.profiles.as_deref(),
             device_profiles.map(PathBuf::from),
             detection_config(completion()?)?,
+            cli.display_rotation.unwrap_or_default(),
             interfaces()?,
         );
     }
@@ -317,6 +325,7 @@ fn run_gui_mode(
     profiles_dir: Option<&str>,
     device_profiles: Option<PathBuf>,
     config: modes::DetectionConfig,
+    rotation: DisplayRotation,
     interfaces: modes::Interfaces,
 ) -> Result<()> {
     // Daemon plumbing flows into the embedded GUI as injected hooks -
@@ -334,7 +343,10 @@ fn run_gui_mode(
         modes::load_patterns(profiles_dir),
         device_profiles,
         config,
-        true,
+        tangible_objects_gtk::GuiOptions {
+            visible: true,
+            rotation,
+        },
         hooks,
     );
     Ok(())
