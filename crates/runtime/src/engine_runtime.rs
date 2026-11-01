@@ -7,7 +7,8 @@ use tokio::sync::watch;
 
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
-use tangible_objects_model::{CompletionConfig, DisplayRotation};
+use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;

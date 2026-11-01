@@ -33,7 +33,7 @@ pub async fn run(client: &GraphQLClient, cli: &Cli) -> Result<(), ClientError> {
         Command::Tangibles => tangibles::tangibles(client, cli).await?,
         Command::Touches => touches::touches(client, cli).await?,
         Command::Profiles(args) => profiles::profiles(client, cli, args).await?,
-        Command::FieldSets(args) => field_sets::field_sets(client, args).await?,
+        Command::FieldSets(args) => field_sets::field_sets(client, cli, args).await?,
         Command::Stages(args) => stages::stages(client, args).await?,
         Command::Filter(args) => filter::filter(client, args).await?,
         Command::Completion(args) => completion::completion(client, cli, args).await?,

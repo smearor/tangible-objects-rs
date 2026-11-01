@@ -1,5 +1,6 @@
 use std::path::PathBuf;
-use tangible_objects_model::{CompletionConfig, DisplayRotation};
+use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;

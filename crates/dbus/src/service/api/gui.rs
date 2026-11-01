@@ -1,9 +1,9 @@
 //! GUI methods - `set_gui_visible`.
 
+use crate::service::engine_service::EngineService;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_runtime::ControlCommand;
 use zbus::fdo;
-use tangible_objects_model::DisplayRotation;
-use crate::service::engine_service::EngineService;
 
 /// Shows or hides the daemon-embedded GUI window (`--gui` mode) -
 /// ignored on headless daemons.
@@ -22,8 +22,7 @@ pub(crate) async fn set_display_rotation(
     service: &EngineService,
     rotation: &str,
 ) -> fdo::Result<()> {
-    let parsed: DisplayRotation =
-        rotation.parse().map_err(fdo::Error::InvalidArgs)?;
+    let parsed: DisplayRotation = rotation.parse().map_err(fdo::Error::InvalidArgs)?;
     service
         .handle
         .send_command(ControlCommand::SetDisplayRotation(parsed))

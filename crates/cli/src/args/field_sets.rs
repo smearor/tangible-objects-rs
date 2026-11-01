@@ -17,6 +17,8 @@ pub struct FieldSetsArgs {
 /// `field-sets` subcommands.
 #[derive(Debug, Subcommand)]
 pub enum FieldSetsCommand {
+    /// List registered field sets (`fieldSets`).
+    List,
     /// Register a field-set file (`registerFieldSet`).
     Register {
         /// Path to the field-set `.toml`.
