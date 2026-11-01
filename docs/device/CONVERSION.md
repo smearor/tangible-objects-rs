@@ -53,7 +53,9 @@ Interfaces bind `SocketAddr`s - `--graphql-listen 0.0.0.0:8000` /
 `--mcp-listen 0.0.0.0:9000` expose the daemon on the LAN. `EngineSnapshot`
 carries `device: Option<DeviceInfo>` and
 `recording: Option<RecordingStatus>`; interfaces read them instead of
-querying the device loop (no reply channel needed).
+querying the device loop (no reply channel needed). The complete
+operation surface is catalogued in
+[`../interfaces/OVERVIEW.md`](../interfaces/OVERVIEW.md).
 
 | Interface | Queries / tools / methods |
 |-----------|---------------------------|

@@ -191,19 +191,23 @@ interfaces through `ControlCommand` (`crates/runtime/src/command.rs`):
 
 ```rust
 enum ControlCommand {
-    SetFilterMode { mode: FilterMode, stability: Option<FrameCount> },
-    TrainProfile(String),
+    SetFilterMode { mode: FilterMode, stability: Option<FrameCount>, stage: Option<StageName> },
+    RegisterStage { name: StageName },
+    UnregisterStage { name: StageName },
+    TrainProfile(PatternName),
     StartRecording { base_path: PathBuf, label: Option<RecordLabel> },
     StopRecording,
     SetRecordLabel(Option<RecordLabel>),
     SetCompletion(CompletionConfig),
     ResetMetrics,
     ShowMessage(String),
-    Register { registration: Box<Registration>, owner: Option<Owner>, lifetime: Lifetime },
+    Register { registration: Box<Registration>, owner: Option<Owner>, lifetime: Lifetime, /* + reply channel */ },
     UpdateProfile { id: PatternId, profile: Box<ProfileFile> },
     UnregisterPattern { id: PatternId },
-    UnregisterFieldSet { name: String },
+    UnregisterFieldSet { name: FieldSetName },
     UnregisterOwner { owner: Owner },
+    SetGuiVisible(bool),
+    SetDisplayRotation(DisplayRotation),
 }
 ```
 
@@ -212,9 +216,17 @@ enum ControlCommand {
 counterpart of the stdin keypress. The `Register`/`Unregister*`/`UpdateProfile`
 family implements dynamic profile and field-set registration
 (DYNAMIC_PROFILES.md); GraphQL mutations, D-Bus methods and MCP tools map
-onto these variants. Registration failures surface as `RegistrationError`
-(`engine`) - `PatternNotFound`, `FingerprintCollision`, `FieldsOverlap`,
-`DuplicateFieldSet`.
+onto these variants. `Register`/`Unregister*` carry a oneshot reply channel:
+the device loop answers `Ok(RegistrationApplied)` or `Err(RegistrationError)`
+(`PatternNotFound`, `FingerprintCollision`, `FieldsOverlap`,
+`DuplicateFieldSet`), which the interfaces translate into typed result
+unions (see [`../profile/REGISTRATION.md`](../profile/REGISTRATION.md)).
+`SetFilterMode`'s `stage` narrows the policy change to one pipeline stage
+and the `RegisterStage`/`UnregisterStage` pair manages explicit stage
+scopes ([`../proxy/PIPELINE.md`](../proxy/PIPELINE.md)). `SetGuiVisible`
+and `SetDisplayRotation` steer the daemon-embedded GUI
+([`../gui/OVERVIEW.md`](../gui/OVERVIEW.md)); every applied command also
+emits a lifecycle event ([`../event/DOMAIN_EVENTS.md`](../event/DOMAIN_EVENTS.md)).
 
 ## Design Rules
 

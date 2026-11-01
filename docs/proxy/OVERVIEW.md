@@ -23,8 +23,10 @@ flowchart LR
    libinput treats it as a touchscreen, not a touchpad.
 3. `device.grab()` (`EVIOCGRAB`) - every other consumer of the physical
    device stops receiving events.
-4. Per `SYN_REPORT` frame the engine classifies contacts; `FilterProxy`
-   emits the filtered stream on the clone.
+4. Per `SYN_REPORT` frame the engine classifies contacts; the
+   **pipeline** - a chain of suppression stages, not a single filter -
+   emits the filtered stream on the clone. Stage architecture:
+   [PIPELINE.md](PIPELINE.md).
 
 ## Control plane
 
@@ -34,10 +36,16 @@ When interfaces are enabled (`--mcp-listen`, `--graphql-listen`,
 `--dbus`), clients can switch the suppression policy at runtime:
 
 ```text
-set_filter_mode(mode: "guarded", stability: 3)   # MCP
-setFilterMode(mode: GUARDED, stability: 3)       # GraphQL
-set_filter_mode("guarded", 3)                    # D-Bus
+set_filter_mode(mode: "guarded", stability: 3)              # MCP
+setFilterMode(mode: GUARDED, stability: 3)                  # GraphQL
+set_filter_mode("guarded", 3)                               # D-Bus
+set_filter_mode("guarded", 3, "game")                       # scoped to stage "game"
 ```
+
+`stage` narrows the policy change to one pipeline stage (`None` =
+broadcast to all tangible stages); `registerStage`/`unregisterStage`
+create and drop explicit stage scopes - details in
+[PIPELINE.md](PIPELINE.md).
 
 ## Startup
 
@@ -46,7 +54,8 @@ tangible-objects --filter --device /dev/input/event4 \
     [--edge-filter-mm 3] [--stability-frames 2] [--legacy auto]
 ```
 
-The console shows `Frame N | touches | figures | suppressed`.
+The console shows `Frame N | touches | figures | suppressed | forwarded
+| sets | fields | occupied`.
 
 ## Latency
 

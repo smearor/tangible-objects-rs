@@ -84,7 +84,7 @@ Strongly typed event code within an `EventType` - `EventCode(pub u16)`. Plain
 newtype (`new`/`as_u16`, `From` both ways, `Display`, `Ord`) so codes cannot
 be confused with types or values. No serde: raw events are recorded in
 `evtest` text format, not JSON (see
-[TRAINING.md](../../concepts/planned/TRAINING.md)).
+[TRAINING.md](../../concepts/done/TRAINING.md)).
 
 ## Event code constants
 

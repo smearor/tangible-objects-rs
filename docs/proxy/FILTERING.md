@@ -1,5 +1,10 @@
 # FilterProxy: Filtering Semantics
 
+The rules below apply **per tangible stage** of the proxy pipeline -
+the general stage always exists; named stages (pattern `stage = "…"`)
+repeat the same machinery with their own suppression state. Stage
+composition: [PIPELINE.md](PIPELINE.md).
+
 Two independent mechanisms decide what reaches the virtual device:
 
 1. **Slot filter** - multitouch events (`ABS_MT_*`, codes `0x2f..0x3e`)
@@ -82,7 +87,10 @@ by a synthetic `BTN_TOUCH=0` so no stale key state remains.
 ## CLI
 
 ```bash
---stability-frames <n>        # gate, default 2 (gated/guarded only)
---legacy <auto|always|never>  # legacy policy, default auto
---edge-filter-mm <mm>         # drop ghost contacts near panel borders
+--stability-frames <n>          # gate, default 2 (gated/guarded only)
+--legacy <auto|always|never>    # legacy policy, default auto
+--edge-filter-mm <mm>           # drop ghost contacts near panel borders
+--zone <x0,y0,x1,y1>            # mask a rectangular zone in mm, repeatable
+--fields <file|dir>             # occupancy field sets; `suppress = true`
+                                # sets suppress inside the field stage
 ```

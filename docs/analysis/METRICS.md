@@ -12,10 +12,12 @@ in `model::metrics`:
 
 ```rust
 pub struct SessionMetrics {
-    pub frames: FrameCount,          // total processed frames
-    pub tracked_frames: FrameCount,  // frames with ≥1 tracked tangible
-    pub contacts: ContactCount,      // total touch contacts observed
-    pub active_frames: FrameCount,   // frames with TouchPointsUpdated
+    pub frames: FrameCount,            // total processed frames
+    pub tracked_frames: FrameCount,    // frames with ≥1 tracked tangible
+    pub contacts: ContactCount,        // total touch contacts observed
+    pub active_frames: FrameCount,     // frames with TouchPointsUpdated
+    pub generic_frames: FrameCount,    // frames that ran generic matching
+    pub candidates_tested: CandidateCount, // combinations evaluated
     pub slot_churn: HashMap<TouchPointSlot, ContactCount>,
     pub patterns: HashMap<PatternName, PatternMetrics>,
     pub tangible_count: TangibleCount,  // distinct identities ever tracked
@@ -43,6 +45,8 @@ pub struct PatternMetrics {
 | `claimed_pins` | Missing-pin completion activity |
 | `slot_churn[slot]` | Distinct tracking IDs per slot - counts physical pin flapping; `1` = rock-solid contact |
 | `active_frames` | Frames the touch set actually changed |
+| `frames − generic_frames` | Idle-skip count - frames the skip-unchanged gate short-circuited (SKIP_UNCHANGED.md) |
+| `candidates_tested` | Combinations the generic pass evaluated - vs. unpruned C(touches, k) it shows the spatial-clustering pruning ratio (SPATIAL_CLUSTERING.md) |
 
 `metrics` is cumulative from daemon start (or the last `ResetMetrics`).
 Frames where no touch changes happened still count toward `frames` only

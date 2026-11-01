@@ -55,6 +55,7 @@ tolerance, name and optional reference points.
 | `sorted_sides`    | `Distances`         | `[34.1, 36.8, …]`     | Sorted pairwise distances - the fingerprint |
 | `points`          | `Vec<Vec2<Millimeters>>` | `[x0, y0, x1, y1, …]` | Optional reference positions, serialized flat for TOML readability (`with = "flat_points"`); enables partial matching |
 | `regions`         | `Vec<Region>`       | `[[regions]]`         | Optional detection regions restricting where the figure may match (PROFILE_REGIONS.md); empty = anywhere |
+| `stage`           | `Option<StageName>` | `"game"`              | Pipeline scope this pattern suppresses through (EVENT_PIPELINE.md, see [`../proxy/PIPELINE.md`](../proxy/PIPELINE.md)); absent = the general stage |
 
 Example (`profiles/testfigur-5p.toml` shape):
 

@@ -39,10 +39,14 @@ y_max = 100.0
 ## Runtime registration
 
 Field sets register like profiles (DYNAMIC_PROFILES.md): GraphQL
-`registerFieldSet`, MCP `register_field_set` (TOML string), D-Bus
-`register_field_set` - with `owner`, `lifetime` (`persistent` writes to
-`~/.config/tangible-objects/fields.d/` and reloads on startup) and
-`unregister_field_set`/`unregister_owner` removal.
+`registerFieldSet` → `RegisterFieldSetResult` (`Registered` /
+`Rejected` - `FIELDS_OVERLAP` rejections carry the offending field pair
+plus intersection region), MCP `register_field_set` (TOML string),
+D-Bus `register_field_set` - with `owner`, `lifetime` (`persistent`
+writes to `~/.config/tangible-objects/fields.d/` and reloads on
+startup) and `unregister_field_set`/`unregister_owner` removal. Active
+sets are listed via GraphQL `fieldSets` / the snapshot `field_sets`.
+Details: [`profile/REGISTRATION.md`](profile/REGISTRATION.md).
 
 ## Usage
 

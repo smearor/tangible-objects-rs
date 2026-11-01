@@ -77,6 +77,7 @@ ascending.
 | `tolerances`        | `PatternTolerances`              | Optional per-distance tolerances parallel to `sorted_distances`; empty or length-mismatched → scalar fallback (TRAINING.md 3.1) |
 | `ref_points`        | `Option<Vec<Vec2<Millimeters>>>` | Original pin positions; required for partial matching |
 | `regions`           | `Vec<Region>`                    | Detection regions restricting where the figure may match (PROFILE_REGIONS.md); empty = anywhere |
+| `stage`             | `Option<StageName>`              | Pipeline scope this pattern suppresses through (EVENT_PIPELINE.md, see [`../proxy/PIPELINE.md`](../proxy/PIPELINE.md)); `None` = the general stage |
 
 ### Matching methods
 

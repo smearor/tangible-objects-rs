@@ -2,7 +2,7 @@
 
 End-to-end pipeline for training tangible figures and tuning matching
 tolerances - the developer-facing view of
-[`concepts/planned/TRAINING.md`](../../concepts/planned/TRAINING.md).
+[`concepts/done/TRAINING.md`](../../concepts/done/TRAINING.md).
 Data shapes are documented per domain: [recording](../recording/DATA_MODEL.md)
 (wire format: [JSONL](../recording/JSONL_FORMAT.md)),
 [profile](../profile/DATA_MODEL.md), [pattern](../pattern/DATA_MODEL.md),
