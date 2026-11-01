@@ -51,7 +51,7 @@ futures-core = "0.3"
 serde_json = "1"
 # clients
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-tokio-tungstenite = "0.26"
+tokio-tungstenite = "0.29"
 tabled = "0.20"
 clap = { version = "4.6.7", features = ["derive"] }
 ratatui = "0.29"
