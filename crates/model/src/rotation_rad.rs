@@ -37,18 +37,26 @@ impl RotationRad {
         self.0.sin_cos()
     }
 
+    /// The shortest signed arc from `self` to `to`, in [-π, π].
+    ///
+    /// The ±PI wrap is crossed instead of going the long way around;
+    /// the sign tells the turning direction.
+    pub fn signed_delta_to(self, to: RotationRad) -> RotationRad {
+        let mut delta = to.0 - self.0;
+        while delta > PI {
+            delta -= 2.0 * PI;
+        }
+        while delta < -PI {
+            delta += 2.0 * PI;
+        }
+        RotationRad(delta)
+    }
+
     /// Wraparound-aware EMA blend - `old + alpha * diff(new, old)`,
     /// where `diff` is the shortest signed arc between the angles
     /// (modulo 2π). `alpha` is the weight of `new`.
     pub fn ema(old: RotationRad, new: RotationRad, alpha: SmoothingAlpha) -> RotationRad {
-        let mut diff = new.0 - old.0;
-        while diff > PI {
-            diff -= 2.0 * PI;
-        }
-        while diff < -PI {
-            diff += 2.0 * PI;
-        }
-        Self(old.0 + alpha.as_f64() * diff)
+        Self(old.0 + alpha.as_f64() * old.signed_delta_to(new).0)
     }
 }
 
@@ -140,5 +148,27 @@ mod tests {
         );
         assert!(result.as_f64() > 3.0);
         assert!(result.as_f64() <= PI + 1e-9);
+    }
+
+    /// Within ±PI the arc is the plain difference.
+    #[test]
+    fn signed_delta_inside_bounds() {
+        let delta = RotationRad::new(1.0).signed_delta_to(RotationRad::new(2.0));
+        assert_eq!(delta.as_f64(), 1.0);
+    }
+
+    /// `3.0 -> -3.0` wraps across +PI (delta ~= +0.28), not -6 the
+    /// long way.
+    #[test]
+    fn signed_delta_wraps_shortest_way() {
+        let delta = RotationRad::new(3.0).signed_delta_to(RotationRad::new(-3.0));
+        assert!((delta.as_f64() - (2.0 * PI - 6.0)).abs() < 1e-9);
+    }
+
+    /// The mirrored crossing reports the negative direction.
+    #[test]
+    fn signed_delta_wraps_negative_side() {
+        let delta = RotationRad::new(-3.0).signed_delta_to(RotationRad::new(3.0));
+        assert!((delta.as_f64() - (6.0 - 2.0 * PI)).abs() < 1e-9);
     }
 }
