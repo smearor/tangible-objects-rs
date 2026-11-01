@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["__typename","count","detail","field","fieldSet","frames","kind","name","owner","patternId","setId","skipped","tangible"]};

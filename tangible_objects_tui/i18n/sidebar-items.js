@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["language_loader"],"static":["LANGUAGE_LOADER"],"struct":["Localizations"]};

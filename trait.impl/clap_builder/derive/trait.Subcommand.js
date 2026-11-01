@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["tangible_objects_cli",[["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/analyze/enum.AnalyzeCommand.html\" title=\"enum tangible_objects_cli::args::analyze::AnalyzeCommand\">AnalyzeCommand</a>",0],["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/enum.Command.html\" title=\"enum tangible_objects_cli::args::Command\">Command</a>",0],["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/field_sets/enum.FieldSetsCommand.html\" title=\"enum tangible_objects_cli::args::field_sets::FieldSetsCommand\">FieldSetsCommand</a>",0],["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/metrics/enum.MetricsCommand.html\" title=\"enum tangible_objects_cli::args::metrics::MetricsCommand\">MetricsCommand</a>",0],["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/profiles/enum.ProfilesCommand.html\" title=\"enum tangible_objects_cli::args::profiles::ProfilesCommand\">ProfilesCommand</a>",0],["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/record/enum.RecordCommand.html\" title=\"enum tangible_objects_cli::args::record::RecordCommand\">RecordCommand</a>",0],["impl Subcommand for <a class=\"enum\" href=\"tangible_objects_cli/args/stages/enum.StagesCommand.html\" title=\"enum tangible_objects_cli::args::stages::StagesCommand\">StagesCommand</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1381]}

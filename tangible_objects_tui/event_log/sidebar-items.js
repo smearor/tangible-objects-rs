@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["LOG_CAPACITY"],"fn":["describe"],"struct":["EventLog"]};

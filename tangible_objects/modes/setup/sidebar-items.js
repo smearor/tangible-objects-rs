@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["completion_config_path","effective_calibration","list_devices","load_completion","load_field_sets","load_patterns","resolve_device"]};

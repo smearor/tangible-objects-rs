@@ -1,0 +1,2 @@
+window.ALL_CRATES = ["export_schema","tangible_objects","tangible_objects_analysis","tangible_objects_cli","tangible_objects_client","tangible_objects_dbus","tangible_objects_engine","tangible_objects_graphql","tangible_objects_gtk","tangible_objects_mcp","tangible_objects_model","tangible_objects_runtime","tangible_objects_tui"];
+//{"start":21,"fragment_lengths":[15,19,28,23,26,24,26,27,23,23,25,27,23]}

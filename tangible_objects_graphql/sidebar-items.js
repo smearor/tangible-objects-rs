@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EventKind","StreamEvent"],"fn":["build_schema","serve","spawn"],"struct":["MutationRoot","QueryRoot","SubscriptionRoot","TangibleEvent"],"type":["EngineSchema"]};

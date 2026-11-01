@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["affinityFactor","maxMissing","mode","persist","radiusFactor","smoothingAlpha"]};

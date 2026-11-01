@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["COMMAND_CHANNEL_CAPACITY","EVENT_CHANNEL_CAPACITY"],"enum":["ControlCommand","DomainEvent","EventKind","LifecycleEvent","StreamEvent"],"struct":["DeviceInfo","EngineHandle","EngineRuntime","EngineSnapshot","PatternMetrics","ProfileInfo","RecordingStatus","SessionMetrics","TangibleEvent","TrainingState"]};

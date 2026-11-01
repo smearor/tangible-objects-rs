@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["emit","emit_table","event_line"]};

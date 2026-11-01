@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["draw","draw_field_sets","draw_fields","draw_slots","draw_tangibles"]};

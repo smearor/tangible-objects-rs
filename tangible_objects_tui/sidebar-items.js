@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["app","event_log","i18n","tab","view"],"struct":["Cli"]};

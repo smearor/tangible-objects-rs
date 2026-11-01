@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["name","points","spawnOnPartial","spawnStability","stage","toleranceMm"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EngineError","EngineEvent","LegacyMode","RegistrationError"],"struct":["ConvertStats","DeviceConverter","DeviceEntry","Engine","EngineFrame","EvtestReplay","FrameContext","FrameRecorder","Pipeline","RawRecorder","RecordingSession","ScopeChanges","StageMetrics","TouchDevice","TouchState","Tracker","VirtualTouchscreen"]};

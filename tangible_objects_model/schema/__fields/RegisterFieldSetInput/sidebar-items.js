@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["fields","name","stability","suppress","window"]};

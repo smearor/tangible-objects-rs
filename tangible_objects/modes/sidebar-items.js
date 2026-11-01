@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["analysis","control","filter","interfaces","live","record","replay","setup","store","train"]};

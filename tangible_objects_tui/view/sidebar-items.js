@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["draw","draw_live"],"mod":["log","overview","panes","surface"]};
