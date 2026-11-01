@@ -16,6 +16,10 @@ use clap::Parser;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_engine::LegacyMode;
+use tangible_objects_gtk::BackgroundAlpha;
+use tangible_objects_gtk::GuiHooks;
+use tangible_objects_gtk::GuiOptions;
+use tangible_objects_gtk::run_gui;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::DetectionConfig;
@@ -156,6 +160,11 @@ struct Cli {
     /// touchscreen)
     #[arg(long, value_name = "0|90|180|270")]
     display_rotation: Option<DisplayRotation>,
+    /// Canvas background opacity for the GTK window (--gui) in percent:
+    /// 100 = opaque (default), lower values let the desktop show
+    /// through the black fill - touches and UI stay opaque
+    #[arg(long, value_name = "0-100")]
+    background_alpha: Option<u8>,
 }
 
 fn main() -> Result<()> {
@@ -279,6 +288,9 @@ fn main() -> Result<()> {
             device_profiles.map(PathBuf::from),
             detection_config(completion()?)?,
             cli.display_rotation.unwrap_or_default(),
+            cli.background_alpha
+                .map(BackgroundAlpha::from_percent)
+                .unwrap_or_default(),
             interfaces()?,
         );
     }
@@ -324,28 +336,30 @@ fn run_gui_mode(
     dev: &str,
     profiles_dir: Option<&str>,
     device_profiles: Option<PathBuf>,
-    config: modes::DetectionConfig,
+    config: DetectionConfig,
     rotation: DisplayRotation,
-    interfaces: modes::Interfaces,
+    background_alpha: BackgroundAlpha,
+    interfaces: Interfaces,
 ) -> Result<()> {
     // Daemon plumbing flows into the embedded GUI as injected hooks -
     // the gtk crate links engine/model/runtime, never the daemon.
-    let hooks = tangible_objects_gtk::GuiHooks {
+    let hooks = GuiHooks {
         spawn_interfaces: Box::new(move |handle| modes::spawn_interfaces(handle, &interfaces)),
         drain_control_commands: modes::drain_control_commands,
         status_of_session: modes::status_of_session,
         effective_calibration: modes::effective_calibration,
         register_profile: modes::register_profile_hook,
     };
-    tangible_objects_gtk::run_gui(
+    run_gui(
         dev.to_string(),
         profiles_dir.map(str::to_string),
         modes::load_patterns(profiles_dir),
         device_profiles,
         config,
-        tangible_objects_gtk::GuiOptions {
+        GuiOptions {
             visible: true,
             rotation,
+            background_alpha,
         },
         hooks,
     );

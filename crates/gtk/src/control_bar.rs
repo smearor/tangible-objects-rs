@@ -36,6 +36,7 @@ pub fn create_control_bar(
     state: &Arc<Mutex<SharedState>>,
     profiles_dir: &Option<String>,
     drawing_area: &DrawingArea,
+    bg_provider: &gtk4::CssProvider,
 ) -> GtkBox {
     let bar = GtkBox::new(Orientation::Horizontal, 8);
     bar.set_valign(Align::End);
@@ -58,6 +59,34 @@ pub fn create_control_bar(
     // Save button.
     let save_btn = Button::with_label(&fl!(language_loader(), "save-profile"));
     save_btn.set_sensitive(false);
+
+    // Alpha toggle - cycles the background opacity presets; the
+    // touches/labels/chrome stay opaque, only the canvas fill thins.
+    let alpha_btn = Button::with_label(&fl!(
+        language_loader(),
+        "background-alpha",
+        percent = (state
+            .lock()
+            .map(|s| s.background_alpha.percent() as i64)
+            .unwrap_or(100))
+    ));
+    let state_alpha = state.clone();
+    let alpha_btn_clone = alpha_btn.clone();
+    let da_alpha = drawing_area.clone();
+    let provider_alpha = bg_provider.clone();
+    alpha_btn.connect_clicked(move |_| {
+        let Ok(mut s) = state_alpha.lock() else {
+            return;
+        };
+        s.background_alpha = s.background_alpha.next();
+        alpha_btn_clone.set_label(&fl!(
+            language_loader(),
+            "background-alpha",
+            percent = (s.background_alpha.percent() as i64)
+        ));
+        provider_alpha.load_from_data(&s.background_alpha.surface_bg_css());
+        da_alpha.queue_draw();
+    });
 
     // Status label.
     let status = Label::new(Some(""));
@@ -133,6 +162,7 @@ pub fn create_control_bar(
     bar.append(&mode_btn);
     bar.append(&name_entry);
     bar.append(&save_btn);
+    bar.append(&alpha_btn);
     bar.append(&status);
 
     // Status update inside the redraw timer.

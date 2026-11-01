@@ -8,6 +8,7 @@
 //! (interfaces, control commands, recording, calibration) arrive via
 //! [`GuiHooks`] so this crate never links the daemon crate.
 
+mod background_alpha;
 mod control_bar;
 mod draw;
 mod evdev_thread;
@@ -31,6 +32,7 @@ use i18n_embed_fl::fl;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
 
+pub use background_alpha::BackgroundAlpha;
 pub use gui_hooks::GuiHooks;
 pub use gui_mode::GuiMode;
 pub use gui_options::GuiOptions;
@@ -50,7 +52,7 @@ pub fn run_gui(
     options: GuiOptions,
     hooks: GuiHooks,
 ) {
-    let state = SharedState::new(options.visible, options.rotation);
+    let state = SharedState::new(options.visible, options.rotation, options.background_alpha);
 
     // Spawn evdev thread - the in-process engine loop.
     let state_clone = state.clone();
@@ -79,14 +81,29 @@ pub fn run_gui(
         drawing_area.set_hexpand(true);
         drawing_area.set_vexpand(true);
 
+        // The canvas darkening lives in the widget's CSS background
+        // layer (`.surface-bg`) - its alpha blends against the
+        // transparent window, so the toggle sees the desktop beneath.
+        // The cairo draw stays content-only on top of it.
+        let bg_provider = gtk4::CssProvider::new();
+        bg_provider.load_from_data(&options.background_alpha.surface_bg_css());
+        drawing_area.add_css_class("surface-bg");
+        drawing_area
+            .style_context()
+            .add_provider(&bg_provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+
         let state_draw = state_app.clone();
         drawing_area.set_draw_func(move |_, cr, w, h| {
             draw::draw_scene(cr, w, h, &state_draw);
         });
 
         // Control bar.
-        let control_bar =
-            control_bar::create_control_bar(&state_app, &profiles_dir_app, &drawing_area);
+        let control_bar = control_bar::create_control_bar(
+            &state_app,
+            &profiles_dir_app,
+            &drawing_area,
+            &bg_provider,
+        );
 
         // Layout: drawing area + control bar overlay.
         let overlay = gtk4::Overlay::new();
@@ -100,6 +117,21 @@ pub fn run_gui(
             .default_height(1200)
             .child(&overlay)
             .build();
+
+        // Window background transparent so the canvas fill's alpha
+        // (`background_alpha` toggle) actually shows the desktop
+        // beneath - the theme paints the window background opaque by
+        // default, covering the translucent cairo fill. Only the
+        // window *background* is cleared; contents stay opaque.
+        let provider = gtk4::CssProvider::new();
+        provider.load_from_data("window { background-color: transparent; }");
+        if let Some(display) = gtk4::gdk::Display::default() {
+            gtk4::style_context_add_provider_for_display(
+                &display,
+                &provider,
+                gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
 
         window.fullscreen();
         window.set_visible(visible_app);

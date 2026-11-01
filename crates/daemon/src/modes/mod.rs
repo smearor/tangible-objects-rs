@@ -33,8 +33,6 @@ pub use interfaces::Interfaces;
 pub use live::run_live;
 pub use record::run_record;
 pub use replay::run_replay;
-#[cfg(feature = "gui")]
-pub use tangible_objects_model::DetectionConfig;
 // Only the gui feature calls this through `modes::` - the modes
 // themselves use `super::setup::effective_calibration` directly.
 #[cfg(feature = "gui")]

@@ -10,6 +10,7 @@ use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
 
+use crate::BackgroundAlpha;
 use crate::gui_mode::GuiMode;
 
 /// Snapshot the draw functions consume - written by the device thread
@@ -38,12 +39,19 @@ pub struct SharedState {
     /// Display rotation the mm→px mapping applies (`--display-rotation`)
     /// - the evdev stream always speaks the panel's native frame.
     pub rotation: DisplayRotation,
+    /// Canvas background opacity (`--background-alpha` and the alpha
+    /// toggle). GUI-local display state - no control command.
+    pub background_alpha: BackgroundAlpha,
 }
 
 impl SharedState {
     /// Initial state - hidden-only devices start visible (the
     /// `--gui` flag semantics), `SetGuiVisible` toggles afterwards.
-    pub fn new(visible: bool, rotation: DisplayRotation) -> Arc<Mutex<Self>> {
+    pub fn new(
+        visible: bool,
+        rotation: DisplayRotation,
+        background_alpha: BackgroundAlpha,
+    ) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             touches: Vec::new(),
             matches: Vec::new(),
@@ -56,6 +64,7 @@ impl SharedState {
             message: None,
             visible,
             rotation,
+            background_alpha,
         }))
     }
 }

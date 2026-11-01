@@ -35,14 +35,16 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     let w = width as f64;
     let h = height as f64;
 
-    // Black background.
-    cr.set_source_rgb(0.05, 0.05, 0.08);
-    let _ = cr.paint();
-
     let s = match state.lock() {
         Ok(s) => s,
         Err(_) => return,
     };
+
+    // The canvas background is the drawing area's own CSS
+    // `background-color` (`.surface-bg`, alpha via `BackgroundAlpha`)
+    // - a cairo fill would sit *above* that layer as an opaque cover,
+    // so nothing is painted here; the widget stays transparent and the
+    // desktop shows through below 100% alpha.
 
     // Show device error.
     if let Some(err) = &s.device_error {

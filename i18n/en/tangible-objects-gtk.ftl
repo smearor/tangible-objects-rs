@@ -29,3 +29,5 @@ live-info = { $figures ->
 }
 pin-label = P{ $index } ({ $x },{ $y })
 window-title = Tangible Objects - Surface Monitor
+
+background-alpha = Alpha: { $percent }%
