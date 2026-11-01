@@ -6,6 +6,7 @@ use crate::Millimeters;
 use crate::Pixels;
 use crate::RawAxisValue;
 use crate::Region;
+use crate::SurfaceFit;
 use crate::UnitsPerMm;
 use crate::Vec2;
 
@@ -95,6 +96,26 @@ impl Calibration {
         }
     }
 
+    /// The [`SurfaceFit`] mapping this calibrated surface onto a
+    /// `screen_w` × `screen_h` display area under `rotation` - the
+    /// shared mm↔px transform renderers *and* hit-tests use (the fit's
+    /// `unmap` is the pixel→millimeter direction card hit-testing and
+    /// safe-area footprints need).
+    pub fn surface_fit(
+        &self,
+        screen_w: Pixels,
+        screen_h: Pixels,
+        rotation: DisplayRotation,
+    ) -> SurfaceFit {
+        SurfaceFit::new(
+            self.width_mm(),
+            self.height_mm(),
+            screen_w,
+            screen_h,
+            rotation,
+        )
+    }
+
     /// Maps a millimeter coordinate onto screen pixels.
     ///
     /// `rotation` first turns the position into the displayed orientation
@@ -111,27 +132,14 @@ impl Calibration {
         screen_h: Pixels,
         rotation: DisplayRotation,
     ) -> Vec2<Pixels> {
-        let w_mm = self.width_mm().as_f64();
-        let h_mm = self.height_mm().as_f64();
-        if w_mm <= 0.0 || h_mm <= 0.0 {
+        if self.width_mm().as_f64() <= 0.0 || self.height_mm().as_f64() <= 0.0 {
             return Vec2::new(0.0, 0.0);
         }
-        let x_mm = pos.x - self.x_min / self.x_res;
-        let y_mm = pos.y - self.y_min / self.y_res;
-        let rotated = rotation.apply(
-            Vec2::<Millimeters>::new(x_mm, y_mm),
-            Millimeters::new(w_mm),
-            Millimeters::new(h_mm),
+        let local = Vec2::<Millimeters>::new(
+            pos.x - self.x_min / self.x_res,
+            pos.y - self.y_min / self.y_res,
         );
-        let (w_disp, h_disp) = if rotation.swaps_axes() {
-            (h_mm, w_mm)
-        } else {
-            (w_mm, h_mm)
-        };
-        let scale = (screen_w.as_f64() / w_disp).min(screen_h.as_f64() / h_disp);
-        let off_x = (screen_w.as_f64() - w_disp * scale) / 2.0;
-        let off_y = (screen_h.as_f64() - h_disp * scale) / 2.0;
-        Vec2::<Pixels>::new(off_x + rotated.x * scale, off_y + rotated.y * scale)
+        self.surface_fit(screen_w, screen_h, rotation).map(local)
     }
 }
 

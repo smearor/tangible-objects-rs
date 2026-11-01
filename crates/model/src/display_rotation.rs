@@ -59,6 +59,16 @@ impl DisplayRotation {
         matches!(self, Self::Deg90 | Self::Deg270)
     }
 
+    /// The rotation undoing this one - `Deg0`/`Deg180` are their own
+    /// inverses, the two quarter turns swap.
+    pub fn inverse(self) -> Self {
+        match self {
+            Self::Deg0 | Self::Deg180 => self,
+            Self::Deg90 => Self::Deg270,
+            Self::Deg270 => Self::Deg90,
+        }
+    }
+
     /// Rotates a millimeter position inside a `w_mm × h_mm` surface into
     /// the displayed orientation. The surface bounds swap when the
     /// quarter turn swaps axes - the caller uses the returned position
