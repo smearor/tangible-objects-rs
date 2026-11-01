@@ -1,0 +1,34 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+env:
+  APT_PACKAGES: curl build-essential pkg-config libgtk-4-dev libglib2.0-dev libadwaita-1-dev libgtk4-layer-shell-dev
+
+jobs:
+  rustdoc:
+    name: rustdoc to GitHub Pages
+    runs-on: ubuntu-26.04
+    steps:
+      - name: VCS Checkout
+        uses: actions/checkout@v7
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Build docs
+        run: cargo doc --workspace --all-features --no-deps
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/doc
