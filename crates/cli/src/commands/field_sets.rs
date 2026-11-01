@@ -5,7 +5,8 @@ use tangible_objects_client::GraphQLClient;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::RegisterFieldSetResult;
 
-use crate::args::{Cli, FieldSetsArgs};
+use crate::args::Cli;
+use crate::args::FieldSetsArgs;
 use crate::args::FieldSetsCommand;
 
 /// `field-sets` subcommands.
