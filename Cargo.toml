@@ -25,7 +25,7 @@ tangible-objects-cli = { path = "crates/cli" }
 # core
 serde = { version = "1.0", features = ["derive"] }
 serde-jsonlines = "0.7"
-toml = "0.8"
+toml = "1.1"
 thiserror = "2.0"
 miette = "7.6"
 tracing = "0.1"
