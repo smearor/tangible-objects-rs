@@ -70,9 +70,13 @@ impl PinMap {
 
     /// Rotation of the mapped slots' current positions against the
     /// stored reference frame - `similarity_transform` over all
-    /// bound slots present in `touches`. `None` when fewer than two
-    /// bound slots are live (keep the last good angle then).
+    /// bound slots present in `touches`. `None` when the match carried
+    /// no ref geometry or fewer than two bound slots are live (keep
+    /// the last good angle then).
     pub(crate) fn rotation(&self, touches: TouchSet<'_>) -> Option<RotationRad> {
+        if self.refs.len() < 2 {
+            return None;
+        }
         let (measured, mapping): (Vec<_>, CombinationBuf) = self
             .genuine
             .iter()

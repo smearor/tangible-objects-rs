@@ -97,6 +97,13 @@ impl RefPoints {
         measured: PointSet<'_>,
         mapping: Combination<'_>,
     ) -> Option<RigidTransform> {
+        if self.len() < 2
+            || measured.len() < 2
+            || mapping.len() != measured.len()
+            || mapping.iter().any(|index| *index >= self.len())
+        {
+            return None;
+        }
         let ref_center = Vec2::centroid(self);
         let meas_center = Vec2::centroid(measured.as_slice());
         let mut cross = 0.0;
