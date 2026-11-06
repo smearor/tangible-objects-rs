@@ -1,4 +1,5 @@
 use crate::SmoothingAlpha;
+use crate::Vec2;
 use serde::Deserialize;
 use serde::Serialize;
 use std::f64::consts::PI;
@@ -35,6 +36,17 @@ impl RotationRad {
     /// geometry (the `f64::sin_cos` delegate).
     pub fn sin_cos(self) -> (f64, f64) {
         self.0.sin_cos()
+    }
+
+    /// The interior angle between two consecutive edge directions
+    /// of a positive-area polygon: `PI - signed turn` from
+    /// `previous` to `next` (sharp corners < ~PI/2).
+    pub fn interior<U>(previous: Vec2<U>, next: Vec2<U>) -> Self {
+        Self(
+            PI - previous
+                .cross::<f64>(&next)
+                .atan2(previous.dot::<f64>(&next)),
+        )
     }
 
     /// The shortest signed arc from `self` to `to`, in [-π, π].
@@ -113,6 +125,7 @@ async_graphql::scalar!(RotationRad);
 mod tests {
     use super::RotationRad;
     use crate::SmoothingAlpha;
+    use crate::Vec2;
     use std::f64::consts::PI;
 
     /// `alpha = 1` makes the blend pure `new` - history has no weight.
@@ -170,5 +183,13 @@ mod tests {
     fn signed_delta_wraps_negative_side() {
         let delta = RotationRad::new(-3.0).signed_delta_to(RotationRad::new(3.0));
         assert!((delta.as_f64() - (6.0 - 2.0 * PI)).abs() < 1e-9);
+    }
+    #[test]
+    fn interior_angle_of_a_right_turn() {
+        let angle = RotationRad::interior(
+            crate::Vec2::<crate::Millimeters>::new(1.0, 0.0),
+            crate::Vec2::new(0.0, 1.0),
+        );
+        assert!((angle.as_f64() - std::f64::consts::FRAC_PI_2).abs() < 1e-9);
     }
 }
