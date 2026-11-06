@@ -49,6 +49,24 @@ impl<U> Vec2<U> {
         U::from(((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt())
     }
 
+    /// Dot product `x·x + y·y` of two vectors in the same unit.
+    ///
+    /// The caller picks the product type `T` (like [`Vec2::distance`]'s
+    /// unit return): `f64` for unit-free math or a unit type such as
+    /// [`crate::SquareMillimeters`] for `Vec2<Millimeters>` products.
+    pub fn dot<T: From<f64>>(&self, other: &Vec2<U>) -> T {
+        T::from(self.x * other.x + self.y * other.y)
+    }
+
+    /// 2D determinant `x·y' − y·x'` (z component of the 3D cross
+    /// product): positive when `other` turns left from `self`, negative
+    /// right; zero for (anti-)parallel vectors.
+    ///
+    /// Same caller-chosen product type as [`Vec2::dot`].
+    pub fn cross<T: From<f64>>(&self, other: &Vec2<U>) -> T {
+        T::from(self.x * other.y - self.y * other.x)
+    }
+
     /// Geometric centroid of a non-empty point set.
     ///
     /// Returns [`Vec2::new(0.0, 0.0)`] for an empty slice instead of panicking.
@@ -141,6 +159,28 @@ mod tests {
         let c = Vec2::centroid(&points);
         assert!((c.x - 2.0).abs() < 1e-9);
         assert!((c.y - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn dot_and_cross_of_perpendiculars() {
+        let right = Vec2::<Millimeters>::new(1.0, 0.0);
+        let up = Vec2::<Millimeters>::new(0.0, 1.0);
+        let dot: f64 = right.dot(&up);
+        assert!(dot.abs() < 1e-9);
+        let (cross, reverse): (f64, f64) = (right.cross(&up), up.cross(&right));
+        assert!((cross - 1.0).abs() < 1e-9);
+        assert!((reverse - -1.0).abs() < 1e-9);
+        let area: crate::SquareMillimeters = right.cross(&up);
+        assert!((area.as_f64() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn dot_and_cross_of_diagonal() {
+        let diagonal = Vec2::<Millimeters>::new(1.0, 1.0);
+        let axis = Vec2::<Millimeters>::new(1.0, 0.0);
+        let (dot, cross): (f64, f64) = (diagonal.dot(&axis), diagonal.cross(&axis));
+        assert!((dot - 1.0).abs() < 1e-9);
+        assert!((cross - -1.0).abs() < 1e-9);
     }
 
     #[test]
