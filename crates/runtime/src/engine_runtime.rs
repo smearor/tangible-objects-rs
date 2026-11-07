@@ -350,7 +350,7 @@ mod tests {
             id: TangibleId::new(id),
             pattern_id: PatternId::new(pattern),
             pattern_name: format!("fig-{pattern}").into(),
-            center: Vec2::new(0.0, 0.0),
+            center: Vec2::ZERO,
             rotation_rad: RotationRad::new(0.0),
             pending: false,
             pending_frames: FrameCount::new(0),

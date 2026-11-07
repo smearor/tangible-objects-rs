@@ -34,6 +34,13 @@ pub struct Vec2<U> {
 }
 
 impl<U> Vec2<U> {
+    /// The origin `(0, 0)` in the unit `U`.
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        unit: PhantomData,
+    };
+
     /// Creates a new 2D point in the unit `U`.
     pub fn new(x: f64, y: f64) -> Self {
         Self {

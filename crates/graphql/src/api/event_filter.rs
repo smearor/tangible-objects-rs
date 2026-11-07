@@ -156,7 +156,7 @@ mod tests {
             id: tangible_objects_model::TangibleId::new(1),
             pattern_id: PatternId::new(5),
             pattern_name: "fig".into(),
-            center: tangible_objects_model::Vec2::new(0.0, 0.0),
+            center: tangible_objects_model::Vec2::ZERO,
             rotation_rad: tangible_objects_model::RotationRad::new(0.0),
             pending: false,
             pending_frames: tangible_objects_model::FrameCount::new(0),

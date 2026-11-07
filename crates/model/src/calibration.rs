@@ -133,7 +133,7 @@ impl Calibration {
         rotation: DisplayRotation,
     ) -> Vec2<Pixels> {
         if self.width_mm().as_f64() <= 0.0 || self.height_mm().as_f64() <= 0.0 {
-            return Vec2::new(0.0, 0.0);
+            return Vec2::ZERO;
         }
         let local = Vec2::<Millimeters>::new(
             pos.x - self.x_min / self.x_res,
