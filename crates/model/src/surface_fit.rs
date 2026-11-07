@@ -75,20 +75,18 @@ impl SurfaceFit {
                 Millimeters::new(self.size.y)
             },
         );
-        Vec2::<Pixels>::new(
-            self.offset.x + self.scale.scale(rotated.x),
-            self.offset.y + self.scale.scale(rotated.y),
-        )
+        let scaled = self.scale.scale_vec(rotated);
+        Vec2::<Pixels>::new(self.offset.x + scaled.x, self.offset.y + scaled.y)
     }
 
     /// Maps a display pixel back onto surface millimeters (panel-native
     /// frame) - the hit-testing direction: inverse offset → unscale →
     /// inverse rotation.
     pub fn unmap(&self, px: Vec2<Pixels>) -> Vec2<Millimeters> {
-        let scaled = Vec2::new(
-            self.scale.unscale(px.x - self.offset.x),
-            self.scale.unscale(px.y - self.offset.y),
-        );
+        let scaled = self.scale.unscale_vec(Vec2::<Pixels>::new(
+            px.x - self.offset.x,
+            px.y - self.offset.y,
+        ));
         self.rotation.inverse().apply(
             scaled,
             Millimeters::new(self.size.x),

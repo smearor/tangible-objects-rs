@@ -1,3 +1,6 @@
+use crate::Millimeters;
+use crate::Pixels;
+use crate::Vec2;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
@@ -25,14 +28,30 @@ impl PixelsPerMm {
     }
 
     /// Maps a millimeter length onto pixels.
-    pub fn scale(&self, mm: f64) -> f64 {
-        mm * self.0
+    pub fn scale(&self, mm: Millimeters) -> Pixels {
+        Pixels::new(mm.as_f64() * self.0)
+    }
+
+    /// Maps a millimeter vector onto pixels, component-wise.
+    pub fn scale_vec(&self, vector: Vec2<Millimeters>) -> Vec2<Pixels> {
+        Vec2::<Pixels>::new(
+            self.scale(Millimeters::new(vector.x)).as_f64(),
+            self.scale(Millimeters::new(vector.y)).as_f64(),
+        )
     }
 
     /// Maps a pixel length back onto millimeters - the hit-testing
     /// direction (widget geometry → surface coordinates).
-    pub fn unscale(&self, px: f64) -> f64 {
-        px / self.0
+    pub fn unscale(&self, px: Pixels) -> Millimeters {
+        Millimeters::new(px.as_f64() / self.0)
+    }
+
+    /// Maps a pixel vector back onto millimeters, component-wise.
+    pub fn unscale_vec(&self, vector: Vec2<Pixels>) -> Vec2<Millimeters> {
+        Vec2::<Millimeters>::new(
+            self.unscale(Pixels::new(vector.x)).as_f64(),
+            self.unscale(Pixels::new(vector.y)).as_f64(),
+        )
     }
 }
 
@@ -56,13 +75,22 @@ impl Display for PixelsPerMm {
 
 #[cfg(test)]
 mod tests {
+    use super::Millimeters;
+    use super::Pixels;
     use super::PixelsPerMm;
 
     #[test]
     fn scale_and_unscale_are_inverses() {
         let factor = PixelsPerMm::new(4.0);
-        assert!((factor.scale(10.0) - 40.0).abs() < 1e-9);
-        assert!((factor.unscale(40.0) - 10.0).abs() < 1e-9);
-        assert!((factor.unscale(factor.scale(17.5)) - 17.5).abs() < 1e-9);
+        assert!((factor.scale(Millimeters::new(10.0)).as_f64() - 40.0).abs() < 1e-9);
+        assert!((factor.unscale(Pixels::new(40.0)).as_f64() - 10.0).abs() < 1e-9);
+        assert!(
+            (factor
+                .unscale(factor.scale(Millimeters::new(17.5)))
+                .as_f64()
+                - 17.5)
+                .abs()
+                < 1e-9
+        );
     }
 }
