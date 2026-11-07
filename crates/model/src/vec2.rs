@@ -3,6 +3,11 @@ use crate::Pixels;
 use serde::Deserialize;
 use serde::Serialize;
 use std::marker::PhantomData;
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Neg;
+use std::ops::Sub;
 
 #[cfg(feature = "cynic")]
 use crate::schema;
@@ -102,6 +107,60 @@ impl Vec2<Pixels> {
     /// Creates a point from typed pixel components.
     pub fn from_px(x: Pixels, y: Pixels) -> Self {
         Self::new(x.as_f64(), y.as_f64())
+    }
+}
+
+impl<U> Add for Vec2<U> {
+    type Output = Self;
+
+    /// Component-wise sum of two points in the same unit.
+    fn add(self, other: Self) -> Self {
+        Self::new(self.x + other.x, self.y + other.y)
+    }
+}
+
+impl<U> Sub for Vec2<U> {
+    type Output = Self;
+
+    /// Component-wise difference of two points in the same unit.
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.x - other.x, self.y - other.y)
+    }
+}
+
+impl<U> Neg for Vec2<U> {
+    type Output = Self;
+
+    /// The point mirrored at the origin.
+    fn neg(self) -> Self {
+        Self::new(-self.x, -self.y)
+    }
+}
+
+impl<U> Mul<f64> for Vec2<U> {
+    type Output = Self;
+
+    /// The vector scaled by a dimensionless factor.
+    fn mul(self, factor: f64) -> Self {
+        Self::new(self.x * factor, self.y * factor)
+    }
+}
+
+impl<U> Mul<Vec2<U>> for f64 {
+    type Output = Vec2<U>;
+
+    /// The vector scaled by a dimensionless factor.
+    fn mul(self, vector: Vec2<U>) -> Vec2<U> {
+        vector * self
+    }
+}
+
+impl<U> Div<f64> for Vec2<U> {
+    type Output = Self;
+
+    /// The vector divided by a dimensionless factor.
+    fn div(self, divisor: f64) -> Self {
+        Self::new(self.x / divisor, self.y / divisor)
     }
 }
 
@@ -213,6 +272,22 @@ mod tests {
         assert_eq!(Vec2::centroid(&empty), Vec2::new(0.0, 0.0));
     }
 
+    #[test]
+    /// Vectors add, subtract, negate and scale component-wise.
+    #[test]
+    fn arithmetic_ops() {
+        let a = Vec2::<Millimeters>::new(10.0, 4.0);
+        let b = Vec2::<Millimeters>::new(2.0, 1.0);
+        assert_eq!(a + b, Vec2::new(12.0, 5.0));
+        assert_eq!(a - b, Vec2::new(8.0, 3.0));
+        assert_eq!(-b, Vec2::new(-2.0, -1.0));
+        assert_eq!(a * 2.0, Vec2::new(20.0, 8.0));
+        assert_eq!(2.0 * b, Vec2::new(4.0, 2.0));
+        assert_eq!(a / 2.0, Vec2::new(5.0, 2.0));
+    }
+
+    /// `from_mm`/`from_px` wrap typed components without
+    /// `as_f64` at the call site.
     #[test]
     fn from_typed_components() {
         let mm = Vec2::<Millimeters>::from_mm(Millimeters::new(3.0), Millimeters::new(4.0));
