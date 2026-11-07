@@ -1,3 +1,5 @@
+use crate::Millimeters;
+use crate::Pixels;
 use serde::Deserialize;
 use serde::Serialize;
 use std::marker::PhantomData;
@@ -82,6 +84,20 @@ impl<U> Vec2<U> {
     }
 }
 
+impl Vec2<Millimeters> {
+    /// Creates a point from typed millimeter components.
+    pub fn from_mm(x: Millimeters, y: Millimeters) -> Self {
+        Self::new(x.as_f64(), y.as_f64())
+    }
+}
+
+impl Vec2<Pixels> {
+    /// Creates a point from typed pixel components.
+    pub fn from_px(x: Pixels, y: Pixels) -> Self {
+        Self::new(x.as_f64(), y.as_f64())
+    }
+}
+
 impl<U> From<Vec2<U>> for [f64; 2] {
     /// The point as `[x, y]`.
     fn from(v: Vec2<U>) -> Self {
@@ -141,6 +157,7 @@ pub mod serde_pair {
 mod tests {
     use super::Vec2;
     use crate::Millimeters;
+    use crate::Pixels;
 
     #[test]
     fn distance_of_axis_aligned_points() {
@@ -187,6 +204,14 @@ mod tests {
     fn centroid_of_empty_set_is_origin() {
         let empty: Vec<Vec2<Millimeters>> = Vec::new();
         assert_eq!(Vec2::centroid(&empty), Vec2::new(0.0, 0.0));
+    }
+
+    #[test]
+    fn from_typed_components() {
+        let mm = Vec2::<Millimeters>::from_mm(Millimeters::new(3.0), Millimeters::new(4.0));
+        assert_eq!((mm.x, mm.y), (3.0, 4.0));
+        let px = Vec2::<Pixels>::from_px(Pixels::new(3.0), Pixels::new(4.0));
+        assert_eq!((px.x, px.y), (3.0, 4.0));
     }
 
     #[test]
