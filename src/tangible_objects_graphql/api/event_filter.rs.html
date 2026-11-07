@@ -108,7 +108,7 @@
 <a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">use </span><span class="kw">crate</span>::EventKind;
 <a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">use </span><span class="kw">crate</span>::StreamEvent;
 <a href=#110 id=110 data-nosnippet>110</a>    <span class="kw">use </span><span class="kw">crate</span>::TangibleEvent;
-<a href=#111 id=111 data-nosnippet>111</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
+<a href=#111 id=111 data-nosnippet>111</a>    <span class="kw">use </span>tangible_objects_model::{FrameCount, PatternId, RotationRad, TangibleId, TrackedTangible, Vec2, DEFAULT_SPAWN_STABILITY};
 <a href=#112 id=112 data-nosnippet>112</a>
 <a href=#113 id=113 data-nosnippet>113</a>    <span class="kw">fn </span>event(kind: EventKind) -&gt; TangibleEvent {
 <a href=#114 id=114 data-nosnippet>114</a>        TangibleEvent {
@@ -152,16 +152,16 @@
 <a href=#152 id=152 data-nosnippet>152</a>            <span class="prelude-val">None</span>,
 <a href=#153 id=153 data-nosnippet>153</a>        );
 <a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">let </span><span class="kw-2">mut </span>added = event(EventKind::TangibleAdded);
-<a href=#155 id=155 data-nosnippet>155</a>        added.tangible = <span class="prelude-val">Some</span>(tangible_objects_model::TrackedTangible {
-<a href=#156 id=156 data-nosnippet>156</a>            id: tangible_objects_model::TangibleId::new(<span class="number">1</span>),
+<a href=#155 id=155 data-nosnippet>155</a>        added.tangible = <span class="prelude-val">Some</span>(TrackedTangible {
+<a href=#156 id=156 data-nosnippet>156</a>            id: TangibleId::new(<span class="number">1</span>),
 <a href=#157 id=157 data-nosnippet>157</a>            pattern_id: PatternId::new(<span class="number">5</span>),
 <a href=#158 id=158 data-nosnippet>158</a>            pattern_name: <span class="string">"fig"</span>.into(),
-<a href=#159 id=159 data-nosnippet>159</a>            center: tangible_objects_model::Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
-<a href=#160 id=160 data-nosnippet>160</a>            rotation_rad: tangible_objects_model::RotationRad::new(<span class="number">0.0</span>),
+<a href=#159 id=159 data-nosnippet>159</a>            center: Vec2::ZERO,
+<a href=#160 id=160 data-nosnippet>160</a>            rotation_rad: RotationRad::new(<span class="number">0.0</span>),
 <a href=#161 id=161 data-nosnippet>161</a>            pending: <span class="bool-val">false</span>,
-<a href=#162 id=162 data-nosnippet>162</a>            pending_frames: tangible_objects_model::FrameCount::new(<span class="number">0</span>),
-<a href=#163 id=163 data-nosnippet>163</a>            spawn_stability: tangible_objects_model::DEFAULT_SPAWN_STABILITY,
-<a href=#164 id=164 data-nosnippet>164</a>            frames_since_match: tangible_objects_model::FrameCount::new(<span class="number">0</span>),
+<a href=#162 id=162 data-nosnippet>162</a>            pending_frames: FrameCount::new(<span class="number">0</span>),
+<a href=#163 id=163 data-nosnippet>163</a>            spawn_stability: DEFAULT_SPAWN_STABILITY,
+<a href=#164 id=164 data-nosnippet>164</a>            frames_since_match: FrameCount::new(<span class="number">0</span>),
 <a href=#165 id=165 data-nosnippet>165</a>        });
 <a href=#166 id=166 data-nosnippet>166</a>        <span class="macro">assert!</span>(filter.accepts(<span class="kw-2">&amp;</span>added));
 <a href=#167 id=167 data-nosnippet>167</a>        added.tangible.as_mut().unwrap().pattern_id = PatternId::new(<span class="number">9</span>);

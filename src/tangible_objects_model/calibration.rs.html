@@ -133,7 +133,7 @@
 <a href=#133 id=133 data-nosnippet>133</a>        rotation: DisplayRotation,
 <a href=#134 id=134 data-nosnippet>134</a>    ) -&gt; Vec2&lt;Pixels&gt; {
 <a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">if </span><span class="self">self</span>.width_mm().as_f64() &lt;= <span class="number">0.0 </span>|| <span class="self">self</span>.height_mm().as_f64() &lt;= <span class="number">0.0 </span>{
-<a href=#136 id=136 data-nosnippet>136</a>            <span class="kw">return </span>Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>);
+<a href=#136 id=136 data-nosnippet>136</a>            <span class="kw">return </span>Vec2::ZERO;
 <a href=#137 id=137 data-nosnippet>137</a>        }
 <a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span>local = Vec2::&lt;Millimeters&gt;::new(
 <a href=#139 id=139 data-nosnippet>139</a>            pos.x - <span class="self">self</span>.x_min / <span class="self">self</span>.x_res,
