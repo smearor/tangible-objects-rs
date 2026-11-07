@@ -42,9 +42,7 @@ impl Deviations {
     /// Total absolute deviation across all indices - the candidate's
     /// match error (lower is better).
     pub fn total(&self) -> MatchError {
-        MatchError::new(Millimeters::new(
-            self.0.iter().map(|deviation| deviation.as_f64()).sum(),
-        ))
+        MatchError::new(self.0.iter().map(|deviation| deviation.0).sum())
     }
 }
 

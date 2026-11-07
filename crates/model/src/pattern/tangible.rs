@@ -246,7 +246,7 @@ impl TangiblePattern {
         touches: TouchSet<'_>,
         completion: &CompletionConfig,
     ) -> ClaimedIndices {
-        let radius = self.tolerance.as_f64() * completion.radius_factor;
+        let radius = self.tolerance.as_millimeters() * completion.radius_factor;
         let mut claimed: Vec<Claim> = Vec::new();
         let mut taken: HashSet<usize> = combo.iter().copied().collect();
         for missing in kept_refs.complement(self.num_points) {
@@ -263,7 +263,7 @@ impl TangiblePattern {
                         .total_cmp(&touches[b].pos.distance(&predicted))
                 });
             if let Some(&index) =
-                nearest.filter(|&&index| touches[index].pos.distance(&predicted).as_f64() <= radius)
+                nearest.filter(|&&index| touches[index].pos.distance(&predicted) <= radius)
             {
                 claimed.push(Claim::new(index, missing));
                 taken.insert(index);

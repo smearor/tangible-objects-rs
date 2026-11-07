@@ -23,7 +23,7 @@ impl MatchScore {
     /// `<= 1.0` means the candidate matched. Shared by `score_of` and
     /// the partial-match score paths.
     pub fn normalized(error: Millimeters, tolerance: Millimeters) -> Self {
-        Self(error.as_f64() / tolerance.as_f64())
+        Self(error / tolerance)
     }
 
     /// The higher (worse) of two scores - the aggregation of

@@ -1,7 +1,10 @@
 use std::fmt::Display;
+use std::ops::Mul;
 
 use serde::Deserialize;
 use serde::Serialize;
+
+use crate::Vec2;
 
 /// Per-slot position smoothing factor (TRACKING_STABILIZATION.md): EMA
 /// weight of the current raw position (`pos = alpha*raw +
@@ -28,6 +31,21 @@ impl SmoothingAlpha {
     /// positions through (identity); only `0 < alpha < 1` blends.
     pub fn is_effective(&self) -> bool {
         self.0 > 0.0 && self.0 < 1.0
+    }
+
+    /// The complementary weight `1 − alpha` - the previous value's
+    /// share of an EMA blend (`pos * alpha + prev * alpha.complement()`).
+    pub fn complement(self) -> Self {
+        Self(1.0 - self.0)
+    }
+}
+
+impl<U> Mul<SmoothingAlpha> for Vec2<U> {
+    type Output = Vec2<U>;
+
+    /// Scales the vector by the weight (`v * alpha`).
+    fn mul(self, alpha: SmoothingAlpha) -> Vec2<U> {
+        self * alpha.as_f64()
     }
 }
 

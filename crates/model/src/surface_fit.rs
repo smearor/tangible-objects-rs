@@ -48,12 +48,10 @@ impl SurfaceFit {
         } else {
             0.0
         };
+        let scaled = Vec2::<Pixels>::new(w_disp.as_f64() * scale, h_disp.as_f64() * scale);
         Self {
             scale: PixelsPerMm::new(scale),
-            offset: Vec2::new(
-                (w_px.as_f64() - w_disp.as_f64() * scale) / 2.0,
-                (h_px.as_f64() - h_disp.as_f64() * scale) / 2.0,
-            ),
+            offset: (Vec2::from_px(w_px, h_px) - scaled) / 2.0,
             rotation,
             size: Vec2::new(w_disp.as_f64(), h_disp.as_f64()),
         }

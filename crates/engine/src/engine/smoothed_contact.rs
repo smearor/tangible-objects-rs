@@ -32,8 +32,7 @@ impl SmoothedContact {
         pos: Vec2<Millimeters>,
     ) -> Vec2<Millimeters> {
         if self.tracking_id == id {
-            let alpha = alpha.as_f64();
-            pos * alpha + self.pos * (1.0 - alpha)
+            pos * alpha + self.pos * alpha.complement()
         } else {
             pos
         }

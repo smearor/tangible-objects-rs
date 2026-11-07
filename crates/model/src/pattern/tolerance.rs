@@ -37,7 +37,7 @@ impl PatternTolerance {
     /// for incumbent re-matching (TRACKING_STABILIZATION.md). `neutral`
     /// affinity is the unscaled partial baseline.
     pub fn partial(self, affinity: AffinityFactor) -> Millimeters {
-        (self.0.as_f64() * 1.5 * affinity.as_f64()).into()
+        self.0 * 1.5 * affinity.as_f64()
     }
 }
 

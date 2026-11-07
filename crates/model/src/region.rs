@@ -76,9 +76,9 @@ impl Region {
 
     /// Center point of the region.
     pub fn center(&self) -> Vec2<Millimeters> {
-        Vec2::new(
-            (self.x_min.as_f64() + self.x_max.as_f64()) / 2.0,
-            (self.y_min.as_f64() + self.y_max.as_f64()) / 2.0,
+        Vec2::from_mm(
+            (self.x_min + self.x_max) / 2.0,
+            (self.y_min + self.y_max) / 2.0,
         )
     }
 
@@ -105,26 +105,10 @@ impl Region {
     /// diagnostics to say *where* fields collide, not just that.
     pub fn intersection(&self, other: &Region) -> Option<Region> {
         self.overlaps(other).then(|| Region {
-            x_min: if self.x_min > other.x_min {
-                self.x_min
-            } else {
-                other.x_min
-            },
-            y_min: if self.y_min > other.y_min {
-                self.y_min
-            } else {
-                other.y_min
-            },
-            x_max: if self.x_max < other.x_max {
-                self.x_max
-            } else {
-                other.x_max
-            },
-            y_max: if self.y_max < other.y_max {
-                self.y_max
-            } else {
-                other.y_max
-            },
+            x_min: self.x_min.max(other.x_min),
+            y_min: self.y_min.max(other.y_min),
+            x_max: self.x_max.min(other.x_max),
+            y_max: self.y_max.min(other.y_max),
         })
     }
 

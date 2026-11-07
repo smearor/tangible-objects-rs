@@ -126,8 +126,7 @@ impl TrackedTangible {
     /// fresh measurement, `1 - alpha` the weight of the stored
     /// position.
     pub fn smooth_center(&mut self, alpha: SmoothingAlpha, measured: Vec2<Millimeters>) {
-        let alpha = alpha.as_f64();
-        self.center = measured * alpha + self.center * (1.0 - alpha);
+        self.center = measured * alpha + self.center * alpha.complement();
     }
 }
 
