@@ -85,7 +85,7 @@
 <a href=#85 id=85 data-nosnippet>85</a>    <span class="comment">// Map touch points from mm to screen pixels.
 <a href=#86 id=86 data-nosnippet>86</a>    </span><span class="kw">let </span>rotation = s.rotation;
 <a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">let </span>to_screen = |pos: <span class="kw-2">&amp;</span>Vec2&lt;Millimeters&gt;| -&gt; Vec2&lt;Pixels&gt; {
-<a href=#88 id=88 data-nosnippet>88</a>        cal.mm_to_screen(<span class="kw-2">*</span>pos, Pixels::new(w), Pixels::new(h), rotation)
+<a href=#88 id=88 data-nosnippet>88</a>        cal.mm_to_screen(<span class="kw-2">*</span>pos, Vec2::new(w, h), rotation)
 <a href=#89 id=89 data-nosnippet>89</a>    };
 <a href=#90 id=90 data-nosnippet>90</a>
 <a href=#91 id=91 data-nosnippet>91</a>    <span class="kw">if </span>mode == GuiMode::Training {

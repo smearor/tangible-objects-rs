@@ -246,7 +246,7 @@
 <a href=#246 id=246 data-nosnippet>246</a>        touches: TouchSet&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#247 id=247 data-nosnippet>247</a>        completion: <span class="kw-2">&amp;</span>CompletionConfig,
 <a href=#248 id=248 data-nosnippet>248</a>    ) -&gt; ClaimedIndices {
-<a href=#249 id=249 data-nosnippet>249</a>        <span class="kw">let </span>radius = <span class="self">self</span>.tolerance.as_f64() * completion.radius_factor;
+<a href=#249 id=249 data-nosnippet>249</a>        <span class="kw">let </span>radius = <span class="self">self</span>.tolerance.as_millimeters() * completion.radius_factor;
 <a href=#250 id=250 data-nosnippet>250</a>        <span class="kw">let </span><span class="kw-2">mut </span>claimed: Vec&lt;Claim&gt; = Vec::new();
 <a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span><span class="kw-2">mut </span>taken: HashSet&lt;usize&gt; = combo.iter().copied().collect();
 <a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">for </span>missing <span class="kw">in </span>kept_refs.complement(<span class="self">self</span>.num_points) {
@@ -263,7 +263,7 @@
 <a href=#263 id=263 data-nosnippet>263</a>                        .total_cmp(<span class="kw-2">&amp;</span>touches[b].pos.distance(<span class="kw-2">&amp;</span>predicted))
 <a href=#264 id=264 data-nosnippet>264</a>                });
 <a href=#265 id=265 data-nosnippet>265</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>index) =
-<a href=#266 id=266 data-nosnippet>266</a>                nearest.filter(|&amp;&amp;index| touches[index].pos.distance(<span class="kw-2">&amp;</span>predicted).as_f64() &lt;= radius)
+<a href=#266 id=266 data-nosnippet>266</a>                nearest.filter(|&amp;&amp;index| touches[index].pos.distance(<span class="kw-2">&amp;</span>predicted) &lt;= radius)
 <a href=#267 id=267 data-nosnippet>267</a>            {
 <a href=#268 id=268 data-nosnippet>268</a>                claimed.push(Claim::new(index, missing));
 <a href=#269 id=269 data-nosnippet>269</a>                taken.insert(index);

@@ -37,7 +37,7 @@
 <a href=#37 id=37 data-nosnippet>37</a>    /// for incumbent re-matching (TRACKING_STABILIZATION.md). `neutral`
 <a href=#38 id=38 data-nosnippet>38</a>    /// affinity is the unscaled partial baseline.
 <a href=#39 id=39 data-nosnippet>39</a>    </span><span class="kw">pub fn </span>partial(<span class="self">self</span>, affinity: AffinityFactor) -&gt; Millimeters {
-<a href=#40 id=40 data-nosnippet>40</a>        (<span class="self">self</span>.<span class="number">0</span>.as_f64() * <span class="number">1.5 </span>* affinity.as_f64()).into()
+<a href=#40 id=40 data-nosnippet>40</a>        <span class="self">self</span>.<span class="number">0 </span>* <span class="number">1.5 </span>* affinity.as_f64()
 <a href=#41 id=41 data-nosnippet>41</a>    }
 <a href=#42 id=42 data-nosnippet>42</a>}
 <a href=#43 id=43 data-nosnippet>43</a>
