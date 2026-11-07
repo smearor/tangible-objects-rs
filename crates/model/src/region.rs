@@ -35,6 +35,17 @@ pub struct Region {
 }
 
 impl Region {
+    /// The region's four corners in map mm, counter-clockwise
+    /// from the top-left.
+    pub fn corners(&self) -> [Vec2<Millimeters>; 4] {
+        [
+            Vec2::new(self.x_min.as_f64(), self.y_min.as_f64()),
+            Vec2::new(self.x_max.as_f64(), self.y_min.as_f64()),
+            Vec2::new(self.x_max.as_f64(), self.y_max.as_f64()),
+            Vec2::new(self.x_min.as_f64(), self.y_max.as_f64()),
+        ]
+    }
+
     /// Whether `point` lies inside this region (bounds inclusive).
     pub fn contains(&self, point: &Vec2<Millimeters>) -> bool {
         point.x >= self.x_min.as_f64()
