@@ -29,50 +29,41 @@ pub struct SurfaceFit {
 }
 
 impl SurfaceFit {
-    /// Builds the fit for a `w_mm` × `h_mm` surface inside a
-    /// `w_px` × `h_px` display area under `rotation`.
+    /// Builds the fit for the `size_mm` surface inside the `size_px`
+    /// display area under `rotation`.
     pub fn new(
-        w_mm: Millimeters,
-        h_mm: Millimeters,
-        w_px: Pixels,
-        h_px: Pixels,
+        size_mm: Vec2<Millimeters>,
+        size_px: Vec2<Pixels>,
         rotation: DisplayRotation,
     ) -> Self {
-        let (w_disp, h_disp) = if rotation.swaps_axes() {
-            (h_mm, w_mm)
+        let size = if rotation.swaps_axes() {
+            Vec2::new(size_mm.y, size_mm.x)
         } else {
-            (w_mm, h_mm)
+            size_mm
         };
-        let scale = if w_disp.as_f64() > 0.0 && h_disp.as_f64() > 0.0 {
-            (w_px.as_f64() / w_disp.as_f64()).min(h_px.as_f64() / h_disp.as_f64())
+        let scale = if size.x > 0.0 && size.y > 0.0 {
+            (size_px.x / size.x).min(size_px.y / size.y)
         } else {
             0.0
         };
-        let scaled = Vec2::<Pixels>::new(w_disp.as_f64() * scale, h_disp.as_f64() * scale);
+        let scaled = Vec2::<Pixels>::new(size.x * scale, size.y * scale);
         Self {
             scale: PixelsPerMm::new(scale),
-            offset: (Vec2::from_px(w_px, h_px) - scaled) / 2.0,
+            offset: (size_px - scaled) / 2.0,
             rotation,
-            size: Vec2::new(w_disp.as_f64(), h_disp.as_f64()),
+            size,
         }
     }
 
     /// Maps a millimeter position (panel-native frame) onto display
     /// pixels: rotate → uniform scale → letterbox offset.
     pub fn map(&self, pos: Vec2<Millimeters>) -> Vec2<Pixels> {
-        let rotated = self.rotation.apply(
-            pos,
-            if self.rotation.swaps_axes() {
-                Millimeters::new(self.size.y)
-            } else {
-                Millimeters::new(self.size.x)
-            },
-            if self.rotation.swaps_axes() {
-                Millimeters::new(self.size.x)
-            } else {
-                Millimeters::new(self.size.y)
-            },
-        );
+        let bounds = if self.rotation.swaps_axes() {
+            Vec2::new(self.size.y, self.size.x)
+        } else {
+            self.size
+        };
+        let rotated = self.rotation.apply(pos, bounds);
         let scaled = self.scale.scale_vec(rotated);
         self.offset + scaled
     }
@@ -82,11 +73,7 @@ impl SurfaceFit {
     /// inverse rotation.
     pub fn unmap(&self, px: Vec2<Pixels>) -> Vec2<Millimeters> {
         let scaled = self.scale.unscale_vec(px - self.offset);
-        self.rotation.inverse().apply(
-            scaled,
-            Millimeters::new(self.size.x),
-            Millimeters::new(self.size.y),
-        )
+        self.rotation.inverse().apply(scaled, self.size)
     }
 }
 
@@ -101,10 +88,8 @@ mod tests {
     /// 400×300 mm surface on a 1000×1000 px display.
     fn fit(rotation: DisplayRotation) -> SurfaceFit {
         SurfaceFit::new(
-            Millimeters::new(400.0),
-            Millimeters::new(300.0),
-            Pixels::new(1000.0),
-            Pixels::new(1000.0),
+            Vec2::<Millimeters>::new(400.0, 300.0),
+            Vec2::<Pixels>::new(1000.0, 1000.0),
             rotation,
         )
     }

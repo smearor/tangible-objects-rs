@@ -85,7 +85,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     // Map touch points from mm to screen pixels.
     let rotation = s.rotation;
     let to_screen = |pos: &Vec2<Millimeters>| -> Vec2<Pixels> {
-        cal.mm_to_screen(*pos, Pixels::new(w), Pixels::new(h), rotation)
+        cal.mm_to_screen(*pos, Vec2::new(w, h), rotation)
     };
 
     if mode == GuiMode::Training {

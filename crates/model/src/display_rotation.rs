@@ -69,21 +69,16 @@ impl DisplayRotation {
         }
     }
 
-    /// Rotates a millimeter position inside a `w_mm × h_mm` surface into
+    /// Rotates a millimeter position inside the `bounds` surface into
     /// the displayed orientation. The surface bounds swap when the
     /// quarter turn swaps axes - the caller uses the returned position
-    /// against `(h_mm, w_mm)` in that case.
-    pub fn apply(
-        self,
-        pos: Vec2<Millimeters>,
-        w_mm: Millimeters,
-        h_mm: Millimeters,
-    ) -> Vec2<Millimeters> {
+    /// against `(bounds.y, bounds.x)` in that case.
+    pub fn apply(self, pos: Vec2<Millimeters>, bounds: Vec2<Millimeters>) -> Vec2<Millimeters> {
         match self {
             Self::Deg0 => pos,
-            Self::Deg90 => Vec2::new(pos.y, w_mm.as_f64() - pos.x),
-            Self::Deg180 => Vec2::new(w_mm.as_f64() - pos.x, h_mm.as_f64() - pos.y),
-            Self::Deg270 => Vec2::new(h_mm.as_f64() - pos.y, pos.x),
+            Self::Deg90 => Vec2::new(pos.y, bounds.x - pos.x),
+            Self::Deg180 => Vec2::new(bounds.x - pos.x, bounds.y - pos.y),
+            Self::Deg270 => Vec2::new(bounds.y - pos.y, pos.x),
         }
     }
 }
@@ -126,19 +121,18 @@ mod tests {
 
     #[test]
     fn quarter_turns_rotate_inside_bounds() {
-        let w = Millimeters::new(400.0);
-        let h = Millimeters::new(300.0);
+        let bounds = Vec2::<Millimeters>::new(400.0, 300.0);
         let pos = Vec2::<Millimeters>::new(100.0, 50.0);
 
-        let deg90 = DisplayRotation::Deg90.apply(pos, w, h);
+        let deg90 = DisplayRotation::Deg90.apply(pos, bounds);
         assert!((deg90.x - 50.0).abs() < 1e-9, "x becomes y");
         assert!((deg90.y - 300.0).abs() < 1e-9, "y becomes w - x");
 
-        let deg180 = DisplayRotation::Deg180.apply(pos, w, h);
+        let deg180 = DisplayRotation::Deg180.apply(pos, bounds);
         assert!((deg180.x - 300.0).abs() < 1e-9);
         assert!((deg180.y - 250.0).abs() < 1e-9);
 
-        let deg270 = DisplayRotation::Deg270.apply(pos, w, h);
+        let deg270 = DisplayRotation::Deg270.apply(pos, bounds);
         assert!((deg270.x - 250.0).abs() < 1e-9, "x becomes h - y");
         assert!((deg270.y - 100.0).abs() < 1e-9, "y becomes x");
     }

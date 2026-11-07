@@ -101,17 +101,10 @@ impl Calibration {
     /// shared mm↔px transform renderers *and* hit-tests use (the fit's
     /// `unmap` is the pixel→millimeter direction card hit-testing and
     /// safe-area footprints need).
-    pub fn surface_fit(
-        &self,
-        screen_w: Pixels,
-        screen_h: Pixels,
-        rotation: DisplayRotation,
-    ) -> SurfaceFit {
+    pub fn surface_fit(&self, area: Vec2<Pixels>, rotation: DisplayRotation) -> SurfaceFit {
         SurfaceFit::new(
-            self.width_mm(),
-            self.height_mm(),
-            screen_w,
-            screen_h,
+            Vec2::from_mm(self.width_mm(), self.height_mm()),
+            area,
             rotation,
         )
     }
@@ -121,15 +114,14 @@ impl Calibration {
     /// `rotation` first turns the position into the displayed orientation
     /// (the evdev stream always speaks the panel's native frame); the
     /// result is then scaled *uniformly* - the largest factor fitting the
-    /// surface into the drawing area, letterboxed centered, so figures
+    /// surface into the display `area`, letterboxed centered, so figures
     /// keep their physical aspect instead of stretching when panel and
     /// screen aspects differ. Returns `(0.0, 0.0)` when no
     /// bounds/resolution are available.
     pub fn mm_to_screen(
         &self,
         pos: Vec2<Millimeters>,
-        screen_w: Pixels,
-        screen_h: Pixels,
+        area: Vec2<Pixels>,
         rotation: DisplayRotation,
     ) -> Vec2<Pixels> {
         if self.width_mm().as_f64() <= 0.0 || self.height_mm().as_f64() <= 0.0 {
@@ -137,7 +129,7 @@ impl Calibration {
         }
         let local =
             pos - Vec2::<Millimeters>::new(self.x_min / self.x_res, self.y_min / self.y_res);
-        self.surface_fit(screen_w, screen_h, rotation).map(local)
+        self.surface_fit(area, rotation).map(local)
     }
 }
 
