@@ -19,6 +19,13 @@ use std::ops::Sub;
 pub struct Millimeters(pub f64);
 
 impl Millimeters {
+    /// Zero.
+    pub const ZERO: Self = Self(0.0);
+
+    /// Positive infinity - the "unreachable" sentinel for
+    /// shortest-path accumulation.
+    pub const INFINITY: Self = Self(f64::INFINITY);
+
     /// Creates a millimeter value.
     pub const fn new(millimeters: f64) -> Self {
         Self(millimeters)
