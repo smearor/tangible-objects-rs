@@ -108,7 +108,7 @@ mod tests {
     use crate::EventKind;
     use crate::StreamEvent;
     use crate::TangibleEvent;
-    use tangible_objects_model::PatternId;
+    use tangible_objects_model::{FrameCount, PatternId, RotationRad, TangibleId, TrackedTangible, Vec2, DEFAULT_SPAWN_STABILITY};
 
     fn event(kind: EventKind) -> TangibleEvent {
         TangibleEvent {
@@ -152,16 +152,16 @@ mod tests {
             None,
         );
         let mut added = event(EventKind::TangibleAdded);
-        added.tangible = Some(tangible_objects_model::TrackedTangible {
-            id: tangible_objects_model::TangibleId::new(1),
+        added.tangible = Some(TrackedTangible {
+            id: TangibleId::new(1),
             pattern_id: PatternId::new(5),
             pattern_name: "fig".into(),
-            center: tangible_objects_model::Vec2::ZERO,
-            rotation_rad: tangible_objects_model::RotationRad::new(0.0),
+            center: Vec2::ZERO,
+            rotation_rad: RotationRad::new(0.0),
             pending: false,
-            pending_frames: tangible_objects_model::FrameCount::new(0),
-            spawn_stability: tangible_objects_model::DEFAULT_SPAWN_STABILITY,
-            frames_since_match: tangible_objects_model::FrameCount::new(0),
+            pending_frames: FrameCount::new(0),
+            spawn_stability: DEFAULT_SPAWN_STABILITY,
+            frames_since_match: FrameCount::new(0),
         });
         assert!(filter.accepts(&added));
         added.tangible.as_mut().unwrap().pattern_id = PatternId::new(9);
