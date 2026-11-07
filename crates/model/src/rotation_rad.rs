@@ -17,6 +17,9 @@ use std::ops::Sub;
 pub struct RotationRad(pub f64);
 
 impl RotationRad {
+    /// No rotation.
+    pub const ZERO: Self = Self(0.0);
+
     /// Creates a rotation from radians.
     pub const fn new(radians: f64) -> Self {
         Self(radians)
@@ -25,6 +28,11 @@ impl RotationRad {
     /// The angle in radians.
     pub const fn as_f64(self) -> f64 {
         self.0
+    }
+
+    /// Whether the rotation is zero (no turn).
+    pub fn is_zero(self) -> bool {
+        self.0 == 0.0
     }
 
     /// The angle converted to degrees.
@@ -125,7 +133,6 @@ async_graphql::scalar!(RotationRad);
 mod tests {
     use super::RotationRad;
     use crate::SmoothingAlpha;
-    use crate::Vec2;
     use std::f64::consts::PI;
 
     /// `alpha = 1` makes the blend pure `new` - history has no weight.
