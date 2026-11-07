@@ -272,7 +272,6 @@ mod tests {
         assert_eq!(Vec2::centroid(&empty), Vec2::new(0.0, 0.0));
     }
 
-    #[test]
     /// Vectors add, subtract, negate and scale component-wise.
     #[test]
     fn arithmetic_ops() {

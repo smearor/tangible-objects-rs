@@ -41,13 +41,12 @@ impl WindowAnchor {
     /// coordinate space: window-relative mm, or `0.0..=1.0` when
     /// `width`/`height` are set.
     pub fn to_local(&self, point: &Vec2<Millimeters>) -> Vec2<Millimeters> {
-        let local_x = point.x - self.x_offset.as_f64();
-        let local_y = point.y - self.y_offset.as_f64();
+        let local = *point - Vec2::<Millimeters>::from_mm(self.x_offset, self.y_offset);
         match (self.width, self.height) {
             (Some(width), Some(height)) => {
-                Vec2::new(local_x / width.as_f64(), local_y / height.as_f64())
+                Vec2::new(local.x / width.as_f64(), local.y / height.as_f64())
             }
-            _ => Vec2::new(local_x, local_y),
+            _ => local,
         }
     }
 }

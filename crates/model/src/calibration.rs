@@ -135,10 +135,8 @@ impl Calibration {
         if self.width_mm().as_f64() <= 0.0 || self.height_mm().as_f64() <= 0.0 {
             return Vec2::ZERO;
         }
-        let local = Vec2::<Millimeters>::new(
-            pos.x - self.x_min / self.x_res,
-            pos.y - self.y_min / self.y_res,
-        );
+        let local =
+            pos - Vec2::<Millimeters>::new(self.x_min / self.x_res, self.y_min / self.y_res);
         self.surface_fit(screen_w, screen_h, rotation).map(local)
     }
 }

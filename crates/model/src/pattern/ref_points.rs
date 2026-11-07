@@ -110,10 +110,10 @@ impl RefPoints {
         let mut dot = 0.0;
         for (mi, m) in measured.iter().enumerate() {
             let r = self[mapping[mi]];
-            let dr = (r.x - ref_center.x, r.y - ref_center.y);
-            let dm = (m.x - meas_center.x, m.y - meas_center.y);
-            cross += dr.0 * dm.1 - dr.1 * dm.0;
-            dot += dr.0 * dm.0 + dr.1 * dm.1;
+            let dr = r - ref_center;
+            let dm = *m - meas_center;
+            cross += dr.cross::<f64>(&dm);
+            dot += dr.dot::<f64>(&dm);
         }
         if dot.abs() + cross.abs() < 1e-9 {
             return None;

@@ -127,10 +127,7 @@ impl TrackedTangible {
     /// position.
     pub fn smooth_center(&mut self, alpha: SmoothingAlpha, measured: Vec2<Millimeters>) {
         let alpha = alpha.as_f64();
-        self.center = Vec2::new(
-            alpha * measured.x + (1.0 - alpha) * self.center.x,
-            alpha * measured.y + (1.0 - alpha) * self.center.y,
-        );
+        self.center = measured * alpha + self.center * (1.0 - alpha);
     }
 }
 

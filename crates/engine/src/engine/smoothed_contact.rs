@@ -33,10 +33,7 @@ impl SmoothedContact {
     ) -> Vec2<Millimeters> {
         if self.tracking_id == id {
             let alpha = alpha.as_f64();
-            Vec2::new(
-                alpha * pos.x + (1.0 - alpha) * self.pos.x,
-                alpha * pos.y + (1.0 - alpha) * self.pos.y,
-            )
+            pos * alpha + self.pos * (1.0 - alpha)
         } else {
             pos
         }

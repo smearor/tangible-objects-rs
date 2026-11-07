@@ -63,11 +63,14 @@ impl<'a> PointSet<'a> {
                 1 // side 0-2 shortest, opposite vertex is 1
             };
 
-            let p = &self[ref_index];
-            RotationRad::new((p.y - center.y).atan2(p.x - center.x))
+            let d = self[ref_index] - *center;
+            RotationRad::new(d.y.atan2(d.x))
         } else {
             match self.farthest_from(center) {
-                Some(p) => RotationRad::new((p.y - center.y).atan2(p.x - center.x)),
+                Some(p) => {
+                    let d = p - *center;
+                    RotationRad::new(d.y.atan2(d.x))
+                }
                 None => RotationRad::new(0.0),
             }
         }
