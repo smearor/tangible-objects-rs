@@ -1,9 +1,11 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Display;
+use std::iter::Sum;
 use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
+use std::ops::Neg;
 use std::ops::Sub;
 
 /// A coordinate or extent in screen pixels.
@@ -71,12 +73,42 @@ impl Mul<f64> for Pixels {
     }
 }
 
+impl Mul<Pixels> for f64 {
+    type Output = Pixels;
+
+    fn mul(self, rhs: Pixels) -> Pixels {
+        rhs * self
+    }
+}
+
+impl Div<f64> for Pixels {
+    type Output = Self;
+
+    fn div(self, divisor: f64) -> Self {
+        Self(self.0 / divisor)
+    }
+}
+
+impl Neg for Pixels {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self(-self.0)
+    }
+}
+
 impl Div<Pixels> for Pixels {
     type Output = f64;
 
     /// Same-unit ratio - the dimensionless scalar.
     fn div(self, rhs: Pixels) -> f64 {
         self.0 / rhs.0
+    }
+}
+
+impl Sum for Pixels {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self(0.0), Add::add)
     }
 }
 
@@ -95,5 +127,19 @@ impl From<Pixels> for f64 {
 impl Display for Pixels {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Pixels;
+
+    #[test]
+    fn ops_work() {
+        let px = Pixels::new(4.0);
+        assert_eq!((-px).as_f64(), -4.0);
+        assert_eq!((px / 2.0).as_f64(), 2.0);
+        assert_eq!((2.0 * px).as_f64(), 8.0);
+        assert_eq!([px, px, px].into_iter().sum::<Pixels>().as_f64(), 12.0);
     }
 }

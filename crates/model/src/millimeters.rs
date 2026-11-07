@@ -4,7 +4,9 @@ use std::cmp::Ordering;
 use std::fmt::Display;
 use std::iter::Sum;
 use std::ops::Add;
+use std::ops::Div;
 use std::ops::Mul;
+use std::ops::Neg;
 use std::ops::Sub;
 
 /// A length or coordinate in millimeters on the touch surface.
@@ -86,6 +88,39 @@ impl Mul<f64> for Millimeters {
     }
 }
 
+impl Mul<Millimeters> for f64 {
+    type Output = Millimeters;
+
+    fn mul(self, rhs: Millimeters) -> Millimeters {
+        rhs * self
+    }
+}
+
+impl Div<f64> for Millimeters {
+    type Output = Self;
+
+    fn div(self, divisor: f64) -> Self {
+        Self(self.0 / divisor)
+    }
+}
+
+impl Div<Millimeters> for Millimeters {
+    type Output = f64;
+
+    /// Same-unit ratio - the dimensionless scalar.
+    fn div(self, rhs: Millimeters) -> f64 {
+        self.0 / rhs.0
+    }
+}
+
+impl Neg for Millimeters {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self(-self.0)
+    }
+}
+
 impl Sum for Millimeters {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self(0.0), Add::add)
@@ -112,3 +147,17 @@ impl Display for Millimeters {
 
 #[cfg(feature = "async-graphql")]
 async_graphql::scalar!(Millimeters);
+
+#[cfg(test)]
+mod tests {
+    use super::Millimeters;
+
+    #[test]
+    fn ops_work() {
+        let mm = Millimeters::new(4.0);
+        assert_eq!((-mm).as_f64(), -4.0);
+        assert_eq!((mm / 2.0).as_f64(), 2.0);
+        assert_eq!((2.0 * mm).as_f64(), 8.0);
+        assert!((mm / Millimeters::new(2.0) - 2.0).abs() < 1e-9);
+    }
+}
