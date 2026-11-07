@@ -110,10 +110,10 @@
 <a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span><span class="kw-2">mut </span>dot = <span class="number">0.0</span>;
 <a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">for </span>(mi, m) <span class="kw">in </span>measured.iter().enumerate() {
 <a href=#112 id=112 data-nosnippet>112</a>            <span class="kw">let </span>r = <span class="self">self</span>[mapping[mi]];
-<a href=#113 id=113 data-nosnippet>113</a>            <span class="kw">let </span>dr = (r.x - ref_center.x, r.y - ref_center.y);
-<a href=#114 id=114 data-nosnippet>114</a>            <span class="kw">let </span>dm = (m.x - meas_center.x, m.y - meas_center.y);
-<a href=#115 id=115 data-nosnippet>115</a>            cross += dr.<span class="number">0 </span>* dm.<span class="number">1 </span>- dr.<span class="number">1 </span>* dm.<span class="number">0</span>;
-<a href=#116 id=116 data-nosnippet>116</a>            dot += dr.<span class="number">0 </span>* dm.<span class="number">0 </span>+ dr.<span class="number">1 </span>* dm.<span class="number">1</span>;
+<a href=#113 id=113 data-nosnippet>113</a>            <span class="kw">let </span>dr = r - ref_center;
+<a href=#114 id=114 data-nosnippet>114</a>            <span class="kw">let </span>dm = <span class="kw-2">*</span>m - meas_center;
+<a href=#115 id=115 data-nosnippet>115</a>            cross += dr.cross::&lt;f64&gt;(<span class="kw-2">&amp;</span>dm);
+<a href=#116 id=116 data-nosnippet>116</a>            dot += dr.dot::&lt;f64&gt;(<span class="kw-2">&amp;</span>dm);
 <a href=#117 id=117 data-nosnippet>117</a>        }
 <a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">if </span>dot.abs() + cross.abs() &lt; <span class="number">1e-9 </span>{
 <a href=#119 id=119 data-nosnippet>119</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
