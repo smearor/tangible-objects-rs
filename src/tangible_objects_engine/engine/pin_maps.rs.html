@@ -93,85 +93,88 @@
 <a href=#93 id=93 data-nosnippet>93</a>        square()
 <a href=#94 id=94 data-nosnippet>94</a>            .iter()
 <a href=#95 id=95 data-nosnippet>95</a>            .zip(slots)
-<a href=#96 id=96 data-nosnippet>96</a>            .map(|(p, <span class="kw-2">&amp;</span>slot)| TouchPoint {
-<a href=#97 id=97 data-nosnippet>97</a>                slot: TouchPointSlot::new(slot),
-<a href=#98 id=98 data-nosnippet>98</a>                tracking_id: TrackingId::new(slot <span class="kw">as </span>i32),
-<a href=#99 id=99 data-nosnippet>99</a>                pos: Vec2::new(<span class="number">100.0 </span>+ p.x * cos - p.y * sin, <span class="number">100.0 </span>+ p.x * sin + p.y * cos),
-<a href=#100 id=100 data-nosnippet>100</a>            })
-<a href=#101 id=101 data-nosnippet>101</a>            .collect()
-<a href=#102 id=102 data-nosnippet>102</a>    }
-<a href=#103 id=103 data-nosnippet>103</a>
-<a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">fn </span>solved_match(refs: <span class="kw-2">&amp;</span>[Vec2&lt;Millimeters&gt;], touch_indices: Vec&lt;usize&gt;) -&gt; PatternMatch {
-<a href=#105 id=105 data-nosnippet>105</a>        PatternMatch {
-<a href=#106 id=106 data-nosnippet>106</a>            pattern_id: PatternId::new(<span class="number">1</span>),
-<a href=#107 id=107 data-nosnippet>107</a>            pattern_name: <span class="string">"quad"</span>.into(),
-<a href=#108 id=108 data-nosnippet>108</a>            center: Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
-<a href=#109 id=109 data-nosnippet>109</a>            rotation_rad: RotationRad::new(<span class="number">0.0</span>),
-<a href=#110 id=110 data-nosnippet>110</a>            touch_indices: CombinationBuf::from(touch_indices),
-<a href=#111 id=111 data-nosnippet>111</a>            correspondence: RefIndices::all(refs.len().into()),
-<a href=#112 id=112 data-nosnippet>112</a>            ref_points: <span class="prelude-val">Some</span>(refs.to_vec().into()),
-<a href=#113 id=113 data-nosnippet>113</a>            partial: <span class="bool-val">false</span>,
-<a href=#114 id=114 data-nosnippet>114</a>            claimed_indices: ClaimedIndices::default(),
-<a href=#115 id=115 data-nosnippet>115</a>            spawn_stability: FrameCount::new(<span class="number">15</span>),
-<a href=#116 id=116 data-nosnippet>116</a>        }
-<a href=#117 id=117 data-nosnippet>117</a>    }
-<a href=#118 id=118 data-nosnippet>118</a>
-<a href=#119 id=119 data-nosnippet>119</a>    <span class="doccomment">/// First `sync` inserts a fresh binding under the tangible's id.
-<a href=#120 id=120 data-nosnippet>120</a>    </span><span class="attr">#[test]
-<a href=#121 id=121 data-nosnippet>121</a>    </span><span class="kw">fn </span>sync_inserts_on_first_match() {
-<a href=#122 id=122 data-nosnippet>122</a>        <span class="kw">let </span><span class="kw-2">mut </span>maps = PinMaps::default();
-<a href=#123 id=123 data-nosnippet>123</a>        <span class="kw">let </span>id = TangibleId::new(<span class="number">1</span>);
-<a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span>touch_set = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>pattern_match = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#126 id=126 data-nosnippet>126</a>        maps.sync(id, <span class="kw-2">&amp;</span>pattern_match, (<span class="kw-2">&amp;</span>touch_set).into());
-<a href=#127 id=127 data-nosnippet>127</a>        <span class="macro">assert_eq!</span>(maps.get(<span class="kw-2">&amp;</span>id).map(|m| m.genuine_slots().len()), <span class="prelude-val">Some</span>(<span class="number">4</span>));
-<a href=#128 id=128 data-nosnippet>128</a>    }
-<a href=#129 id=129 data-nosnippet>129</a>
-<a href=#130 id=130 data-nosnippet>130</a>    <span class="doccomment">/// `rotation_of` yields `None` for an unregistered tangible.
-<a href=#131 id=131 data-nosnippet>131</a>    </span><span class="attr">#[test]
-<a href=#132 id=132 data-nosnippet>132</a>    </span><span class="kw">fn </span>rotation_of_none_for_unknown_tangible() {
-<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>maps = PinMaps::default();
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>touch_set = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#135 id=135 data-nosnippet>135</a>        <span class="macro">assert!</span>(
-<a href=#136 id=136 data-nosnippet>136</a>            maps.rotation_of(TangibleId::new(<span class="number">9</span>), (<span class="kw-2">&amp;</span>touch_set).into())
-<a href=#137 id=137 data-nosnippet>137</a>                .is_none()
-<a href=#138 id=138 data-nosnippet>138</a>        );
-<a href=#139 id=139 data-nosnippet>139</a>    }
-<a href=#140 id=140 data-nosnippet>140</a>
-<a href=#141 id=141 data-nosnippet>141</a>    <span class="doccomment">/// After `sync`, `rotation_of` fits the bound slots' planted
-<a href=#142 id=142 data-nosnippet>142</a>    /// rotation back out of the persisted map.
-<a href=#143 id=143 data-nosnippet>143</a>    </span><span class="attr">#[test]
-<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="kw">fn </span>rotation_of_reads_planted_angle() {
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span><span class="kw-2">mut </span>maps = PinMaps::default();
-<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>id = TangibleId::new(<span class="number">1</span>);
-<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span>spawn = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>pattern_match = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#149 id=149 data-nosnippet>149</a>        maps.sync(id, <span class="kw-2">&amp;</span>pattern_match, (<span class="kw-2">&amp;</span>spawn).into());
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw">let </span>moved = touches(<span class="number">0.3</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#151 id=151 data-nosnippet>151</a>        <span class="kw">let </span>rotation = maps.rotation_of(id, (<span class="kw-2">&amp;</span>moved).into());
-<a href=#152 id=152 data-nosnippet>152</a>        <span class="macro">assert!</span>(
-<a href=#153 id=153 data-nosnippet>153</a>            rotation.is_some_and(|r| (r.as_f64() - <span class="number">0.3</span>).abs() &lt; <span class="number">0.05</span>),
-<a href=#154 id=154 data-nosnippet>154</a>            <span class="string">"synced map must recover the planted rotation"
-<a href=#155 id=155 data-nosnippet>155</a>        </span>);
-<a href=#156 id=156 data-nosnippet>156</a>    }
-<a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// A match whose genuine slots changed re-binds the map -
-<a href=#159 id=159 data-nosnippet>159</a>    /// `sync` runs `refresh_genuine`, not just `update_claimed`.
-<a href=#160 id=160 data-nosnippet>160</a>    </span><span class="attr">#[test]
-<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="kw">fn </span>sync_rebinds_when_genuine_slots_change() {
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span><span class="kw-2">mut </span>maps = PinMaps::default();
-<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">let </span>id = TangibleId::new(<span class="number">1</span>);
-<a href=#164 id=164 data-nosnippet>164</a>        <span class="kw">let </span>spawn = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">let </span>first = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#166 id=166 data-nosnippet>166</a>        maps.sync(id, <span class="kw-2">&amp;</span>first, (<span class="kw-2">&amp;</span>spawn).into());
-<a href=#167 id=167 data-nosnippet>167</a>        <span class="comment">// Same pattern re-bound on four different slots - the touch
-<a href=#168 id=168 data-nosnippet>168</a>        // indices stay positional; the slots behind them changed.
-<a href=#169 id=169 data-nosnippet>169</a>        </span><span class="kw">let </span>rebound = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]);
-<a href=#170 id=170 data-nosnippet>170</a>        <span class="kw">let </span>second = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#171 id=171 data-nosnippet>171</a>        maps.sync(id, <span class="kw-2">&amp;</span>second, (<span class="kw-2">&amp;</span>rebound).into());
-<a href=#172 id=172 data-nosnippet>172</a>        <span class="kw">let </span>bound = maps.get(<span class="kw-2">&amp;</span>id).map(|m| m.genuine_slots()).unwrap_or_default();
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="macro">assert!</span>(bound.contains(<span class="kw-2">&amp;</span>TouchPointSlot::new(<span class="number">4</span>)));
-<a href=#174 id=174 data-nosnippet>174</a>        <span class="macro">assert!</span>(!bound.contains(<span class="kw-2">&amp;</span>TouchPointSlot::new(<span class="number">0</span>)));
-<a href=#175 id=175 data-nosnippet>175</a>    }
-<a href=#176 id=176 data-nosnippet>176</a>}
+<a href=#96 id=96 data-nosnippet>96</a>            .map(|(p, <span class="kw-2">&amp;</span>slot)| {
+<a href=#97 id=97 data-nosnippet>97</a>                <span class="kw">let </span>offset = Vec2::&lt;Millimeters&gt;::new(<span class="number">100.0</span>, <span class="number">100.0</span>);
+<a href=#98 id=98 data-nosnippet>98</a>                TouchPoint {
+<a href=#99 id=99 data-nosnippet>99</a>                    slot: TouchPointSlot::new(slot),
+<a href=#100 id=100 data-nosnippet>100</a>                    tracking_id: TrackingId::new(slot <span class="kw">as </span>i32),
+<a href=#101 id=101 data-nosnippet>101</a>                    pos: offset + <span class="kw-2">*</span>p * cos + p.perpendicular() * sin,
+<a href=#102 id=102 data-nosnippet>102</a>                }
+<a href=#103 id=103 data-nosnippet>103</a>            })
+<a href=#104 id=104 data-nosnippet>104</a>            .collect()
+<a href=#105 id=105 data-nosnippet>105</a>    }
+<a href=#106 id=106 data-nosnippet>106</a>
+<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">fn </span>solved_match(refs: <span class="kw-2">&amp;</span>[Vec2&lt;Millimeters&gt;], touch_indices: Vec&lt;usize&gt;) -&gt; PatternMatch {
+<a href=#108 id=108 data-nosnippet>108</a>        PatternMatch {
+<a href=#109 id=109 data-nosnippet>109</a>            pattern_id: PatternId::new(<span class="number">1</span>),
+<a href=#110 id=110 data-nosnippet>110</a>            pattern_name: <span class="string">"quad"</span>.into(),
+<a href=#111 id=111 data-nosnippet>111</a>            center: Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
+<a href=#112 id=112 data-nosnippet>112</a>            rotation_rad: RotationRad::new(<span class="number">0.0</span>),
+<a href=#113 id=113 data-nosnippet>113</a>            touch_indices: CombinationBuf::from(touch_indices),
+<a href=#114 id=114 data-nosnippet>114</a>            correspondence: RefIndices::all(refs.len().into()),
+<a href=#115 id=115 data-nosnippet>115</a>            ref_points: <span class="prelude-val">Some</span>(refs.to_vec().into()),
+<a href=#116 id=116 data-nosnippet>116</a>            partial: <span class="bool-val">false</span>,
+<a href=#117 id=117 data-nosnippet>117</a>            claimed_indices: ClaimedIndices::default(),
+<a href=#118 id=118 data-nosnippet>118</a>            spawn_stability: FrameCount::new(<span class="number">15</span>),
+<a href=#119 id=119 data-nosnippet>119</a>        }
+<a href=#120 id=120 data-nosnippet>120</a>    }
+<a href=#121 id=121 data-nosnippet>121</a>
+<a href=#122 id=122 data-nosnippet>122</a>    <span class="doccomment">/// First `sync` inserts a fresh binding under the tangible's id.
+<a href=#123 id=123 data-nosnippet>123</a>    </span><span class="attr">#[test]
+<a href=#124 id=124 data-nosnippet>124</a>    </span><span class="kw">fn </span>sync_inserts_on_first_match() {
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span><span class="kw-2">mut </span>maps = PinMaps::default();
+<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>id = TangibleId::new(<span class="number">1</span>);
+<a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span>touch_set = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">let </span>pattern_match = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#129 id=129 data-nosnippet>129</a>        maps.sync(id, <span class="kw-2">&amp;</span>pattern_match, (<span class="kw-2">&amp;</span>touch_set).into());
+<a href=#130 id=130 data-nosnippet>130</a>        <span class="macro">assert_eq!</span>(maps.get(<span class="kw-2">&amp;</span>id).map(|m| m.genuine_slots().len()), <span class="prelude-val">Some</span>(<span class="number">4</span>));
+<a href=#131 id=131 data-nosnippet>131</a>    }
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a>    <span class="doccomment">/// `rotation_of` yields `None` for an unregistered tangible.
+<a href=#134 id=134 data-nosnippet>134</a>    </span><span class="attr">#[test]
+<a href=#135 id=135 data-nosnippet>135</a>    </span><span class="kw">fn </span>rotation_of_none_for_unknown_tangible() {
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="kw">let </span>maps = PinMaps::default();
+<a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">let </span>touch_set = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#138 id=138 data-nosnippet>138</a>        <span class="macro">assert!</span>(
+<a href=#139 id=139 data-nosnippet>139</a>            maps.rotation_of(TangibleId::new(<span class="number">9</span>), (<span class="kw-2">&amp;</span>touch_set).into())
+<a href=#140 id=140 data-nosnippet>140</a>                .is_none()
+<a href=#141 id=141 data-nosnippet>141</a>        );
+<a href=#142 id=142 data-nosnippet>142</a>    }
+<a href=#143 id=143 data-nosnippet>143</a>
+<a href=#144 id=144 data-nosnippet>144</a>    <span class="doccomment">/// After `sync`, `rotation_of` fits the bound slots' planted
+<a href=#145 id=145 data-nosnippet>145</a>    /// rotation back out of the persisted map.
+<a href=#146 id=146 data-nosnippet>146</a>    </span><span class="attr">#[test]
+<a href=#147 id=147 data-nosnippet>147</a>    </span><span class="kw">fn </span>rotation_of_reads_planted_angle() {
+<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span><span class="kw-2">mut </span>maps = PinMaps::default();
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>id = TangibleId::new(<span class="number">1</span>);
+<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw">let </span>spawn = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#151 id=151 data-nosnippet>151</a>        <span class="kw">let </span>pattern_match = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#152 id=152 data-nosnippet>152</a>        maps.sync(id, <span class="kw-2">&amp;</span>pattern_match, (<span class="kw-2">&amp;</span>spawn).into());
+<a href=#153 id=153 data-nosnippet>153</a>        <span class="kw">let </span>moved = touches(<span class="number">0.3</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">let </span>rotation = maps.rotation_of(id, (<span class="kw-2">&amp;</span>moved).into());
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="macro">assert!</span>(
+<a href=#156 id=156 data-nosnippet>156</a>            rotation.is_some_and(|r| (r.as_f64() - <span class="number">0.3</span>).abs() &lt; <span class="number">0.05</span>),
+<a href=#157 id=157 data-nosnippet>157</a>            <span class="string">"synced map must recover the planted rotation"
+<a href=#158 id=158 data-nosnippet>158</a>        </span>);
+<a href=#159 id=159 data-nosnippet>159</a>    }
+<a href=#160 id=160 data-nosnippet>160</a>
+<a href=#161 id=161 data-nosnippet>161</a>    <span class="doccomment">/// A match whose genuine slots changed re-binds the map -
+<a href=#162 id=162 data-nosnippet>162</a>    /// `sync` runs `refresh_genuine`, not just `update_claimed`.
+<a href=#163 id=163 data-nosnippet>163</a>    </span><span class="attr">#[test]
+<a href=#164 id=164 data-nosnippet>164</a>    </span><span class="kw">fn </span>sync_rebinds_when_genuine_slots_change() {
+<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">let </span><span class="kw-2">mut </span>maps = PinMaps::default();
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">let </span>id = TangibleId::new(<span class="number">1</span>);
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">let </span>spawn = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>first = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#169 id=169 data-nosnippet>169</a>        maps.sync(id, <span class="kw-2">&amp;</span>first, (<span class="kw-2">&amp;</span>spawn).into());
+<a href=#170 id=170 data-nosnippet>170</a>        <span class="comment">// Same pattern re-bound on four different slots - the touch
+<a href=#171 id=171 data-nosnippet>171</a>        // indices stay positional; the slots behind them changed.
+<a href=#172 id=172 data-nosnippet>172</a>        </span><span class="kw">let </span>rebound = touches(<span class="number">0.0</span>, <span class="kw-2">&amp;</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]);
+<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">let </span>second = solved_match(<span class="kw-2">&amp;</span>square(), <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#174 id=174 data-nosnippet>174</a>        maps.sync(id, <span class="kw-2">&amp;</span>second, (<span class="kw-2">&amp;</span>rebound).into());
+<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span>bound = maps.get(<span class="kw-2">&amp;</span>id).map(|m| m.genuine_slots()).unwrap_or_default();
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="macro">assert!</span>(bound.contains(<span class="kw-2">&amp;</span>TouchPointSlot::new(<span class="number">4</span>)));
+<a href=#177 id=177 data-nosnippet>177</a>        <span class="macro">assert!</span>(!bound.contains(<span class="kw-2">&amp;</span>TouchPointSlot::new(<span class="number">0</span>)));
+<a href=#178 id=178 data-nosnippet>178</a>    }
+<a href=#179 id=179 data-nosnippet>179</a>}
 </code></pre></div></section></main></body></html>

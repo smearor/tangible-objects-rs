@@ -23,7 +23,7 @@
 <a href=#23 id=23 data-nosnippet>23</a>    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, p: Vec2&lt;Millimeters&gt;) -&gt; Vec2&lt;Millimeters&gt; {
 <a href=#24 id=24 data-nosnippet>24</a>        <span class="kw">let </span>(sin, cos) = <span class="self">self</span>.angle.sin_cos();
 <a href=#25 id=25 data-nosnippet>25</a>        <span class="kw">let </span>d = p - <span class="self">self</span>.ref_center;
-<a href=#26 id=26 data-nosnippet>26</a>        <span class="self">self</span>.meas_center + Vec2::new(d.x * cos - d.y * sin, d.x * sin + d.y * cos)
+<a href=#26 id=26 data-nosnippet>26</a>        <span class="self">self</span>.meas_center + d * cos + d.perpendicular() * sin
 <a href=#27 id=27 data-nosnippet>27</a>    }
 <a href=#28 id=28 data-nosnippet>28</a>
 <a href=#29 id=29 data-nosnippet>29</a>    <span class="doccomment">/// Sum of squared residuals - `Σ d²` over every ref position's

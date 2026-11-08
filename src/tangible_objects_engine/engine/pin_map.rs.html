@@ -115,69 +115,73 @@
 <a href=#115 id=115 data-nosnippet>115</a>        [(<span class="number">0.0</span>, <span class="number">0.0</span>), (<span class="number">40.0</span>, <span class="number">0.0</span>), (<span class="number">40.0</span>, <span class="number">40.0</span>), (<span class="number">0.0</span>, <span class="number">40.0</span>)]
 <a href=#116 id=116 data-nosnippet>116</a>            .iter()
 <a href=#117 id=117 data-nosnippet>117</a>            .enumerate()
-<a href=#118 id=118 data-nosnippet>118</a>            .map(|(i, <span class="kw-2">&amp;</span>(x, y))| TouchPoint {
-<a href=#119 id=119 data-nosnippet>119</a>                slot: TouchPointSlot::new(i <span class="kw">as </span>u32),
-<a href=#120 id=120 data-nosnippet>120</a>                tracking_id: TrackingId::new(i <span class="kw">as </span>i32),
-<a href=#121 id=121 data-nosnippet>121</a>                pos: Vec2::new(<span class="number">100.0 </span>+ x * cos - y * sin, <span class="number">100.0 </span>+ x * sin + y * cos),
-<a href=#122 id=122 data-nosnippet>122</a>            })
-<a href=#123 id=123 data-nosnippet>123</a>            .collect()
-<a href=#124 id=124 data-nosnippet>124</a>    }
-<a href=#125 id=125 data-nosnippet>125</a>
-<a href=#126 id=126 data-nosnippet>126</a>    <span class="kw">fn </span>solved_match(refs: <span class="kw-2">&amp;</span>[Vec2&lt;Millimeters&gt;]) -&gt; PatternMatch {
-<a href=#127 id=127 data-nosnippet>127</a>        PatternMatch {
-<a href=#128 id=128 data-nosnippet>128</a>            pattern_id: PatternId::new(<span class="number">1</span>),
-<a href=#129 id=129 data-nosnippet>129</a>            pattern_name: <span class="string">"quad"</span>.into(),
-<a href=#130 id=130 data-nosnippet>130</a>            center: Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
-<a href=#131 id=131 data-nosnippet>131</a>            rotation_rad: RotationRad::new(<span class="number">0.0</span>),
-<a href=#132 id=132 data-nosnippet>132</a>            touch_indices: CombinationBuf::from(<span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
-<a href=#133 id=133 data-nosnippet>133</a>            correspondence: <span class="macro">vec!</span>[<span class="number">0</span>.into(), <span class="number">1</span>.into(), <span class="number">2</span>.into(), <span class="number">3</span>.into()].into(),
-<a href=#134 id=134 data-nosnippet>134</a>            ref_points: <span class="prelude-val">Some</span>(refs.to_vec().into()),
-<a href=#135 id=135 data-nosnippet>135</a>            partial: <span class="bool-val">false</span>,
-<a href=#136 id=136 data-nosnippet>136</a>            claimed_indices: ClaimedIndices::default(),
-<a href=#137 id=137 data-nosnippet>137</a>            spawn_stability: FrameCount::new(<span class="number">15</span>),
-<a href=#138 id=138 data-nosnippet>138</a>        }
-<a href=#139 id=139 data-nosnippet>139</a>    }
-<a href=#140 id=140 data-nosnippet>140</a>
-<a href=#141 id=141 data-nosnippet>141</a>    <span class="doccomment">/// The persisted map reproduces the planted rotation of the
-<a href=#142 id=142 data-nosnippet>142</a>    /// bound slots (ROTATION.md testing section).
-<a href=#143 id=143 data-nosnippet>143</a>    </span><span class="attr">#[test]
-<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="kw">fn </span>rotation_reads_planted_angle() {
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>refs = <span class="macro">vec!</span>[
-<a href=#146 id=146 data-nosnippet>146</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
-<a href=#147 id=147 data-nosnippet>147</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">0.0</span>),
-<a href=#148 id=148 data-nosnippet>148</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">40.0</span>),
-<a href=#149 id=149 data-nosnippet>149</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">40.0</span>),
-<a href=#150 id=150 data-nosnippet>150</a>        ];
-<a href=#151 id=151 data-nosnippet>151</a>        <span class="kw">let </span>angle = <span class="number">0.7</span>;
-<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">let </span>touch_points = touches(angle);
-<a href=#153 id=153 data-nosnippet>153</a>        <span class="kw">let </span>map = PinMap::from_match(<span class="kw-2">&amp;</span>solved_match(<span class="kw-2">&amp;</span>refs), (<span class="kw-2">&amp;</span>touch_points).into());
-<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">let </span>rotation = map
-<a href=#155 id=155 data-nosnippet>155</a>            .rotation((<span class="kw-2">&amp;</span>touch_points).into())
-<a href=#156 id=156 data-nosnippet>156</a>            .expect(<span class="string">"identity-mapped square solves"</span>);
-<a href=#157 id=157 data-nosnippet>157</a>        <span class="macro">assert!</span>(
-<a href=#158 id=158 data-nosnippet>158</a>            (rotation.as_f64() - angle).abs() &lt; <span class="number">0.05</span>,
-<a href=#159 id=159 data-nosnippet>159</a>            <span class="string">"map rotation {}, planted {angle}"</span>,
-<a href=#160 id=160 data-nosnippet>160</a>            rotation.as_f64()
-<a href=#161 id=161 data-nosnippet>161</a>        );
-<a href=#162 id=162 data-nosnippet>162</a>    }
-<a href=#163 id=163 data-nosnippet>163</a>
-<a href=#164 id=164 data-nosnippet>164</a>    <span class="doccomment">/// Fewer than two bound slots gives no angle - the caller keeps
-<a href=#165 id=165 data-nosnippet>165</a>    /// the last good value then.
-<a href=#166 id=166 data-nosnippet>166</a>    </span><span class="attr">#[test]
-<a href=#167 id=167 data-nosnippet>167</a>    </span><span class="kw">fn </span>rotation_none_under_two_slots() {
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>refs = <span class="macro">vec!</span>[
-<a href=#169 id=169 data-nosnippet>169</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
-<a href=#170 id=170 data-nosnippet>170</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">0.0</span>),
-<a href=#171 id=171 data-nosnippet>171</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">40.0</span>),
-<a href=#172 id=172 data-nosnippet>172</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">40.0</span>),
-<a href=#173 id=173 data-nosnippet>173</a>        ];
-<a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">let </span><span class="kw-2">mut </span>match_ = solved_match(<span class="kw-2">&amp;</span>refs);
-<a href=#175 id=175 data-nosnippet>175</a>        match_.touch_indices = CombinationBuf::from(<span class="macro">vec!</span>[<span class="number">0</span>]);
-<a href=#176 id=176 data-nosnippet>176</a>        match_.correspondence = <span class="macro">vec!</span>[<span class="number">0</span>.into()].into();
-<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>touch_points = touches(<span class="number">0.0</span>);
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>map = PinMap::from_match(<span class="kw-2">&amp;</span>match_, (<span class="kw-2">&amp;</span>touch_points).into());
-<a href=#179 id=179 data-nosnippet>179</a>        <span class="macro">assert_eq!</span>(map.genuine_slots().len(), <span class="number">1</span>);
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="macro">assert!</span>(map.rotation((<span class="kw-2">&amp;</span>touch_points).into()).is_none());
-<a href=#181 id=181 data-nosnippet>181</a>    }
-<a href=#182 id=182 data-nosnippet>182</a>}
+<a href=#118 id=118 data-nosnippet>118</a>            .map(|(i, <span class="kw-2">&amp;</span>(x, y))| {
+<a href=#119 id=119 data-nosnippet>119</a>                <span class="kw">let </span>offset = Vec2::&lt;Millimeters&gt;::new(<span class="number">100.0</span>, <span class="number">100.0</span>);
+<a href=#120 id=120 data-nosnippet>120</a>                <span class="kw">let </span>point = Vec2::&lt;Millimeters&gt;::new(x, y);
+<a href=#121 id=121 data-nosnippet>121</a>                TouchPoint {
+<a href=#122 id=122 data-nosnippet>122</a>                    slot: TouchPointSlot::new(i <span class="kw">as </span>u32),
+<a href=#123 id=123 data-nosnippet>123</a>                    tracking_id: TrackingId::new(i <span class="kw">as </span>i32),
+<a href=#124 id=124 data-nosnippet>124</a>                    pos: offset + point * cos + point.perpendicular() * sin,
+<a href=#125 id=125 data-nosnippet>125</a>                }
+<a href=#126 id=126 data-nosnippet>126</a>            })
+<a href=#127 id=127 data-nosnippet>127</a>            .collect()
+<a href=#128 id=128 data-nosnippet>128</a>    }
+<a href=#129 id=129 data-nosnippet>129</a>
+<a href=#130 id=130 data-nosnippet>130</a>    <span class="kw">fn </span>solved_match(refs: <span class="kw-2">&amp;</span>[Vec2&lt;Millimeters&gt;]) -&gt; PatternMatch {
+<a href=#131 id=131 data-nosnippet>131</a>        PatternMatch {
+<a href=#132 id=132 data-nosnippet>132</a>            pattern_id: PatternId::new(<span class="number">1</span>),
+<a href=#133 id=133 data-nosnippet>133</a>            pattern_name: <span class="string">"quad"</span>.into(),
+<a href=#134 id=134 data-nosnippet>134</a>            center: Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
+<a href=#135 id=135 data-nosnippet>135</a>            rotation_rad: RotationRad::new(<span class="number">0.0</span>),
+<a href=#136 id=136 data-nosnippet>136</a>            touch_indices: CombinationBuf::from(<span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+<a href=#137 id=137 data-nosnippet>137</a>            correspondence: <span class="macro">vec!</span>[<span class="number">0</span>.into(), <span class="number">1</span>.into(), <span class="number">2</span>.into(), <span class="number">3</span>.into()].into(),
+<a href=#138 id=138 data-nosnippet>138</a>            ref_points: <span class="prelude-val">Some</span>(refs.to_vec().into()),
+<a href=#139 id=139 data-nosnippet>139</a>            partial: <span class="bool-val">false</span>,
+<a href=#140 id=140 data-nosnippet>140</a>            claimed_indices: ClaimedIndices::default(),
+<a href=#141 id=141 data-nosnippet>141</a>            spawn_stability: FrameCount::new(<span class="number">15</span>),
+<a href=#142 id=142 data-nosnippet>142</a>        }
+<a href=#143 id=143 data-nosnippet>143</a>    }
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>    <span class="doccomment">/// The persisted map reproduces the planted rotation of the
+<a href=#146 id=146 data-nosnippet>146</a>    /// bound slots (ROTATION.md testing section).
+<a href=#147 id=147 data-nosnippet>147</a>    </span><span class="attr">#[test]
+<a href=#148 id=148 data-nosnippet>148</a>    </span><span class="kw">fn </span>rotation_reads_planted_angle() {
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>refs = <span class="macro">vec!</span>[
+<a href=#150 id=150 data-nosnippet>150</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
+<a href=#151 id=151 data-nosnippet>151</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">0.0</span>),
+<a href=#152 id=152 data-nosnippet>152</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">40.0</span>),
+<a href=#153 id=153 data-nosnippet>153</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">40.0</span>),
+<a href=#154 id=154 data-nosnippet>154</a>        ];
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span>angle = <span class="number">0.7</span>;
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>touch_points = touches(angle);
+<a href=#157 id=157 data-nosnippet>157</a>        <span class="kw">let </span>map = PinMap::from_match(<span class="kw-2">&amp;</span>solved_match(<span class="kw-2">&amp;</span>refs), (<span class="kw-2">&amp;</span>touch_points).into());
+<a href=#158 id=158 data-nosnippet>158</a>        <span class="kw">let </span>rotation = map
+<a href=#159 id=159 data-nosnippet>159</a>            .rotation((<span class="kw-2">&amp;</span>touch_points).into())
+<a href=#160 id=160 data-nosnippet>160</a>            .expect(<span class="string">"identity-mapped square solves"</span>);
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="macro">assert!</span>(
+<a href=#162 id=162 data-nosnippet>162</a>            (rotation.as_f64() - angle).abs() &lt; <span class="number">0.05</span>,
+<a href=#163 id=163 data-nosnippet>163</a>            <span class="string">"map rotation {}, planted {angle}"</span>,
+<a href=#164 id=164 data-nosnippet>164</a>            rotation.as_f64()
+<a href=#165 id=165 data-nosnippet>165</a>        );
+<a href=#166 id=166 data-nosnippet>166</a>    }
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>    <span class="doccomment">/// Fewer than two bound slots gives no angle - the caller keeps
+<a href=#169 id=169 data-nosnippet>169</a>    /// the last good value then.
+<a href=#170 id=170 data-nosnippet>170</a>    </span><span class="attr">#[test]
+<a href=#171 id=171 data-nosnippet>171</a>    </span><span class="kw">fn </span>rotation_none_under_two_slots() {
+<a href=#172 id=172 data-nosnippet>172</a>        <span class="kw">let </span>refs = <span class="macro">vec!</span>[
+<a href=#173 id=173 data-nosnippet>173</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
+<a href=#174 id=174 data-nosnippet>174</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">0.0</span>),
+<a href=#175 id=175 data-nosnippet>175</a>            Vec2::new(<span class="number">40.0</span>, <span class="number">40.0</span>),
+<a href=#176 id=176 data-nosnippet>176</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">40.0</span>),
+<a href=#177 id=177 data-nosnippet>177</a>        ];
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span><span class="kw-2">mut </span>match_ = solved_match(<span class="kw-2">&amp;</span>refs);
+<a href=#179 id=179 data-nosnippet>179</a>        match_.touch_indices = CombinationBuf::from(<span class="macro">vec!</span>[<span class="number">0</span>]);
+<a href=#180 id=180 data-nosnippet>180</a>        match_.correspondence = <span class="macro">vec!</span>[<span class="number">0</span>.into()].into();
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>touch_points = touches(<span class="number">0.0</span>);
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>map = PinMap::from_match(<span class="kw-2">&amp;</span>match_, (<span class="kw-2">&amp;</span>touch_points).into());
+<a href=#183 id=183 data-nosnippet>183</a>        <span class="macro">assert_eq!</span>(map.genuine_slots().len(), <span class="number">1</span>);
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="macro">assert!</span>(map.rotation((<span class="kw-2">&amp;</span>touch_points).into()).is_none());
+<a href=#185 id=185 data-nosnippet>185</a>    }
+<a href=#186 id=186 data-nosnippet>186</a>}
 </code></pre></div></section></main></body></html>
