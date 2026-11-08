@@ -86,6 +86,25 @@ impl RotationRad {
     pub fn axis(&self) -> RotationRad {
         RotationRad(self.0.rem_euclid(PI) - PI / 2.0)
     }
+
+    /// The shortest signed turn between two undirected axes, in
+    /// `[-pi/2, pi/2)` - the [`Self::axis`]-space counterpart of
+    /// [`Self::signed_delta_to`]: axes wrap modulo `pi`, so two
+    /// nearly-parallel lines on opposite sides of the `+-pi/2`
+    /// fold keep a small delta instead of a nearly-pi swing.
+    pub fn axis_delta_to(self, to: RotationRad) -> RotationRad {
+        RotationRad((to.0 - self.0 + PI / 2.0).rem_euclid(PI) - PI / 2.0)
+    }
+
+    /// Axis-space [`Self::ema`]: wraps the blend along the `pi`
+    /// fold instead of the `2pi` wrap, so smoothing a
+    /// heading-ambiguous axis cannot swing a full half-turn when a
+    /// measurement crosses `+-pi/2`. `old` and `new` are axis
+    /// values; the result is folded back into `[-pi/2, pi/2)`.
+    pub fn ema_axis(old: RotationRad, new: RotationRad, alpha: SmoothingAlpha) -> RotationRad {
+        let blended = RotationRad(old.0 + alpha.as_f64() * old.axis_delta_to(new).0);
+        RotationRad::ZERO.axis_delta_to(blended)
+    }
 }
 
 impl From<f64> for RotationRad {
@@ -248,5 +267,60 @@ mod tests {
         assert!(RotationRad::new(PI / 2.0).axis().as_f64().abs() < 1e-9);
         assert!(RotationRad::new(-PI / 2.0).axis().as_f64().abs() < 1e-9);
         assert!((RotationRad::new(PI).axis().as_f64() + PI / 2.0).abs() < 1e-9);
+    }
+
+    /// Ordinary axis deltas pass through unchanged; an antipodal
+    /// turn (the same line) reports a zero delta.
+    #[test]
+    fn axis_delta_inside_bounds() {
+        let a = RotationRad::new(0.2);
+        let b = RotationRad::new(0.9);
+        assert!((a.axis_delta_to(b).as_f64() - 0.7).abs() < 1e-9);
+        assert!((b.axis_delta_to(a).as_f64() + 0.7).abs() < 1e-9);
+        assert!(
+            a.axis_delta_to(RotationRad::new(a.as_f64() + PI))
+                .as_f64()
+                .abs()
+                < 1e-9
+        );
+    }
+
+    /// `axis_delta_to` wraps modulo `pi`: two nearly-parallel lines
+    /// on opposite sides of the `+-pi/2` fold keep a small turn
+    /// (~0.14 rad) instead of the ~3 rad `signed_delta_to` would
+    /// report for the raw values.
+    #[test]
+    fn axis_delta_wraps_across_the_fold() {
+        let old = RotationRad::new(-1.5);
+        let new = RotationRad::new(1.5);
+        let delta = old.axis_delta_to(new).as_f64();
+        assert!((delta - (3.0 - PI)).abs() < 1e-9);
+        // antisymmetric, like signed_delta_to
+        assert!((new.axis_delta_to(old).as_f64() + delta).abs() < 1e-9);
+    }
+
+    /// Plain axis blends stay linear inside the range.
+    #[test]
+    fn ema_axis_inside_bounds() {
+        let blended = RotationRad::ema_axis(
+            RotationRad::new(0.0),
+            RotationRad::new(0.4),
+            SmoothingAlpha::new(0.5),
+        );
+        assert!((blended.as_f64() - 0.2).abs() < 1e-9);
+    }
+
+    /// `ema_axis` blends through the `+-pi/2` fold: the midpoint of
+    /// two near-horizontal axes on opposite fold sides lands on
+    /// the horizontal boundary (`-pi/2`) instead of sweeping the
+    /// long way around.
+    #[test]
+    fn ema_axis_blends_across_the_fold() {
+        let blended = RotationRad::ema_axis(
+            RotationRad::new(-1.5),
+            RotationRad::new(1.5),
+            SmoothingAlpha::new(0.5),
+        );
+        assert!((blended.as_f64() + PI / 2.0).abs() < 1e-9);
     }
 }
