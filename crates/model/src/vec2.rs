@@ -327,6 +327,32 @@ mod tests {
         assert_eq!(vector.direction().as_f64(), 4.0_f64.atan2(3.0));
     }
 
+    /// `direction` reads the atan2 angle of each axis and quadrant.
+    #[test]
+    fn direction_of_axes_and_quadrants() {
+        let pi = std::f64::consts::PI;
+        assert_eq!(Vec2::<Millimeters>::new(1.0, 0.0).direction().as_f64(), 0.0);
+        assert_eq!(
+            Vec2::<Millimeters>::new(0.0, 1.0).direction().as_f64(),
+            pi / 2.0
+        );
+        assert_eq!(Vec2::<Millimeters>::new(-1.0, 0.0).direction().as_f64(), pi);
+        assert_eq!(
+            Vec2::<Millimeters>::new(0.0, -1.0).direction().as_f64(),
+            -pi / 2.0
+        );
+        assert_eq!(
+            Vec2::<Millimeters>::new(1.0, 1.0).direction().as_f64(),
+            pi / 4.0
+        );
+        assert_eq!(
+            Vec2::<Millimeters>::new(-1.0, 1.0).direction().as_f64(),
+            3.0 * pi / 4.0
+        );
+        // the degenerate case has no direction - atan2(0, 0) yields 0
+        assert_eq!(Vec2::<Millimeters>::ZERO.direction().as_f64(), 0.0);
+    }
+
     /// `normalized` yields a unit vector in the same direction.
     #[test]
     fn normalized_preserves_direction() {
