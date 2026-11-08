@@ -63,109 +63,111 @@
 <a href=#63 id=63 data-nosnippet>63</a>        <span class="macro">info!</span>(<span class="string">"edge filter: {mm} mm"</span>);
 <a href=#64 id=64 data-nosnippet>64</a>    }
 <a href=#65 id=65 data-nosnippet>65</a>    engine.set_fields(config.fields);
-<a href=#66 id=66 data-nosnippet>66</a>    engine.set_completion(config.completion);
-<a href=#67 id=67 data-nosnippet>67</a>    <span class="macro">info!</span>(<span class="string">"Ctrl+C to quit\n"</span>);
-<a href=#68 id=68 data-nosnippet>68</a>
-<a href=#69 id=69 data-nosnippet>69</a>    <span class="comment">// Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
-<a href=#70 id=70 data-nosnippet>70</a>    // No set definitions are loaded yet - the set tracker idles.
-<a href=#71 id=71 data-nosnippet>71</a>    </span><span class="kw">let </span>profiles: Vec&lt;ProfileInfo&gt; = patterns.iter().map(ProfileInfo::from).collect();
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">let </span>(<span class="kw-2">mut </span>runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
-<a href=#73 id=73 data-nosnippet>73</a>    runtime.set_completion(config.completion);
-<a href=#74 id=74 data-nosnippet>74</a>    runtime.set_field_sets(engine.field_sets().to_vec());
-<a href=#75 id=75 data-nosnippet>75</a>    spawn_interfaces(<span class="kw-2">&amp;</span>handle, <span class="kw-2">&amp;</span>interfaces);
-<a href=#76 id=76 data-nosnippet>76</a>    <span class="comment">// Report the calibration the engine actually uses (profile override
-<a href=#77 id=77 data-nosnippet>77</a>    // applied), not the firmware-reported one - clients size their field
-<a href=#78 id=78 data-nosnippet>78</a>    // sets from these millimeter bounds.
-<a href=#79 id=79 data-nosnippet>79</a>    </span>runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
-<a href=#80 id=80 data-nosnippet>80</a>
-<a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">let </span><span class="kw-2">mut </span>frame: u64 = <span class="number">0</span>;
-<a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">let </span>session_start = Instant::now();
-<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">let </span><span class="kw-2">mut </span>recording: <span class="prelude-ty">Option</span>&lt;RecordingSession&gt; = <span class="prelude-val">None</span>;
-<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">let </span>device_fd = device.as_raw_fd();
-<a href=#85 id=85 data-nosnippet>85</a>
-<a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">loop </span>{
-<a href=#87 id=87 data-nosnippet>87</a>        <span class="comment">// Wake periodically even without device events: queued control
-<a href=#88 id=88 data-nosnippet>88</a>        // commands (start/stop recording) must not wait for input - a
-<a href=#89 id=89 data-nosnippet>89</a>        // StopRecording on an idle screen has to flush immediately.
-<a href=#90 id=90 data-nosnippet>90</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>pfd = libc::pollfd {
-<a href=#91 id=91 data-nosnippet>91</a>            fd: device_fd,
-<a href=#92 id=92 data-nosnippet>92</a>            events: libc::POLLIN,
-<a href=#93 id=93 data-nosnippet>93</a>            revents: <span class="number">0</span>,
-<a href=#94 id=94 data-nosnippet>94</a>        };
-<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>ready = <span class="kw">unsafe </span>{ libc::poll(<span class="kw-2">&amp;mut </span>pfd, <span class="number">1</span>, <span class="number">250</span>) };
-<a href=#96 id=96 data-nosnippet>96</a>        <span class="kw">if </span>ready &lt; <span class="number">0 </span>{
-<a href=#97 id=97 data-nosnippet>97</a>            <span class="kw">if unsafe </span>{ <span class="kw-2">*</span>libc::__errno_location() } == libc::EINTR {
-<a href=#98 id=98 data-nosnippet>98</a>                <span class="kw">continue</span>;
-<a href=#99 id=99 data-nosnippet>99</a>            }
-<a href=#100 id=100 data-nosnippet>100</a>            <span class="macro">error!</span>(<span class="string">"poll error - event loop exits"</span>);
-<a href=#101 id=101 data-nosnippet>101</a>            <span class="kw">break</span>;
-<a href=#102 id=102 data-nosnippet>102</a>        }
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">if </span>ready == <span class="number">0 </span>{
-<a href=#104 id=104 data-nosnippet>104</a>            drain_control_commands(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>recording, <span class="kw-2">&amp;mut </span>engine, device.name());
-<a href=#105 id=105 data-nosnippet>105</a>            runtime.set_recording_status(recording.as_ref().map(status_of_session));
-<a href=#106 id=106 data-nosnippet>106</a>            runtime.publish_snapshot(engine.touches(), engine.tracked());
-<a href=#107 id=107 data-nosnippet>107</a>            <span class="kw">continue</span>;
-<a href=#108 id=108 data-nosnippet>108</a>        }
-<a href=#109 id=109 data-nosnippet>109</a>
-<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>events = <span class="kw">match </span>device.fetch_events() {
-<a href=#111 id=111 data-nosnippet>111</a>            <span class="prelude-val">Ok</span>(events) =&gt; events,
-<a href=#112 id=112 data-nosnippet>112</a>            <span class="prelude-val">Err</span>(e) =&gt; {
-<a href=#113 id=113 data-nosnippet>113</a>                <span class="macro">error!</span>(error = %e, <span class="string">"device read failed - event loop exits"</span>);
-<a href=#114 id=114 data-nosnippet>114</a>                <span class="kw">break</span>;
-<a href=#115 id=115 data-nosnippet>115</a>            }
-<a href=#116 id=116 data-nosnippet>116</a>        };
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">for </span>raw <span class="kw">in </span>events {
-<a href=#119 id=119 data-nosnippet>119</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = <span class="kw-2">&amp;</span>recording {
-<a href=#120 id=120 data-nosnippet>120</a>                session.record_event(<span class="kw-2">&amp;</span>raw, session_start.elapsed().as_secs_f64());
-<a href=#121 id=121 data-nosnippet>121</a>            }
-<a href=#122 id=122 data-nosnippet>122</a>            <span class="kw">let </span>engine_frame = <span class="kw">if </span>recording.is_some() {
-<a href=#123 id=123 data-nosnippet>123</a>                engine.process_with_diagnostics(<span class="kw-2">&amp;</span>raw)
-<a href=#124 id=124 data-nosnippet>124</a>            } <span class="kw">else </span>{
-<a href=#125 id=125 data-nosnippet>125</a>                engine.process(<span class="kw-2">&amp;</span>raw)
-<a href=#126 id=126 data-nosnippet>126</a>            };
-<a href=#127 id=127 data-nosnippet>127</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(engine_frame) = engine_frame {
-<a href=#128 id=128 data-nosnippet>128</a>                frame += <span class="number">1</span>;
-<a href=#129 id=129 data-nosnippet>129</a>                runtime.publish(<span class="kw-2">&amp;</span>engine_frame, engine.tracked());
-<a href=#130 id=130 data-nosnippet>130</a>                drain_control_commands(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>recording, <span class="kw-2">&amp;mut </span>engine, device.name());
-<a href=#131 id=131 data-nosnippet>131</a>                tick_training(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>engine, <span class="kw-2">&amp;</span>engine_frame.touches);
-<a href=#132 id=132 data-nosnippet>132</a>
-<a href=#133 id=133 data-nosnippet>133</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = <span class="kw-2">&amp;mut </span>recording {
-<a href=#134 id=134 data-nosnippet>134</a>                    session.record_frame(
-<a href=#135 id=135 data-nosnippet>135</a>                        FrameNumber::new(frame),
-<a href=#136 id=136 data-nosnippet>136</a>                        Milliseconds::from(session_start.elapsed()),
-<a href=#137 id=137 data-nosnippet>137</a>                        <span class="kw-2">&amp;</span>engine_frame,
-<a href=#138 id=138 data-nosnippet>138</a>                        engine.tracked(),
-<a href=#139 id=139 data-nosnippet>139</a>                    );
-<a href=#140 id=140 data-nosnippet>140</a>                }
-<a href=#141 id=141 data-nosnippet>141</a>                runtime.set_recording_status(recording.as_ref().map(status_of_session));
-<a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a>                <span class="kw">let </span>active = engine.tracked();
-<a href=#144 id=144 data-nosnippet>144</a>                <span class="macro">print!</span>(<span class="string">"\x1b[2J\x1b[H"</span>);
-<a href=#145 id=145 data-nosnippet>145</a>                <span class="macro">println!</span>(
-<a href=#146 id=146 data-nosnippet>146</a>                    <span class="string">"Frame {frame} | {} touch point(s) | {} figure(s) | Rec: {}"</span>,
-<a href=#147 id=147 data-nosnippet>147</a>                    engine.touch_count(),
-<a href=#148 id=148 data-nosnippet>148</a>                    active.len(),
-<a href=#149 id=149 data-nosnippet>149</a>                    recording
-<a href=#150 id=150 data-nosnippet>150</a>                        .as_ref()
-<a href=#151 id=151 data-nosnippet>151</a>                        .and_then(|s| s.label().map(|l| l.as_str().to_string()))
-<a href=#152 id=152 data-nosnippet>152</a>                        .unwrap_or_else(|| <span class="kw">if </span>recording.is_some() {
-<a href=#153 id=153 data-nosnippet>153</a>                            <span class="string">"on"</span>.to_string()
-<a href=#154 id=154 data-nosnippet>154</a>                        } <span class="kw">else </span>{
-<a href=#155 id=155 data-nosnippet>155</a>                            <span class="string">"off"</span>.to_string()
-<a href=#156 id=156 data-nosnippet>156</a>                        }),
-<a href=#157 id=157 data-nosnippet>157</a>                );
-<a href=#158 id=158 data-nosnippet>158</a>                <span class="kw">for </span>t <span class="kw">in </span>active {
-<a href=#159 id=159 data-nosnippet>159</a>                    <span class="kw">let </span>deg = t.rotation_rad.to_degrees();
-<a href=#160 id=160 data-nosnippet>160</a>                    <span class="macro">println!</span>(
-<a href=#161 id=161 data-nosnippet>161</a>                        <span class="string">"  {} (id={}): center=({:.0}, {:.0}) rotation={:.1}°"</span>,
-<a href=#162 id=162 data-nosnippet>162</a>                        t.pattern_name, t.pattern_id, t.center.x, t.center.y, deg
-<a href=#163 id=163 data-nosnippet>163</a>                    );
-<a href=#164 id=164 data-nosnippet>164</a>                }
-<a href=#165 id=165 data-nosnippet>165</a>                std::io::stdout().flush().ok();
-<a href=#166 id=166 data-nosnippet>166</a>            }
-<a href=#167 id=167 data-nosnippet>167</a>        }
-<a href=#168 id=168 data-nosnippet>168</a>    }
-<a href=#169 id=169 data-nosnippet>169</a>    <span class="prelude-val">Ok</span>(())
-<a href=#170 id=170 data-nosnippet>170</a>}
+<a href=#66 id=66 data-nosnippet>66</a>    engine.set_dead_zones(config.dead_zones);
+<a href=#67 id=67 data-nosnippet>67</a>    engine.set_completion(config.completion);
+<a href=#68 id=68 data-nosnippet>68</a>    <span class="macro">info!</span>(<span class="string">"Ctrl+C to quit\n"</span>);
+<a href=#69 id=69 data-nosnippet>69</a>
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="comment">// Event hub for interface crates (GraphQL/D-Bus/MCP, Phase 2).
+<a href=#71 id=71 data-nosnippet>71</a>    // No set definitions are loaded yet - the set tracker idles.
+<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">let </span>profiles: Vec&lt;ProfileInfo&gt; = patterns.iter().map(ProfileInfo::from).collect();
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">let </span>(<span class="kw-2">mut </span>runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
+<a href=#74 id=74 data-nosnippet>74</a>    runtime.set_completion(config.completion);
+<a href=#75 id=75 data-nosnippet>75</a>    runtime.set_field_sets(engine.field_sets().to_vec());
+<a href=#76 id=76 data-nosnippet>76</a>    runtime.set_dead_zones(engine.dead_zones().to_vec());
+<a href=#77 id=77 data-nosnippet>77</a>    spawn_interfaces(<span class="kw-2">&amp;</span>handle, <span class="kw-2">&amp;</span>interfaces);
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="comment">// Report the calibration the engine actually uses (profile override
+<a href=#79 id=79 data-nosnippet>79</a>    // applied), not the firmware-reported one - clients size their field
+<a href=#80 id=80 data-nosnippet>80</a>    // sets from these millimeter bounds.
+<a href=#81 id=81 data-nosnippet>81</a>    </span>runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">let </span><span class="kw-2">mut </span>frame: u64 = <span class="number">0</span>;
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">let </span>session_start = Instant::now();
+<a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">let </span><span class="kw-2">mut </span>recording: <span class="prelude-ty">Option</span>&lt;RecordingSession&gt; = <span class="prelude-val">None</span>;
+<a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">let </span>device_fd = device.as_raw_fd();
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">loop </span>{
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="comment">// Wake periodically even without device events: queued control
+<a href=#90 id=90 data-nosnippet>90</a>        // commands (start/stop recording) must not wait for input - a
+<a href=#91 id=91 data-nosnippet>91</a>        // StopRecording on an idle screen has to flush immediately.
+<a href=#92 id=92 data-nosnippet>92</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>pfd = libc::pollfd {
+<a href=#93 id=93 data-nosnippet>93</a>            fd: device_fd,
+<a href=#94 id=94 data-nosnippet>94</a>            events: libc::POLLIN,
+<a href=#95 id=95 data-nosnippet>95</a>            revents: <span class="number">0</span>,
+<a href=#96 id=96 data-nosnippet>96</a>        };
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span>ready = <span class="kw">unsafe </span>{ libc::poll(<span class="kw-2">&amp;mut </span>pfd, <span class="number">1</span>, <span class="number">250</span>) };
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">if </span>ready &lt; <span class="number">0 </span>{
+<a href=#99 id=99 data-nosnippet>99</a>            <span class="kw">if unsafe </span>{ <span class="kw-2">*</span>libc::__errno_location() } == libc::EINTR {
+<a href=#100 id=100 data-nosnippet>100</a>                <span class="kw">continue</span>;
+<a href=#101 id=101 data-nosnippet>101</a>            }
+<a href=#102 id=102 data-nosnippet>102</a>            <span class="macro">error!</span>(<span class="string">"poll error - event loop exits"</span>);
+<a href=#103 id=103 data-nosnippet>103</a>            <span class="kw">break</span>;
+<a href=#104 id=104 data-nosnippet>104</a>        }
+<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">if </span>ready == <span class="number">0 </span>{
+<a href=#106 id=106 data-nosnippet>106</a>            drain_control_commands(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>recording, <span class="kw-2">&amp;mut </span>engine, device.name());
+<a href=#107 id=107 data-nosnippet>107</a>            runtime.set_recording_status(recording.as_ref().map(status_of_session));
+<a href=#108 id=108 data-nosnippet>108</a>            runtime.publish_snapshot(engine.touches(), engine.tracked());
+<a href=#109 id=109 data-nosnippet>109</a>            <span class="kw">continue</span>;
+<a href=#110 id=110 data-nosnippet>110</a>        }
+<a href=#111 id=111 data-nosnippet>111</a>
+<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>events = <span class="kw">match </span>device.fetch_events() {
+<a href=#113 id=113 data-nosnippet>113</a>            <span class="prelude-val">Ok</span>(events) =&gt; events,
+<a href=#114 id=114 data-nosnippet>114</a>            <span class="prelude-val">Err</span>(e) =&gt; {
+<a href=#115 id=115 data-nosnippet>115</a>                <span class="macro">error!</span>(error = %e, <span class="string">"device read failed - event loop exits"</span>);
+<a href=#116 id=116 data-nosnippet>116</a>                <span class="kw">break</span>;
+<a href=#117 id=117 data-nosnippet>117</a>            }
+<a href=#118 id=118 data-nosnippet>118</a>        };
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">for </span>raw <span class="kw">in </span>events {
+<a href=#121 id=121 data-nosnippet>121</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = <span class="kw-2">&amp;</span>recording {
+<a href=#122 id=122 data-nosnippet>122</a>                session.record_event(<span class="kw-2">&amp;</span>raw, session_start.elapsed().as_secs_f64());
+<a href=#123 id=123 data-nosnippet>123</a>            }
+<a href=#124 id=124 data-nosnippet>124</a>            <span class="kw">let </span>engine_frame = <span class="kw">if </span>recording.is_some() {
+<a href=#125 id=125 data-nosnippet>125</a>                engine.process_with_diagnostics(<span class="kw-2">&amp;</span>raw)
+<a href=#126 id=126 data-nosnippet>126</a>            } <span class="kw">else </span>{
+<a href=#127 id=127 data-nosnippet>127</a>                engine.process(<span class="kw-2">&amp;</span>raw)
+<a href=#128 id=128 data-nosnippet>128</a>            };
+<a href=#129 id=129 data-nosnippet>129</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(engine_frame) = engine_frame {
+<a href=#130 id=130 data-nosnippet>130</a>                frame += <span class="number">1</span>;
+<a href=#131 id=131 data-nosnippet>131</a>                runtime.publish(<span class="kw-2">&amp;</span>engine_frame, engine.tracked());
+<a href=#132 id=132 data-nosnippet>132</a>                drain_control_commands(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>recording, <span class="kw-2">&amp;mut </span>engine, device.name());
+<a href=#133 id=133 data-nosnippet>133</a>                tick_training(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>engine, <span class="kw-2">&amp;</span>engine_frame.touches);
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = <span class="kw-2">&amp;mut </span>recording {
+<a href=#136 id=136 data-nosnippet>136</a>                    session.record_frame(
+<a href=#137 id=137 data-nosnippet>137</a>                        FrameNumber::new(frame),
+<a href=#138 id=138 data-nosnippet>138</a>                        Milliseconds::from(session_start.elapsed()),
+<a href=#139 id=139 data-nosnippet>139</a>                        <span class="kw-2">&amp;</span>engine_frame,
+<a href=#140 id=140 data-nosnippet>140</a>                        engine.tracked(),
+<a href=#141 id=141 data-nosnippet>141</a>                    );
+<a href=#142 id=142 data-nosnippet>142</a>                }
+<a href=#143 id=143 data-nosnippet>143</a>                runtime.set_recording_status(recording.as_ref().map(status_of_session));
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>                <span class="kw">let </span>active = engine.tracked();
+<a href=#146 id=146 data-nosnippet>146</a>                <span class="macro">print!</span>(<span class="string">"\x1b[2J\x1b[H"</span>);
+<a href=#147 id=147 data-nosnippet>147</a>                <span class="macro">println!</span>(
+<a href=#148 id=148 data-nosnippet>148</a>                    <span class="string">"Frame {frame} | {} touch point(s) | {} figure(s) | Rec: {}"</span>,
+<a href=#149 id=149 data-nosnippet>149</a>                    engine.touch_count(),
+<a href=#150 id=150 data-nosnippet>150</a>                    active.len(),
+<a href=#151 id=151 data-nosnippet>151</a>                    recording
+<a href=#152 id=152 data-nosnippet>152</a>                        .as_ref()
+<a href=#153 id=153 data-nosnippet>153</a>                        .and_then(|s| s.label().map(|l| l.as_str().to_string()))
+<a href=#154 id=154 data-nosnippet>154</a>                        .unwrap_or_else(|| <span class="kw">if </span>recording.is_some() {
+<a href=#155 id=155 data-nosnippet>155</a>                            <span class="string">"on"</span>.to_string()
+<a href=#156 id=156 data-nosnippet>156</a>                        } <span class="kw">else </span>{
+<a href=#157 id=157 data-nosnippet>157</a>                            <span class="string">"off"</span>.to_string()
+<a href=#158 id=158 data-nosnippet>158</a>                        }),
+<a href=#159 id=159 data-nosnippet>159</a>                );
+<a href=#160 id=160 data-nosnippet>160</a>                <span class="kw">for </span>t <span class="kw">in </span>active {
+<a href=#161 id=161 data-nosnippet>161</a>                    <span class="kw">let </span>deg = t.rotation_rad.to_degrees();
+<a href=#162 id=162 data-nosnippet>162</a>                    <span class="macro">println!</span>(
+<a href=#163 id=163 data-nosnippet>163</a>                        <span class="string">"  {} (id={}): center=({:.0}, {:.0}) rotation={:.1}°"</span>,
+<a href=#164 id=164 data-nosnippet>164</a>                        t.pattern_name, t.pattern_id, t.center.x, t.center.y, deg
+<a href=#165 id=165 data-nosnippet>165</a>                    );
+<a href=#166 id=166 data-nosnippet>166</a>                }
+<a href=#167 id=167 data-nosnippet>167</a>                std::io::stdout().flush().ok();
+<a href=#168 id=168 data-nosnippet>168</a>            }
+<a href=#169 id=169 data-nosnippet>169</a>        }
+<a href=#170 id=170 data-nosnippet>170</a>    }
+<a href=#171 id=171 data-nosnippet>171</a>    <span class="prelude-val">Ok</span>(())
+<a href=#172 id=172 data-nosnippet>172</a>}
 </code></pre></div></section></main></body></html>

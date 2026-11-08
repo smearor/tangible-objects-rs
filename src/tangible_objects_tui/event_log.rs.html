@@ -101,77 +101,79 @@
 <a href=#101 id=101 data-nosnippet>101</a>        }
 <a href=#102 id=102 data-nosnippet>102</a>        EventKind::FieldSetRegistered
 <a href=#103 id=103 data-nosnippet>103</a>        | EventKind::FieldSetUnregistered
-<a href=#104 id=104 data-nosnippet>104</a>        | EventKind::StageRegistered
-<a href=#105 id=105 data-nosnippet>105</a>        | EventKind::StageUnregistered =&gt; <span class="macro">format!</span>(<span class="string">"{} {name}"</span>, event.kind),
-<a href=#106 id=106 data-nosnippet>106</a>        EventKind::CompletionChanged | EventKind::FilterModeChanged =&gt; {
-<a href=#107 id=107 data-nosnippet>107</a>            <span class="macro">format!</span>(<span class="string">"{} {detail}"</span>, event.kind)
-<a href=#108 id=108 data-nosnippet>108</a>        }
-<a href=#109 id=109 data-nosnippet>109</a>        EventKind::RecordingStarted =&gt; event.kind.to_string(),
-<a href=#110 id=110 data-nosnippet>110</a>        EventKind::RecordingStopped =&gt; {
-<a href=#111 id=111 data-nosnippet>111</a>            <span class="macro">format!</span>(<span class="string">"{} {} frames"</span>, event.kind, event.frames<span class="question-mark">?</span>.as_u64())
-<a href=#112 id=112 data-nosnippet>112</a>        }
-<a href=#113 id=113 data-nosnippet>113</a>        EventKind::ConfigReloaded =&gt; event.kind.to_string(),
-<a href=#114 id=114 data-nosnippet>114</a>        EventKind::Lagged =&gt; <span class="macro">fl!</span>(
-<a href=#115 id=115 data-nosnippet>115</a>            language_loader(),
-<a href=#116 id=116 data-nosnippet>116</a>            <span class="string">"log-lagged"</span>,
-<a href=#117 id=117 data-nosnippet>117</a>            count = (event.skipped.map(|s| s.as_u64()).unwrap_or_default() <span class="kw">as </span>i64)
-<a href=#118 id=118 data-nosnippet>118</a>        ),
-<a href=#119 id=119 data-nosnippet>119</a>    };
-<a href=#120 id=120 data-nosnippet>120</a>    <span class="prelude-val">Some</span>(line)
-<a href=#121 id=121 data-nosnippet>121</a>}
-<a href=#122 id=122 data-nosnippet>122</a>
-<a href=#123 id=123 data-nosnippet>123</a><span class="attr">#[cfg(test)]
-<a href=#124 id=124 data-nosnippet>124</a></span><span class="kw">mod </span>tests {
-<a href=#125 id=125 data-nosnippet>125</a>    <span class="kw">use </span><span class="kw">super</span>::EventLog;
-<a href=#126 id=126 data-nosnippet>126</a>    <span class="kw">use </span>tangible_objects_model::Owner;
-<a href=#127 id=127 data-nosnippet>127</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">use </span>tangible_objects_model::TangibleEvent;
-<a href=#129 id=129 data-nosnippet>129</a>
-<a href=#130 id=130 data-nosnippet>130</a>    <span class="doccomment">/// Noisy frame events never enter the log.
-<a href=#131 id=131 data-nosnippet>131</a>    </span><span class="attr">#[test]
-<a href=#132 id=132 data-nosnippet>132</a>    </span><span class="kw">fn </span>touch_events_are_not_logged() {
-<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span><span class="kw-2">mut </span>log = EventLog::new();
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>event = TangibleEvent::from(<span class="kw-2">&amp;</span>tangible_objects_model::DomainEvent::Engine(
-<a href=#135 id=135 data-nosnippet>135</a>            tangible_objects_model::EngineEvent::TouchPointsUpdated,
-<a href=#136 id=136 data-nosnippet>136</a>        ));
-<a href=#137 id=137 data-nosnippet>137</a>        log.record(<span class="kw-2">&amp;</span>event);
-<a href=#138 id=138 data-nosnippet>138</a>        <span class="macro">assert!</span>(log.lines().next().is_none());
-<a href=#139 id=139 data-nosnippet>139</a>    }
-<a href=#140 id=140 data-nosnippet>140</a>
-<a href=#141 id=141 data-nosnippet>141</a>    <span class="doccomment">/// A lifecycle event renders its kind name plus payload fields.
-<a href=#142 id=142 data-nosnippet>142</a>    </span><span class="attr">#[test]
-<a href=#143 id=143 data-nosnippet>143</a>    </span><span class="kw">fn </span>profile_registration_line() {
-<a href=#144 id=144 data-nosnippet>144</a>        <span class="kw">let </span><span class="kw-2">mut </span>log = EventLog::new();
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span><span class="kw-2">mut </span>event = TangibleEvent::from(<span class="kw-2">&amp;</span>tangible_objects_model::DomainEvent::Engine(
-<a href=#146 id=146 data-nosnippet>146</a>            tangible_objects_model::EngineEvent::TouchPointsUpdated,
-<a href=#147 id=147 data-nosnippet>147</a>        ));
-<a href=#148 id=148 data-nosnippet>148</a>        event.kind = tangible_objects_model::EventKind::ProfileRegistered;
-<a href=#149 id=149 data-nosnippet>149</a>        event.pattern_id = <span class="prelude-val">Some</span>(PatternId::new(<span class="number">3</span>));
-<a href=#150 id=150 data-nosnippet>150</a>        event.name = <span class="prelude-val">Some</span>(<span class="string">"fig_3pins"</span>.to_string());
-<a href=#151 id=151 data-nosnippet>151</a>        event.owner = <span class="prelude-val">Some</span>(Owner::new(<span class="string">"app"</span>));
-<a href=#152 id=152 data-nosnippet>152</a>        log.record(<span class="kw-2">&amp;</span>event);
-<a href=#153 id=153 data-nosnippet>153</a>        <span class="kw">let </span>line = log.lines().next().cloned().unwrap_or_default();
-<a href=#154 id=154 data-nosnippet>154</a>        <span class="macro">assert!</span>(line.contains(<span class="string">"profile_registered"</span>), <span class="string">"line: {line}"</span>);
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="macro">assert!</span>(line.contains(<span class="string">"fig_3pins"</span>), <span class="string">"line: {line}"</span>);
-<a href=#156 id=156 data-nosnippet>156</a>    }
-<a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// The buffer drops the oldest line past capacity.
-<a href=#159 id=159 data-nosnippet>159</a>    </span><span class="attr">#[test]
-<a href=#160 id=160 data-nosnippet>160</a>    </span><span class="kw">fn </span>ring_buffer_drops_oldest() {
-<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span><span class="kw-2">mut </span>log = EventLog::new();
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span><span class="kw-2">mut </span>event = TangibleEvent::from(<span class="kw-2">&amp;</span>tangible_objects_model::DomainEvent::Engine(
-<a href=#163 id=163 data-nosnippet>163</a>            tangible_objects_model::EngineEvent::TouchPointsUpdated,
-<a href=#164 id=164 data-nosnippet>164</a>        ));
-<a href=#165 id=165 data-nosnippet>165</a>        event.kind = tangible_objects_model::EventKind::StageRegistered;
-<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">for </span>index <span class="kw">in </span><span class="number">0</span>..<span class="number">210 </span>{
-<a href=#167 id=167 data-nosnippet>167</a>            event.name = <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"stage_{index}"</span>));
-<a href=#168 id=168 data-nosnippet>168</a>            log.record(<span class="kw-2">&amp;</span>event);
-<a href=#169 id=169 data-nosnippet>169</a>        }
-<a href=#170 id=170 data-nosnippet>170</a>        <span class="macro">assert_eq!</span>(log.lines().count(), <span class="number">200</span>);
-<a href=#171 id=171 data-nosnippet>171</a>        <span class="macro">assert_eq!</span>(
-<a href=#172 id=172 data-nosnippet>172</a>            log.lines().next().map(String::as_str),
-<a href=#173 id=173 data-nosnippet>173</a>            <span class="prelude-val">Some</span>(<span class="string">"stage_registered stage_10"</span>)
-<a href=#174 id=174 data-nosnippet>174</a>        );
-<a href=#175 id=175 data-nosnippet>175</a>    }
-<a href=#176 id=176 data-nosnippet>176</a>}
+<a href=#104 id=104 data-nosnippet>104</a>        | EventKind::DeadZoneRegistered
+<a href=#105 id=105 data-nosnippet>105</a>        | EventKind::DeadZoneUnregistered
+<a href=#106 id=106 data-nosnippet>106</a>        | EventKind::StageRegistered
+<a href=#107 id=107 data-nosnippet>107</a>        | EventKind::StageUnregistered =&gt; <span class="macro">format!</span>(<span class="string">"{} {name}"</span>, event.kind),
+<a href=#108 id=108 data-nosnippet>108</a>        EventKind::CompletionChanged | EventKind::FilterModeChanged =&gt; {
+<a href=#109 id=109 data-nosnippet>109</a>            <span class="macro">format!</span>(<span class="string">"{} {detail}"</span>, event.kind)
+<a href=#110 id=110 data-nosnippet>110</a>        }
+<a href=#111 id=111 data-nosnippet>111</a>        EventKind::RecordingStarted =&gt; event.kind.to_string(),
+<a href=#112 id=112 data-nosnippet>112</a>        EventKind::RecordingStopped =&gt; {
+<a href=#113 id=113 data-nosnippet>113</a>            <span class="macro">format!</span>(<span class="string">"{} {} frames"</span>, event.kind, event.frames<span class="question-mark">?</span>.as_u64())
+<a href=#114 id=114 data-nosnippet>114</a>        }
+<a href=#115 id=115 data-nosnippet>115</a>        EventKind::ConfigReloaded =&gt; event.kind.to_string(),
+<a href=#116 id=116 data-nosnippet>116</a>        EventKind::Lagged =&gt; <span class="macro">fl!</span>(
+<a href=#117 id=117 data-nosnippet>117</a>            language_loader(),
+<a href=#118 id=118 data-nosnippet>118</a>            <span class="string">"log-lagged"</span>,
+<a href=#119 id=119 data-nosnippet>119</a>            count = (event.skipped.map(|s| s.as_u64()).unwrap_or_default() <span class="kw">as </span>i64)
+<a href=#120 id=120 data-nosnippet>120</a>        ),
+<a href=#121 id=121 data-nosnippet>121</a>    };
+<a href=#122 id=122 data-nosnippet>122</a>    <span class="prelude-val">Some</span>(line)
+<a href=#123 id=123 data-nosnippet>123</a>}
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a><span class="attr">#[cfg(test)]
+<a href=#126 id=126 data-nosnippet>126</a></span><span class="kw">mod </span>tests {
+<a href=#127 id=127 data-nosnippet>127</a>    <span class="kw">use </span><span class="kw">super</span>::EventLog;
+<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">use </span>tangible_objects_model::Owner;
+<a href=#129 id=129 data-nosnippet>129</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
+<a href=#130 id=130 data-nosnippet>130</a>    <span class="kw">use </span>tangible_objects_model::TangibleEvent;
+<a href=#131 id=131 data-nosnippet>131</a>
+<a href=#132 id=132 data-nosnippet>132</a>    <span class="doccomment">/// Noisy frame events never enter the log.
+<a href=#133 id=133 data-nosnippet>133</a>    </span><span class="attr">#[test]
+<a href=#134 id=134 data-nosnippet>134</a>    </span><span class="kw">fn </span>touch_events_are_not_logged() {
+<a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">let </span><span class="kw-2">mut </span>log = EventLog::new();
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="kw">let </span>event = TangibleEvent::from(<span class="kw-2">&amp;</span>tangible_objects_model::DomainEvent::Engine(
+<a href=#137 id=137 data-nosnippet>137</a>            tangible_objects_model::EngineEvent::TouchPointsUpdated,
+<a href=#138 id=138 data-nosnippet>138</a>        ));
+<a href=#139 id=139 data-nosnippet>139</a>        log.record(<span class="kw-2">&amp;</span>event);
+<a href=#140 id=140 data-nosnippet>140</a>        <span class="macro">assert!</span>(log.lines().next().is_none());
+<a href=#141 id=141 data-nosnippet>141</a>    }
+<a href=#142 id=142 data-nosnippet>142</a>
+<a href=#143 id=143 data-nosnippet>143</a>    <span class="doccomment">/// A lifecycle event renders its kind name plus payload fields.
+<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="attr">#[test]
+<a href=#145 id=145 data-nosnippet>145</a>    </span><span class="kw">fn </span>profile_registration_line() {
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span><span class="kw-2">mut </span>log = EventLog::new();
+<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span><span class="kw-2">mut </span>event = TangibleEvent::from(<span class="kw-2">&amp;</span>tangible_objects_model::DomainEvent::Engine(
+<a href=#148 id=148 data-nosnippet>148</a>            tangible_objects_model::EngineEvent::TouchPointsUpdated,
+<a href=#149 id=149 data-nosnippet>149</a>        ));
+<a href=#150 id=150 data-nosnippet>150</a>        event.kind = tangible_objects_model::EventKind::ProfileRegistered;
+<a href=#151 id=151 data-nosnippet>151</a>        event.pattern_id = <span class="prelude-val">Some</span>(PatternId::new(<span class="number">3</span>));
+<a href=#152 id=152 data-nosnippet>152</a>        event.name = <span class="prelude-val">Some</span>(<span class="string">"fig_3pins"</span>.to_string());
+<a href=#153 id=153 data-nosnippet>153</a>        event.owner = <span class="prelude-val">Some</span>(Owner::new(<span class="string">"app"</span>));
+<a href=#154 id=154 data-nosnippet>154</a>        log.record(<span class="kw-2">&amp;</span>event);
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span>line = log.lines().next().cloned().unwrap_or_default();
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="macro">assert!</span>(line.contains(<span class="string">"profile_registered"</span>), <span class="string">"line: {line}"</span>);
+<a href=#157 id=157 data-nosnippet>157</a>        <span class="macro">assert!</span>(line.contains(<span class="string">"fig_3pins"</span>), <span class="string">"line: {line}"</span>);
+<a href=#158 id=158 data-nosnippet>158</a>    }
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>    <span class="doccomment">/// The buffer drops the oldest line past capacity.
+<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="attr">#[test]
+<a href=#162 id=162 data-nosnippet>162</a>    </span><span class="kw">fn </span>ring_buffer_drops_oldest() {
+<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">let </span><span class="kw-2">mut </span>log = EventLog::new();
+<a href=#164 id=164 data-nosnippet>164</a>        <span class="kw">let </span><span class="kw-2">mut </span>event = TangibleEvent::from(<span class="kw-2">&amp;</span>tangible_objects_model::DomainEvent::Engine(
+<a href=#165 id=165 data-nosnippet>165</a>            tangible_objects_model::EngineEvent::TouchPointsUpdated,
+<a href=#166 id=166 data-nosnippet>166</a>        ));
+<a href=#167 id=167 data-nosnippet>167</a>        event.kind = tangible_objects_model::EventKind::StageRegistered;
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">for </span>index <span class="kw">in </span><span class="number">0</span>..<span class="number">210 </span>{
+<a href=#169 id=169 data-nosnippet>169</a>            event.name = <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"stage_{index}"</span>));
+<a href=#170 id=170 data-nosnippet>170</a>            log.record(<span class="kw-2">&amp;</span>event);
+<a href=#171 id=171 data-nosnippet>171</a>        }
+<a href=#172 id=172 data-nosnippet>172</a>        <span class="macro">assert_eq!</span>(log.lines().count(), <span class="number">200</span>);
+<a href=#173 id=173 data-nosnippet>173</a>        <span class="macro">assert_eq!</span>(
+<a href=#174 id=174 data-nosnippet>174</a>            log.lines().next().map(String::as_str),
+<a href=#175 id=175 data-nosnippet>175</a>            <span class="prelude-val">Some</span>(<span class="string">"stage_registered stage_10"</span>)
+<a href=#176 id=176 data-nosnippet>176</a>        );
+<a href=#177 id=177 data-nosnippet>177</a>    }
+<a href=#178 id=178 data-nosnippet>178</a>}
 </code></pre></div></section></main></body></html>
