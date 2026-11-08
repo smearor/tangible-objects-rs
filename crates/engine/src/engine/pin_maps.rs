@@ -93,10 +93,13 @@ mod tests {
         square()
             .iter()
             .zip(slots)
-            .map(|(p, &slot)| TouchPoint {
-                slot: TouchPointSlot::new(slot),
-                tracking_id: TrackingId::new(slot as i32),
-                pos: Vec2::new(100.0 + p.x * cos - p.y * sin, 100.0 + p.x * sin + p.y * cos),
+            .map(|(p, &slot)| {
+                let offset = Vec2::<Millimeters>::new(100.0, 100.0);
+                TouchPoint {
+                    slot: TouchPointSlot::new(slot),
+                    tracking_id: TrackingId::new(slot as i32),
+                    pos: offset + *p * cos + p.perpendicular() * sin,
+                }
             })
             .collect()
     }

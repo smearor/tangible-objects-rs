@@ -23,7 +23,7 @@ impl RigidTransform {
     pub fn apply(&self, p: Vec2<Millimeters>) -> Vec2<Millimeters> {
         let (sin, cos) = self.angle.sin_cos();
         let d = p - self.ref_center;
-        self.meas_center + Vec2::new(d.x * cos - d.y * sin, d.x * sin + d.y * cos)
+        self.meas_center + d * cos + d.perpendicular() * sin
     }
 
     /// Sum of squared residuals - `Σ d²` over every ref position's

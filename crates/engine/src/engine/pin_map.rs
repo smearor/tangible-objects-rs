@@ -115,10 +115,14 @@ mod tests {
         [(0.0, 0.0), (40.0, 0.0), (40.0, 40.0), (0.0, 40.0)]
             .iter()
             .enumerate()
-            .map(|(i, &(x, y))| TouchPoint {
-                slot: TouchPointSlot::new(i as u32),
-                tracking_id: TrackingId::new(i as i32),
-                pos: Vec2::new(100.0 + x * cos - y * sin, 100.0 + x * sin + y * cos),
+            .map(|(i, &(x, y))| {
+                let offset = Vec2::<Millimeters>::new(100.0, 100.0);
+                let point = Vec2::<Millimeters>::new(x, y);
+                TouchPoint {
+                    slot: TouchPointSlot::new(i as u32),
+                    tracking_id: TrackingId::new(i as i32),
+                    pos: offset + point * cos + point.perpendicular() * sin,
+                }
             })
             .collect()
     }
