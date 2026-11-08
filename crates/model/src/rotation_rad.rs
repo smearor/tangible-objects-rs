@@ -80,7 +80,9 @@ impl RotationRad {
     }
 
     /// The direction normalized to an undirected axis in
-    /// `[-pi/2, pi/2)` - `self` and `-self` share an axis.
+    /// `[-pi/2, pi/2)` - `self` and `self + pi` (the antipodal
+    /// direction) share an axis, so heading-ambiguous footprints
+    /// like two-pin dumbbells fold onto one stable value.
     pub fn axis(&self) -> RotationRad {
         RotationRad(self.0.rem_euclid(PI) - PI / 2.0)
     }
@@ -206,11 +208,45 @@ mod tests {
         assert!((angle.as_f64() - std::f64::consts::FRAC_PI_2).abs() < 1e-9);
     }
 
-    /// `axis` folds `a` and `-a` onto the same undirected angle.
+    /// `axis` folds `a` and `a + pi` onto the same undirected angle.
     #[test]
     fn axis_ignores_direction() {
         let (a, b) = (RotationRad::new(0.3), RotationRad::new(0.3 + PI));
         assert!((a.axis().as_f64() - b.axis().as_f64()).abs() < 1e-9);
         assert!((a.axis().as_f64() - (0.3 - PI / 2.0)).abs() < 1e-9);
+    }
+
+    /// `axis` keeps every direction inside `[-pi/2, pi/2)`, even for
+    /// non-normalized inputs - `rem_euclid` wraps full turns first.
+    #[test]
+    fn axis_stays_in_half_turn_range() {
+        for angle in [
+            0.0,
+            1.0,
+            -1.0,
+            PI / 2.0,
+            -PI / 2.0,
+            PI,
+            -PI,
+            4.0,
+            -4.0,
+            42.0,
+        ] {
+            let axis = RotationRad::new(angle).axis().as_f64();
+            assert!(
+                (-PI / 2.0..PI / 2.0).contains(&axis),
+                "axis({angle}) = {axis} outside [-pi/2, pi/2)"
+            );
+        }
+    }
+
+    /// `axis` measures the line's tilt off vertical: `0` and `pi`
+    /// (horizontal) fold to `-pi/2`, `+-pi/2` (vertical) folds to `0`.
+    #[test]
+    fn axis_boundary_values() {
+        assert!((RotationRad::new(0.0).axis().as_f64() + PI / 2.0).abs() < 1e-9);
+        assert!(RotationRad::new(PI / 2.0).axis().as_f64().abs() < 1e-9);
+        assert!(RotationRad::new(-PI / 2.0).axis().as_f64().abs() < 1e-9);
+        assert!((RotationRad::new(PI).axis().as_f64() + PI / 2.0).abs() < 1e-9);
     }
 }

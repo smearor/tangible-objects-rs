@@ -66,6 +66,10 @@ impl<'a> PointSet<'a> {
             (self[ref_index] - *center).direction()
         } else {
             match self.farthest_from(center) {
+                // two-point footprints have no head or tail - the
+                // undirected axis keeps the estimate stable instead of
+                // flipping pi between the equidistant pair
+                Some(p) if self.len() == 2 => (p - *center).direction().axis(),
                 Some(p) => (p - *center).direction(),
                 None => RotationRad::new(0.0),
             }
