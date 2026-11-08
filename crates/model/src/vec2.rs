@@ -111,6 +111,12 @@ impl<U> Vec2<U> {
         RotationRad::new(self.y.atan2(self.x))
     }
 
+    /// The vector rotated by `rotation`.
+    pub fn rotated(&self, rotation: RotationRad) -> Self {
+        let (sin, cos) = rotation.as_f64().sin_cos();
+        Vec2::new(self.x * cos - self.y * sin, self.x * sin + self.y * cos)
+    }
+
     /// Geometric centroid of a non-empty point set.
     ///
     /// Returns [`Vec2::new(0.0, 0.0)`] for an empty slice instead of panicking.
@@ -254,6 +260,7 @@ mod tests {
     use super::Vec2;
     use crate::Millimeters;
     use crate::Pixels;
+    use crate::RotationRad;
 
     #[test]
     fn distance_of_axis_aligned_points() {
@@ -325,6 +332,8 @@ mod tests {
         assert_eq!(vector.normalized(), Vec2::new(0.6, 0.8));
         assert_eq!(Vec2::<Millimeters>::ZERO.normalized(), Vec2::ZERO);
         assert_eq!(vector.direction().as_f64(), 4.0_f64.atan2(3.0));
+        let rotated = vector.rotated(RotationRad::new(std::f64::consts::FRAC_PI_2));
+        assert!((rotated.x - -4.0).abs() < 1e-9 && (rotated.y - 3.0).abs() < 1e-9);
     }
 
     /// `direction` reads the atan2 angle of each axis and quadrant.
