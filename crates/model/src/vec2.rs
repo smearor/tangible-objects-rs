@@ -1,5 +1,6 @@
 use crate::Millimeters;
 use crate::Pixels;
+use crate::RotationRad;
 use serde::Deserialize;
 use serde::Serialize;
 use std::marker::PhantomData;
@@ -103,6 +104,11 @@ impl<U> Vec2<U> {
             return Vec2::new(self.x, self.y);
         }
         Vec2::new(self.x / magnitude, self.y / magnitude)
+    }
+
+    /// The direction the vector points, as a `RotationRad` angle.
+    pub fn direction(&self) -> RotationRad {
+        RotationRad::new(self.y.atan2(self.x))
     }
 
     /// Geometric centroid of a non-empty point set.
@@ -318,6 +324,7 @@ mod tests {
         assert_eq!(vector.perpendicular(), Vec2::new(-4.0, 3.0));
         assert_eq!(vector.normalized(), Vec2::new(0.6, 0.8));
         assert_eq!(Vec2::<Millimeters>::ZERO.normalized(), Vec2::ZERO);
+        assert_eq!(vector.direction().as_f64(), 4.0_f64.atan2(3.0));
     }
 
     /// `normalized` yields a unit vector in the same direction.
