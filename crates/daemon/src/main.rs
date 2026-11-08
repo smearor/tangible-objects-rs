@@ -206,6 +206,7 @@ fn main() -> Result<()> {
             fields: modes::load_field_sets(cli.fields.as_deref()),
             completion,
             zones: cli.zone.clone(),
+            dead_zones: modes::load_dead_zones(),
             import_slots: !cli.no_import_slots,
         })
     };

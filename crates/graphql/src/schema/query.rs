@@ -8,6 +8,7 @@ use tangible_objects_analysis::Recording;
 use tangible_objects_analysis::SimilarityReport;
 use tangible_objects_model::AnalysisMode;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
@@ -106,6 +107,12 @@ impl QueryRoot {
     /// "what can be occupied" counterpart of `touchPoints`/`tangibles`.
     async fn field_sets(&self, ctx: &Context<'_>) -> Result<Vec<FieldSet>> {
         Ok(ctx.data::<EngineHandle>()?.snapshot().field_sets)
+    }
+
+    /// All active dead zones - blacklisted surface positions whose
+    /// contacts are dropped at ingest.
+    async fn dead_zones(&self, ctx: &Context<'_>) -> Result<Vec<DeadZone>> {
+        Ok(ctx.data::<EngineHandle>()?.snapshot().dead_zones)
     }
 
     /// Reads a recording artifact produced by this daemon.

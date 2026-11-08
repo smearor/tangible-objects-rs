@@ -23,6 +23,7 @@ pub(crate) fn persist_registration(registration: &Registration) {
     let Some(store) = runtime_store_dir(match registration {
         Registration::Pattern(_) => "profiles.d",
         Registration::FieldSet(_) => "fields.d",
+        Registration::DeadZone(_) => "dead_zones.d",
     }) else {
         return;
     };
@@ -41,6 +42,15 @@ pub(crate) fn persist_registration(registration: &Registration) {
                 std::fs::write(
                     store.join(format!("{}.toml", set.name)),
                     toml::to_string_pretty(set).unwrap_or_default(),
+                )
+            }),
+        ),
+        Registration::DeadZone(zone) => (
+            zone.name.as_str().to_string(),
+            std::fs::create_dir_all(&store).and_then(|_| {
+                std::fs::write(
+                    store.join(format!("{}.toml", zone.name)),
+                    toml::to_string_pretty(zone).unwrap_or_default(),
                 )
             }),
         ),

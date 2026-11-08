@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FilterMode;
@@ -121,8 +122,13 @@ pub enum ControlCommand {
         /// Field set to remove.
         name: FieldSetName,
     },
-    /// Remove every pattern and field set owned by `owner` - used for
-    /// explicit app cleanup and D-Bus disconnect handling.
+    /// Remove a dead zone by name.
+    UnregisterDeadZone {
+        /// Dead zone to remove.
+        name: DeadZoneName,
+    },
+    /// Remove every pattern, field set and dead zone owned by `owner` -
+    /// used for explicit app cleanup and D-Bus disconnect handling.
     UnregisterOwner {
         /// Owner name (or the caller's unique bus name on D-Bus).
         owner: Owner,

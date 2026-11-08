@@ -1,3 +1,4 @@
+use crate::DeadZoneName;
 use crate::FieldName;
 use crate::FieldSetName;
 use crate::PatternId;
@@ -30,4 +31,7 @@ pub enum RegistrationError {
     /// A field set with this name is already registered.
     #[error("field set '{0}' already registered")]
     DuplicateFieldSet(FieldSetName),
+    /// A dead zone with this name is already registered.
+    #[error("dead zone '{0}' already registered")]
+    DuplicateDeadZone(DeadZoneName),
 }

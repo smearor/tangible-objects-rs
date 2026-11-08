@@ -6,6 +6,9 @@ use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateIndices;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZone;
+use tangible_objects_model::DeadZoneName;
+use tangible_objects_model::DeadZones;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
@@ -76,6 +79,11 @@ pub struct Engine {
     pattern_owners: HashMap<PatternId, Option<Owner>>,
     /// Owner per dynamically added field set, keyed by set name.
     field_set_owners: HashMap<FieldSetName, Option<Owner>>,
+    /// Blacklisted surface positions - contacts inside are dropped at
+    /// ingest like `edge_margin` ghosts.
+    dead_zones: DeadZones,
+    /// Owner per dynamically added dead zone, keyed by zone name.
+    dead_zone_owners: HashMap<DeadZoneName, Option<Owner>>,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -123,6 +131,8 @@ impl Engine {
             next_pattern_id,
             pattern_owners: HashMap::new(),
             field_set_owners: HashMap::new(),
+            dead_zones: DeadZones::default(),
+            dead_zone_owners: HashMap::new(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -258,13 +268,18 @@ impl Engine {
             .into_iter()
     }
 
-    /// Removes every pattern and field set owned by `owner` (disconnect
-    /// cleanup). Returns `(id, name)` pairs for patterns and names for
-    /// field sets - names let the caller remove persisted files too.
+    /// Removes every pattern, field set and dead zone owned by `owner`
+    /// (disconnect cleanup). Returns `(id, name)` pairs for patterns
+    /// and names for field sets and dead zones - names let the caller
+    /// remove persisted files too.
     pub fn remove_by_owner(
         &mut self,
         owner: &Owner,
-    ) -> (Vec<(PatternId, PatternName)>, Vec<FieldSetName>) {
+    ) -> (
+        Vec<(PatternId, PatternName)>,
+        Vec<FieldSetName>,
+        Vec<DeadZoneName>,
+    ) {
         let patterns: Vec<(PatternId, PatternName)> = self
             .pattern_owners
             .iter()
@@ -287,7 +302,16 @@ impl Engine {
         for name in &set_names {
             self.remove_field_set(name);
         }
-        (patterns, set_names)
+        let zone_names: Vec<DeadZoneName> = self
+            .dead_zone_owners
+            .iter()
+            .filter(|(_, o)| o.as_ref() == Some(owner))
+            .map(|(name, _)| name.clone())
+            .collect();
+        for name in &zone_names {
+            self.remove_dead_zone(name);
+        }
+        (patterns, set_names, zone_names)
     }
 
     /// Adds an occupancy field set at runtime; rejected on overlapping
@@ -322,6 +346,33 @@ impl Engine {
     pub fn remove_field_set(&mut self, name: &FieldSetName) -> bool {
         self.field_set_owners.remove(name);
         self.fields.remove_set(name)
+    }
+
+    /// Loads the startup dead-zone set (runtime-store reload).
+    pub fn set_dead_zones(&mut self, zones: Vec<DeadZone>) {
+        self.dead_zones = zones.into();
+    }
+
+    /// Adds a dead zone at runtime; rejected on duplicate zone name.
+    pub fn add_dead_zone(
+        &mut self,
+        zone: DeadZone,
+        owner: Option<Owner>,
+    ) -> Result<(), RegistrationError> {
+        self.dead_zones.register(zone.clone())?;
+        self.dead_zone_owners.insert(zone.name.clone(), owner);
+        Ok(())
+    }
+
+    /// Removes a dead zone by name. Returns `true` when removed.
+    pub fn remove_dead_zone(&mut self, name: &DeadZoneName) -> bool {
+        self.dead_zone_owners.remove(name);
+        self.dead_zones.unregister(name)
+    }
+
+    /// All active dead zones (startup set plus dynamically registered).
+    pub fn dead_zones(&self) -> &[DeadZone] {
+        &self.dead_zones
     }
 
     /// All active field sets (static plus dynamically registered).
@@ -426,7 +477,7 @@ impl Engine {
         }
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
-        touches.retain(|touch| !self.is_edge_ghost(touch));
+        touches.retain(|touch| !self.is_edge_ghost(touch) && !self.dead_zones.contains(&touch.pos));
         self.smooth_touches(&mut touches);
         // Compared before matching (SKIP_UNCHANGED.md): the generic pass
         // is a pure function of the smoothed touch set, so it only runs
@@ -898,16 +949,17 @@ mod tests {
                 Some("game".into()),
             )
             .expect("register field set");
-        let (patterns, sets) = engine.remove_by_owner(&"game".into());
+        let (patterns, sets, zones) = engine.remove_by_owner(&"game".into());
         assert_eq!(patterns.len(), 1);
         assert_eq!(sets, vec!["grid".into()]);
+        assert!(zones.is_empty());
         assert!(engine.patterns().is_empty());
         assert!(engine.field_sets().is_empty());
         // Other owners stay untouched.
         engine
             .add_pattern(&shape, Some("other".into()))
             .expect("register");
-        let (patterns, _) = engine.remove_by_owner(&"game".into());
+        let (patterns, _, _) = engine.remove_by_owner(&"game".into());
         assert!(patterns.is_empty());
         assert_eq!(engine.patterns().len(), 1);
     }

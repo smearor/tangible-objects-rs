@@ -1,3 +1,4 @@
+use crate::DeadZone;
 use crate::FieldSet;
 use crate::ProfileFile;
 
@@ -13,4 +14,7 @@ pub enum Registration {
     Pattern(ProfileFile),
     /// An occupancy field set.
     FieldSet(FieldSet),
+    /// A dead zone - a blacklisted surface position suppressing ghost
+    /// contacts at ingest.
+    DeadZone(DeadZone),
 }

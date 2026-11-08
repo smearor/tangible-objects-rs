@@ -1,4 +1,5 @@
 use crate::CompletionConfig;
+use crate::DeadZoneName;
 use crate::FieldSetName;
 use crate::FilterMode;
 use crate::FrameCount;
@@ -44,6 +45,18 @@ pub enum LifecycleEvent {
     FieldSetUnregistered {
         /// Removed field-set name.
         name: FieldSetName,
+    },
+    /// A dead zone was registered.
+    DeadZoneRegistered {
+        /// Registered dead-zone name.
+        name: DeadZoneName,
+        /// Owning application, when bound to one.
+        owner: Option<Owner>,
+    },
+    /// A dead zone was removed (unregister or owner cleanup).
+    DeadZoneUnregistered {
+        /// Removed dead-zone name.
+        name: DeadZoneName,
     },
     /// A scoped tangible stage was created on the pipeline - the first
     /// `stage = "name"` profile registered (EVENT_PIPELINE.md phase 6).

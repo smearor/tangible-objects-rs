@@ -60,6 +60,10 @@ pub enum StreamEvent {
     FieldSetRegistered,
     /// A field set was removed.
     FieldSetUnregistered,
+    /// A dead zone was registered at runtime.
+    DeadZoneRegistered,
+    /// A dead zone was removed.
+    DeadZoneUnregistered,
     /// A scoped tangible stage was created on the pipeline.
     StageRegistered,
     /// A scoped tangible stage was removed.
@@ -99,6 +103,8 @@ impl StreamEvent {
             Self::StageRegistered => EventKind::StageRegistered,
             Self::StageUnregistered => EventKind::StageUnregistered,
             Self::FieldSetUnregistered => EventKind::FieldSetUnregistered,
+            Self::DeadZoneRegistered => EventKind::DeadZoneRegistered,
+            Self::DeadZoneUnregistered => EventKind::DeadZoneUnregistered,
             Self::CompletionChanged => EventKind::CompletionChanged,
             Self::FilterModeChanged => EventKind::FilterModeChanged,
             Self::RecordingStarted => EventKind::RecordingStarted,
@@ -132,6 +138,8 @@ impl FromStr for StreamEvent {
             "PROFILE_UNREGISTERED" => Ok(Self::ProfileUnregistered),
             "FIELD_SET_REGISTERED" => Ok(Self::FieldSetRegistered),
             "FIELD_SET_UNREGISTERED" => Ok(Self::FieldSetUnregistered),
+            "DEAD_ZONE_REGISTERED" => Ok(Self::DeadZoneRegistered),
+            "DEAD_ZONE_UNREGISTERED" => Ok(Self::DeadZoneUnregistered),
             "STAGE_REGISTERED" => Ok(Self::StageRegistered),
             "STAGE_UNREGISTERED" => Ok(Self::StageUnregistered),
             "COMPLETION_CHANGED" => Ok(Self::CompletionChanged),

@@ -31,4 +31,6 @@ pub enum RejectionKind {
     FieldsOverlap,
     /// A field set with this name is already registered.
     DuplicateFieldSet,
+    /// A dead zone with this name is already registered.
+    DuplicateDeadZone,
 }

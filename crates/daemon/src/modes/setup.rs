@@ -9,6 +9,7 @@ use miette::Result;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternBuf;
@@ -141,6 +142,24 @@ pub fn load_completion() -> CompletionConfig {
         },
         Err(_) => CompletionConfig::default(),
     }
+}
+
+/// Loads the startup dead zones from the runtime store
+/// (`dead_zones.d/` under the config directory - `Lifetime::Persistent`
+/// registrations reload with the daemon). Invalid files are reported
+/// and skipped.
+pub fn load_dead_zones() -> Vec<DeadZone> {
+    let mut zones = Vec::new();
+    if let Some(store) = runtime_store_dir("dead_zones.d")
+        && store.is_dir()
+    {
+        let (stored, errors) = DeadZone::load_dir(&store);
+        for (file, error) in &errors {
+            warn!(file = %file.display(), %error, "dead zone could not be loaded");
+        }
+        zones.extend(stored);
+    }
+    zones
 }
 
 /// Loads occupancy field sets from a file or directory (`--fields`).

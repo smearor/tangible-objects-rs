@@ -182,6 +182,8 @@ impl From<&LifecycleEvent> for TangibleEvent {
             LifecycleEvent::ProfileUnregistered { .. } => EventKind::ProfileUnregistered,
             LifecycleEvent::FieldSetRegistered { .. } => EventKind::FieldSetRegistered,
             LifecycleEvent::FieldSetUnregistered { .. } => EventKind::FieldSetUnregistered,
+            LifecycleEvent::DeadZoneRegistered { .. } => EventKind::DeadZoneRegistered,
+            LifecycleEvent::DeadZoneUnregistered { .. } => EventKind::DeadZoneUnregistered,
             LifecycleEvent::StageRegistered { .. } => EventKind::StageRegistered,
             LifecycleEvent::StageUnregistered { .. } => EventKind::StageUnregistered,
             LifecycleEvent::CompletionChanged(_) => EventKind::CompletionChanged,
@@ -208,6 +210,13 @@ impl From<&LifecycleEvent> for TangibleEvent {
                 event_out.owner = owner.clone();
             }
             LifecycleEvent::FieldSetUnregistered { name } => {
+                event_out.name = Some(name.to_string());
+            }
+            LifecycleEvent::DeadZoneRegistered { name, owner } => {
+                event_out.name = Some(name.to_string());
+                event_out.owner = owner.clone();
+            }
+            LifecycleEvent::DeadZoneUnregistered { name } => {
                 event_out.name = Some(name.to_string());
             }
             LifecycleEvent::StageRegistered { name }

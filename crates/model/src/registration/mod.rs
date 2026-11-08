@@ -20,5 +20,7 @@ pub use pattern_registered::PatternRegistered;
 pub use pattern_result::RegisterPatternResult;
 pub use payload::Registration;
 pub use rejected::RegistrationRejected;
+pub use result::DeadZoneRegistered;
 pub use result::FieldSetRegistered;
+pub use result::RegisterDeadZoneResult;
 pub use result::RegisterFieldSetResult;

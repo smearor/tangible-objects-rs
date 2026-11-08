@@ -39,6 +39,7 @@ pub use replay::run_replay;
 pub use setup::effective_calibration;
 pub use setup::list_devices;
 pub use setup::load_completion;
+pub use setup::load_dead_zones;
 pub use setup::load_field_sets;
 pub use setup::load_patterns;
 pub use setup::resolve_device;

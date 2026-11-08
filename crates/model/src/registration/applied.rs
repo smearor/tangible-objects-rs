@@ -11,4 +11,7 @@ pub enum RegistrationApplied {
     /// A field set registered - the name was already known by the
     /// caller.
     FieldSet,
+    /// A dead zone registered - the name was already known by the
+    /// caller.
+    DeadZone,
 }

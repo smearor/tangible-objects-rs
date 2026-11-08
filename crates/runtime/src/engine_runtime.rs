@@ -8,6 +8,7 @@ use tokio::sync::watch;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternId;
@@ -67,6 +68,9 @@ pub struct EngineRuntime {
     /// Active field sets (static + dynamically registered) embedded in
     /// every snapshot.
     field_sets: Vec<FieldSet>,
+    /// Active dead zones (runtime-store set + dynamically registered)
+    /// embedded in every snapshot.
+    dead_zones: Vec<DeadZone>,
     /// Profile list shared with the handle - registrations at runtime
     /// must be visible to interface readers (`RwLock`, not `watch`).
     profiles: Arc<RwLock<Vec<ProfileInfo>>>,
@@ -122,6 +126,7 @@ impl EngineRuntime {
             recording: None,
             completion: None,
             field_sets: Vec::new(),
+            dead_zones: Vec::new(),
             profiles: profiles.clone(),
             metrics: SessionMetrics::default(),
             message: None,
@@ -159,6 +164,12 @@ impl EngineRuntime {
     /// registered) in subsequent snapshots.
     pub fn set_field_sets(&mut self, field_sets: Vec<FieldSet>) {
         self.field_sets = field_sets;
+    }
+
+    /// Publishes the active dead zones (startup set plus dynamically
+    /// registered) in subsequent snapshots.
+    pub fn set_dead_zones(&mut self, dead_zones: Vec<DeadZone>) {
+        self.dead_zones = dead_zones;
     }
 
     /// Adds a registered profile to the shared profile list visible to
@@ -200,6 +211,7 @@ impl EngineRuntime {
             recording: self.recording.clone(),
             completion: self.completion,
             field_sets: self.field_sets.clone(),
+            dead_zones: self.dead_zones.clone(),
             metrics: self.metrics.clone(),
             message: self.message.clone(),
             #[cfg(feature = "gui")]
@@ -226,6 +238,7 @@ impl EngineRuntime {
             recording: self.recording.clone(),
             completion: self.completion,
             field_sets: self.field_sets.clone(),
+            dead_zones: self.dead_zones.clone(),
             metrics: self.metrics.clone(),
             message: self.message.clone(),
             #[cfg(feature = "gui")]

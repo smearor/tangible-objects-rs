@@ -32,6 +32,7 @@ Queries read a `watch`-published snapshot, never the device loop:
 | `recording` | `RecordingStatus` - active flag, label, frame/drop counters |
 | `completion` | active `CompletionConfig` |
 | `field_sets` | `FieldSet[]` - static (`--fields`) + registered |
+| `dead_zones` | `DeadZone[]` - startup store set + registered |
 | `metrics` | `SessionMetrics` ([`../analysis/METRICS.md`](../analysis/METRICS.md)) |
 | `message` | current `showMessage` overlay text |
 | `gui_visible` | GUI window state (`gui` feature) |
@@ -54,7 +55,7 @@ Queries read a `watch`-published snapshot, never the device loop:
 | Metrics | `metrics`, `resetMetrics` | `get_metrics`, `reset_metrics` | `metrics`, `reset_metrics` |
 | Message | `message`, `showMessage(text)` | `show_message`, `tangible://message` | `message`, `show_message` |
 | GUI | `setGuiVisible`, `setDisplayRotation(deg)` | `set_gui_visible`, `set_display_rotation` | `set_gui_visible`, `set_display_rotation` |
-| Registration | `registerPattern`, `updateProfile`, `unregisterPattern`, `registerFieldSet`, `unregisterFieldSet`, `unregisterOwner` | `register_pattern`, `update_profile`, `unregister_pattern`, `register_field_set`, `unregister_field_set`, `unregister_owner` | same names |
+| Registration | `registerPattern`, `updateProfile`, `unregisterPattern`, `registerFieldSet`, `unregisterFieldSet`, `registerDeadZone`, `unregisterDeadZone`, `unregisterOwner` | `register_pattern`, `update_profile`, `unregister_pattern`, `register_field_set`, `unregister_field_set`, `register_dead_zone`, `unregister_dead_zone`, `unregister_owner` | same names |
 | Analysis | `analyzeRecording(path, mode?, profilesDir?)`, `analyzeSimilarity(profilesDir?)` | `analyze_recording`, `analyze_similarity` | `analyze_recording`, `analyze_similarity` |
 | Events | `eventStream(kinds, patternId?, setId?, maxHz?)`, `tangibleEvents`, `fieldEvents` | `tangible://` snapshots (no stream) | per-kind signals + `lifecycle_event` |
 

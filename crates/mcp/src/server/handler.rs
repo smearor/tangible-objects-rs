@@ -98,6 +98,7 @@ impl EngineMcp {
     fn tool_router() -> ToolRouter<Self> {
         let mut router = Self::analysis_router();
         router.merge(Self::completion_router());
+        router.merge(Self::dead_zone_router());
         router.merge(Self::device_router());
         router.merge(Self::field_set_router());
         router.merge(Self::filter_router());

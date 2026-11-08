@@ -1,3 +1,4 @@
+use crate::DeadZoneName;
 use crate::FieldSetName;
 use crate::RegistrationRejected;
 #[cfg(feature = "cynic")]
@@ -37,6 +38,34 @@ pub struct FieldSetRegistered {
 pub enum RegisterFieldSetResult {
     /// The field set was registered.
     Registered(FieldSetRegistered),
+    /// The registration was rejected - `rejection` says why, with
+    /// structured detail.
+    Rejected(RegistrationRejected),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "DeadZoneRegistered",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
+pub struct DeadZoneRegistered {
+    /// Name of the registered dead zone.
+    pub name: DeadZoneName,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Union))]
+pub enum RegisterDeadZoneResult {
+    /// The dead zone was registered.
+    Registered(DeadZoneRegistered),
     /// The registration was rejected - `rejection` says why, with
     /// structured detail.
     Rejected(RegistrationRejected),

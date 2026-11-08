@@ -1,4 +1,5 @@
 use crate::CompletionConfig;
+use crate::DeadZone;
 use crate::FieldSet;
 use crate::Millimeters;
 use crate::Region;
@@ -15,6 +16,9 @@ pub struct DetectionConfig {
     /// Masked areas in millimeters (`--zone`, repeatable) - contacts
     /// inside are suppressed in `--filter` mode.
     pub zones: Vec<Region>,
+    /// Blacklisted surface positions - the startup dead-zone set
+    /// (runtime-store reload plus static config).
+    pub dead_zones: Vec<DeadZone>,
     /// Import the kernel's MT slot state at startup (`--no-import-slots`
     /// disables it) - contacts held open before the reader attached
     /// become visible to the engine immediately.
@@ -28,6 +32,7 @@ impl Default for DetectionConfig {
             fields: Vec::new(),
             completion: CompletionConfig::default(),
             zones: Vec::new(),
+            dead_zones: Vec::new(),
             import_slots: true,
         }
     }

@@ -54,6 +54,10 @@ pub enum EventKind {
     FieldSetRegistered,
     /// A field set was removed.
     FieldSetUnregistered,
+    /// A dead zone was registered at runtime.
+    DeadZoneRegistered,
+    /// A dead zone was removed.
+    DeadZoneUnregistered,
     /// A scoped tangible stage was created on the pipeline.
     StageRegistered,
     /// A scoped tangible stage was removed.
@@ -95,6 +99,8 @@ impl std::fmt::Display for EventKind {
             Self::ProfileUnregistered => "profile_unregistered",
             Self::FieldSetRegistered => "field_set_registered",
             Self::FieldSetUnregistered => "field_set_unregistered",
+            Self::DeadZoneRegistered => "dead_zone_registered",
+            Self::DeadZoneUnregistered => "dead_zone_unregistered",
             Self::StageRegistered => "stage_registered",
             Self::StageUnregistered => "stage_unregistered",
             Self::CompletionChanged => "completion_changed",

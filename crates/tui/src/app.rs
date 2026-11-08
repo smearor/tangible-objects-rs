@@ -158,6 +158,9 @@ impl App {
                 self.refresh_field_sets().await;
                 self.log.record(evt);
             }
+            EventKind::DeadZoneRegistered | EventKind::DeadZoneUnregistered => {
+                self.log.record(evt);
+            }
             EventKind::FieldPlaced | EventKind::FieldLifted | EventKind::FieldCountChanged => {
                 self.record_field_count(evt);
                 self.log.record(evt);

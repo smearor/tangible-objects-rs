@@ -4,6 +4,7 @@
 
 mod analysis;
 mod completion;
+mod dead_zone;
 mod device;
 mod field_set;
 mod filter;

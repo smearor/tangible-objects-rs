@@ -101,6 +101,8 @@ fn describe(event: &TangibleEvent) -> Option<String> {
         }
         EventKind::FieldSetRegistered
         | EventKind::FieldSetUnregistered
+        | EventKind::DeadZoneRegistered
+        | EventKind::DeadZoneUnregistered
         | EventKind::StageRegistered
         | EventKind::StageUnregistered => format!("{} {name}", event.kind),
         EventKind::CompletionChanged | EventKind::FilterModeChanged => {

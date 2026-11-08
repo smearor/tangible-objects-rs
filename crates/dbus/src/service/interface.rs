@@ -12,6 +12,7 @@
 
 use std::path::Path;
 use tangible_objects_model::AffinityFactor;
+use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Owner;
@@ -352,6 +353,29 @@ impl EngineService {
     /// Removes a field set by name.
     async fn unregister_field_set(&self, name: FieldSetName) -> fdo::Result<()> {
         api::field_set::unregister_field_set(self, name).await
+    }
+
+    /// Blacklists a circular spot on the surface (`x`/`y` mm): contacts
+    /// inside `radius` mm are dropped at ingest - ghost contacts never
+    /// reach tracking or matching. `radius <= 0` picks the 10 mm
+    /// default; `persistent` stores the zone in the runtime store.
+    async fn register_dead_zone(
+        &self,
+        name: DeadZoneName,
+        x: f64,
+        y: f64,
+        radius: f64,
+        owner: Owner,
+        persistent: bool,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<()> {
+        api::dead_zone::register_dead_zone(self, name, x, y, radius, owner, persistent, &header)
+            .await
+    }
+
+    /// Removes a dead zone by name.
+    async fn unregister_dead_zone(&self, name: DeadZoneName) -> fdo::Result<()> {
+        api::dead_zone::unregister_dead_zone(self, name).await
     }
 
     /// Removes every pattern and field set owned by `owner` - app

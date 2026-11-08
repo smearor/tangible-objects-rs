@@ -1,4 +1,5 @@
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::TangibleSetId;
@@ -31,6 +32,8 @@ pub struct EngineSnapshot {
     /// Active occupancy field sets - static (`--fields`) plus dynamically
     /// registered ones.
     pub field_sets: Vec<FieldSet>,
+    /// Active dead zones - startup set plus dynamically registered ones.
+    pub dead_zones: Vec<DeadZone>,
     /// Accumulated session recognition metrics - uptime, re-ID churn,
     /// match quality, per-slot contact stability.
     pub metrics: SessionMetrics,

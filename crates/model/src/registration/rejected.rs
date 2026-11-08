@@ -48,6 +48,7 @@ impl From<RegistrationError> for RegistrationRejected {
                 }),
             ),
             RegistrationError::DuplicateFieldSet(_) => (RejectionKind::DuplicateFieldSet, None),
+            RegistrationError::DuplicateDeadZone(_) => (RejectionKind::DuplicateDeadZone, None),
         };
         Self {
             reason: error.to_string(),

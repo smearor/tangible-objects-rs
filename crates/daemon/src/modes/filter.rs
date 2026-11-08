@@ -74,6 +74,7 @@ pub fn run_filter(
         info!("edge filter: {mm} mm");
     }
     engine.set_fields(config.fields);
+    engine.set_dead_zones(config.dead_zones);
     engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
@@ -86,6 +87,7 @@ pub fn run_filter(
     let (mut runtime, handle) = EngineRuntime::new(Vec::new(), profiles);
     runtime.set_completion(config.completion);
     runtime.set_field_sets(engine.field_sets().to_vec());
+    runtime.set_dead_zones(engine.dead_zones().to_vec());
     spawn_interfaces(&handle, &interfaces);
     // Report the calibration the engine actually uses (profile override
     // applied), not the firmware-reported one - clients size their field

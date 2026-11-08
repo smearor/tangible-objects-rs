@@ -5,6 +5,9 @@ use async_graphql::Error;
 use async_graphql::Object;
 use async_graphql::Result;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::DeadZone;
+use tangible_objects_model::DeadZoneName;
+use tangible_objects_model::DeadZoneRegistered;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetName;
@@ -18,6 +21,7 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternRegistered;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::RegisterDeadZoneResult;
 use tangible_objects_model::RegisterFieldSetResult;
 use tangible_objects_model::RegisterPatternResult;
 use tangible_objects_model::Registration;
@@ -26,6 +30,7 @@ use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
+use crate::schema::input::RegisterDeadZoneInput;
 use crate::schema::input::RegisterFieldSetInput;
 use crate::schema::input::RegisterPatternInput;
 
@@ -296,6 +301,51 @@ impl MutationRoot {
     async fn unregister_field_set(&self, ctx: &Context<'_>, name: FieldSetName) -> Result<bool> {
         ctx.data::<EngineHandle>()?
             .send_command(ControlCommand::UnregisterFieldSet { name })
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Registers a dead zone at runtime - a blacklisted surface
+    /// position suppressing ghost contacts at ingest. `lifetime:
+    /// persistent` writes it to the runtime store so it reloads on
+    /// daemon start.
+    async fn register_dead_zone(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterDeadZoneInput,
+        owner: Option<Owner>,
+        lifetime: Option<Lifetime>,
+    ) -> Result<RegisterDeadZoneResult> {
+        let zone = DeadZone::from(&input);
+        let name = zone.name.clone();
+        let (command, rx) = ControlCommand::register(
+            Registration::DeadZone(zone),
+            owner,
+            lifetime.unwrap_or_default(),
+        );
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(RegistrationApplied::DeadZone)) => {
+                Ok(RegisterDeadZoneResult::Registered(DeadZoneRegistered {
+                    name,
+                }))
+            }
+            Ok(Ok(_)) => Err(Error::new(
+                "device loop returned a mismatched registration result",
+            )),
+            Ok(Err(error)) => Ok(RegisterDeadZoneResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the registration reply")),
+        }
+    }
+
+    /// Removes a dead zone by name.
+    async fn unregister_dead_zone(&self, ctx: &Context<'_>, name: DeadZoneName) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::UnregisterDeadZone { name })
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

@@ -191,6 +191,24 @@ pub(crate) fn apply_registration(
                         }
                     }
                 }
+                Registration::DeadZone(ref zone) => {
+                    let name = zone.name.clone();
+                    match engine.add_dead_zone(zone.clone(), owner.clone()) {
+                        Ok(()) => {
+                            info!(%name, ?owner, %lifetime, "dead zone registered");
+                            runtime.set_dead_zones(engine.dead_zones().to_vec());
+                            runtime.emit_lifecycle(LifecycleEvent::DeadZoneRegistered {
+                                name: name.clone(),
+                                owner: owner.clone(),
+                            });
+                            Ok(RegistrationApplied::DeadZone)
+                        }
+                        Err(reason) => {
+                            warn!(%reason, "dead zone rejected");
+                            Err(reason)
+                        }
+                    }
+                }
             };
             if result.is_ok() && lifetime == Lifetime::Persistent {
                 persist_registration(&registration);
@@ -248,8 +266,18 @@ pub(crate) fn apply_registration(
                 warn!(%name, "field set not found");
             }
         }
+        ControlCommand::UnregisterDeadZone { name } => {
+            if engine.remove_dead_zone(&name) {
+                runtime.set_dead_zones(engine.dead_zones().to_vec());
+                unpersist("dead_zones.d", name.as_str());
+                runtime.emit_lifecycle(LifecycleEvent::DeadZoneUnregistered { name: name.clone() });
+                info!(%name, "dead zone removed");
+            } else {
+                warn!(%name, "dead zone not found");
+            }
+        }
         ControlCommand::UnregisterOwner { owner } => {
-            let (patterns, field_sets) = engine.remove_by_owner(&owner);
+            let (patterns, field_sets, dead_zones) = engine.remove_by_owner(&owner);
             for (id, name) in &patterns {
                 runtime.remove_profile(*id);
                 unpersist("profiles.d", name.as_str());
@@ -259,9 +287,15 @@ pub(crate) fn apply_registration(
                 unpersist("fields.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
             }
+            for name in &dead_zones {
+                unpersist("dead_zones.d", name.as_str());
+                runtime.emit_lifecycle(LifecycleEvent::DeadZoneUnregistered { name: name.clone() });
+            }
             runtime.set_field_sets(engine.field_sets().to_vec());
+            runtime.set_dead_zones(engine.dead_zones().to_vec());
             info!(
                 %owner, profiles = patterns.len(), field_sets = field_sets.len(),
+                dead_zones = dead_zones.len(),
                 "owner cleaned up"
             );
         }

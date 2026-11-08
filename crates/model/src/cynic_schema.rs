@@ -12,6 +12,7 @@ pub mod schema {
 
 cynic::impl_scalar!(crate::completion::AffinityFactor, schema::AffinityFactor);
 cynic::impl_scalar!(crate::ContactCount, schema::ContactCount);
+cynic::impl_scalar!(crate::DeadZoneName, schema::DeadZoneName);
 cynic::impl_scalar!(crate::EventCount, schema::EventCount);
 cynic::impl_scalar!(crate::FieldName, schema::FieldName);
 cynic::impl_scalar!(crate::FieldSetName, schema::FieldSetName);
