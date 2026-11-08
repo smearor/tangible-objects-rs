@@ -111,7 +111,7 @@
 <a href=#111 id=111 data-nosnippet>111</a>
 <a href=#112 id=112 data-nosnippet>112</a>    <span class="doccomment">/// Touch points `slot`, `(x, y)` - a fixed square under `angle`.
 <a href=#113 id=113 data-nosnippet>113</a>    </span><span class="kw">fn </span>touches(angle: f64) -&gt; Vec&lt;TouchPoint&gt; {
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>(sin, cos) = angle.sin_cos();
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>rotation = RotationRad::new(angle);
 <a href=#115 id=115 data-nosnippet>115</a>        [(<span class="number">0.0</span>, <span class="number">0.0</span>), (<span class="number">40.0</span>, <span class="number">0.0</span>), (<span class="number">40.0</span>, <span class="number">40.0</span>), (<span class="number">0.0</span>, <span class="number">40.0</span>)]
 <a href=#116 id=116 data-nosnippet>116</a>            .iter()
 <a href=#117 id=117 data-nosnippet>117</a>            .enumerate()
@@ -121,7 +121,7 @@
 <a href=#121 id=121 data-nosnippet>121</a>                TouchPoint {
 <a href=#122 id=122 data-nosnippet>122</a>                    slot: TouchPointSlot::new(i <span class="kw">as </span>u32),
 <a href=#123 id=123 data-nosnippet>123</a>                    tracking_id: TrackingId::new(i <span class="kw">as </span>i32),
-<a href=#124 id=124 data-nosnippet>124</a>                    pos: offset + point * cos + point.perpendicular() * sin,
+<a href=#124 id=124 data-nosnippet>124</a>                    pos: offset + point.rotated(rotation),
 <a href=#125 id=125 data-nosnippet>125</a>                }
 <a href=#126 id=126 data-nosnippet>126</a>            })
 <a href=#127 id=127 data-nosnippet>127</a>            .collect()
