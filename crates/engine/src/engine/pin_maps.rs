@@ -89,7 +89,7 @@ mod tests {
     }
 
     fn touches(angle: f64, slots: &[u32]) -> Vec<TouchPoint> {
-        let (sin, cos) = angle.sin_cos();
+        let rotation = RotationRad::new(angle);
         square()
             .iter()
             .zip(slots)
@@ -98,7 +98,7 @@ mod tests {
                 TouchPoint {
                     slot: TouchPointSlot::new(slot),
                     tracking_id: TrackingId::new(slot as i32),
-                    pos: offset + *p * cos + p.perpendicular() * sin,
+                    pos: offset + p.rotated(rotation),
                 }
             })
             .collect()

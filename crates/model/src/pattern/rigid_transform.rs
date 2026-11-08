@@ -21,9 +21,7 @@ pub struct RigidTransform {
 impl RigidTransform {
     /// Applies the transform: `meas_center + R(angle) · (p - ref_center)`.
     pub fn apply(&self, p: Vec2<Millimeters>) -> Vec2<Millimeters> {
-        let (sin, cos) = self.angle.sin_cos();
-        let d = p - self.ref_center;
-        self.meas_center + d * cos + d.perpendicular() * sin
+        self.meas_center + (p - self.ref_center).rotated(self.angle)
     }
 
     /// Sum of squared residuals - `Σ d²` over every ref position's

@@ -336,6 +336,58 @@ mod tests {
         assert!((rotated.x - -4.0).abs() < 1e-9 && (rotated.y - 3.0).abs() < 1e-9);
     }
 
+    /// `rotated` applies `R(theta)`: identity at `0`, the
+    /// perpendicular at `pi/2`, negation at `pi`, and the full
+    /// circle lands back on the vector.
+    #[test]
+    fn rotated_by_quarter_turns() {
+        let vector = Vec2::<Millimeters>::new(3.0, 4.0);
+        let pi = std::f64::consts::PI;
+        assert_eq!(vector.rotated(RotationRad::ZERO), vector);
+        assert!(
+            vector
+                .rotated(RotationRad::new(pi / 2.0))
+                .distance(&vector.perpendicular())
+                .as_f64()
+                < 1e-9
+        );
+        assert!(
+            vector
+                .rotated(RotationRad::new(pi))
+                .distance(&-vector)
+                .as_f64()
+                < 1e-9
+        );
+        assert!(
+            vector
+                .rotated(RotationRad::new(2.0 * pi))
+                .distance(&vector)
+                .as_f64()
+                < 1e-9
+        );
+    }
+
+    /// `rotated` is an isometry: length preserved, direction
+    /// shifted by exactly `theta`.
+    #[test]
+    fn rotated_is_an_isometry() {
+        let vector = Vec2::<Millimeters>::new(3.0, 4.0);
+        let rotated = vector.rotated(RotationRad::new(0.7));
+        assert!((rotated.magnitude().as_f64() - vector.magnitude().as_f64()).abs() < 1e-9);
+        assert!((rotated.direction().as_f64() - (vector.direction().as_f64() + 0.7)).abs() < 1e-9);
+    }
+
+    /// Rotations compose additively: `rotated(a).rotated(b)`
+    /// equals `rotated(a + b)`.
+    #[test]
+    fn rotated_composes_additively() {
+        let vector = Vec2::<Millimeters>::new(3.0, 4.0);
+        let (a, b) = (RotationRad::new(0.3), RotationRad::new(0.4));
+        let stepwise = vector.rotated(a).rotated(b);
+        let combined = vector.rotated(a + b);
+        assert!(stepwise.distance(&combined).as_f64() < 1e-9);
+    }
+
     /// `direction` reads the atan2 angle of each axis and quadrant.
     #[test]
     fn direction_of_axes_and_quadrants() {
