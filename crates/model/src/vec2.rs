@@ -98,7 +98,10 @@ impl<U> Vec2<U> {
     /// The unit vector pointing the same way; a vector shorter
     /// than `1e-9` normalizes to itself.
     pub fn normalized(&self) -> Self {
-        let magnitude = self.x.hypot(self.y).max(1e-9);
+        let magnitude = self.x.hypot(self.y);
+        if magnitude < 1e-9 {
+            return Vec2::new(self.x, self.y);
+        }
         Vec2::new(self.x / magnitude, self.y / magnitude)
     }
 
@@ -315,6 +318,35 @@ mod tests {
         assert_eq!(vector.perpendicular(), Vec2::new(-4.0, 3.0));
         assert_eq!(vector.normalized(), Vec2::new(0.6, 0.8));
         assert_eq!(Vec2::<Millimeters>::ZERO.normalized(), Vec2::ZERO);
+    }
+
+    /// `normalized` yields a unit vector in the same direction.
+    #[test]
+    fn normalized_preserves_direction() {
+        let vector = Vec2::<Millimeters>::new(-6.0, 8.0);
+        let unit = vector.normalized();
+        assert!((unit.x.hypot(unit.y) - 1.0).abs() < 1e-9);
+        // no component along the perpendicular - the direction is unchanged
+        assert!(unit.dot::<f64>(&vector.perpendicular()).abs() < 1e-9);
+        // scaling the unit vector back up reproduces the original
+        assert!(
+            (unit * vector.magnitude().as_f64() - vector)
+                .magnitude()
+                .as_f64()
+                < 1e-9
+        );
+    }
+
+    /// Vectors below the `1e-9` threshold normalize to themselves -
+    /// no direction can be read off a degenerate vector.
+    #[test]
+    fn normalized_keeps_degenerate_vectors() {
+        assert_eq!(Vec2::<Millimeters>::ZERO.normalized(), Vec2::ZERO);
+        let tiny = Vec2::<Millimeters>::new(1e-12, 0.0);
+        assert_eq!(tiny.normalized(), tiny);
+        // just above the threshold still normalizes to unit length
+        let small = Vec2::<Millimeters>::new(1e-6, 0.0);
+        assert_eq!(small.normalized(), Vec2::new(1.0, 0.0));
     }
 
     /// `from_mm`/`from_px` wrap typed components without
