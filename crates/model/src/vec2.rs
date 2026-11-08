@@ -81,6 +81,20 @@ impl<U> Vec2<U> {
         T::from(self.x * other.y - self.y * other.x)
     }
 
+    /// Euclidean magnitude of the vector, in the unit `U`.
+    pub fn magnitude(&self) -> U
+    where
+        U: From<f64>,
+    {
+        self.distance(&Vec2::ZERO)
+    }
+
+    /// The vector rotated 90° counterclockwise: `(-y, x)` - the
+    /// perpendicular used for offset and normal computations.
+    pub fn perpendicular(&self) -> Self {
+        Vec2::new(-self.y, self.x)
+    }
+
     /// Geometric centroid of a non-empty point set.
     ///
     /// Returns [`Vec2::new(0.0, 0.0)`] for an empty slice instead of panicking.
@@ -283,6 +297,15 @@ mod tests {
         assert_eq!(a * 2.0, Vec2::new(20.0, 8.0));
         assert_eq!(2.0 * b, Vec2::new(4.0, 2.0));
         assert_eq!(a / 2.0, Vec2::new(5.0, 2.0));
+    }
+
+    /// `magnitude` measures the vector's length; `perpendicular`
+    /// turns it 90° left.
+    #[test]
+    fn magnitude_and_perpendicular() {
+        let vector = Vec2::<Millimeters>::new(3.0, 4.0);
+        assert_eq!(vector.magnitude(), Millimeters::new(5.0));
+        assert_eq!(vector.perpendicular(), Vec2::new(-4.0, 3.0));
     }
 
     /// `from_mm`/`from_px` wrap typed components without
