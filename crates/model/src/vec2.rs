@@ -95,6 +95,13 @@ impl<U> Vec2<U> {
         Vec2::new(-self.y, self.x)
     }
 
+    /// The unit vector pointing the same way; a vector shorter
+    /// than `1e-9` normalizes to itself.
+    pub fn normalized(&self) -> Self {
+        let magnitude = self.x.hypot(self.y).max(1e-9);
+        Vec2::new(self.x / magnitude, self.y / magnitude)
+    }
+
     /// Geometric centroid of a non-empty point set.
     ///
     /// Returns [`Vec2::new(0.0, 0.0)`] for an empty slice instead of panicking.
@@ -306,6 +313,8 @@ mod tests {
         let vector = Vec2::<Millimeters>::new(3.0, 4.0);
         assert_eq!(vector.magnitude(), Millimeters::new(5.0));
         assert_eq!(vector.perpendicular(), Vec2::new(-4.0, 3.0));
+        assert_eq!(vector.normalized(), Vec2::new(0.6, 0.8));
+        assert_eq!(Vec2::<Millimeters>::ZERO.normalized(), Vec2::ZERO);
     }
 
     /// `from_mm`/`from_px` wrap typed components without
