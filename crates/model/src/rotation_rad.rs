@@ -78,6 +78,12 @@ impl RotationRad {
     pub fn ema(old: RotationRad, new: RotationRad, alpha: SmoothingAlpha) -> RotationRad {
         Self(old.0 + alpha.as_f64() * old.signed_delta_to(new).0)
     }
+
+    /// The direction normalized to an undirected axis in
+    /// `[-pi/2, pi/2)` - `self` and `-self` share an axis.
+    pub fn axis(&self) -> RotationRad {
+        RotationRad(self.0.rem_euclid(PI) - PI / 2.0)
+    }
 }
 
 impl From<f64> for RotationRad {
@@ -198,5 +204,13 @@ mod tests {
             crate::Vec2::new(0.0, 1.0),
         );
         assert!((angle.as_f64() - std::f64::consts::FRAC_PI_2).abs() < 1e-9);
+    }
+
+    /// `axis` folds `a` and `-a` onto the same undirected angle.
+    #[test]
+    fn axis_ignores_direction() {
+        let (a, b) = (RotationRad::new(0.3), RotationRad::new(0.3 + PI));
+        assert!((a.axis().as_f64() - b.axis().as_f64()).abs() < 1e-9);
+        assert!((a.axis().as_f64() - (0.3 - PI / 2.0)).abs() < 1e-9);
     }
 }
