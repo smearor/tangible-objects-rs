@@ -76,7 +76,6 @@ pub fn evdev_thread(
     runtime.set_display_rotation(rotation);
     runtime.set_field_sets(engine.field_sets().to_vec());
     (hooks.spawn_interfaces)(&handle);
-    runtime.set_device_info(DeviceInfo::of(device.name(), device.calibration().as_ref()));
 
     let mut touch_state = TouchState::new();
     if let Some(cal) =
@@ -88,6 +87,10 @@ pub fn evdev_thread(
             s.calibration = Some(cal);
         }
     }
+    // Report the calibration the engine actually uses (profile override
+    // applied), not the firmware-reported one - clients size their field
+    // sets from these millimeter bounds.
+    runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
 
     let mut stable_count: Option<usize> = None;
     let mut stable_frames: u32 = 0;
