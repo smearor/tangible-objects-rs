@@ -148,6 +148,7 @@ pub fn run_filter(
                     stage,
                 } => {
                     pipeline.set_mode(mode, stability, stage.as_ref());
+                    runtime.set_filter_mode(mode);
                     runtime.emit_lifecycle(LifecycleEvent::FilterModeChanged(mode));
                     match &stage {
                         Some(stage) => info!("filter mode: {mode} (stage {stage})"),

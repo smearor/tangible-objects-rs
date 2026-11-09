@@ -196,6 +196,57 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Shows or hides the edge-margin overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_edge_margin_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetEdgeMarginVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Shows or hides the field-set overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_fields_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetFieldsVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Shows or hides the ruler overlay on the GUI canvas - ignored
+    /// on headless daemons.
+    async fn set_ruler_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetRulerVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Shows or hides the positions overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_positions_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetPositionsVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Lets touches pass through the GTK window to the desktop
+    /// beneath, except where GUI elements are hit - ignored on
+    /// headless daemons, Wayland only.
+    async fn set_touch_passthrough(&self, ctx: &Context<'_>, enabled: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetTouchPassthrough(enabled))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
     /// Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
     /// needed when the desktop shows the touchscreen rotated. Ignored
     /// on headless daemons.

@@ -9,12 +9,15 @@ use tangible_objects_engine::Engine;
 use tangible_objects_engine::RecordingSession;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::TouchState;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::DisplayRotation;
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameNumber;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileInfo;
+use tangible_objects_model::TouchSet;
 use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
 
@@ -35,6 +38,30 @@ pub(crate) const STABLE_THRESHOLD: u32 = 10;
 /// `SYN_REPORT` frame, publishes snapshots/events through the runtime
 /// and writes the GUI's [`SharedState`]. Daemon semantics (interfaces,
 /// control commands, recording) arrive via [`GuiHooks`].
+/// Virtual suppression/forwarding counts - what the filter proxy
+/// would do to this frame under `mode`. The GUI has no proxy; the
+/// counters show ingest-filtered plus mode-suppressed contacts so the
+/// status line matches `--filter` semantics.
+fn virtual_suppression(
+    engine: &Engine,
+    mode: FilterMode,
+    touches: TouchSet<'_>,
+) -> (ContactCount, ContactCount) {
+    let total = touches.len() as u32;
+    let suppressed = match mode {
+        FilterMode::Off => 0,
+        FilterMode::Immediate | FilterMode::Gated | FilterMode::Guarded => {
+            let bound = engine.bound_slots();
+            let field = engine.field_suppressed_slots(touches);
+            touches
+                .slots_where(|t| bound.contains(&t.slot) || field.contains(&t.slot))
+                .len() as u32
+        }
+        FilterMode::TangiblesOnly => total,
+    };
+    (suppressed.into(), (total - suppressed).into())
+}
+
 pub fn evdev_thread(
     device_path: String,
     patterns: PatternBuf,
@@ -65,9 +92,29 @@ pub fn evdev_thread(
     if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
     }
-    let (dead_zones_visible, background_alpha) = state
+    let (
+        dead_zones_visible,
+        background_alpha,
+        edge_margin_visible,
+        fields_visible,
+        ruler_visible,
+        positions_visible,
+        filter_mode,
+        touch_passthrough,
+    ) = state
         .lock()
-        .map(|s| (s.dead_zones_visible, s.background_alpha.percent()))
+        .map(|s| {
+            (
+                s.dead_zones_visible,
+                s.background_alpha.percent(),
+                s.edge_margin_visible,
+                s.fields_visible,
+                s.ruler_visible,
+                s.positions_visible,
+                s.filter_mode,
+                s.touch_passthrough,
+            )
+        })
         .unwrap_or_default();
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
@@ -82,8 +129,17 @@ pub fn evdev_thread(
     runtime.set_display_rotation(rotation);
     runtime.set_field_sets(engine.field_sets().to_vec());
     runtime.set_dead_zones(engine.dead_zones().to_vec());
+    if let Ok(mut s) = state.lock() {
+        s.command_handle = Some(handle.clone());
+    }
     runtime.set_dead_zones_visible(dead_zones_visible);
     runtime.set_background_alpha(background_alpha.into());
+    runtime.set_edge_margin_visible(edge_margin_visible);
+    runtime.set_fields_visible(fields_visible);
+    runtime.set_ruler_visible(ruler_visible);
+    runtime.set_positions_visible(positions_visible);
+    runtime.set_filter_mode(filter_mode);
+    runtime.set_touch_passthrough(touch_passthrough);
     (hooks.spawn_interfaces)(&handle);
 
     let mut touch_state = TouchState::new();
@@ -137,6 +193,20 @@ pub fn evdev_thread(
                 s.rotation = runtime.display_rotation();
                 s.dead_zones_visible = runtime.dead_zones_visible();
                 s.dead_zones = engine.dead_zones().to_vec();
+                s.edge_margin = engine.edge_margin();
+                s.edge_margin_visible = runtime.edge_margin_visible();
+                s.fields_visible = runtime.fields_visible();
+                s.field_sets = engine.field_sets().to_vec();
+                s.ruler_visible = runtime.ruler_visible();
+                s.positions_visible = runtime.positions_visible();
+                s.touch_passthrough = runtime.touch_passthrough();
+                s.filter_mode = runtime.filter_mode();
+                s.incoming_contacts = engine.incoming_contacts();
+                s.edge_filtered = engine.edge_filtered();
+                let (mode_suppressed, forwarded) =
+                    virtual_suppression(&engine, runtime.filter_mode(), (&*s.touches).into());
+                s.mode_suppressed = mode_suppressed;
+                s.forwarded = forwarded;
                 s.field_set_count = engine.field_set_count();
                 s.field_count = engine.field_count();
                 s.occupied_fields = engine.occupied_field_count();
@@ -192,6 +262,24 @@ pub fn evdev_thread(
                     s.dead_zones_visible = runtime.dead_zones_visible();
                     s.dead_zones = engine.dead_zones().to_vec();
                     s.dead_zone_filtered = frame.dead_zone_filtered;
+                    s.edge_margin = engine.edge_margin();
+                    s.edge_margin_visible = runtime.edge_margin_visible();
+                    s.fields_visible = runtime.fields_visible();
+                    s.field_sets = engine.field_sets().to_vec();
+                    s.ruler_visible = runtime.ruler_visible();
+                    s.positions_visible = runtime.positions_visible();
+                    s.touch_passthrough = runtime.touch_passthrough();
+                    s.touch_passthrough = runtime.touch_passthrough();
+                    s.filter_mode = runtime.filter_mode();
+                    s.incoming_contacts = engine.incoming_contacts();
+                    s.edge_filtered = engine.edge_filtered();
+                    let (mode_suppressed, forwarded) = virtual_suppression(
+                        &engine,
+                        runtime.filter_mode(),
+                        (&frame.touches).into(),
+                    );
+                    s.mode_suppressed = mode_suppressed;
+                    s.forwarded = forwarded;
                     s.field_set_count = engine.field_set_count();
                     s.field_count = engine.field_count();
                     s.occupied_fields = engine.occupied_field_count();

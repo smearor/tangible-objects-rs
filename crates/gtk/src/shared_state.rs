@@ -9,12 +9,17 @@ use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldCount;
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetCount;
+use tangible_objects_model::FilterMode;
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
+use tangible_objects_runtime::EngineHandle;
 
 use crate::BackgroundAlpha;
+use crate::GuiOptions;
 use crate::gui_mode::GuiMode;
 
 /// Snapshot the draw functions consume - written by the device thread
@@ -63,17 +68,50 @@ pub struct SharedState {
     pub field_count: FieldCount,
     /// Fields currently occupied.
     pub occupied_fields: FieldCount,
+    /// Edge margin in millimeters - the ingest-filtered strip at the
+    /// surface edges.
+    pub edge_margin: Millimeters,
+    /// Whether the edge-margin overlay is drawn
+    /// (`SetEdgeMarginVisible`/`--edge-margin-visible`).
+    pub edge_margin_visible: bool,
+    /// Whether the field-set overlay is drawn
+    /// (`SetFieldsVisible`/`--fields-visible`).
+    pub fields_visible: bool,
+    /// Registered field sets - the overlay data set.
+    pub field_sets: Vec<FieldSet>,
+    /// Whether the ruler overlay is drawn
+    /// (`SetRulerVisible`/`--ruler-visible`).
+    pub ruler_visible: bool,
+    /// Whether the positions overlay is drawn
+    /// (`SetPositionsVisible`/`--positions-visible`).
+    pub positions_visible: bool,
+    /// Whether touches pass through to the desktop except on GUI
+    /// elements (`SetTouchPassthrough`/`--touch-passthrough`).
+    pub touch_passthrough: bool,
+    /// Selected suppression policy (`SetFilterMode` command +
+    /// `--filter-mode` start value) - display state.
+    pub filter_mode: FilterMode,
+    /// Active contacts before ingest filtering on the last frame.
+    pub incoming_contacts: ContactCount,
+    /// Touches dropped by edge-margin filtering on the last frame.
+    pub edge_filtered: ContactCount,
+    /// Touches the filter proxy would suppress under the current
+    /// `filter_mode` (tangible-bound slots, `suppress` fields, or all
+    /// contacts in `TangiblesOnly`) - virtual count, the GUI has no
+    /// proxy.
+    pub mode_suppressed: ContactCount,
+    /// Touches the filter proxy would forward - `touches` minus
+    /// `mode_suppressed`. Virtual count in `--gui` mode.
+    pub forwarded: ContactCount,
+    /// Command channel handle - the control-bar buttons issue the
+    /// same `ControlCommand`s the interfaces do.
+    pub command_handle: Option<EngineHandle>,
 }
 
 impl SharedState {
-    /// Initial state - hidden-only devices start visible (the
-    /// `--gui` flag semantics), `SetGuiVisible` toggles afterwards.
-    pub fn new(
-        visible: bool,
-        rotation: DisplayRotation,
-        background_alpha: BackgroundAlpha,
-        dead_zones_visible: bool,
-    ) -> Arc<Mutex<Self>> {
+    /// Initial state from the launch options - `SetGuiVisible` and
+    /// friends toggle the flags afterwards.
+    pub fn new(options: &GuiOptions) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             touches: Vec::new(),
             matches: Vec::new(),
@@ -84,16 +122,29 @@ impl SharedState {
             mode: GuiMode::Live,
             device_error: None,
             message: None,
-            visible,
-            rotation,
-            background_alpha,
+            visible: options.visible,
+            rotation: options.rotation,
+            background_alpha: options.background_alpha,
             background_alpha_request: None,
             dead_zones: Vec::new(),
-            dead_zones_visible,
+            dead_zones_visible: options.dead_zones_visible,
             dead_zone_filtered: ContactCount::default(),
             field_set_count: FieldSetCount::default(),
             field_count: FieldCount::default(),
             occupied_fields: FieldCount::default(),
+            edge_margin: Millimeters::new(0.0),
+            edge_margin_visible: options.edge_margin_visible,
+            fields_visible: options.fields_visible,
+            field_sets: Vec::new(),
+            ruler_visible: options.ruler_visible,
+            positions_visible: options.positions_visible,
+            touch_passthrough: options.touch_passthrough,
+            filter_mode: options.filter_mode,
+            incoming_contacts: ContactCount::default(),
+            edge_filtered: ContactCount::default(),
+            mode_suppressed: ContactCount::default(),
+            forwarded: ContactCount::default(),
+            command_handle: None,
         }))
     }
 }

@@ -5,11 +5,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use i18n_embed_fl::fl;
+use tangible_objects_model::Calibration;
 use tangible_objects_model::DeadZone;
+use tangible_objects_model::FieldSet;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::Pixels;
+use tangible_objects_model::Region;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::TrackedSet;
 use tangible_objects_model::Vec2;
@@ -92,6 +95,12 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     if s.dead_zones_visible {
         draw_dead_zones(cr, &s.dead_zones, &to_screen);
     }
+    if s.edge_margin_visible {
+        draw_edge_margin(cr, s.edge_margin, &cal, &to_screen);
+    }
+    if s.fields_visible {
+        draw_fields(cr, &s.field_sets, &to_screen);
+    }
 
     if mode == GuiMode::Training {
         draw_training(cr, w, h, touches.into(), &to_screen, &s);
@@ -104,6 +113,19 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
             &to_screen,
             &s,
         );
+    }
+
+    if s.positions_visible {
+        draw_positions(
+            cr,
+            touches.into(),
+            (&s.tracked).into(),
+            &s.field_sets,
+            &to_screen,
+        );
+    }
+    if s.ruler_visible {
+        draw_ruler(cr, w, h, &cal, &to_screen);
     }
 }
 
@@ -146,6 +168,201 @@ fn draw_dead_zones(
         }
         let _ = cr.show_text(name);
     }
+}
+
+/// Edge-margin overlay: semi-transparent bands and a dashed inner
+/// border marking the strip where contacts are ingest-filtered.
+fn draw_edge_margin(
+    cr: &cairo::Context,
+    margin: Millimeters,
+    cal: &Calibration,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    let m = margin.as_f64();
+    if m <= 0.0 {
+        return;
+    }
+    let w_mm = cal.width_mm().as_f64();
+    let h_mm = cal.height_mm().as_f64();
+    let origin = to_screen(&Vec2::<Millimeters>::new(0.0, 0.0));
+    let extent = to_screen(&Vec2::<Millimeters>::new(w_mm, h_mm));
+    let inner_tl = to_screen(&Vec2::<Millimeters>::new(m, m));
+    let inner_br = to_screen(&Vec2::<Millimeters>::new(w_mm - m, h_mm - m));
+
+    cr.set_source_rgba(1.0, 0.35, 0.2, 0.10);
+    for rect in [
+        (origin.x, origin.y, extent.x, inner_tl.y),     // top band
+        (origin.x, inner_br.y, extent.x, extent.y),     // bottom band
+        (origin.x, inner_tl.y, inner_tl.x, inner_br.y), // left band
+        (inner_br.x, inner_tl.y, extent.x, inner_br.y), // right band
+    ] {
+        if rect.2 > rect.0 && rect.3 > rect.1 {
+            cr.rectangle(rect.0, rect.1, rect.2 - rect.0, rect.3 - rect.1);
+            let _ = cr.fill();
+        }
+    }
+
+    cr.set_dash(&[8.0, 5.0], 0.0);
+    cr.set_line_width(2.0);
+    cr.set_source_rgba(1.0, 0.35, 0.2, 0.65);
+    cr.rectangle(
+        inner_tl.x,
+        inner_tl.y,
+        inner_br.x - inner_tl.x,
+        inner_br.y - inner_tl.y,
+    );
+    let _ = cr.stroke();
+    cr.set_dash(&[], 0.0);
+}
+
+/// Field-set overlay: a dashed, semi-transparent region per field -
+/// the occupancy cells the engine counts (suppressed in filter mode).
+fn draw_fields(
+    cr: &cairo::Context,
+    sets: &[FieldSet],
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    for set in sets {
+        for field in &set.fields {
+            let region = field_screen_region(set, field);
+            let tl = to_screen(&Vec2::<Millimeters>::new(
+                region.x_min.as_f64(),
+                region.y_min.as_f64(),
+            ));
+            let br = to_screen(&Vec2::<Millimeters>::new(
+                region.x_max.as_f64(),
+                region.y_max.as_f64(),
+            ));
+
+            cr.set_source_rgba(0.2, 0.8, 1.0, 0.08);
+            cr.rectangle(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+            let _ = cr.fill();
+            cr.set_dash(&[6.0, 4.0], 0.0);
+            cr.set_line_width(1.5);
+            cr.set_source_rgba(0.2, 0.8, 1.0, 0.6);
+            cr.rectangle(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+            let _ = cr.stroke();
+            cr.set_dash(&[], 0.0);
+
+            cr.set_font_size(11.0);
+            cr.set_source_rgba(0.55, 0.9, 1.0, 0.85);
+            cr.move_to(tl.x + 4.0, tl.y + 14.0);
+            let _ = cr.show_text(field.name.as_str());
+        }
+    }
+}
+
+/// A field's region resolved into screen-millimeter space - anchored
+/// sets carry local/normalized regions relative to their window.
+fn field_screen_region(set: &FieldSet, field: &tangible_objects_model::Field) -> Region {
+    let Some(anchor) = &set.window else {
+        return field.region;
+    };
+    let width = anchor.width.map(|w| w.as_f64()).unwrap_or(1.0);
+    let height = anchor.height.map(|h| h.as_f64()).unwrap_or(1.0);
+    let x = anchor.x_offset.as_f64();
+    let y = anchor.y_offset.as_f64();
+    Region {
+        x_min: Millimeters::new(x + field.region.x_min.as_f64() * width),
+        y_min: Millimeters::new(y + field.region.y_min.as_f64() * height),
+        x_max: Millimeters::new(x + field.region.x_max.as_f64() * width),
+        y_max: Millimeters::new(y + field.region.y_max.as_f64() * height),
+    }
+}
+
+/// Ruler overlay: semi-transparent strips with pixel ticks on the
+/// left edge and millimeter ticks on the bottom edge.
+fn draw_ruler(
+    cr: &cairo::Context,
+    w: f64,
+    h: f64,
+    cal: &Calibration,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    const RULER_W: f64 = 56.0;
+    const RULER_H: f64 = 36.0;
+
+    cr.set_source_rgba(0.04, 0.04, 0.06, 0.5);
+    cr.rectangle(0.0, 0.0, RULER_W, h);
+    let _ = cr.fill();
+    cr.rectangle(0.0, h - RULER_H, w, RULER_H);
+    let _ = cr.fill();
+
+    cr.set_font_size(10.0);
+    cr.set_source_rgba(0.9, 0.9, 0.9, 0.85);
+
+    // Left edge: pixel ticks every 100 px.
+    let mut y = 0.0;
+    while y <= h {
+        cr.move_to(RULER_W - 8.0, y);
+        cr.line_to(RULER_W, y);
+        let _ = cr.stroke();
+        cr.move_to(4.0, y + 3.0);
+        let _ = cr.show_text(&format!("{y} px"));
+        y += 100.0;
+    }
+
+    // Bottom edge: millimeter ticks every 50 mm.
+    let mut mm = 0.0;
+    while mm <= cal.width_mm().as_f64() {
+        let x = to_screen(&Vec2::<Millimeters>::new(mm, 0.0)).x;
+        if x <= w {
+            cr.move_to(x, h - 8.0);
+            cr.line_to(x, h);
+            let _ = cr.stroke();
+            cr.move_to(x + 3.0, h - 4.0);
+            let _ = cr.show_text(&format!("{mm} mm"));
+        }
+        mm += 50.0;
+    }
+}
+
+/// Positions overlay: mm + pixel coordinates at every touch point,
+/// tangible center and field-set field.
+fn draw_positions(
+    cr: &cairo::Context,
+    touches: TouchSet<'_>,
+    tracked: TrackedSet<'_>,
+    field_sets: &[FieldSet],
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
+    cr.set_font_size(11.0);
+    cr.set_source_rgba(0.85, 0.85, 0.85, 0.85);
+
+    for touch in touches.iter() {
+        draw_position_label(cr, &touch.pos, to_screen, 10.0, -8.0);
+    }
+    for tangible in tracked.iter() {
+        draw_position_label(cr, &tangible.center, to_screen, 10.0, 18.0);
+    }
+    for set in field_sets {
+        for field in &set.fields {
+            let region = field_screen_region(set, field);
+            draw_position_label(cr, &region.center(), to_screen, 10.0, -8.0);
+        }
+    }
+}
+
+/// Writes the `x_mm,y_mm mm | x_px,y_px px` label at `pos` offset by
+/// `dx`/`dy` screen pixels.
+fn draw_position_label(
+    cr: &cairo::Context,
+    pos: &Vec2<Millimeters>,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+    dx: f64,
+    dy: f64,
+) {
+    let px = to_screen(pos);
+    cr.move_to(px.x + dx, px.y + dy);
+    let _ = cr.show_text(&fl!(
+        language_loader(),
+        "position-label",
+        x_mm = (pos.x as i64),
+        y_mm = (pos.y as i64),
+        x_px = (px.x as i64),
+        y_px = (px.y as i64)
+    ));
 }
 
 /// Training view: complete-graph point set + stability status.
@@ -334,6 +551,10 @@ fn draw_live(
         occupied = (i64::from(s.occupied_fields.as_u32())),
         fields = (i64::from(s.field_count.as_u32())),
         zones = (s.dead_zones.len() as i64),
-        filtered = (i64::from(s.dead_zone_filtered.as_u32()))
+        filtered = (i64::from(s.dead_zone_filtered.as_u32())),
+        suppressed = (i64::from(
+            s.edge_filtered.as_u32() + s.dead_zone_filtered.as_u32() + s.mode_suppressed.as_u32()
+        )),
+        forwarded = (i64::from(s.forwarded.as_u32()))
     ));
 }

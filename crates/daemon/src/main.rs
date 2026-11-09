@@ -24,6 +24,7 @@ use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::DisplayRotation;
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Region;
@@ -171,6 +172,31 @@ struct Cli {
     /// `set_dead_zones_visible` toggles it afterwards
     #[arg(long)]
     dead_zones_visible: bool,
+    /// Draw the edge-margin overlay on the GUI canvas (--gui);
+    /// `set_edge_margin_visible` toggles it afterwards
+    #[arg(long)]
+    edge_margin_visible: bool,
+    /// Draw the field-set overlay on the GUI canvas (--gui);
+    /// `set_fields_visible` toggles it afterwards
+    #[arg(long)]
+    fields_visible: bool,
+    /// Draw the ruler overlay on the GUI canvas (--gui);
+    /// `set_ruler_visible` toggles it afterwards
+    #[arg(long)]
+    ruler_visible: bool,
+    /// Draw the positions overlay on the GUI canvas (--gui);
+    /// `set_positions_visible` toggles it afterwards
+    #[arg(long)]
+    positions_visible: bool,
+    /// Let touch events pass through the GTK window to the desktop
+    /// beneath, except where GUI elements are hit (--gui, Wayland
+    /// only); `set_touch_passthrough` toggles it afterwards
+    #[arg(long)]
+    touch_passthrough: bool,
+    /// Suppression policy the GUI displays and the proxy applies
+    /// (honored in --filter mode)
+    #[arg(long, value_name = "off|immediate|gated|guarded|tangibles-only")]
+    filter_mode: Option<FilterMode>,
 }
 
 fn main() -> Result<()> {
@@ -303,6 +329,12 @@ fn main() -> Result<()> {
                     .map(BackgroundAlpha::from_percent)
                     .unwrap_or_default(),
                 dead_zones_visible: cli.dead_zones_visible,
+                edge_margin_visible: cli.edge_margin_visible,
+                fields_visible: cli.fields_visible,
+                ruler_visible: cli.ruler_visible,
+                positions_visible: cli.positions_visible,
+                touch_passthrough: cli.touch_passthrough,
+                filter_mode: cli.filter_mode.unwrap_or_default(),
             },
             interfaces()?,
         );

@@ -52,12 +52,7 @@ pub fn run_gui(
     options: GuiOptions,
     hooks: GuiHooks,
 ) {
-    let state = SharedState::new(
-        options.visible,
-        options.rotation,
-        options.background_alpha,
-        options.dead_zones_visible,
-    );
+    let state = SharedState::new(&options);
 
     // Spawn evdev thread - the in-process engine loop.
     let state_clone = state.clone();
@@ -122,6 +117,26 @@ pub fn run_gui(
             .default_height(1200)
             .child(&overlay)
             .build();
+
+        // `--touch-passthrough` puts the window into the layer-shell
+        // Overlay layer: a toplevel loses stacking when the
+        // through-click focuses the window beneath (GNOME), and GTK4
+        // has no `keep_above`. Must run before `present`; runtime
+        // toggles only adjust the input region.
+        if options.touch_passthrough && gtk4_layer_shell::is_supported() {
+            use gtk4_layer_shell::Edge;
+            use gtk4_layer_shell::KeyboardMode;
+            use gtk4_layer_shell::Layer;
+            use gtk4_layer_shell::LayerShell;
+
+            window.init_layer_shell();
+            window.set_layer(Layer::Overlay);
+            window.set_anchor(Edge::Top, true);
+            window.set_anchor(Edge::Bottom, true);
+            window.set_anchor(Edge::Left, true);
+            window.set_anchor(Edge::Right, true);
+            window.set_keyboard_mode(KeyboardMode::None);
+        }
 
         // Window background transparent so the canvas fill's alpha
         // (`background_alpha` toggle) actually shows the desktop

@@ -1,8 +1,10 @@
+#[cfg(feature = "gui")]
 use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TouchPoint;
@@ -59,4 +61,32 @@ pub struct EngineSnapshot {
     /// only present with the `gui` feature.
     #[cfg(feature = "gui")]
     pub background_alpha: AlphaPercent,
+    /// Whether the GUI canvas draws the edge-margin overlay
+    /// (`SetEdgeMarginVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub edge_margin_visible: bool,
+    /// Whether the GUI canvas draws the field-set overlay
+    /// (`SetFieldsVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub fields_visible: bool,
+    /// Whether the GUI canvas draws the ruler overlay
+    /// (`SetRulerVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub ruler_visible: bool,
+    /// Whether the GUI canvas draws the positions overlay
+    /// (`SetPositionsVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub positions_visible: bool,
+    /// Whether touches pass through to the desktop except on GUI
+    /// elements (`SetTouchPassthrough` command) - only present with
+    /// the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub touch_passthrough: bool,
+    /// Selected suppression policy (`SetFilterMode` command) -
+    /// display intent on daemons without a proxy.
+    pub filter_mode: FilterMode,
 }

@@ -151,6 +151,26 @@ pub enum ControlCommand {
     /// availability as [`Self::SetGuiVisible`] - headless daemons
     /// ignore it.
     SetBackgroundAlpha(AlphaPercent),
+    /// Show or hide the edge-margin overlay on the GUI canvas -
+    /// the area where edge-ghost contacts are ingest-filtered.
+    /// Same availability as [`Self::SetGuiVisible`].
+    SetEdgeMarginVisible(bool),
+    /// Show or hide the field-set overlay on the GUI canvas - the
+    /// occupancy regions of every registered field set. Same
+    /// availability as [`Self::SetGuiVisible`].
+    SetFieldsVisible(bool),
+    /// Show or hide the ruler overlay on the GUI canvas - pixel ticks
+    /// on one edge, millimeter ticks on the other. Same availability
+    /// as [`Self::SetGuiVisible`].
+    SetRulerVisible(bool),
+    /// Show or hide the positions overlay on the GUI canvas - mm and
+    /// pixel coordinates of tangibles, touch points and field-set
+    /// fields. Same availability as [`Self::SetGuiVisible`].
+    SetPositionsVisible(bool),
+    /// Let touch events pass through the GTK window to the desktop
+    /// beneath - except where a GUI element (control bar) is hit.
+    /// Same availability as [`Self::SetGuiVisible`]; Wayland only.
+    SetTouchPassthrough(bool),
 }
 
 impl ControlCommand {

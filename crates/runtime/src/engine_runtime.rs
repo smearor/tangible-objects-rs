@@ -7,12 +7,15 @@ use tokio::sync::watch;
 
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
+#[cfg(feature = "gui")]
 use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
+#[cfg(feature = "gui")]
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
@@ -99,6 +102,30 @@ pub struct EngineRuntime {
     /// only with the `gui` feature.
     #[cfg(feature = "gui")]
     background_alpha: AlphaPercent,
+    /// Whether the GUI canvas draws the edge-margin overlay
+    /// (`SetEdgeMarginVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    edge_margin_visible: bool,
+    /// Whether the GUI canvas draws the field-set overlay
+    /// (`SetFieldsVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    fields_visible: bool,
+    /// Whether the GUI canvas draws the ruler overlay
+    /// (`SetRulerVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    ruler_visible: bool,
+    /// Whether the GUI canvas draws the positions overlay
+    /// (`SetPositionsVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    positions_visible: bool,
+    /// Whether touches fall through to the desktop beneath except on
+    /// GUI elements (`SetTouchPassthrough` command) - only with the
+    /// `gui` feature.
+    #[cfg(feature = "gui")]
+    touch_passthrough: bool,
+    /// Selected suppression policy (`SetFilterMode` command) - display
+    /// state in `--gui`; honored by the proxy in `--filter`.
+    filter_mode: FilterMode,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -150,6 +177,17 @@ impl EngineRuntime {
             dead_zones_visible: false,
             #[cfg(feature = "gui")]
             background_alpha: AlphaPercent::default(),
+            #[cfg(feature = "gui")]
+            edge_margin_visible: false,
+            #[cfg(feature = "gui")]
+            fields_visible: false,
+            #[cfg(feature = "gui")]
+            ruler_visible: false,
+            #[cfg(feature = "gui")]
+            positions_visible: false,
+            #[cfg(feature = "gui")]
+            touch_passthrough: false,
+            filter_mode: FilterMode::default(),
             #[cfg(feature = "gui")]
             display_rotation: DisplayRotation::default(),
             training: None,
@@ -240,6 +278,17 @@ impl EngineRuntime {
             dead_zones_visible: self.dead_zones_visible,
             #[cfg(feature = "gui")]
             background_alpha: self.background_alpha,
+            #[cfg(feature = "gui")]
+            edge_margin_visible: self.edge_margin_visible,
+            #[cfg(feature = "gui")]
+            fields_visible: self.fields_visible,
+            #[cfg(feature = "gui")]
+            ruler_visible: self.ruler_visible,
+            #[cfg(feature = "gui")]
+            positions_visible: self.positions_visible,
+            #[cfg(feature = "gui")]
+            touch_passthrough: self.touch_passthrough,
+            filter_mode: self.filter_mode,
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -272,6 +321,17 @@ impl EngineRuntime {
             dead_zones_visible: self.dead_zones_visible,
             #[cfg(feature = "gui")]
             background_alpha: self.background_alpha,
+            #[cfg(feature = "gui")]
+            edge_margin_visible: self.edge_margin_visible,
+            #[cfg(feature = "gui")]
+            fields_visible: self.fields_visible,
+            #[cfg(feature = "gui")]
+            ruler_visible: self.ruler_visible,
+            #[cfg(feature = "gui")]
+            positions_visible: self.positions_visible,
+            #[cfg(feature = "gui")]
+            touch_passthrough: self.touch_passthrough,
+            filter_mode: self.filter_mode,
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
@@ -351,6 +411,88 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn background_alpha(&self) -> AlphaPercent {
         self.background_alpha
+    }
+
+    /// Sets the edge-margin overlay visibility
+    /// (`SetEdgeMarginVisible` command). Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_edge_margin_visible(&mut self, visible: bool) {
+        self.edge_margin_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the edge-margin overlay. Only
+    /// with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn edge_margin_visible(&self) -> bool {
+        self.edge_margin_visible
+    }
+
+    /// Sets the field-set overlay visibility (`SetFieldsVisible`
+    /// command). Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_fields_visible(&mut self, visible: bool) {
+        self.fields_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the field-set overlay. Only with
+    /// the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn fields_visible(&self) -> bool {
+        self.fields_visible
+    }
+
+    /// Sets the ruler overlay visibility (`SetRulerVisible` command).
+    /// Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_ruler_visible(&mut self, visible: bool) {
+        self.ruler_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the ruler overlay. Only with the
+    /// `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn ruler_visible(&self) -> bool {
+        self.ruler_visible
+    }
+
+    /// Sets the positions overlay visibility (`SetPositionsVisible`
+    /// command). Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_positions_visible(&mut self, visible: bool) {
+        self.positions_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the positions overlay. Only with
+    /// the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn positions_visible(&self) -> bool {
+        self.positions_visible
+    }
+
+    /// Sets whether touches pass through to the desktop except on GUI
+    /// elements (`SetTouchPassthrough` command). Only with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub fn set_touch_passthrough(&mut self, enabled: bool) {
+        self.touch_passthrough = enabled;
+    }
+
+    /// Whether touch passthrough is active. Only with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub fn touch_passthrough(&self) -> bool {
+        self.touch_passthrough
+    }
+
+    /// Sets the displayed filter mode (`SetFilterMode` command -
+    /// display state in `--gui`; honored by the proxy in `--filter`).
+    pub fn set_filter_mode(&mut self, mode: FilterMode) {
+        self.filter_mode = mode;
+    }
+
+    /// The selected suppression policy.
+    pub fn filter_mode(&self) -> FilterMode {
+        self.filter_mode
     }
 
     /// Arms remote profile capture (`TrainProfile` command) - the

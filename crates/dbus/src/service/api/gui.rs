@@ -53,3 +53,63 @@ pub(crate) async fn set_background_alpha(service: &EngineService, percent: u8) -
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }
+
+/// Shows or hides the edge-margin overlay on the GUI canvas - ignored
+/// on headless daemons.
+pub(crate) async fn set_edge_margin_visible(
+    service: &EngineService,
+    visible: bool,
+) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetEdgeMarginVisible(visible))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Shows or hides the field-set overlay on the GUI canvas - ignored
+/// on headless daemons.
+pub(crate) async fn set_fields_visible(service: &EngineService, visible: bool) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetFieldsVisible(visible))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Shows or hides the ruler overlay on the GUI canvas - ignored on
+/// headless daemons.
+pub(crate) async fn set_ruler_visible(service: &EngineService, visible: bool) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetRulerVisible(visible))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Shows or hides the positions overlay on the GUI canvas - ignored
+/// on headless daemons.
+pub(crate) async fn set_positions_visible(
+    service: &EngineService,
+    visible: bool,
+) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetPositionsVisible(visible))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Lets touches pass through the GTK window to the desktop beneath,
+/// except where GUI elements are hit - ignored on headless daemons,
+/// Wayland only.
+pub(crate) async fn set_touch_passthrough(
+    service: &EngineService,
+    enabled: bool,
+) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetTouchPassthrough(enabled))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}

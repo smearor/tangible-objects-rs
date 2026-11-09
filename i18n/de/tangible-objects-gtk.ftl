@@ -19,15 +19,26 @@ live-status = { $figures ->
 } | { $touches ->
     [one] { $touches } Touch-Punkt
    *[other] { $touches } Touch-Punkte
-} | Felder: { $occupied }/{ $fields } ({ $sets } Sets) | Dead-Zones: { $zones }, { $filtered } gefiltert
+} | Felder: { $occupied }/{ $fields } ({ $sets } Sets) | Dead-Zones: { $zones }, { $filtered } gefiltert | { $suppressed } unterdrückt, { $forwarded } weitergeleitet
 live-info = { $figures ->
     [one] { $figures } Figur
    *[other] { $figures } Figuren
 } | { $touches ->
     [one] { $touches } Touch-Punkt
    *[other] { $touches } Touch-Punkte
-} | Felder { $occupied }/{ $fields } | DZ { $zones } ({ $filtered } gefiltert)
+} | Felder { $occupied }/{ $fields } | DZ { $zones } ({ $filtered } gefiltert) | { $suppressed } unterdr. → { $forwarded } weiter
 pin-label = P{ $index } ({ $x },{ $y })
+position-label = { $x_mm },{ $y_mm } mm  ·  { $x_px },{ $y_px } px
+toggle-edge-margin = Rand
+toggle-fields = Felder
+toggle-ruler = Lineal
+toggle-positions = Positionen
+toggle-passthrough = Durchgriff
+filter-mode-off = aus
+filter-mode-immediate = sofort
+filter-mode-gated = gated
+filter-mode-guarded = guarded
+filter-mode-tangibles-only = nur
 window-title = Tangible Objects - Surface Monitor
 
 background-alpha = Alpha: { $percent }%

@@ -90,6 +90,12 @@ pub struct Engine {
     /// Touches dropped by dead-zone filtering on the last processed
     /// frame - the ingest-level suppression counter.
     dead_zone_filtered: ContactCount,
+    /// Touches dropped by edge-margin filtering on the last processed
+    /// frame - ghost contacts near the device edges.
+    edge_filtered: ContactCount,
+    /// Active contacts before ingest filtering on the last processed
+    /// frame - edge + dead-zone + surviving touches.
+    incoming_contacts: ContactCount,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -140,6 +146,8 @@ impl Engine {
             dead_zones: DeadZones::default(),
             dead_zone_owners: HashMap::new(),
             dead_zone_filtered: ContactCount::default(),
+            edge_filtered: ContactCount::default(),
+            incoming_contacts: ContactCount::default(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -388,6 +396,24 @@ impl Engine {
         self.dead_zone_filtered
     }
 
+    /// Touches dropped by edge-margin filtering on the last processed
+    /// frame.
+    pub fn edge_filtered(&self) -> ContactCount {
+        self.edge_filtered
+    }
+
+    /// Active contacts before ingest filtering on the last processed
+    /// frame.
+    pub fn incoming_contacts(&self) -> ContactCount {
+        self.incoming_contacts
+    }
+
+    /// Edge margin in millimeters - touches inside are ghost-filtered
+    /// at ingest.
+    pub fn edge_margin(&self) -> Millimeters {
+        self.edge_margin
+    }
+
     /// All active field sets (static plus dynamically registered).
     pub fn field_sets(&self) -> &[FieldSet] {
         self.fields.sets()
@@ -412,6 +438,12 @@ impl Engine {
     /// proxy's suppression set in `--filter` mode.
     pub fn field_suppressed_slots(&self, touches: TouchSet<'_>) -> SlotSet {
         self.fields.suppressed_slots(touches)
+    }
+
+    /// Slots bound to tracked tangibles - the contacts the filter proxy
+    /// suppresses in tangible-suppression modes.
+    pub fn bound_slots(&self) -> SlotSet {
+        self.tracker.bound_slots()
     }
 
     /// Sets the edge margin: touches closer than `margin` to the surface
@@ -495,7 +527,10 @@ impl Engine {
         }
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
+        self.incoming_contacts = touches.len().into();
+        let before_edge = touches.len();
         touches.retain(|touch| !self.is_edge_ghost(touch));
+        self.edge_filtered = (before_edge - touches.len()).into();
         let before_dead_zones = touches.len();
         touches.retain(|touch| !self.dead_zones.contains(&touch.pos));
         self.dead_zone_filtered = (before_dead_zones - touches.len()).into();

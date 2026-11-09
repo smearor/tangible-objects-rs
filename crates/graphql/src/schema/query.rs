@@ -10,6 +10,7 @@ use tangible_objects_model::AnalysisMode;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
@@ -120,6 +121,12 @@ impl QueryRoot {
     async fn dead_zone_filtered(&self, ctx: &Context<'_>) -> Result<i32> {
         let filtered = ctx.data::<EngineHandle>()?.snapshot().dead_zone_filtered;
         Ok(filtered.as_u32() as i32)
+    }
+
+    /// The selected suppression policy (`setFilterMode`); honored by
+    /// the proxy in `--filter` mode, display state elsewhere.
+    async fn filter_mode(&self, ctx: &Context<'_>) -> Result<FilterMode> {
+        Ok(ctx.data::<EngineHandle>()?.snapshot().filter_mode)
     }
 
     /// Reads a recording artifact produced by this daemon.

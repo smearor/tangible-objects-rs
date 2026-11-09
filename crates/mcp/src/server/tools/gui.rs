@@ -13,7 +13,12 @@ use crate::server::engine_mcp::EngineMcp;
 use crate::tool_args::SetBackgroundAlphaArgs;
 use crate::tool_args::SetDeadZonesVisibleArgs;
 use crate::tool_args::SetDisplayRotationArgs;
+use crate::tool_args::SetEdgeMarginVisibleArgs;
+use crate::tool_args::SetFieldsVisibleArgs;
 use crate::tool_args::SetGuiVisibleArgs;
+use crate::tool_args::SetPositionsVisibleArgs;
+use crate::tool_args::SetRulerVisibleArgs;
+use crate::tool_args::SetTouchPassthroughArgs;
 
 /// Daemon-GUI visibility tools.
 #[tool_router(router = gui_router, vis = "pub(crate)")]
@@ -93,6 +98,102 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "background alpha: {} %",
             args.percent
+        ))]))
+    }
+
+    /// Shows or hides the edge-margin overlay on the daemon-embedded
+    /// GUI canvas (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Show or hide the edge-margin overlay on the daemon-embedded GUI canvas (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_edge_margin_visible(
+        &self,
+        Parameters(args): Parameters<SetEdgeMarginVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetEdgeMarginVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "edge-margin overlay visible: {}",
+            args.visible
+        ))]))
+    }
+
+    /// Shows or hides the field-set overlay on the daemon-embedded
+    /// GUI canvas (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Show or hide the field-set overlay on the daemon-embedded GUI canvas (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_fields_visible(
+        &self,
+        Parameters(args): Parameters<SetFieldsVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetFieldsVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "field-set overlay visible: {}",
+            args.visible
+        ))]))
+    }
+
+    /// Shows or hides the ruler overlay on the daemon-embedded GUI
+    /// canvas (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Show or hide the ruler overlay on the daemon-embedded GUI canvas (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_ruler_visible(
+        &self,
+        Parameters(args): Parameters<SetRulerVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetRulerVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "ruler overlay visible: {}",
+            args.visible
+        ))]))
+    }
+
+    /// Shows or hides the positions overlay on the daemon-embedded
+    /// GUI canvas (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Show or hide the positions overlay on the daemon-embedded GUI canvas (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_positions_visible(
+        &self,
+        Parameters(args): Parameters<SetPositionsVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetPositionsVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "positions overlay visible: {}",
+            args.visible
+        ))]))
+    }
+
+    /// Lets touches pass through the daemon-embedded GTK window to
+    /// the desktop beneath, except where GUI elements are hit
+    /// (`--gui` mode, Wayland only); no-op for headless daemons.
+    #[tool(
+        description = "Let touches pass through the daemon-embedded GTK window to the desktop beneath, except where GUI elements are hit (--gui mode, Wayland only); no-op for headless daemons."
+    )]
+    async fn set_touch_passthrough(
+        &self,
+        Parameters(args): Parameters<SetTouchPassthroughArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetTouchPassthrough(args.enabled))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "touch passthrough enabled: {}",
+            args.enabled
         ))]))
     }
 }

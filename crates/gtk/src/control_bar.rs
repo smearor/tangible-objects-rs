@@ -13,13 +13,16 @@ use gtk4::DrawingArea;
 use gtk4::Entry;
 use gtk4::Label;
 use gtk4::Orientation;
+use gtk4::ToggleButton;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
+use tangible_objects_model::FilterMode;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Vec2;
+use tangible_objects_runtime::ControlCommand;
 use tracing::error;
 use tracing::info;
 
@@ -30,6 +33,10 @@ use crate::shared_state::SharedState;
 
 /// Tolerance the saved profile takes (scalar mm).
 const DEFAULT_TOLERANCE: PatternTolerance = PatternTolerance::new(3.0);
+
+/// `SharedState` flag reader - the overlay toggles sync their
+/// checked state from it.
+type OverlayRead = fn(&SharedState) -> bool;
 
 /// Builds the control bar widget and wires its callbacks.
 pub fn create_control_bar(
@@ -166,6 +173,113 @@ pub fn create_control_bar(
     bar.append(&alpha_btn);
     bar.append(&status);
 
+    // Second row: overlay toggles (send the same ControlCommands the
+    // interfaces do) + the FilterMode button set.
+    let toggles = GtkBox::new(Orientation::Horizontal, 8);
+    toggles.set_halign(Align::End);
+
+    let mut overlay_buttons: Vec<(ToggleButton, OverlayRead)> = Vec::new();
+    let mut add_overlay_toggle =
+        |label: &str, read: OverlayRead, command: fn(bool) -> ControlCommand| {
+            let btn = ToggleButton::with_label(label);
+            btn.set_active(state.lock().map(|s| read(&s)).unwrap_or_default());
+            let state_click = state.clone();
+            btn.connect_toggled(move |b| {
+                send_command(&state_click, command(b.is_active()));
+            });
+            toggles.append(&btn);
+            overlay_buttons.push((btn, read));
+        };
+    add_overlay_toggle(
+        &fl!(language_loader(), "toggle-edge-margin"),
+        |s| s.edge_margin_visible,
+        ControlCommand::SetEdgeMarginVisible,
+    );
+    add_overlay_toggle(
+        &fl!(language_loader(), "toggle-fields"),
+        |s| s.fields_visible,
+        ControlCommand::SetFieldsVisible,
+    );
+    add_overlay_toggle(
+        &fl!(language_loader(), "toggle-ruler"),
+        |s| s.ruler_visible,
+        ControlCommand::SetRulerVisible,
+    );
+    add_overlay_toggle(
+        &fl!(language_loader(), "toggle-positions"),
+        |s| s.positions_visible,
+        ControlCommand::SetPositionsVisible,
+    );
+    add_overlay_toggle(
+        &fl!(language_loader(), "toggle-passthrough"),
+        |s| s.touch_passthrough,
+        ControlCommand::SetTouchPassthrough,
+    );
+
+    // FilterMode button set - one checked at a time, commands flow
+    // through the control channel (honored by the proxy in --filter;
+    // display state otherwise).
+    let current_mode = state.lock().map(|s| s.filter_mode).unwrap_or_default();
+    let add_mode_button = |leader: &mut Option<ToggleButton>,
+                           buttons: &mut Vec<(ToggleButton, FilterMode)>,
+                           mode: FilterMode,
+                           label: &str| {
+        let btn = ToggleButton::with_label(label);
+        if let Some(group) = &*leader {
+            btn.set_group(Some(group));
+        } else {
+            *leader = Some(btn.clone());
+        }
+        btn.set_active(mode == current_mode);
+        let state_mode = state.clone();
+        btn.connect_toggled(move |b| {
+            if b.is_active() {
+                send_command(
+                    &state_mode,
+                    ControlCommand::SetFilterMode {
+                        mode,
+                        stability: None,
+                        stage: None,
+                    },
+                );
+            }
+        });
+        toggles.append(&btn);
+        buttons.push((btn, mode));
+    };
+    let mut mode_group: Option<ToggleButton> = None;
+    let mut mode_buttons: Vec<(ToggleButton, FilterMode)> = Vec::new();
+    add_mode_button(
+        &mut mode_group,
+        &mut mode_buttons,
+        FilterMode::Off,
+        &fl!(language_loader(), "filter-mode-off"),
+    );
+    add_mode_button(
+        &mut mode_group,
+        &mut mode_buttons,
+        FilterMode::Immediate,
+        &fl!(language_loader(), "filter-mode-immediate"),
+    );
+    add_mode_button(
+        &mut mode_group,
+        &mut mode_buttons,
+        FilterMode::Gated,
+        &fl!(language_loader(), "filter-mode-gated"),
+    );
+    add_mode_button(
+        &mut mode_group,
+        &mut mode_buttons,
+        FilterMode::Guarded,
+        &fl!(language_loader(), "filter-mode-guarded"),
+    );
+    add_mode_button(
+        &mut mode_group,
+        &mut mode_buttons,
+        FilterMode::TangiblesOnly,
+        &fl!(language_loader(), "filter-mode-tangibles-only"),
+    );
+
     // Status update inside the redraw timer.
     let state_status = state.clone();
     let status_clone = status.clone();
@@ -177,6 +291,16 @@ pub fn create_control_bar(
         .lock()
         .map(|s| s.background_alpha)
         .unwrap_or_else(|_| crate::BackgroundAlpha::from_percent(100));
+    let mut applied_overlays = state_status
+        .lock()
+        .map(|s| {
+            overlay_buttons
+                .iter()
+                .map(|(_, read)| read(&s))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let mut applied_mode = current_mode;
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
         let s = match state_status.lock() {
             Ok(s) => s,
@@ -194,6 +318,22 @@ pub fn create_control_bar(
                 percent = (applied_alpha.percent() as i64)
             ));
         }
+        // Overlay/mode changes from interface commands land in shared
+        // state via the device loop - sync the buttons (set_active
+        // re-fires toggled and re-sends an idempotent command).
+        for ((btn, read), applied) in overlay_buttons.iter().zip(applied_overlays.iter_mut()) {
+            let current = read(&s);
+            if current != *applied {
+                *applied = current;
+                btn.set_active(current);
+            }
+        }
+        if s.filter_mode != applied_mode {
+            applied_mode = s.filter_mode;
+            for (btn, mode) in &mode_buttons {
+                btn.set_active(*mode == applied_mode);
+            }
+        }
         let count = s.touches.len();
         match s.mode {
             GuiMode::Live => {
@@ -207,7 +347,13 @@ pub fn create_control_bar(
                     fields = (i64::from(s.field_count.as_u32())),
                     sets = (i64::from(s.field_set_count.as_u32())),
                     zones = (s.dead_zones.len() as i64),
-                    filtered = (i64::from(s.dead_zone_filtered.as_u32()))
+                    filtered = (i64::from(s.dead_zone_filtered.as_u32())),
+                    suppressed = (i64::from(
+                        s.edge_filtered.as_u32()
+                            + s.dead_zone_filtered.as_u32()
+                            + s.mode_suppressed.as_u32()
+                    )),
+                    forwarded = (i64::from(s.forwarded.as_u32()))
                 ));
             }
             GuiMode::Training => {
@@ -237,5 +383,74 @@ pub fn create_control_bar(
         ControlFlow::Continue
     });
 
-    bar
+    let outer = GtkBox::new(Orientation::Vertical, 4);
+    outer.set_valign(Align::End);
+    outer.append(&toggles);
+    outer.append(&bar);
+
+    // Touch passthrough: the surface input region is reduced to the
+    // control-bar box so touches elsewhere reach the desktop beneath
+    // (Wayland `set_input_region`; a no-op elsewhere). Re-applied
+    // whenever the box's allocation changes.
+    let mut applied_passthrough: Option<(i32, i32, i32, i32)> = None;
+    let outer_sync = outer.clone();
+    let state_passthrough = state.clone();
+    gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
+        // Read the flag under lock, drop it before the GTK surface
+        // calls - `set_input_region` may dispatch into event handlers
+        // that take `state` themselves.
+        let enabled = state_passthrough
+            .lock()
+            .map(|s| s.touch_passthrough)
+            .unwrap_or_default();
+        if enabled {
+            let rect = outer_surface_rect(&outer_sync);
+            if applied_passthrough != Some(rect)
+                && let Some(surface) = outer_sync.native().and_then(|n| n.surface())
+                && rect.2 > 0
+                && rect.3 > 0
+            {
+                applied_passthrough = Some(rect);
+                let region = gtk4::cairo::Region::create_rectangle(
+                    &gtk4::cairo::RectangleInt::new(rect.0, rect.1, rect.2, rect.3),
+                );
+                surface.set_input_region(Some(&region));
+            }
+        } else if applied_passthrough.is_some() {
+            applied_passthrough = None;
+            if let Some(surface) = outer_sync.native().and_then(|n| n.surface()) {
+                surface.set_input_region(None);
+            }
+        }
+        ControlFlow::Continue
+    });
+
+    outer
+}
+
+/// The widget's allocation rectangle in surface coordinates - the
+/// input-region rect of the control-bar box.
+fn outer_surface_rect(widget: &impl gtk4::prelude::WidgetExt) -> (i32, i32, i32, i32) {
+    let Some(native) = widget.native() else {
+        return (0, 0, widget.width(), widget.height());
+    };
+    let origin = widget
+        .compute_point(&native, &gtk4::graphene::Point::new(0.0, 0.0))
+        .map(|p| (p.x().round() as i32, p.y().round() as i32))
+        .unwrap_or_default();
+    (origin.0, origin.1, widget.width(), widget.height())
+}
+
+/// Sends a `ControlCommand` over the runtime's command channel - the
+/// same path the interface servers take. Uses `try_lock`: the
+/// status-sync timer calls `set_active` on the toggle buttons while
+/// holding `state`, which re-fires `connect_toggled` on this same
+/// thread - a blocking `lock()` would deadlock on the non-recursive
+/// mutex. Dropping the (idempotent) command on contention is safe.
+fn send_command(state: &Arc<Mutex<SharedState>>, command: ControlCommand) {
+    if let Ok(s) = state.try_lock()
+        && let Some(handle) = &s.command_handle
+    {
+        handle.try_send_command(command).ok();
+    }
 }

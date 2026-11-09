@@ -287,6 +287,37 @@ impl EngineService {
         api::gui::set_background_alpha(self, percent).await
     }
 
+    /// Shows or hides the edge-margin overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_edge_margin_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::gui::set_edge_margin_visible(self, visible).await
+    }
+
+    /// Shows or hides the field-set overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_fields_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::gui::set_fields_visible(self, visible).await
+    }
+
+    /// Shows or hides the ruler overlay on the GUI canvas - ignored
+    /// on headless daemons.
+    async fn set_ruler_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::gui::set_ruler_visible(self, visible).await
+    }
+
+    /// Shows or hides the positions overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_positions_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::gui::set_positions_visible(self, visible).await
+    }
+
+    /// Lets touches pass through the GTK window to the desktop
+    /// beneath, except where GUI elements are hit - ignored on
+    /// headless daemons, Wayland only.
+    async fn set_touch_passthrough(&self, enabled: bool) -> fdo::Result<()> {
+        api::gui::set_touch_passthrough(self, enabled).await
+    }
+
     /// Registers a figure profile at runtime: `points` is the flat pin
     /// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
     /// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps

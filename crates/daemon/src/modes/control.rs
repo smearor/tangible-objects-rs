@@ -37,6 +37,7 @@ pub(crate) fn drain_control_commands(
     while let Ok(command) = runtime.try_recv_command() {
         match command {
             ControlCommand::SetFilterMode { mode, .. } => {
+                runtime.set_filter_mode(mode);
                 warn!(%mode, "filter mode command - only honored in --filter mode");
             }
             ControlCommand::RegisterStage { .. } | ControlCommand::UnregisterStage { .. } => {
@@ -320,6 +321,31 @@ pub(crate) fn apply_registration(
         ControlCommand::SetBackgroundAlpha(percent) => {
             info!(%percent, "background alpha changed");
             runtime.set_background_alpha(percent);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetEdgeMarginVisible(visible) => {
+            info!(%visible, "edge-margin overlay toggled");
+            runtime.set_edge_margin_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetFieldsVisible(visible) => {
+            info!(%visible, "field-set overlay toggled");
+            runtime.set_fields_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetRulerVisible(visible) => {
+            info!(%visible, "ruler overlay toggled");
+            runtime.set_ruler_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetPositionsVisible(visible) => {
+            info!(%visible, "positions overlay toggled");
+            runtime.set_positions_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetTouchPassthrough(enabled) => {
+            info!(%enabled, "touch passthrough toggled");
+            runtime.set_touch_passthrough(enabled);
         }
         other => warn!(?other, "command ignored"),
     }

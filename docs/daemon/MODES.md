@@ -43,6 +43,12 @@ explicit `--device`.
 | `--tolerance <mm>` | f64 | `--train` matching tolerance (default 30.0) |
 | `--record-label <s>` | string | ground-truth label on `--record` |
 | `--dead-zones-visible` | bool | draws the dead-zone overlay on the GUI canvas (`--gui`) |
+| `--edge-margin-visible` | bool | draws the edge-margin overlay on the GUI canvas (`--gui`) |
+| `--fields-visible` | bool | draws the field-set overlay on the GUI canvas (`--gui`) |
+| `--ruler-visible` | bool | draws the ruler overlay on the GUI canvas (`--gui`) |
+| `--positions-visible` | bool | draws the positions overlay on the GUI canvas (`--gui`) |
+| `--touch-passthrough` | bool | touches fall through to the desktop except on GUI elements (`--gui`, Wayland only); at startup also puts the window into the layer-shell `Overlay` layer so it stays above |
+| `--filter-mode <mode>` | `FilterMode` | initial suppression policy the GUI displays; honored by the proxy in `--filter` |
 | `--no-import-slots` | flag | skip importing kernel MT slot state at startup (contacts opened before the daemon stay invisible) |
 | `--to <p\|file.toml>` | name or path | `--convert-device` target profile |
 

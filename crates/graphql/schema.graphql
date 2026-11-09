@@ -611,6 +611,32 @@ type MutationRoot {
 	"""
 	setBackgroundAlpha(percent: Int!): Boolean!
 	"""
+	Shows or hides the edge-margin overlay on the GUI canvas -
+	ignored on headless daemons.
+	"""
+	setEdgeMarginVisible(visible: Boolean!): Boolean!
+	"""
+	Shows or hides the field-set overlay on the GUI canvas -
+	ignored on headless daemons.
+	"""
+	setFieldsVisible(visible: Boolean!): Boolean!
+	"""
+	Shows or hides the ruler overlay on the GUI canvas - ignored
+	on headless daemons.
+	"""
+	setRulerVisible(visible: Boolean!): Boolean!
+	"""
+	Shows or hides the positions overlay on the GUI canvas -
+	ignored on headless daemons.
+	"""
+	setPositionsVisible(visible: Boolean!): Boolean!
+	"""
+	Lets touches pass through the GTK window to the desktop
+	beneath, except where GUI elements are hit - ignored on
+	headless daemons, Wayland only.
+	"""
+	setTouchPassthrough(enabled: Boolean!): Boolean!
+	"""
 	Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
 	needed when the desktop shows the touchscreen rotated. Ignored
 	on headless daemons.
@@ -801,6 +827,11 @@ type QueryRoot {
 	frame - the ingest-level suppression count.
 	"""
 	deadZoneFiltered: Int!
+	"""
+	The selected suppression policy (`setFilterMode`); honored by
+	the proxy in `--filter` mode, display state elsewhere.
+	"""
+	filterMode: FilterMode!
 	"""
 	Reads a recording artifact produced by this daemon.
 	
