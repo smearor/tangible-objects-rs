@@ -5,8 +5,11 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
+use tangible_objects_model::FieldCount;
+use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
@@ -52,6 +55,14 @@ pub struct SharedState {
     /// Whether the dead-zone overlay is drawn
     /// (`SetDeadZonesVisible`/`--dead-zones-visible`).
     pub dead_zones_visible: bool,
+    /// Contacts dropped by dead-zone filtering on the last frame.
+    pub dead_zone_filtered: ContactCount,
+    /// Registered field sets (snapshot `field_sets` count).
+    pub field_set_count: FieldSetCount,
+    /// Occupancy fields across all field sets.
+    pub field_count: FieldCount,
+    /// Fields currently occupied.
+    pub occupied_fields: FieldCount,
 }
 
 impl SharedState {
@@ -79,6 +90,10 @@ impl SharedState {
             background_alpha_request: None,
             dead_zones: Vec::new(),
             dead_zones_visible,
+            dead_zone_filtered: ContactCount::default(),
+            field_set_count: FieldSetCount::default(),
+            field_count: FieldCount::default(),
+            occupied_fields: FieldCount::default(),
         }))
     }
 }

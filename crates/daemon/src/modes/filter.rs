@@ -45,6 +45,7 @@ use tracing::warn;
 /// contact ends or the filter's hysteresis expires (Figur7/8-style flappy
 /// pins must not leak to the OS). `SetFilterMode` control commands switch
 /// the suppression policy live (off/immediate/gated/guarded).
+#[allow(clippy::too_many_arguments)]
 pub fn run_filter(
     path: &Path,
     patterns: PatternSet<'_>,
@@ -311,22 +312,24 @@ pub fn run_filter(
 
             let forwarded = engine_frame.touches.len().saturating_sub(suppressed);
             print!(
-                "\rFrame {frame} | {} touch | {} figure | {} suppressed | {} forwarded | {} sets | {} fields | {} occupied     ",
+                "\rFrame {frame} | {} touch | {} figure | {} suppressed | {} forwarded | {} sets | {} fields | {} occupied | {} dead zones | {} filtered     ",
                 engine_frame.touches.len(),
                 engine_frame.matches.len(),
                 suppressed,
                 forwarded,
-                engine.field_sets().len(),
+                engine.field_set_count(),
                 engine.field_count(),
                 engine.occupied_field_count(),
+                engine.dead_zones().len(),
+                engine.dead_zone_filtered(),
             );
             std::io::stdout().flush().ok();
         }
     }
-    if let Some(recording) = proxy_recording {
-        if let Err(error) = recording.finish() {
-            error!(%error, "proxy recording could not be finalized");
-        }
+    if let Some(recording) = proxy_recording
+        && let Err(error) = recording.finish()
+    {
+        error!(%error, "proxy recording could not be finalized");
     }
     Ok(())
 }

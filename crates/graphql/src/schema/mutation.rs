@@ -190,7 +190,7 @@ impl MutationRoot {
     /// ignored on headless daemons.
     async fn set_background_alpha(&self, ctx: &Context<'_>, percent: u8) -> Result<bool> {
         ctx.data::<EngineHandle>()?
-            .send_command(ControlCommand::SetBackgroundAlpha(percent))
+            .send_command(ControlCommand::SetBackgroundAlpha(percent.into()))
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

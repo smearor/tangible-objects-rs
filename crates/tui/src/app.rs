@@ -41,6 +41,10 @@ pub struct App {
     touches: Vec<TouchPoint>,
     /// Latest tracked tangibles.
     tangibles: Vec<TrackedTangible>,
+    /// Registered dead zones (blacklisted surface spots).
+    dead_zones: usize,
+    /// Contacts dropped by dead-zone filtering on the last frame.
+    dead_zone_filtered: usize,
     /// Loaded figure profiles.
     profiles: Vec<ProfileInfo>,
     /// Latest session metrics (refreshed on a slow ticker).
@@ -79,6 +83,8 @@ impl App {
             client,
             touches: Vec::new(),
             tangibles: Vec::new(),
+            dead_zones: 0,
+            dead_zone_filtered: 0,
             profiles: Vec::new(),
             metrics: None,
             field_sets: Vec::new(),
@@ -216,6 +222,12 @@ impl App {
         if let Ok(touches) = self.client.touch_points().await {
             self.touches = touches;
         }
+        if let Ok(zones) = self.client.dead_zones().await {
+            self.dead_zones = zones.len();
+        }
+        if let Ok(filtered) = self.client.dead_zone_filtered().await {
+            self.dead_zone_filtered = filtered;
+        }
         match self.client.tangibles().await {
             Ok(tangibles) => {
                 self.tangibles = tangibles;
@@ -223,7 +235,9 @@ impl App {
                     language_loader(),
                     "status-ready",
                     touches = (self.touches.len() as i64),
-                    tangibles = (self.tangibles.len() as i64)
+                    tangibles = (self.tangibles.len() as i64),
+                    dead_zones = (self.dead_zones as i64),
+                    filtered = (self.dead_zone_filtered as i64)
                 );
             }
             Err(e) => {

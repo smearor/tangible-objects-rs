@@ -98,12 +98,11 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     } else {
         draw_live(
             cr,
-            w,
-            h,
             touches.into(),
             matches,
             (&s.tracked).into(),
             &to_screen,
+            &s,
         );
     }
 }
@@ -238,12 +237,11 @@ fn draw_training(
 /// Live view: matched figures with names + unmatched points dimmed.
 fn draw_live(
     cr: &cairo::Context,
-    _w: f64,
-    _h: f64,
     touches: TouchSet<'_>,
     matches: &[PatternMatch],
     tracked: TrackedSet<'_>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+    s: &SharedState,
 ) {
     // Collect matched indices.
     let mut matched_indices: std::collections::HashSet<usize> = std::collections::HashSet::new();
@@ -332,6 +330,10 @@ fn draw_live(
         language_loader(),
         "live-info",
         figures = (matches.len() as i64),
-        touches = (touches.len() as i64)
+        touches = (touches.len() as i64),
+        occupied = (i64::from(s.occupied_fields.as_u32())),
+        fields = (i64::from(s.field_count.as_u32())),
+        zones = (s.dead_zones.len() as i64),
+        filtered = (i64::from(s.dead_zone_filtered.as_u32()))
     ));
 }

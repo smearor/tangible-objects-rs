@@ -19,6 +19,7 @@ use crate::service::engine_service::EngineService;
 /// contacts never reach tracking, matching or fields. `radius <= 0`
 /// picks the 10 mm default; `persistent` writes the zone to the
 /// runtime store so it reloads on daemon start.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn register_dead_zone(
     service: &EngineService,
     name: DeadZoneName,

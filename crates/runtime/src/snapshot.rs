@@ -1,4 +1,6 @@
+use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::SessionMetrics;
@@ -37,6 +39,9 @@ pub struct EngineSnapshot {
     /// Accumulated session recognition metrics - uptime, re-ID churn,
     /// match quality, per-slot contact stability.
     pub metrics: SessionMetrics,
+    /// Contacts dropped by dead-zone filtering on the last processed
+    /// frame - the ingest-level suppression count.
+    pub dead_zone_filtered: ContactCount,
     /// User-facing message currently displayed in the GUI
     /// (`show_message` command).
     pub message: Option<String>,
@@ -50,9 +55,8 @@ pub struct EngineSnapshot {
     /// feature.
     #[cfg(feature = "gui")]
     pub dead_zones_visible: bool,
-    /// Canvas background opacity in percent
-    /// (`SetBackgroundAlpha` command) - only present with the `gui`
-    /// feature.
+    /// Canvas background opacity (`SetBackgroundAlpha` command) -
+    /// only present with the `gui` feature.
     #[cfg(feature = "gui")]
-    pub background_alpha: u8,
+    pub background_alpha: AlphaPercent,
 }

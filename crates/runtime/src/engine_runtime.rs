@@ -7,7 +7,9 @@ use tokio::sync::watch;
 
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
+use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
@@ -71,6 +73,9 @@ pub struct EngineRuntime {
     /// Active dead zones (runtime-store set + dynamically registered)
     /// embedded in every snapshot.
     dead_zones: Vec<DeadZone>,
+    /// Contacts dropped by dead-zone filtering on the last processed
+    /// frame - forwarded into every snapshot.
+    dead_zone_filtered: ContactCount,
     /// Profile list shared with the handle - registrations at runtime
     /// must be visible to interface readers (`RwLock`, not `watch`).
     profiles: Arc<RwLock<Vec<ProfileInfo>>>,
@@ -90,10 +95,10 @@ pub struct EngineRuntime {
     /// (`SetDeadZonesVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     dead_zones_visible: bool,
-    /// Canvas background opacity in percent (`SetBackgroundAlpha`
-    /// command) - only with the `gui` feature.
+    /// Canvas background opacity (`SetBackgroundAlpha` command) -
+    /// only with the `gui` feature.
     #[cfg(feature = "gui")]
-    background_alpha: u8,
+    background_alpha: AlphaPercent,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -135,6 +140,7 @@ impl EngineRuntime {
             completion: None,
             field_sets: Vec::new(),
             dead_zones: Vec::new(),
+            dead_zone_filtered: ContactCount::default(),
             profiles: profiles.clone(),
             metrics: SessionMetrics::default(),
             message: None,
@@ -143,7 +149,7 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             dead_zones_visible: false,
             #[cfg(feature = "gui")]
-            background_alpha: 100,
+            background_alpha: AlphaPercent::default(),
             #[cfg(feature = "gui")]
             display_rotation: DisplayRotation::default(),
             training: None,
@@ -203,6 +209,7 @@ impl EngineRuntime {
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
+        self.dead_zone_filtered = frame.dead_zone_filtered;
         let touches_changed = frame
             .events
             .iter()
@@ -224,6 +231,7 @@ impl EngineRuntime {
             completion: self.completion,
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
+            dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
             #[cfg(feature = "gui")]
@@ -255,6 +263,7 @@ impl EngineRuntime {
             completion: self.completion,
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
+            dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
             #[cfg(feature = "gui")]
@@ -331,17 +340,16 @@ impl EngineRuntime {
         self.dead_zones_visible
     }
 
-    /// Sets the canvas background opacity in percent, 0-100
-    /// (`SetBackgroundAlpha` command). Only with the `gui` feature.
+    /// Sets the canvas background opacity (`SetBackgroundAlpha`
+    /// command). Only with the `gui` feature.
     #[cfg(feature = "gui")]
-    pub fn set_background_alpha(&mut self, percent: u8) {
-        self.background_alpha = percent.min(100);
+    pub fn set_background_alpha(&mut self, percent: AlphaPercent) {
+        self.background_alpha = percent;
     }
 
-    /// Canvas background opacity in percent. Only with the `gui`
-    /// feature.
+    /// Canvas background opacity. Only with the `gui` feature.
     #[cfg(feature = "gui")]
-    pub fn background_alpha(&self) -> u8 {
+    pub fn background_alpha(&self) -> AlphaPercent {
         self.background_alpha
     }
 
@@ -395,6 +403,7 @@ mod tests {
     use crate::DomainEvent;
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
+    use tangible_objects_model::ContactCount;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
@@ -437,6 +446,7 @@ mod tests {
             candidates: Vec::new(),
             ran_generic: true,
             candidates_tested: 0.into(),
+            dead_zone_filtered: ContactCount::default(),
         }
     }
 

@@ -115,6 +115,13 @@ impl QueryRoot {
         Ok(ctx.data::<EngineHandle>()?.snapshot().dead_zones)
     }
 
+    /// Contacts dropped by dead-zone filtering on the last processed
+    /// frame - the ingest-level suppression count.
+    async fn dead_zone_filtered(&self, ctx: &Context<'_>) -> Result<i32> {
+        let filtered = ctx.data::<EngineHandle>()?.snapshot().dead_zone_filtered;
+        Ok(filtered.as_u32() as i32)
+    }
+
     /// Reads a recording artifact produced by this daemon.
     ///
     /// Restricted to known recording extensions (`.jsonl`, `.evtest`,

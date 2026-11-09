@@ -67,6 +67,7 @@ mod tests {
     use super::build_schema;
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
+    use tangible_objects_model::ContactCount;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FilterMode;
     use tangible_objects_model::FrameCount;
@@ -118,6 +119,7 @@ mod tests {
                 candidates: Vec::new(),
                 ran_generic: true,
                 candidates_tested: 0.into(),
+                dead_zone_filtered: ContactCount::default(),
             },
             (&tracked()).into(),
         );
@@ -197,6 +199,7 @@ mod tests {
                         candidates: Vec::new(),
                         ran_generic: true,
                         candidates_tested: 0.into(),
+                        dead_zone_filtered: ContactCount::default(),
                     },
                     (&[]).into(),
                 );

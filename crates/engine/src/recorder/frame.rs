@@ -142,6 +142,7 @@ mod tests {
     use super::FrameRecorder;
     use crate::EngineFrame;
     use tangible_objects_model::CandidateReport;
+    use tangible_objects_model::ContactCount;
     use tangible_objects_model::Deviation;
     use tangible_objects_model::EventCount;
     use tangible_objects_model::Millimeters;
@@ -170,6 +171,7 @@ mod tests {
             events: Vec::new(),
             ran_generic: true,
             candidates_tested: 0.into(),
+            dead_zone_filtered: ContactCount::default(),
             candidates: vec![CandidateReport {
                 pattern_id: PatternId::new(5),
                 pattern_name: "TestFigur-5P".into(),

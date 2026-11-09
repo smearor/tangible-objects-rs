@@ -6,10 +6,13 @@ use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateIndices;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::CompletionConfig;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::DeadZones;
+use tangible_objects_model::FieldCount;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
@@ -84,6 +87,9 @@ pub struct Engine {
     dead_zones: DeadZones,
     /// Owner per dynamically added dead zone, keyed by zone name.
     dead_zone_owners: HashMap<DeadZoneName, Option<Owner>>,
+    /// Touches dropped by dead-zone filtering on the last processed
+    /// frame - the ingest-level suppression counter.
+    dead_zone_filtered: ContactCount,
     /// Previous frame's touches - used to emit `TouchPointsUpdated` only
     /// on actual change.
     prev_touches: Vec<TouchPoint>,
@@ -133,6 +139,7 @@ impl Engine {
             field_set_owners: HashMap::new(),
             dead_zones: DeadZones::default(),
             dead_zone_owners: HashMap::new(),
+            dead_zone_filtered: ContactCount::default(),
             calibration: None,
             prev_touches: Vec::new(),
             edge_margin: Millimeters::new(0.0),
@@ -375,19 +382,30 @@ impl Engine {
         &self.dead_zones
     }
 
+    /// Touches dropped by dead-zone filtering on the last processed
+    /// frame.
+    pub fn dead_zone_filtered(&self) -> ContactCount {
+        self.dead_zone_filtered
+    }
+
     /// All active field sets (static plus dynamically registered).
     pub fn field_sets(&self) -> &[FieldSet] {
         self.fields.sets()
     }
 
     /// Fields currently holding a confirmed (debounced) contact.
-    pub fn occupied_field_count(&self) -> usize {
-        self.fields.occupied_count()
+    pub fn occupied_field_count(&self) -> FieldCount {
+        self.fields.occupied_count().into()
     }
 
     /// Total occupancy fields across all loaded sets.
-    pub fn field_count(&self) -> usize {
-        self.fields.field_count()
+    pub fn field_count(&self) -> FieldCount {
+        self.fields.field_count().into()
+    }
+
+    /// Active field sets (static plus dynamically registered).
+    pub fn field_set_count(&self) -> FieldSetCount {
+        self.fields.sets().len().into()
     }
 
     /// Slots inside fields of `suppress`-enabled sets - merged into the
@@ -477,7 +495,10 @@ impl Engine {
         }
         let mut touches = self.touch_state.active_touches();
         touches.sort_by_key(|touch| touch.slot);
-        touches.retain(|touch| !self.is_edge_ghost(touch) && !self.dead_zones.contains(&touch.pos));
+        touches.retain(|touch| !self.is_edge_ghost(touch));
+        let before_dead_zones = touches.len();
+        touches.retain(|touch| !self.dead_zones.contains(&touch.pos));
+        self.dead_zone_filtered = (before_dead_zones - touches.len()).into();
         self.smooth_touches(&mut touches);
         // Compared before matching (SKIP_UNCHANGED.md): the generic pass
         // is a pure function of the smoothed touch set, so it only runs
@@ -626,6 +647,7 @@ impl Engine {
             candidates: diagnostics.map(std::mem::take).unwrap_or_default(),
             ran_generic,
             candidates_tested,
+            dead_zone_filtered: self.dead_zone_filtered,
         })
     }
 
@@ -923,7 +945,7 @@ mod tests {
             ],
             5.0,
         );
-        engine.update_pattern(id, (&bigger).into()).expect("update");
+        engine.update_pattern(id, &bigger).expect("update");
         assert_eq!(engine.patterns()[0].id, id);
         assert_eq!(engine.patterns()[0].name.as_str(), "pawn-v2");
         assert_eq!(engine.pattern_owner(id).map(Owner::as_str), Some("chess"));

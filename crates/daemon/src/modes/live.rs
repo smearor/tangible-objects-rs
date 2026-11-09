@@ -145,9 +145,11 @@ pub fn run_live(
                 let active = engine.tracked();
                 print!("\x1b[2J\x1b[H");
                 println!(
-                    "Frame {frame} | {} touch point(s) | {} figure(s) | Rec: {}",
+                    "Frame {frame} | {} touch point(s) | {} figure(s) | {} dead zone(s) | {} filtered | Rec: {}",
                     engine.touch_count(),
                     active.len(),
+                    engine.dead_zones().len(),
+                    engine.dead_zone_filtered(),
                     recording
                         .as_ref()
                         .and_then(|s| s.label().map(|l| l.as_str().to_string()))

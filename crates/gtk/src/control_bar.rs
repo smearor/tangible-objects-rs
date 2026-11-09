@@ -202,7 +202,12 @@ pub fn create_control_bar(
                     language_loader(),
                     "live-status",
                     figures = (n as i64),
-                    touches = (count as i64)
+                    touches = (count as i64),
+                    occupied = (i64::from(s.occupied_fields.as_u32())),
+                    fields = (i64::from(s.field_count.as_u32())),
+                    sets = (i64::from(s.field_set_count.as_u32())),
+                    zones = (s.dead_zones.len() as i64),
+                    filtered = (i64::from(s.dead_zone_filtered.as_u32()))
                 ));
             }
             GuiMode::Training => {

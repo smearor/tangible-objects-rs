@@ -19,14 +19,14 @@ live-status = { $figures ->
 } | { $touches ->
     [one] { $touches } touch point
    *[other] { $touches } touch points
-}
+} | fields: { $occupied }/{ $fields } ({ $sets } sets) | dead zones: { $zones }, { $filtered } filtered
 live-info = { $figures ->
     [one] { $figures } figure
    *[other] { $figures } figures
 } | { $touches ->
     [one] { $touches } touch point
    *[other] { $touches } touch points
-}
+} | fields { $occupied }/{ $fields } | DZ { $zones } ({ $filtered } filtered)
 pin-label = P{ $index } ({ $x },{ $y })
 window-title = Tangible Objects - Surface Monitor
 

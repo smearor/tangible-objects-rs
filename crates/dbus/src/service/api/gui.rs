@@ -49,7 +49,7 @@ pub(crate) async fn set_dead_zones_visible(
 pub(crate) async fn set_background_alpha(service: &EngineService, percent: u8) -> fdo::Result<()> {
     service
         .handle
-        .send_command(ControlCommand::SetBackgroundAlpha(percent))
+        .send_command(ControlCommand::SetBackgroundAlpha(percent.into()))
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }

@@ -87,7 +87,7 @@ impl EngineMcp {
         Parameters(args): Parameters<SetBackgroundAlphaArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         self.handle
-            .send_command(ControlCommand::SetBackgroundAlpha(args.percent))
+            .send_command(ControlCommand::SetBackgroundAlpha(args.percent.into()))
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(

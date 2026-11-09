@@ -2,7 +2,7 @@
 status-connecting = verbinde…
 status-filter-rejected = setFilterMode { $mode } abgelehnt
 status-daemon-error = Daemon-Fehler: { $error }
-status-ready = { $touches } Touch-Punkte, { $tangibles } Figuren - f Filter  r neu laden  q beenden
+status-ready = { $touches } Touch-Punkte, { $tangibles } Figuren, { $dead_zones } Dead-Zones ({ $filtered } gefiltert) - f Filter  r neu laden  q beenden
 
 # TUI - pane titles
 title-slots = slots ({ $count })

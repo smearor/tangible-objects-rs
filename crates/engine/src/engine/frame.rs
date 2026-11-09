@@ -1,5 +1,6 @@
 use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateReport;
+use tangible_objects_model::ContactCount;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
 
@@ -30,4 +31,7 @@ pub struct EngineFrame {
     /// the pruning ratio is observable as this count versus the
     /// unpruned C(touches, k) per pattern (SPATIAL_CLUSTERING.md).
     pub candidates_tested: CandidateCount,
+    /// Contacts dropped by dead-zone filtering this frame - the
+    /// ingest-level suppression count (edge-margin ghosts excluded).
+    pub dead_zone_filtered: ContactCount,
 }

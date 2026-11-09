@@ -371,6 +371,7 @@ impl EngineService {
     /// inside `radius` mm are dropped at ingest - ghost contacts never
     /// reach tracking or matching. `radius <= 0` picks the 10 mm
     /// default; `persistent` stores the zone in the runtime store.
+    #[allow(clippy::too_many_arguments)]
     async fn register_dead_zone(
         &self,
         name: DeadZoneName,

@@ -4,6 +4,7 @@
 //! geometry, device calibration, geometric figure patterns, TOML profiles and
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
+mod alpha_percent;
 mod analysis_mode;
 mod best_score;
 mod calibration;
@@ -51,6 +52,7 @@ mod touch_point;
 mod units_per_mm;
 mod vec2;
 
+pub use alpha_percent::AlphaPercent;
 pub use analysis_mode::AnalysisMode;
 pub use best_score::BestScore;
 pub use calibration::Calibration;
@@ -99,8 +101,10 @@ pub use event::NamedEventCode;
 pub use event::RawEvent;
 pub use event::SYN_REPORT;
 pub use field::Field;
+pub use field::FieldCount;
 pub use field::FieldName;
 pub use field::FieldSet;
+pub use field::FieldSetCount;
 pub use field::FieldSetName;
 pub use field::WindowAnchor;
 pub use field::default_stability;

@@ -4,6 +4,7 @@
 
 pub(crate) mod analysis;
 pub(crate) mod completion;
+pub(crate) mod dead_zones;
 pub(crate) mod device;
 pub(crate) mod field_sets;
 pub(crate) mod message;

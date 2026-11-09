@@ -797,6 +797,11 @@ type QueryRoot {
 	"""
 	deadZones: [DeadZone!]!
 	"""
+	Contacts dropped by dead-zone filtering on the last processed
+	frame - the ingest-level suppression count.
+	"""
+	deadZoneFiltered: Int!
+	"""
 	Reads a recording artifact produced by this daemon.
 	
 	Restricted to known recording extensions (`.jsonl`, `.evtest`,

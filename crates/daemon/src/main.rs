@@ -295,11 +295,15 @@ fn main() -> Result<()> {
             cli.profiles.as_deref(),
             device_profiles.map(PathBuf::from),
             detection_config(completion()?)?,
-            cli.display_rotation.unwrap_or_default(),
-            cli.background_alpha
-                .map(BackgroundAlpha::from_percent)
-                .unwrap_or_default(),
-            cli.dead_zones_visible,
+            GuiOptions {
+                visible: true,
+                rotation: cli.display_rotation.unwrap_or_default(),
+                background_alpha: cli
+                    .background_alpha
+                    .map(BackgroundAlpha::from_percent)
+                    .unwrap_or_default(),
+                dead_zones_visible: cli.dead_zones_visible,
+            },
             interfaces()?,
         );
     }
@@ -346,9 +350,7 @@ fn run_gui_mode(
     profiles_dir: Option<&str>,
     device_profiles: Option<PathBuf>,
     config: DetectionConfig,
-    rotation: DisplayRotation,
-    background_alpha: BackgroundAlpha,
-    dead_zones_visible: bool,
+    options: GuiOptions,
     interfaces: Interfaces,
 ) -> Result<()> {
     // Daemon plumbing flows into the embedded GUI as injected hooks -
@@ -366,12 +368,7 @@ fn run_gui_mode(
         modes::load_patterns(profiles_dir),
         device_profiles,
         config,
-        GuiOptions {
-            visible: true,
-            rotation,
-            background_alpha,
-            dead_zones_visible,
-        },
+        options,
         hooks,
     );
     Ok(())
