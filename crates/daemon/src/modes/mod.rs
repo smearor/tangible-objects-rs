@@ -9,6 +9,7 @@ mod control;
 mod filter;
 mod interfaces;
 mod live;
+mod proxy_recording;
 mod record;
 mod replay;
 mod setup;

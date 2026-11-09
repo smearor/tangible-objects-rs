@@ -4,14 +4,12 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
 use std::path::Path;
-use std::time::Instant;
 
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_engine::Pipeline;
-use tangible_objects_engine::RawRecorder;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::CompletionMode;
@@ -29,11 +27,13 @@ use tangible_objects_runtime::ProfileInfo;
 use super::control::apply_registration;
 use super::control::spawn_interfaces;
 use super::control::tick_training;
+use super::proxy_recording::ProxyRecording;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
 use tangible_objects_model::DetectionConfig;
 use tracing::error;
 use tracing::info;
+use tracing::warn;
 
 /// Filter-proxy mode (FILTER_PROXY_VIRTUAL.md): grabs the real device and
 /// re-emits its event stream on a uinput clone, minus the slots a matched
@@ -82,30 +82,13 @@ pub fn run_filter(
     engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
-    // `--record <base>` taps both sides of the proxy: the input stream
-    // (`<base>.evtest`) and the emitted batch (`<base>.out.evtest`) -
-    // the OS-visible stream after the pipeline's suppression
-    // decisions. Both carry session-relative timestamps so
-    // `out.ts - in.ts` measures the proxy's per-event latency.
-    let (in_recorder, out_recorder) = match record_base {
-        Some(base) => {
-            let in_path = base.with_extension("evtest");
-            let out_path = base.with_extension("out.evtest");
-            let calibration = engine.calibration();
-            let spawn = |path: &Path| RawRecorder::spawn(path, device.name(), calibration.as_ref());
-            info!(
-                in_path = %in_path.display(),
-                out_path = %out_path.display(),
-                "proxy recording active"
-            );
-            (
-                Some(spawn(&in_path).into_diagnostic()?),
-                Some(spawn(&out_path).into_diagnostic()?),
-            )
-        }
-        None => (None, None),
-    };
-    let session_start = Instant::now();
+    // `--record <base>` starts the paired input/output capture at
+    // startup; `StartRecording`/`StopRecording` control commands do
+    // the same at runtime (MCP/GraphQL/D-Bus).
+    let mut proxy_recording = record_base
+        .map(|base| ProxyRecording::start(base, device.name(), engine.calibration().as_ref(), None))
+        .transpose()
+        .into_diagnostic()?;
     device.grab().into_diagnostic()?;
     info!("EVIOCGRAB active - all events flow through the proxy");
     info!("uinput clone created - tangibles are suppressed");
@@ -121,6 +104,7 @@ pub fn run_filter(
     // applied), not the firmware-reported one - clients size their field
     // sets from these millimeter bounds.
     runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
+    runtime.set_recording_status(proxy_recording.as_ref().map(ProxyRecording::status));
 
     let mut pipeline = Pipeline::new();
     // Edge ghosts leak to the virtual device unless suppressed - the
@@ -196,6 +180,44 @@ pub fn run_filter(
                         "Training '{name}': place the figure and hold still"
                     )));
                 }
+                ControlCommand::StartRecording { base_path, label } => {
+                    if proxy_recording.is_some() {
+                        warn!("recording already active - StartRecording ignored");
+                    } else {
+                        match ProxyRecording::start(
+                            &base_path,
+                            device.name(),
+                            engine.calibration().as_ref(),
+                            label,
+                        ) {
+                            Ok(recording) => {
+                                runtime.set_recording_status(Some(recording.status()));
+                                proxy_recording = Some(recording);
+                                runtime.emit_lifecycle(LifecycleEvent::RecordingStarted);
+                            }
+                            Err(e) => warn!(error = %e, "recording could not be started"),
+                        }
+                    }
+                }
+                ControlCommand::StopRecording => match proxy_recording.take() {
+                    Some(recording) => {
+                        let frames = recording.frames();
+                        if let Err(e) = recording.finish() {
+                            warn!(error = %e, "recording flush failed");
+                        }
+                        runtime.set_recording_status(None);
+                        runtime.emit_lifecycle(LifecycleEvent::RecordingStopped { frames });
+                        info!(%frames, "proxy recording stopped");
+                    }
+                    None => warn!("no recording active - StopRecording ignored"),
+                },
+                ControlCommand::SetRecordLabel(label) => match &mut proxy_recording {
+                    Some(recording) => {
+                        recording.set_label(label);
+                        runtime.set_recording_status(Some(recording.status()));
+                    }
+                    None => warn!("no recording active - SetRecordLabel ignored"),
+                },
                 other => {
                     apply_registration(&mut runtime, &mut engine, other);
                     // Registrations may introduce or retire scope names
@@ -234,8 +256,8 @@ pub fn run_filter(
             }
         };
         for raw in events {
-            if let Some(recorder) = &in_recorder {
-                recorder.record(&raw, session_start.elapsed().as_secs_f64());
+            if let Some(recording) = &proxy_recording {
+                recording.record_in(&raw);
             }
             let engine_frame = engine.process(&raw);
             pipeline.push(raw);
@@ -273,11 +295,9 @@ pub fn run_filter(
             // gone.
             let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;
-            if let Some(recorder) = &out_recorder {
-                let timestamp_secs = session_start.elapsed().as_secs_f64();
-                for event in &out {
-                    recorder.record(&RawEvent::from(event), timestamp_secs);
-                }
+            if let Some(recording) = &mut proxy_recording {
+                recording.record_out(out.iter().map(RawEvent::from));
+                runtime.set_recording_status(Some(recording.status()));
             }
             // The real suppression view is the union across all pipeline
             // stages - including the stateless edge/zone/field stages,
@@ -303,8 +323,8 @@ pub fn run_filter(
             std::io::stdout().flush().ok();
         }
     }
-    for recorder in [in_recorder, out_recorder].into_iter().flatten() {
-        if let Err(error) = recorder.finish() {
+    if let Some(recording) = proxy_recording {
+        if let Err(error) = recording.finish() {
             error!(%error, "proxy recording could not be finalized");
         }
     }
