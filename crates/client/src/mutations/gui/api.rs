@@ -4,8 +4,10 @@ use tangible_objects_model::DisplayRotation;
 
 use crate::ClientError;
 use crate::GraphQLClient;
+use crate::mutations::gui::mutation::SetDeadZonesVisible;
 use crate::mutations::gui::mutation::SetDisplayRotation;
 use crate::mutations::gui::mutation::SetGuiVisible;
+use crate::mutations::gui::variables::SetDeadZonesVisibleVariables;
 use crate::mutations::gui::variables::SetDisplayRotationVariables;
 use crate::mutations::gui::variables::SetGuiVisibleVariables;
 
@@ -30,6 +32,16 @@ impl GraphQLClient {
         self.call_mutation::<SetDisplayRotation, _, _>(
             "setDisplayRotation",
             SetDisplayRotationVariables { rotation },
+        )
+        .await
+    }
+
+    /// Shows or hides the dead-zone overlay on the daemon's GUI
+    /// canvas (`setDeadZonesVisible`) - ignored by headless daemons.
+    pub async fn set_dead_zones_visible(&self, visible: bool) -> Result<bool, ClientError> {
+        self.call_mutation::<SetDeadZonesVisible, _, _>(
+            "setDeadZonesVisible",
+            SetDeadZonesVisibleVariables { visible },
         )
         .await
     }

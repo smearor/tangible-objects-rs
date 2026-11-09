@@ -1,6 +1,7 @@
-//! `SetGuiVisible`/`SetDisplayRotation` - the cynic fragments for the
-//! GUI mutations.
+//! `SetGuiVisible`/`SetDisplayRotation`/`SetDeadZonesVisible` - the
+//! cynic fragments for the GUI mutations.
 
+use crate::mutations::gui::variables::SetDeadZonesVisibleVariablesFields;
 use crate::mutations::gui::variables::SetDisplayRotationVariablesFields;
 use crate::mutations::gui::variables::SetGuiVisibleVariablesFields;
 use cynic::QueryFragment;
@@ -35,4 +36,20 @@ pub(crate) struct SetDisplayRotation {
     #[cynic(rename = "setDisplayRotation")]
     #[arguments(rotation: $rotation)]
     set_display_rotation: bool,
+}
+
+/// Root-field wrapper for `setDeadZonesVisible`.
+#[allow(dead_code)]
+#[derive(QueryFragment)]
+#[cynic(
+    graphql_type = "MutationRoot",
+    schema_path = "../graphql/schema.graphql",
+    schema_module = "tangible_objects_model::schema",
+    variables = "SetDeadZonesVisibleVariables"
+)]
+pub(crate) struct SetDeadZonesVisible {
+    /// `setDeadZonesVisible` field.
+    #[cynic(rename = "setDeadZonesVisible")]
+    #[arguments(visible: $visible)]
+    set_dead_zones_visible: bool,
 }

@@ -275,6 +275,12 @@ impl EngineService {
         api::gui::set_display_rotation(self, rotation).await
     }
 
+    /// Shows or hides the dead-zone overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_dead_zones_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::gui::set_dead_zones_visible(self, visible).await
+    }
+
     /// Registers a figure profile at runtime: `points` is the flat pin
     /// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
     /// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps

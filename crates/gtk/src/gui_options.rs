@@ -19,4 +19,7 @@ pub struct GuiOptions {
     /// and UI chrome stay opaque; only the black fill translucents
     /// (`cairo` alpha, not window opacity).
     pub background_alpha: BackgroundAlpha,
+    /// Whether the dead-zone overlay starts drawn
+    /// (`SetDeadZonesVisible` commands toggle afterwards).
+    pub dead_zones_visible: bool,
 }

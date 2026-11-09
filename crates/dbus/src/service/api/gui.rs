@@ -1,4 +1,5 @@
-//! GUI methods - `set_gui_visible`.
+//! GUI methods - `set_gui_visible`, `set_display_rotation`,
+//! `set_dead_zones_visible`.
 
 use crate::service::engine_service::EngineService;
 use tangible_objects_model::DisplayRotation;
@@ -26,6 +27,19 @@ pub(crate) async fn set_display_rotation(
     service
         .handle
         .send_command(ControlCommand::SetDisplayRotation(parsed))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
+/// Shows or hides the dead-zone overlay on the GUI canvas - ignored
+/// on headless daemons.
+pub(crate) async fn set_dead_zones_visible(
+    service: &EngineService,
+    visible: bool,
+) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetDeadZonesVisible(visible))
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }

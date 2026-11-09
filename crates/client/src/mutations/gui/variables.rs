@@ -19,3 +19,11 @@ pub(crate) struct SetDisplayRotationVariables {
     /// Quarter turns the canvas renders.
     pub rotation: DisplayRotation,
 }
+
+/// Variables of `setDeadZonesVisible`.
+#[derive(QueryVariables)]
+#[cynic(schema_module = "tangible_objects_model::schema")]
+pub(crate) struct SetDeadZonesVisibleVariables {
+    /// `true` draws the dead-zone overlay.
+    pub visible: bool,
+}

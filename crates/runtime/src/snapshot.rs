@@ -45,4 +45,9 @@ pub struct EngineSnapshot {
     /// feature.
     #[cfg(feature = "gui")]
     pub gui_visible: bool,
+    /// Whether the GUI canvas draws the dead-zone overlay
+    /// (`SetDeadZonesVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub dead_zones_visible: bool,
 }

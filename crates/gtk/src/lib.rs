@@ -52,7 +52,12 @@ pub fn run_gui(
     options: GuiOptions,
     hooks: GuiHooks,
 ) {
-    let state = SharedState::new(options.visible, options.rotation, options.background_alpha);
+    let state = SharedState::new(
+        options.visible,
+        options.rotation,
+        options.background_alpha,
+        options.dead_zones_visible,
+    );
 
     // Spawn evdev thread - the in-process engine loop.
     let state_clone = state.clone();

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use tangible_objects_model::Calibration;
+use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::TouchPoint;
@@ -42,6 +43,11 @@ pub struct SharedState {
     /// Canvas background opacity (`--background-alpha` and the alpha
     /// toggle). GUI-local display state - no control command.
     pub background_alpha: BackgroundAlpha,
+    /// Registered dead zones - the overlay data set.
+    pub dead_zones: Vec<DeadZone>,
+    /// Whether the dead-zone overlay is drawn
+    /// (`SetDeadZonesVisible`/`--dead-zones-visible`).
+    pub dead_zones_visible: bool,
 }
 
 impl SharedState {
@@ -51,6 +57,7 @@ impl SharedState {
         visible: bool,
         rotation: DisplayRotation,
         background_alpha: BackgroundAlpha,
+        dead_zones_visible: bool,
     ) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             touches: Vec::new(),
@@ -65,6 +72,8 @@ impl SharedState {
             visible,
             rotation,
             background_alpha,
+            dead_zones: Vec::new(),
+            dead_zones_visible,
         }))
     }
 }

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use i18n_embed_fl::fl;
+use tangible_objects_model::DeadZone;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
@@ -88,6 +89,10 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
         cal.mm_to_screen(*pos, Vec2::new(w, h), rotation)
     };
 
+    if s.dead_zones_visible {
+        draw_dead_zones(cr, &s.dead_zones, &to_screen);
+    }
+
     if mode == GuiMode::Training {
         draw_training(cr, w, h, touches.into(), &to_screen, &s);
     } else {
@@ -100,6 +105,47 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
             (&s.tracked).into(),
             &to_screen,
         );
+    }
+}
+
+/// Dead-zone overlay: a dashed circle and the zone's name on every
+/// suppressed spot, drawn beneath the figure/touch layer.
+fn draw_dead_zones(
+    cr: &cairo::Context,
+    zones: &[DeadZone],
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    for zone in zones {
+        let center = to_screen(&zone.center);
+        // The mm→px scale may be anisotropic - sample the radius in
+        // both axes and take the mean so the circle stays circular.
+        let rx = to_screen(&(zone.center + Vec2::new(zone.radius.as_f64(), 0.0)))
+            .distance(&center)
+            .as_f64();
+        let ry = to_screen(&(zone.center + Vec2::new(0.0, zone.radius.as_f64())))
+            .distance(&center)
+            .as_f64();
+        let radius = (rx + ry) / 2.0;
+
+        cr.set_source_rgba(1.0, 0.3, 0.25, 0.10);
+        cr.arc(center.x, center.y, radius, 0.0, 2.0 * std::f64::consts::PI);
+        let _ = cr.fill();
+        cr.set_source_rgba(1.0, 0.3, 0.25, 0.85);
+        cr.set_dash(&[6.0, 4.0], 0.0);
+        cr.set_line_width(2.0);
+        cr.arc(center.x, center.y, radius, 0.0, 2.0 * std::f64::consts::PI);
+        let _ = cr.stroke();
+        cr.set_dash(&[], 0.0);
+
+        cr.set_font_size(16.0);
+        cr.set_source_rgba(1.0, 0.55, 0.5, 0.9);
+        let name = zone.name.as_str();
+        let label_y = center.y + radius + 18.0;
+        match cr.text_extents(name) {
+            Ok(ext) => cr.move_to(center.x - ext.width() / 2.0, label_y),
+            Err(_) => cr.move_to(center.x, label_y),
+        }
+        let _ = cr.show_text(name);
     }
 }
 

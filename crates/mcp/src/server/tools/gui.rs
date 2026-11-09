@@ -10,6 +10,7 @@ use tangible_objects_model::DisplayRotation;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
+use crate::tool_args::SetDeadZonesVisibleArgs;
 use crate::tool_args::SetDisplayRotationArgs;
 use crate::tool_args::SetGuiVisibleArgs;
 
@@ -53,6 +54,25 @@ impl EngineMcp {
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "display rotation: {rotation}"
+        ))]))
+    }
+
+    /// Shows or hides the dead-zone overlay on the daemon-embedded GUI
+    /// canvas (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Show or hide the dead-zone overlay on the daemon-embedded GUI canvas (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_dead_zones_visible(
+        &self,
+        Parameters(args): Parameters<SetDeadZonesVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetDeadZonesVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "dead-zone overlay visible: {}",
+            args.visible
         ))]))
     }
 }

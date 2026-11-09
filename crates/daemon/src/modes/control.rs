@@ -311,6 +311,11 @@ pub(crate) fn apply_registration(
             info!(%rotation, "display rotation changed");
             runtime.set_display_rotation(rotation);
         }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetDeadZonesVisible(visible) => {
+            info!(%visible, "dead-zone overlay toggled");
+            runtime.set_dead_zones_visible(visible);
+        }
         other => warn!(?other, "command ignored"),
     }
 }

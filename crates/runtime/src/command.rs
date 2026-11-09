@@ -142,6 +142,10 @@ pub enum ControlCommand {
     /// Same availability as [`Self::SetGuiVisible`] - headless daemons
     /// ignore it.
     SetDisplayRotation(DisplayRotation),
+    /// Show or hide the dead-zone overlay on the GUI canvas. Same
+    /// availability as [`Self::SetGuiVisible`] - headless daemons
+    /// ignore it.
+    SetDeadZonesVisible(bool),
 }
 
 impl ControlCommand {

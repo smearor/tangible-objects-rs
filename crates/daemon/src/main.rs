@@ -167,6 +167,10 @@ struct Cli {
     /// through the black fill - touches and UI stay opaque
     #[arg(long, value_name = "0-100")]
     background_alpha: Option<u8>,
+    /// Draw the dead-zone overlay on the GUI canvas (--gui);
+    /// `set_dead_zones_visible` toggles it afterwards
+    #[arg(long)]
+    dead_zones_visible: bool,
 }
 
 fn main() -> Result<()> {
@@ -295,6 +299,7 @@ fn main() -> Result<()> {
             cli.background_alpha
                 .map(BackgroundAlpha::from_percent)
                 .unwrap_or_default(),
+            cli.dead_zones_visible,
             interfaces()?,
         );
     }
@@ -343,6 +348,7 @@ fn run_gui_mode(
     config: DetectionConfig,
     rotation: DisplayRotation,
     background_alpha: BackgroundAlpha,
+    dead_zones_visible: bool,
     interfaces: Interfaces,
 ) -> Result<()> {
     // Daemon plumbing flows into the embedded GUI as injected hooks -
@@ -364,6 +370,7 @@ fn run_gui_mode(
             visible: true,
             rotation,
             background_alpha,
+            dead_zones_visible,
         },
         hooks,
     );

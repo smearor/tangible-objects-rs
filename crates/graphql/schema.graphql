@@ -601,6 +601,11 @@ type MutationRoot {
 	"""
 	setGuiVisible(visible: Boolean!): Boolean!
 	"""
+	Shows or hides the dead-zone overlay on the GUI canvas -
+	ignored on headless daemons.
+	"""
+	setDeadZonesVisible(visible: Boolean!): Boolean!
+	"""
 	Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
 	needed when the desktop shows the touchscreen rotated. Ignored
 	on headless daemons.

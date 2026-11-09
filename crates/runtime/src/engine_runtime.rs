@@ -86,6 +86,10 @@ pub struct EngineRuntime {
     /// command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     display_rotation: DisplayRotation,
+    /// Whether the GUI canvas draws the dead-zone overlay
+    /// (`SetDeadZonesVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    dead_zones_visible: bool,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -132,6 +136,8 @@ impl EngineRuntime {
             message: None,
             #[cfg(feature = "gui")]
             gui_visible: true,
+            #[cfg(feature = "gui")]
+            dead_zones_visible: false,
             #[cfg(feature = "gui")]
             display_rotation: DisplayRotation::default(),
             training: None,
@@ -216,6 +222,8 @@ impl EngineRuntime {
             message: self.message.clone(),
             #[cfg(feature = "gui")]
             gui_visible: self.gui_visible,
+            #[cfg(feature = "gui")]
+            dead_zones_visible: self.dead_zones_visible,
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -243,6 +251,8 @@ impl EngineRuntime {
             message: self.message.clone(),
             #[cfg(feature = "gui")]
             gui_visible: self.gui_visible,
+            #[cfg(feature = "gui")]
+            dead_zones_visible: self.dead_zones_visible,
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
@@ -295,6 +305,20 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn display_rotation(&self) -> DisplayRotation {
         self.display_rotation
+    }
+
+    /// Shows or hides the dead-zone overlay on the GUI canvas
+    /// (`SetDeadZonesVisible` command). Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_dead_zones_visible(&mut self, visible: bool) {
+        self.dead_zones_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the dead-zone overlay. Only with
+    /// the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn dead_zones_visible(&self) -> bool {
+        self.dead_zones_visible
     }
 
     /// Arms remote profile capture (`TrainProfile` command) - the

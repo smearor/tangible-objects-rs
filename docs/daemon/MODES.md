@@ -42,6 +42,7 @@ explicit `--device`.
 | `--name <n>` | string | `--train` figure name |
 | `--tolerance <mm>` | f64 | `--train` matching tolerance (default 30.0) |
 | `--record-label <s>` | string | ground-truth label on `--record` |
+| `--dead-zones-visible` | bool | draws the dead-zone overlay on the GUI canvas (`--gui`) |
 | `--no-import-slots` | flag | skip importing kernel MT slot state at startup (contacts opened before the daemon stay invisible) |
 | `--to <p\|file.toml>` | name or path | `--convert-device` target profile |
 

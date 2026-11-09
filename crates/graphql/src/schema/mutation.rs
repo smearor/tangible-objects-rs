@@ -176,6 +176,16 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Shows or hides the dead-zone overlay on the GUI canvas -
+    /// ignored on headless daemons.
+    async fn set_dead_zones_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetDeadZonesVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
     /// Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
     /// needed when the desktop shows the touchscreen rotated. Ignored
     /// on headless daemons.
