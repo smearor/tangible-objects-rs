@@ -9,39 +9,40 @@
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">mod </span>filter;
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">mod </span>interfaces;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">mod </span>live;
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">mod </span>record;
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">mod </span>replay;
-<a href=#14 id=14 data-nosnippet>14</a><span class="kw">mod </span>setup;
-<a href=#15 id=15 data-nosnippet>15</a><span class="kw">mod </span>store;
-<a href=#16 id=16 data-nosnippet>16</a><span class="kw">mod </span>train;
-<a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub use </span>analysis::run_analyze;
-<a href=#19 id=19 data-nosnippet>19</a><span class="kw">pub use </span>analysis::run_convert_device;
-<a href=#20 id=20 data-nosnippet>20</a><span class="kw">pub use </span>analysis::run_export_dataset;
-<a href=#21 id=21 data-nosnippet>21</a><span class="kw">pub use </span>analysis::run_similarity;
-<a href=#22 id=22 data-nosnippet>22</a><span class="comment">// Re-exported for the gui feature's `gtk_app` - unused without it.
-<a href=#23 id=23 data-nosnippet>23</a></span><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
-<a href=#24 id=24 data-nosnippet>24</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::drain_control_commands;
-<a href=#25 id=25 data-nosnippet>25</a><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
-<a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::register_profile_hook;
-<a href=#27 id=27 data-nosnippet>27</a><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
-<a href=#28 id=28 data-nosnippet>28</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::spawn_interfaces;
-<a href=#29 id=29 data-nosnippet>29</a><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
-<a href=#30 id=30 data-nosnippet>30</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::status_of_session;
-<a href=#31 id=31 data-nosnippet>31</a><span class="kw">pub use </span>filter::run_filter;
-<a href=#32 id=32 data-nosnippet>32</a><span class="kw">pub use </span>interfaces::Interfaces;
-<a href=#33 id=33 data-nosnippet>33</a><span class="kw">pub use </span>live::run_live;
-<a href=#34 id=34 data-nosnippet>34</a><span class="kw">pub use </span>record::run_record;
-<a href=#35 id=35 data-nosnippet>35</a><span class="kw">pub use </span>replay::run_replay;
-<a href=#36 id=36 data-nosnippet>36</a><span class="comment">// Only the gui feature calls this through `modes::` - the modes
-<a href=#37 id=37 data-nosnippet>37</a>// themselves use `super::setup::effective_calibration` directly.
-<a href=#38 id=38 data-nosnippet>38</a></span><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
-<a href=#39 id=39 data-nosnippet>39</a></span><span class="kw">pub use </span>setup::effective_calibration;
-<a href=#40 id=40 data-nosnippet>40</a><span class="kw">pub use </span>setup::list_devices;
-<a href=#41 id=41 data-nosnippet>41</a><span class="kw">pub use </span>setup::load_completion;
-<a href=#42 id=42 data-nosnippet>42</a><span class="kw">pub use </span>setup::load_dead_zones;
-<a href=#43 id=43 data-nosnippet>43</a><span class="kw">pub use </span>setup::load_field_sets;
-<a href=#44 id=44 data-nosnippet>44</a><span class="kw">pub use </span>setup::load_patterns;
-<a href=#45 id=45 data-nosnippet>45</a><span class="kw">pub use </span>setup::resolve_device;
-<a href=#46 id=46 data-nosnippet>46</a><span class="kw">pub use </span>train::run_train;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">mod </span>proxy_recording;
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">mod </span>record;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">mod </span>replay;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">mod </span>setup;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">mod </span>store;
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">mod </span>train;
+<a href=#18 id=18 data-nosnippet>18</a>
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">pub use </span>analysis::run_analyze;
+<a href=#20 id=20 data-nosnippet>20</a><span class="kw">pub use </span>analysis::run_convert_device;
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">pub use </span>analysis::run_export_dataset;
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub use </span>analysis::run_similarity;
+<a href=#23 id=23 data-nosnippet>23</a><span class="comment">// Re-exported for the gui feature's `gtk_app` - unused without it.
+<a href=#24 id=24 data-nosnippet>24</a></span><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
+<a href=#25 id=25 data-nosnippet>25</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::drain_control_commands;
+<a href=#26 id=26 data-nosnippet>26</a><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
+<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::register_profile_hook;
+<a href=#28 id=28 data-nosnippet>28</a><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
+<a href=#29 id=29 data-nosnippet>29</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::spawn_interfaces;
+<a href=#30 id=30 data-nosnippet>30</a><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
+<a href=#31 id=31 data-nosnippet>31</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>control::status_of_session;
+<a href=#32 id=32 data-nosnippet>32</a><span class="kw">pub use </span>filter::run_filter;
+<a href=#33 id=33 data-nosnippet>33</a><span class="kw">pub use </span>interfaces::Interfaces;
+<a href=#34 id=34 data-nosnippet>34</a><span class="kw">pub use </span>live::run_live;
+<a href=#35 id=35 data-nosnippet>35</a><span class="kw">pub use </span>record::run_record;
+<a href=#36 id=36 data-nosnippet>36</a><span class="kw">pub use </span>replay::run_replay;
+<a href=#37 id=37 data-nosnippet>37</a><span class="comment">// Only the gui feature calls this through `modes::` - the modes
+<a href=#38 id=38 data-nosnippet>38</a>// themselves use `super::setup::effective_calibration` directly.
+<a href=#39 id=39 data-nosnippet>39</a></span><span class="attr">#[cfg(feature = <span class="string">"gui"</span>)]
+<a href=#40 id=40 data-nosnippet>40</a></span><span class="kw">pub use </span>setup::effective_calibration;
+<a href=#41 id=41 data-nosnippet>41</a><span class="kw">pub use </span>setup::list_devices;
+<a href=#42 id=42 data-nosnippet>42</a><span class="kw">pub use </span>setup::load_completion;
+<a href=#43 id=43 data-nosnippet>43</a><span class="kw">pub use </span>setup::load_dead_zones;
+<a href=#44 id=44 data-nosnippet>44</a><span class="kw">pub use </span>setup::load_field_sets;
+<a href=#45 id=45 data-nosnippet>45</a><span class="kw">pub use </span>setup::load_patterns;
+<a href=#46 id=46 data-nosnippet>46</a><span class="kw">pub use </span>setup::resolve_device;
+<a href=#47 id=47 data-nosnippet>47</a><span class="kw">pub use </span>train::run_train;
 </code></pre></div></section></main></body></html>
