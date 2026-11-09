@@ -138,54 +138,55 @@
 <a href=#138 id=138 data-nosnippet>138</a>            stability: Default::default(),
 <a href=#139 id=139 data-nosnippet>139</a>            fields: <span class="macro">vec!</span>[cell()],
 <a href=#140 id=140 data-nosnippet>140</a>            suppress,
-<a href=#141 id=141 data-nosnippet>141</a>        }
-<a href=#142 id=142 data-nosnippet>142</a>    }
-<a href=#143 id=143 data-nosnippet>143</a>
-<a href=#144 id=144 data-nosnippet>144</a>    <span class="kw">fn </span>touch(slot: u32, x: f64, y: f64) -&gt; TouchPoint {
-<a href=#145 id=145 data-nosnippet>145</a>        TouchPoint {
-<a href=#146 id=146 data-nosnippet>146</a>            slot: TouchPointSlot::new(slot),
-<a href=#147 id=147 data-nosnippet>147</a>            tracking_id: TrackingId::new(slot <span class="kw">as </span>i32),
-<a href=#148 id=148 data-nosnippet>148</a>            pos: Vec2::new(x, y),
-<a href=#149 id=149 data-nosnippet>149</a>        }
-<a href=#150 id=150 data-nosnippet>150</a>    }
-<a href=#151 id=151 data-nosnippet>151</a>
-<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">fn </span>classify(stage: <span class="kw-2">&amp;mut </span>FieldStage, touches: <span class="kw-2">&amp;</span>[TouchPoint]) {
-<a href=#153 id=153 data-nosnippet>153</a>        <span class="kw">let </span>matched = SlotSet::default();
-<a href=#154 id=154 data-nosnippet>154</a>        stage.classify(<span class="kw-2">&amp;</span>StageFrame {
-<a href=#155 id=155 data-nosnippet>155</a>            matched: <span class="kw-2">&amp;</span>matched,
-<a href=#156 id=156 data-nosnippet>156</a>            touches: touches.into(),
-<a href=#157 id=157 data-nosnippet>157</a>        });
-<a href=#158 id=158 data-nosnippet>158</a>    }
-<a href=#159 id=159 data-nosnippet>159</a>
-<a href=#160 id=160 data-nosnippet>160</a>    <span class="doccomment">/// A `suppress` set masks contacts inside its fields.
-<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="attr">#[test]
-<a href=#162 id=162 data-nosnippet>162</a>    </span><span class="kw">fn </span>classify_suppresses_inside_suppress_set() {
-<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">let </span><span class="kw-2">mut </span>stage = FieldStage::new();
-<a href=#164 id=164 data-nosnippet>164</a>        stage.set_fields(<span class="macro">vec!</span>[set(<span class="bool-val">true</span>)]);
-<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">let </span>touches = <span class="macro">vec!</span>[touch(<span class="number">0</span>, <span class="number">15.0</span>, <span class="number">15.0</span>), touch(<span class="number">1</span>, <span class="number">50.0</span>, <span class="number">50.0</span>)];
-<a href=#166 id=166 data-nosnippet>166</a>        classify(<span class="kw-2">&amp;mut </span>stage, <span class="kw-2">&amp;</span>touches);
-<a href=#167 id=167 data-nosnippet>167</a>        <span class="macro">assert!</span>(stage.suppresses(TouchPointSlot::new(<span class="number">0</span>)));
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="macro">assert!</span>(!stage.suppresses(TouchPointSlot::new(<span class="number">1</span>)));
-<a href=#169 id=169 data-nosnippet>169</a>    }
-<a href=#170 id=170 data-nosnippet>170</a>
-<a href=#171 id=171 data-nosnippet>171</a>    <span class="doccomment">/// A non-`suppress` set leaves contacts inside its fields
-<a href=#172 id=172 data-nosnippet>172</a>    /// un-suppressed - occupancy events still flow via `FieldTracker`.
-<a href=#173 id=173 data-nosnippet>173</a>    </span><span class="attr">#[test]
-<a href=#174 id=174 data-nosnippet>174</a>    </span><span class="kw">fn </span>classify_ignores_non_suppress_set() {
-<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span><span class="kw-2">mut </span>stage = FieldStage::new();
-<a href=#176 id=176 data-nosnippet>176</a>        stage.set_fields(<span class="macro">vec!</span>[set(<span class="bool-val">false</span>)]);
-<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>touches = <span class="macro">vec!</span>[touch(<span class="number">0</span>, <span class="number">15.0</span>, <span class="number">15.0</span>)];
-<a href=#178 id=178 data-nosnippet>178</a>        classify(<span class="kw-2">&amp;mut </span>stage, <span class="kw-2">&amp;</span>touches);
-<a href=#179 id=179 data-nosnippet>179</a>        <span class="macro">assert!</span>(!stage.suppresses(TouchPointSlot::new(<span class="number">0</span>)));
-<a href=#180 id=180 data-nosnippet>180</a>    }
-<a href=#181 id=181 data-nosnippet>181</a>
-<a href=#182 id=182 data-nosnippet>182</a>    <span class="doccomment">/// No registered sets suppress nothing.
-<a href=#183 id=183 data-nosnippet>183</a>    </span><span class="attr">#[test]
-<a href=#184 id=184 data-nosnippet>184</a>    </span><span class="kw">fn </span>empty_sets_suppress_nothing() {
-<a href=#185 id=185 data-nosnippet>185</a>        <span class="kw">let </span><span class="kw-2">mut </span>stage = FieldStage::new();
-<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>touches = <span class="macro">vec!</span>[touch(<span class="number">0</span>, <span class="number">15.0</span>, <span class="number">15.0</span>)];
-<a href=#187 id=187 data-nosnippet>187</a>        classify(<span class="kw-2">&amp;mut </span>stage, <span class="kw-2">&amp;</span>touches);
-<a href=#188 id=188 data-nosnippet>188</a>        <span class="macro">assert!</span>(!stage.suppresses(TouchPointSlot::new(<span class="number">0</span>)));
-<a href=#189 id=189 data-nosnippet>189</a>    }
-<a href=#190 id=190 data-nosnippet>190</a>}
+<a href=#141 id=141 data-nosnippet>141</a>            enabled: <span class="bool-val">true</span>,
+<a href=#142 id=142 data-nosnippet>142</a>        }
+<a href=#143 id=143 data-nosnippet>143</a>    }
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>    <span class="kw">fn </span>touch(slot: u32, x: f64, y: f64) -&gt; TouchPoint {
+<a href=#146 id=146 data-nosnippet>146</a>        TouchPoint {
+<a href=#147 id=147 data-nosnippet>147</a>            slot: TouchPointSlot::new(slot),
+<a href=#148 id=148 data-nosnippet>148</a>            tracking_id: TrackingId::new(slot <span class="kw">as </span>i32),
+<a href=#149 id=149 data-nosnippet>149</a>            pos: Vec2::new(x, y),
+<a href=#150 id=150 data-nosnippet>150</a>        }
+<a href=#151 id=151 data-nosnippet>151</a>    }
+<a href=#152 id=152 data-nosnippet>152</a>
+<a href=#153 id=153 data-nosnippet>153</a>    <span class="kw">fn </span>classify(stage: <span class="kw-2">&amp;mut </span>FieldStage, touches: <span class="kw-2">&amp;</span>[TouchPoint]) {
+<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">let </span>matched = SlotSet::default();
+<a href=#155 id=155 data-nosnippet>155</a>        stage.classify(<span class="kw-2">&amp;</span>StageFrame {
+<a href=#156 id=156 data-nosnippet>156</a>            matched: <span class="kw-2">&amp;</span>matched,
+<a href=#157 id=157 data-nosnippet>157</a>            touches: touches.into(),
+<a href=#158 id=158 data-nosnippet>158</a>        });
+<a href=#159 id=159 data-nosnippet>159</a>    }
+<a href=#160 id=160 data-nosnippet>160</a>
+<a href=#161 id=161 data-nosnippet>161</a>    <span class="doccomment">/// A `suppress` set masks contacts inside its fields.
+<a href=#162 id=162 data-nosnippet>162</a>    </span><span class="attr">#[test]
+<a href=#163 id=163 data-nosnippet>163</a>    </span><span class="kw">fn </span>classify_suppresses_inside_suppress_set() {
+<a href=#164 id=164 data-nosnippet>164</a>        <span class="kw">let </span><span class="kw-2">mut </span>stage = FieldStage::new();
+<a href=#165 id=165 data-nosnippet>165</a>        stage.set_fields(<span class="macro">vec!</span>[set(<span class="bool-val">true</span>)]);
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">let </span>touches = <span class="macro">vec!</span>[touch(<span class="number">0</span>, <span class="number">15.0</span>, <span class="number">15.0</span>), touch(<span class="number">1</span>, <span class="number">50.0</span>, <span class="number">50.0</span>)];
+<a href=#167 id=167 data-nosnippet>167</a>        classify(<span class="kw-2">&amp;mut </span>stage, <span class="kw-2">&amp;</span>touches);
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="macro">assert!</span>(stage.suppresses(TouchPointSlot::new(<span class="number">0</span>)));
+<a href=#169 id=169 data-nosnippet>169</a>        <span class="macro">assert!</span>(!stage.suppresses(TouchPointSlot::new(<span class="number">1</span>)));
+<a href=#170 id=170 data-nosnippet>170</a>    }
+<a href=#171 id=171 data-nosnippet>171</a>
+<a href=#172 id=172 data-nosnippet>172</a>    <span class="doccomment">/// A non-`suppress` set leaves contacts inside its fields
+<a href=#173 id=173 data-nosnippet>173</a>    /// un-suppressed - occupancy events still flow via `FieldTracker`.
+<a href=#174 id=174 data-nosnippet>174</a>    </span><span class="attr">#[test]
+<a href=#175 id=175 data-nosnippet>175</a>    </span><span class="kw">fn </span>classify_ignores_non_suppress_set() {
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span><span class="kw-2">mut </span>stage = FieldStage::new();
+<a href=#177 id=177 data-nosnippet>177</a>        stage.set_fields(<span class="macro">vec!</span>[set(<span class="bool-val">false</span>)]);
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>touches = <span class="macro">vec!</span>[touch(<span class="number">0</span>, <span class="number">15.0</span>, <span class="number">15.0</span>)];
+<a href=#179 id=179 data-nosnippet>179</a>        classify(<span class="kw-2">&amp;mut </span>stage, <span class="kw-2">&amp;</span>touches);
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="macro">assert!</span>(!stage.suppresses(TouchPointSlot::new(<span class="number">0</span>)));
+<a href=#181 id=181 data-nosnippet>181</a>    }
+<a href=#182 id=182 data-nosnippet>182</a>
+<a href=#183 id=183 data-nosnippet>183</a>    <span class="doccomment">/// No registered sets suppress nothing.
+<a href=#184 id=184 data-nosnippet>184</a>    </span><span class="attr">#[test]
+<a href=#185 id=185 data-nosnippet>185</a>    </span><span class="kw">fn </span>empty_sets_suppress_nothing() {
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span><span class="kw-2">mut </span>stage = FieldStage::new();
+<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span>touches = <span class="macro">vec!</span>[touch(<span class="number">0</span>, <span class="number">15.0</span>, <span class="number">15.0</span>)];
+<a href=#188 id=188 data-nosnippet>188</a>        classify(<span class="kw-2">&amp;mut </span>stage, <span class="kw-2">&amp;</span>touches);
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="macro">assert!</span>(!stage.suppresses(TouchPointSlot::new(<span class="number">0</span>)));
+<a href=#190 id=190 data-nosnippet>190</a>    }
+<a href=#191 id=191 data-nosnippet>191</a>}
 </code></pre></div></section></main></body></html>

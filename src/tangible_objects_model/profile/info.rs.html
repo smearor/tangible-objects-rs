@@ -49,24 +49,35 @@
 <a href=#49 id=49 data-nosnippet>49</a>    <span class="doccomment">/// Pipeline stage this pattern suppresses through
 <a href=#50 id=50 data-nosnippet>50</a>    /// (EVENT_PIPELINE.md); `None` = the general stage.
 <a href=#51 id=51 data-nosnippet>51</a>    </span><span class="kw">pub </span>stage: <span class="prelude-ty">Option</span>&lt;StageName&gt;,
-<a href=#52 id=52 data-nosnippet>52</a>}
-<a href=#53 id=53 data-nosnippet>53</a>
-<a href=#54 id=54 data-nosnippet>54</a><span class="attr">#[cfg(feature = <span class="string">"zbus"</span>)]
-<a href=#55 id=55 data-nosnippet>55</a></span><span class="kw">impl </span>zvariant::Type <span class="kw">for </span>ProfileInfo {
-<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">const </span>SIGNATURE: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>zvariant::Signature = <span class="kw-2">&amp;</span><span class="macro">zvariant::signature!</span>(<span class="string">"(ustsbt)"</span>);
+<a href=#52 id=52 data-nosnippet>52</a>    <span class="doccomment">/// Whether the pattern participates in matching
+<a href=#53 id=53 data-nosnippet>53</a>    /// (`SetProfileEnabled` command) - disabled profiles stay
+<a href=#54 id=54 data-nosnippet>54</a>    /// registered but produce no matches.
+<a href=#55 id=55 data-nosnippet>55</a>    </span><span class="attr">#[serde(default = <span class="string">"default_enabled"</span>)]
+<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="kw">pub </span>enabled: bool,
 <a href=#57 id=57 data-nosnippet>57</a>}
 <a href=#58 id=58 data-nosnippet>58</a>
-<a href=#59 id=59 data-nosnippet>59</a><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>TangiblePattern&gt; <span class="kw">for </span>ProfileInfo {
-<a href=#60 id=60 data-nosnippet>60</a>    <span class="kw">fn </span>from(pattern: <span class="kw-2">&amp;</span>TangiblePattern) -&gt; <span class="self">Self </span>{
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="self">Self </span>{
-<a href=#62 id=62 data-nosnippet>62</a>            pattern_id: pattern.id,
-<a href=#63 id=63 data-nosnippet>63</a>            name: pattern.name.clone(),
-<a href=#64 id=64 data-nosnippet>64</a>            num_points: pattern.num_points,
-<a href=#65 id=65 data-nosnippet>65</a>            owner: <span class="prelude-val">None</span>,
-<a href=#66 id=66 data-nosnippet>66</a>            spawn_on_partial: pattern.spawn_on_partial,
-<a href=#67 id=67 data-nosnippet>67</a>            spawn_stability: pattern.spawn_stability,
-<a href=#68 id=68 data-nosnippet>68</a>            stage: pattern.stage.clone(),
-<a href=#69 id=69 data-nosnippet>69</a>        }
-<a href=#70 id=70 data-nosnippet>70</a>    }
-<a href=#71 id=71 data-nosnippet>71</a>}
+<a href=#59 id=59 data-nosnippet>59</a><span class="doccomment">/// Default enabled state for profiles (`enabled = true`).
+<a href=#60 id=60 data-nosnippet>60</a></span><span class="kw">fn </span>default_enabled() -&gt; bool {
+<a href=#61 id=61 data-nosnippet>61</a>    <span class="bool-val">true
+<a href=#62 id=62 data-nosnippet>62</a></span>}
+<a href=#63 id=63 data-nosnippet>63</a>
+<a href=#64 id=64 data-nosnippet>64</a><span class="attr">#[cfg(feature = <span class="string">"zbus"</span>)]
+<a href=#65 id=65 data-nosnippet>65</a></span><span class="kw">impl </span>zvariant::Type <span class="kw">for </span>ProfileInfo {
+<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">const </span>SIGNATURE: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>zvariant::Signature = <span class="kw-2">&amp;</span><span class="macro">zvariant::signature!</span>(<span class="string">"(ustsbtsb)"</span>);
+<a href=#67 id=67 data-nosnippet>67</a>}
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a><span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>TangiblePattern&gt; <span class="kw">for </span>ProfileInfo {
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>from(pattern: <span class="kw-2">&amp;</span>TangiblePattern) -&gt; <span class="self">Self </span>{
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="self">Self </span>{
+<a href=#72 id=72 data-nosnippet>72</a>            pattern_id: pattern.id,
+<a href=#73 id=73 data-nosnippet>73</a>            name: pattern.name.clone(),
+<a href=#74 id=74 data-nosnippet>74</a>            num_points: pattern.num_points,
+<a href=#75 id=75 data-nosnippet>75</a>            owner: <span class="prelude-val">None</span>,
+<a href=#76 id=76 data-nosnippet>76</a>            spawn_on_partial: pattern.spawn_on_partial,
+<a href=#77 id=77 data-nosnippet>77</a>            spawn_stability: pattern.spawn_stability,
+<a href=#78 id=78 data-nosnippet>78</a>            stage: pattern.stage.clone(),
+<a href=#79 id=79 data-nosnippet>79</a>            enabled: pattern.enabled,
+<a href=#80 id=80 data-nosnippet>80</a>        }
+<a href=#81 id=81 data-nosnippet>81</a>    }
+<a href=#82 id=82 data-nosnippet>82</a>}
 </code></pre></div></section></main></body></html>

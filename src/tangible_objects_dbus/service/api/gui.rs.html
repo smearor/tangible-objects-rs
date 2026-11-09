@@ -87,30 +87,40 @@
 <a href=#87 id=87 data-nosnippet>87</a>        </span>.map_err(|<span class="kw">_</span>| fdo::Error::Failed(<span class="string">"device loop is not running"</span>.to_string()))
 <a href=#88 id=88 data-nosnippet>88</a>}
 <a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a><span class="doccomment">/// Shows or hides the positions overlay on the GUI canvas - ignored
-<a href=#91 id=91 data-nosnippet>91</a>/// on headless daemons.
-<a href=#92 id=92 data-nosnippet>92</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>set_positions_visible(
-<a href=#93 id=93 data-nosnippet>93</a>    service: <span class="kw-2">&amp;</span>EngineService,
-<a href=#94 id=94 data-nosnippet>94</a>    visible: bool,
-<a href=#95 id=95 data-nosnippet>95</a>) -&gt; fdo::Result&lt;()&gt; {
-<a href=#96 id=96 data-nosnippet>96</a>    service
-<a href=#97 id=97 data-nosnippet>97</a>        .handle
-<a href=#98 id=98 data-nosnippet>98</a>        .send_command(ControlCommand::SetPositionsVisible(visible))
-<a href=#99 id=99 data-nosnippet>99</a>        .<span class="kw">await
-<a href=#100 id=100 data-nosnippet>100</a>        </span>.map_err(|<span class="kw">_</span>| fdo::Error::Failed(<span class="string">"device loop is not running"</span>.to_string()))
-<a href=#101 id=101 data-nosnippet>101</a>}
-<a href=#102 id=102 data-nosnippet>102</a>
-<a href=#103 id=103 data-nosnippet>103</a><span class="doccomment">/// Lets touches pass through the GTK window to the desktop beneath,
-<a href=#104 id=104 data-nosnippet>104</a>/// except where GUI elements are hit - ignored on headless daemons,
-<a href=#105 id=105 data-nosnippet>105</a>/// Wayland only.
-<a href=#106 id=106 data-nosnippet>106</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>set_touch_passthrough(
-<a href=#107 id=107 data-nosnippet>107</a>    service: <span class="kw-2">&amp;</span>EngineService,
-<a href=#108 id=108 data-nosnippet>108</a>    enabled: bool,
-<a href=#109 id=109 data-nosnippet>109</a>) -&gt; fdo::Result&lt;()&gt; {
-<a href=#110 id=110 data-nosnippet>110</a>    service
-<a href=#111 id=111 data-nosnippet>111</a>        .handle
-<a href=#112 id=112 data-nosnippet>112</a>        .send_command(ControlCommand::SetTouchPassthrough(enabled))
-<a href=#113 id=113 data-nosnippet>113</a>        .<span class="kw">await
-<a href=#114 id=114 data-nosnippet>114</a>        </span>.map_err(|<span class="kw">_</span>| fdo::Error::Failed(<span class="string">"device loop is not running"</span>.to_string()))
-<a href=#115 id=115 data-nosnippet>115</a>}
+<a href=#90 id=90 data-nosnippet>90</a><span class="doccomment">/// Shows or hides the grid overlay on the GUI canvas - ignored on
+<a href=#91 id=91 data-nosnippet>91</a>/// headless daemons.
+<a href=#92 id=92 data-nosnippet>92</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>set_grid_visible(service: <span class="kw-2">&amp;</span>EngineService, visible: bool) -&gt; fdo::Result&lt;()&gt; {
+<a href=#93 id=93 data-nosnippet>93</a>    service
+<a href=#94 id=94 data-nosnippet>94</a>        .handle
+<a href=#95 id=95 data-nosnippet>95</a>        .send_command(ControlCommand::SetGridVisible(visible))
+<a href=#96 id=96 data-nosnippet>96</a>        .<span class="kw">await
+<a href=#97 id=97 data-nosnippet>97</a>        </span>.map_err(|<span class="kw">_</span>| fdo::Error::Failed(<span class="string">"device loop is not running"</span>.to_string()))
+<a href=#98 id=98 data-nosnippet>98</a>}
+<a href=#99 id=99 data-nosnippet>99</a>
+<a href=#100 id=100 data-nosnippet>100</a><span class="doccomment">/// Shows or hides the positions overlay on the GUI canvas - ignored
+<a href=#101 id=101 data-nosnippet>101</a>/// on headless daemons.
+<a href=#102 id=102 data-nosnippet>102</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>set_positions_visible(
+<a href=#103 id=103 data-nosnippet>103</a>    service: <span class="kw-2">&amp;</span>EngineService,
+<a href=#104 id=104 data-nosnippet>104</a>    visible: bool,
+<a href=#105 id=105 data-nosnippet>105</a>) -&gt; fdo::Result&lt;()&gt; {
+<a href=#106 id=106 data-nosnippet>106</a>    service
+<a href=#107 id=107 data-nosnippet>107</a>        .handle
+<a href=#108 id=108 data-nosnippet>108</a>        .send_command(ControlCommand::SetPositionsVisible(visible))
+<a href=#109 id=109 data-nosnippet>109</a>        .<span class="kw">await
+<a href=#110 id=110 data-nosnippet>110</a>        </span>.map_err(|<span class="kw">_</span>| fdo::Error::Failed(<span class="string">"device loop is not running"</span>.to_string()))
+<a href=#111 id=111 data-nosnippet>111</a>}
+<a href=#112 id=112 data-nosnippet>112</a>
+<a href=#113 id=113 data-nosnippet>113</a><span class="doccomment">/// Lets touches pass through the GTK window to the desktop beneath,
+<a href=#114 id=114 data-nosnippet>114</a>/// except where GUI elements are hit - ignored on headless daemons,
+<a href=#115 id=115 data-nosnippet>115</a>/// Wayland only.
+<a href=#116 id=116 data-nosnippet>116</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>set_touch_passthrough(
+<a href=#117 id=117 data-nosnippet>117</a>    service: <span class="kw-2">&amp;</span>EngineService,
+<a href=#118 id=118 data-nosnippet>118</a>    enabled: bool,
+<a href=#119 id=119 data-nosnippet>119</a>) -&gt; fdo::Result&lt;()&gt; {
+<a href=#120 id=120 data-nosnippet>120</a>    service
+<a href=#121 id=121 data-nosnippet>121</a>        .handle
+<a href=#122 id=122 data-nosnippet>122</a>        .send_command(ControlCommand::SetTouchPassthrough(enabled))
+<a href=#123 id=123 data-nosnippet>123</a>        .<span class="kw">await
+<a href=#124 id=124 data-nosnippet>124</a>        </span>.map_err(|<span class="kw">_</span>| fdo::Error::Failed(<span class="string">"device loop is not running"</span>.to_string()))
+<a href=#125 id=125 data-nosnippet>125</a>}
 </code></pre></div></section></main></body></html>

@@ -18,16 +18,17 @@
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">impl </span>ProfileDir {
 <a href=#19 id=19 data-nosnippet>19</a>    <span class="doccomment">/// Converts all loaded profiles into matchable [`TangiblePattern`]s with
 <a href=#20 id=20 data-nosnippet>20</a>    /// sequential IDs starting at 1 (deterministic, sorted by filename).
-<a href=#21 id=21 data-nosnippet>21</a>    /// Disabled profiles (`enabled = false`) are skipped.
-<a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">pub fn </span>into_patterns(<span class="self">self</span>) -&gt; PatternBuf {
-<a href=#23 id=23 data-nosnippet>23</a>        PatternBuf(
-<a href=#24 id=24 data-nosnippet>24</a>            <span class="self">self</span>.profiles
-<a href=#25 id=25 data-nosnippet>25</a>                .iter()
-<a href=#26 id=26 data-nosnippet>26</a>                .filter(|(<span class="kw">_</span>, profile)| profile.enabled)
-<a href=#27 id=27 data-nosnippet>27</a>                .enumerate()
-<a href=#28 id=28 data-nosnippet>28</a>                .map(|(index, (<span class="kw">_</span>, profile))| profile.to_pattern(PatternId::new(index <span class="kw">as </span>u32 + <span class="number">1</span>)))
-<a href=#29 id=29 data-nosnippet>29</a>                .collect(),
-<a href=#30 id=30 data-nosnippet>30</a>        )
-<a href=#31 id=31 data-nosnippet>31</a>    }
-<a href=#32 id=32 data-nosnippet>32</a>}
+<a href=#21 id=21 data-nosnippet>21</a>    /// Profiles with `enabled = false` register as disabled patterns -
+<a href=#22 id=22 data-nosnippet>22</a>    /// inert until a `SetProfileEnabled` command activates them at
+<a href=#23 id=23 data-nosnippet>23</a>    /// runtime.
+<a href=#24 id=24 data-nosnippet>24</a>    </span><span class="kw">pub fn </span>into_patterns(<span class="self">self</span>) -&gt; PatternBuf {
+<a href=#25 id=25 data-nosnippet>25</a>        PatternBuf(
+<a href=#26 id=26 data-nosnippet>26</a>            <span class="self">self</span>.profiles
+<a href=#27 id=27 data-nosnippet>27</a>                .iter()
+<a href=#28 id=28 data-nosnippet>28</a>                .enumerate()
+<a href=#29 id=29 data-nosnippet>29</a>                .map(|(index, (<span class="kw">_</span>, profile))| profile.to_pattern(PatternId::new(index <span class="kw">as </span>u32 + <span class="number">1</span>)))
+<a href=#30 id=30 data-nosnippet>30</a>                .collect(),
+<a href=#31 id=31 data-nosnippet>31</a>        )
+<a href=#32 id=32 data-nosnippet>32</a>    }
+<a href=#33 id=33 data-nosnippet>33</a>}
 </code></pre></div></section></main></body></html>
