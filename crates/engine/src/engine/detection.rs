@@ -564,9 +564,14 @@ impl Engine {
             }
         }
 
-        let ran_generic = self.matching_dirty
-            || self.tracker.has_pending()
-            || Self::significantly_changed(&self.generic_touches, &touches);
+        let touches_moved = Self::significantly_changed(&self.generic_touches, &touches);
+        // A frame whose contacts are all reserved for incumbent tracks
+        // holds no unreserved candidate - the generic pass is provably
+        // empty, so movement of a fully-bound set does not re-trigger
+        // matching.
+        let has_unreserved = touches.len() > reserved.len();
+        let ran_generic =
+            self.matching_dirty || self.tracker.has_pending() || (touches_moved && has_unreserved);
         let mut candidates_tested = CandidateCount::default();
         if ran_generic {
             let generic: Vec<PatternMatch> = match diagnostics.as_mut() {
@@ -593,6 +598,10 @@ impl Engine {
                 }
             };
             matches.extend(generic);
+            self.generic_touches.clone_from(&touches);
+        } else if touches_moved {
+            // Skipped frame: keep the gate baseline current so the next
+            // frame does not re-diff against a stale snapshot.
             self.generic_touches.clone_from(&touches);
         }
         self.matching_dirty = false;
@@ -1068,6 +1077,80 @@ mod tests {
         );
     }
 
+    /// Measures the per-frame cost delta of the fully-bound skip:
+    /// `process` on a fully-bound moving frame vs. the same frame
+    /// plus one unreserved contact (which still runs generic).
+    #[test]
+    #[ignore]
+    fn bench_fully_bound_skip_cost() {
+        use std::time::Instant;
+
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        contact(&mut engine, 0, 1, 0, 0);
+        contact(&mut engine, 1, 2, 50, 0);
+        contact(&mut engine, 2, 3, 0, 50);
+        syn(&mut engine);
+
+        // Fully bound, moving: skip path.
+        let mut bound_ns = Vec::new();
+        for step in 0..200 {
+            let (dx, dy) = (step % 10, step % 7);
+            contact(&mut engine, 0, 1, dx, dy);
+            contact(&mut engine, 1, 2, 50 + dx, dy);
+            contact(&mut engine, 2, 3, dx, 50 + dy);
+            let start = Instant::now();
+            syn(&mut engine);
+            bound_ns.push(start.elapsed().as_nanos());
+        }
+        bound_ns.sort();
+        eprintln!(
+            "fully-bound frame (skip): median {} ns, p95 {} ns",
+            bound_ns[bound_ns.len() / 2],
+            bound_ns[bound_ns.len() * 95 / 100]
+        );
+
+        // Same frame plus an unreserved contact: generic path.
+        contact(&mut engine, 3, 4, 500, 500);
+        syn(&mut engine);
+        let mut generic_ns = Vec::new();
+        for step in 0..200 {
+            let (dx, dy) = (step % 10, step % 7);
+            contact(&mut engine, 0, 1, dx, dy);
+            contact(&mut engine, 1, 2, 50 + dx, dy);
+            contact(&mut engine, 2, 3, dx, 50 + dy);
+            contact(&mut engine, 3, 4, 500 + step % 5, 500);
+            let start = Instant::now();
+            syn(&mut engine);
+            generic_ns.push(start.elapsed().as_nanos());
+        }
+        generic_ns.sort();
+        eprintln!(
+            "with unreserved (generic): median {} ns, p95 {} ns",
+            generic_ns[generic_ns.len() / 2],
+            generic_ns[generic_ns.len() * 95 / 100]
+        );
+
+        // The pure matching cost on the same touch set.
+        let touches = engine.touches();
+        let touch_set: tangible_objects_model::TouchSet = (&touches).into();
+        let reserved = tangible_objects_model::TakenIndices::default();
+        let start = Instant::now();
+        let mut tested = 0usize;
+        for _ in 0..1000 {
+            engine.patterns().find_matches_excluding_counted(
+                touch_set,
+                &reserved,
+                &engine.completion(),
+                &mut tested,
+            );
+        }
+        eprintln!(
+            "find_matches on 4-touch set, 1 pattern: {} ns/pass, {} candidates",
+            start.elapsed().as_nanos() / 1000,
+            tested / 1000
+        );
+    }
+
     /// Identical contact sets skip the generic pass (SKIP_UNCHANGED.md) -
     /// the gate closes the frame after the set stabilises.
     #[test]
@@ -1081,6 +1164,35 @@ mod tests {
         assert!(
             !syn(&mut engine).expect("frame").ran_generic,
             "unchanged contact set skips generic matching"
+        );
+    }
+
+    /// A frame whose contacts are all bound to incumbent tracks skips
+    /// the generic pass - every candidate would draw from an empty
+    /// unreserved pool, so the pass is provably fruitless.
+    #[test]
+    fn fully_bound_frame_skips_generic_matching() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        contact(&mut engine, 0, 1, 0, 0);
+        contact(&mut engine, 1, 2, 50, 0);
+        contact(&mut engine, 2, 3, 0, 50);
+        assert!(syn(&mut engine).expect("frame").ran_generic);
+
+        // All three slots are bound to the tracked triangle now -
+        // moving the set is a track-path concern, not a generic one.
+        contact(&mut engine, 0, 1, 5, 5);
+        contact(&mut engine, 1, 2, 55, 5);
+        contact(&mut engine, 2, 3, 5, 55);
+        assert!(
+            !syn(&mut engine).expect("frame").ran_generic,
+            "fully-bound frame must skip generic matching"
+        );
+
+        // An unreserved contact reopens the gate.
+        contact(&mut engine, 3, 4, 200, 200);
+        assert!(
+            syn(&mut engine).expect("frame").ran_generic,
+            "an unreserved contact must re-run generic matching"
         );
     }
 
