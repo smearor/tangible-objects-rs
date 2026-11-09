@@ -171,7 +171,11 @@ pub fn evdev_thread(
     // Report the calibration the engine actually uses (profile override
     // applied), not the firmware-reported one - clients size their field
     // sets from these millimeter bounds.
-    runtime.set_device_info(DeviceInfo::of(device.name(), engine.calibration().as_ref()));
+    let device_info = DeviceInfo::of(device.name(), engine.calibration().as_ref());
+    if let Ok(mut s) = state.lock() {
+        s.device_info = Some(device_info.clone());
+    }
+    runtime.set_device_info(device_info);
 
     let mut stable_count: Option<usize> = None;
     let mut stable_frames: u32 = 0;

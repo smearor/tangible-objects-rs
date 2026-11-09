@@ -39,7 +39,7 @@ fn layout_path() -> Option<PathBuf> {
 
 /// Loads the persisted layout; `None` when the file is missing,
 /// unreadable or holds no placements.
-fn load_layout() -> Option<BoardLayout> {
+pub(crate) fn load_layout() -> Option<BoardLayout> {
     let path = layout_path()?;
     let content = std::fs::read_to_string(&path).ok()?;
     toml::from_str(&content)
@@ -75,8 +75,11 @@ fn save_layout(layout: &BoardLayout) {
 /// - arranges the default side-by-side layout when nothing was saved,
 /// - writes `layout_snapshot()` back [`SAVE_DEBOUNCE`] after the last
 ///   `geometry-changed`.
-pub(crate) fn wire_layout(board: &FloatingBoard) {
-    let layout = load_layout();
+///
+/// `layout` is the result of [`load_layout`] - the caller loads it
+/// once so other consumers (mode-driven cards) can peek at saved
+/// placements too.
+pub(crate) fn wire_layout(board: &FloatingBoard, layout: Option<BoardLayout>) {
     let board_apply = board.clone();
     // Poll until bounds and card footprints exist - restoring or
     // arranging earlier would clamp every position to the origin.

@@ -10,7 +10,7 @@
 
 mod background_alpha;
 mod card_layout;
-mod control_bar;
+mod device_card;
 mod draw;
 mod evdev_thread;
 mod field_set_row;
@@ -21,8 +21,10 @@ mod gui_mode;
 mod gui_options;
 mod i18n;
 mod info_card;
+mod passthrough;
 mod profiles_card;
 mod shared_state;
+mod training_card;
 mod visualization_card;
 
 use std::path::PathBuf;
@@ -32,6 +34,7 @@ use std::time::Duration;
 use floating_board::BoundsMode;
 use floating_board::CardAnchor;
 use floating_board::CardConfig;
+use floating_board::CardId;
 use floating_board::FloatingBoard;
 use gtk4::Application;
 use gtk4::ApplicationWindow;
@@ -70,9 +73,10 @@ pub fn run_gui(
     // Spawn evdev thread - the in-process engine loop.
     let state_clone = state.clone();
     let device_profiles_arc = device_profiles.map(Arc::new);
+    let device_path_thread = device_path.clone();
     std::thread::spawn(move || {
         evdev_thread::evdev_thread(
-            device_path,
+            device_path_thread,
             patterns,
             state_clone,
             config,
@@ -88,6 +92,7 @@ pub fn run_gui(
 
     let state_app = state.clone();
     let profiles_dir_app = profiles_dir.clone();
+    let device_path_app = device_path.clone();
     let visible_app = options.visible;
     app.connect_activate(move |app| {
         let drawing_area = DrawingArea::new();
@@ -110,14 +115,18 @@ pub fn run_gui(
             draw::draw_scene(cr, w, h, &state_draw);
         });
 
-        // Control bar.
-        let control_bar =
-            control_bar::create_control_bar(&state_app, &profiles_dir_app, &drawing_area);
-
-        // Layout: drawing area + control bar overlay.
+        // Layout: the drawing area fills the window; all controls live
+        // on floating cards.
         let overlay = gtk4::Overlay::new();
         overlay.set_child(Some(&drawing_area));
-        overlay.add_overlay(&control_bar);
+
+        // Canvas redraw cadence - the evdev thread writes
+        // `SharedState` per frame; this tick repaints at ~10 Hz.
+        let da_tick = drawing_area.clone();
+        gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+            da_tick.queue_draw();
+            gtk4::glib::ControlFlow::Continue
+        });
 
         // Free-floating cards on top of the surface view
         // (concepts/planned/GUI.md §3): the board stacks a transparent
@@ -155,6 +164,12 @@ pub fn run_gui(
                 CardAnchor::CenterLeft,
             ),
             (
+                "device",
+                device_card::create_device_card(&state_app, &device_path_app),
+                fl!(language_loader(), "card-device-title"),
+                CardAnchor::BottomCenter,
+            ),
+            (
                 "profiles",
                 profiles_card::create_profiles_card(&state_app),
                 fl!(language_loader(), "card-profiles-title"),
@@ -183,11 +198,27 @@ pub fn run_gui(
 
         // Card layout: restore `gui-cards.toml` (or arrange the
         // default side-by-side), persist on geometry changes.
-        card_layout::wire_layout(&board);
+        let layout = card_layout::load_layout();
+        // The training card exists only in training mode - its saved
+        // placement (if any) seeds the add/remove watcher.
+        let training_placement = layout.as_ref().and_then(|layout| {
+            layout
+                .cards
+                .iter()
+                .find(|card| card.id == CardId::new("training"))
+                .cloned()
+        });
+        card_layout::wire_layout(&board, layout);
+        training_card::wire_training_card(
+            &board,
+            &state_app,
+            &profiles_dir_app,
+            training_placement,
+        );
 
-        // Touch passthrough: input reaches the control bar and the
-        // cards; everything else falls through to the desktop.
-        control_bar::wire_passthrough(&control_bar, &board, &state_app);
+        // Touch passthrough: input reaches the cards; everything else
+        // falls through to the desktop.
+        passthrough::wire_passthrough(&board, &state_app);
 
         let window = ApplicationWindow::builder()
             .application(app)

@@ -13,13 +13,6 @@ stable-hint = STABIL - Name eingeben und Speichern klicken
 stable-status = STABIL: { $count } Punkte - Name eingeben und speichern
 stabilizing = Stabilisiere... { $stable }/{ $threshold }
 stabilizing-status = Stabilisiere... { $stable }/{ $threshold } ({ $count } Punkte)
-live-status = { $figures ->
-    [one] { $figures } Figur erkannt
-   *[other] { $figures } Figuren erkannt
-} | { $touches ->
-    [one] { $touches } Touch-Punkt
-   *[other] { $touches } Touch-Punkte
-} | Felder: { $occupied }/{ $fields } ({ $sets } Sets) | Dead-Zones: { $zones }, { $filtered } gefiltert | { $suppressed } unterdrückt, { $forwarded } weitergeleitet
 info-card-title = Info
 info-touches = Touch-Punkte
 info-figures = Figuren
@@ -55,8 +48,19 @@ card-visualization-title = Visualisierung
 card-filter-title = Filtermodus
 card-profiles-title = Profile
 card-field-sets-title = Feld-Sets
+card-device-title = Gerät
+card-training-title = Training
 col-name = Name
 col-owner = Besitzer
 col-enabled = Aktiv
 col-position = Position
 col-fields = Felder
+train-hint = In den Trainingsmodus wechseln, um ein Profil zu erfassen
+device-name = Name
+device-path = Pfad
+device-surface = Fläche
+device-resolution = Auflösung
+device-x-range = X-Bereich
+device-y-range = Y-Bereich
+device-status = Status
+device-status-ok = verbunden

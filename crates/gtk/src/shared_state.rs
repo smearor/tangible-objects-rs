@@ -9,6 +9,7 @@ use tangible_objects_runtime::ControlCommand;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
+use tangible_objects_model::DeviceInfo;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldCount;
 use tangible_objects_model::FieldSet;
@@ -45,6 +46,8 @@ pub struct SharedState {
     pub mode: GuiMode,
     /// Device-open failure shown instead of the surface.
     pub device_error: Option<String>,
+    /// Reported input-device identity + raw axis ranges (device card).
+    pub device_info: Option<DeviceInfo>,
     /// User-facing message pushed via an interface (`ShowMessage`).
     pub message: Option<String>,
     /// Whether the window should be shown (`SetGuiVisible`).
@@ -148,6 +151,7 @@ impl SharedState {
             stable: false,
             mode: GuiMode::Live,
             device_error: None,
+            device_info: None,
             message: None,
             visible: options.visible,
             rotation: options.rotation,

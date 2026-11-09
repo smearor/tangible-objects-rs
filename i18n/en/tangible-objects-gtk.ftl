@@ -13,13 +13,6 @@ stable-hint = STABLE - enter a name and click save
 stable-status = STABLE: { $count } points - enter a name and save
 stabilizing = Stabilizing... { $stable }/{ $threshold }
 stabilizing-status = Stabilizing... { $stable }/{ $threshold } ({ $count } points)
-live-status = { $figures ->
-    [one] { $figures } figure recognized
-   *[other] { $figures } figures recognized
-} | { $touches ->
-    [one] { $touches } touch point
-   *[other] { $touches } touch points
-} | fields: { $occupied }/{ $fields } ({ $sets } sets) | dead zones: { $zones }, { $filtered } filtered | { $suppressed } suppressed, { $forwarded } forwarded
 info-card-title = Info
 info-touches = Touch points
 info-figures = Figures
@@ -55,8 +48,19 @@ card-visualization-title = Visualization
 card-filter-title = Filter mode
 card-profiles-title = Profiles
 card-field-sets-title = Field sets
+card-device-title = Device
+card-training-title = Training
 col-name = Name
 col-owner = Owner
 col-enabled = Enabled
 col-position = Position
 col-fields = Fields
+train-hint = Switch to training mode to capture a profile
+device-name = Name
+device-path = Path
+device-surface = Surface
+device-resolution = Resolution
+device-x-range = X range
+device-y-range = Y range
+device-status = Status
+device-status-ok = connected
