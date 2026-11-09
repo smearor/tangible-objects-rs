@@ -151,31 +151,51 @@
 <a href=#151 id=151 data-nosnippet>151</a>    /// availability as [`Self::SetGuiVisible`] - headless daemons
 <a href=#152 id=152 data-nosnippet>152</a>    /// ignore it.
 <a href=#153 id=153 data-nosnippet>153</a>    </span>SetBackgroundAlpha(AlphaPercent),
-<a href=#154 id=154 data-nosnippet>154</a>}
-<a href=#155 id=155 data-nosnippet>155</a>
-<a href=#156 id=156 data-nosnippet>156</a><span class="kw">impl </span>ControlCommand {
-<a href=#157 id=157 data-nosnippet>157</a>    <span class="doccomment">/// Builds a `Register` command plus the receiver its caller awaits
-<a href=#158 id=158 data-nosnippet>158</a>    /// for the applied outcome. Internal callers that never await simply
-<a href=#159 id=159 data-nosnippet>159</a>    /// drop the receiver - `reply.send` in the device loop tolerates a
-<a href=#160 id=160 data-nosnippet>160</a>    /// closed channel.
-<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="kw">pub fn </span>register(
-<a href=#162 id=162 data-nosnippet>162</a>        registration: Registration,
-<a href=#163 id=163 data-nosnippet>163</a>        owner: <span class="prelude-ty">Option</span>&lt;Owner&gt;,
-<a href=#164 id=164 data-nosnippet>164</a>        lifetime: Lifetime,
-<a href=#165 id=165 data-nosnippet>165</a>    ) -&gt; (
-<a href=#166 id=166 data-nosnippet>166</a>        <span class="self">Self</span>,
-<a href=#167 id=167 data-nosnippet>167</a>        oneshot::Receiver&lt;<span class="prelude-ty">Result</span>&lt;RegistrationApplied, RegistrationError&gt;&gt;,
-<a href=#168 id=168 data-nosnippet>168</a>    ) {
-<a href=#169 id=169 data-nosnippet>169</a>        <span class="kw">let </span>(reply, rx) = oneshot::channel();
-<a href=#170 id=170 data-nosnippet>170</a>        (
-<a href=#171 id=171 data-nosnippet>171</a>            <span class="self">Self</span>::Register {
-<a href=#172 id=172 data-nosnippet>172</a>                registration: Box::new(registration),
-<a href=#173 id=173 data-nosnippet>173</a>                owner,
-<a href=#174 id=174 data-nosnippet>174</a>                lifetime,
-<a href=#175 id=175 data-nosnippet>175</a>                reply,
-<a href=#176 id=176 data-nosnippet>176</a>            },
-<a href=#177 id=177 data-nosnippet>177</a>            rx,
-<a href=#178 id=178 data-nosnippet>178</a>        )
-<a href=#179 id=179 data-nosnippet>179</a>    }
-<a href=#180 id=180 data-nosnippet>180</a>}
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="doccomment">/// Show or hide the edge-margin overlay on the GUI canvas -
+<a href=#155 id=155 data-nosnippet>155</a>    /// the area where edge-ghost contacts are ingest-filtered.
+<a href=#156 id=156 data-nosnippet>156</a>    /// Same availability as [`Self::SetGuiVisible`].
+<a href=#157 id=157 data-nosnippet>157</a>    </span>SetEdgeMarginVisible(bool),
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="doccomment">/// Show or hide the field-set overlay on the GUI canvas - the
+<a href=#159 id=159 data-nosnippet>159</a>    /// occupancy regions of every registered field set. Same
+<a href=#160 id=160 data-nosnippet>160</a>    /// availability as [`Self::SetGuiVisible`].
+<a href=#161 id=161 data-nosnippet>161</a>    </span>SetFieldsVisible(bool),
+<a href=#162 id=162 data-nosnippet>162</a>    <span class="doccomment">/// Show or hide the ruler overlay on the GUI canvas - pixel ticks
+<a href=#163 id=163 data-nosnippet>163</a>    /// on one edge, millimeter ticks on the other. Same availability
+<a href=#164 id=164 data-nosnippet>164</a>    /// as [`Self::SetGuiVisible`].
+<a href=#165 id=165 data-nosnippet>165</a>    </span>SetRulerVisible(bool),
+<a href=#166 id=166 data-nosnippet>166</a>    <span class="doccomment">/// Show or hide the positions overlay on the GUI canvas - mm and
+<a href=#167 id=167 data-nosnippet>167</a>    /// pixel coordinates of tangibles, touch points and field-set
+<a href=#168 id=168 data-nosnippet>168</a>    /// fields. Same availability as [`Self::SetGuiVisible`].
+<a href=#169 id=169 data-nosnippet>169</a>    </span>SetPositionsVisible(bool),
+<a href=#170 id=170 data-nosnippet>170</a>    <span class="doccomment">/// Let touch events pass through the GTK window to the desktop
+<a href=#171 id=171 data-nosnippet>171</a>    /// beneath - except where a GUI element (control bar) is hit.
+<a href=#172 id=172 data-nosnippet>172</a>    /// Same availability as [`Self::SetGuiVisible`]; Wayland only.
+<a href=#173 id=173 data-nosnippet>173</a>    </span>SetTouchPassthrough(bool),
+<a href=#174 id=174 data-nosnippet>174</a>}
+<a href=#175 id=175 data-nosnippet>175</a>
+<a href=#176 id=176 data-nosnippet>176</a><span class="kw">impl </span>ControlCommand {
+<a href=#177 id=177 data-nosnippet>177</a>    <span class="doccomment">/// Builds a `Register` command plus the receiver its caller awaits
+<a href=#178 id=178 data-nosnippet>178</a>    /// for the applied outcome. Internal callers that never await simply
+<a href=#179 id=179 data-nosnippet>179</a>    /// drop the receiver - `reply.send` in the device loop tolerates a
+<a href=#180 id=180 data-nosnippet>180</a>    /// closed channel.
+<a href=#181 id=181 data-nosnippet>181</a>    </span><span class="kw">pub fn </span>register(
+<a href=#182 id=182 data-nosnippet>182</a>        registration: Registration,
+<a href=#183 id=183 data-nosnippet>183</a>        owner: <span class="prelude-ty">Option</span>&lt;Owner&gt;,
+<a href=#184 id=184 data-nosnippet>184</a>        lifetime: Lifetime,
+<a href=#185 id=185 data-nosnippet>185</a>    ) -&gt; (
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="self">Self</span>,
+<a href=#187 id=187 data-nosnippet>187</a>        oneshot::Receiver&lt;<span class="prelude-ty">Result</span>&lt;RegistrationApplied, RegistrationError&gt;&gt;,
+<a href=#188 id=188 data-nosnippet>188</a>    ) {
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span>(reply, rx) = oneshot::channel();
+<a href=#190 id=190 data-nosnippet>190</a>        (
+<a href=#191 id=191 data-nosnippet>191</a>            <span class="self">Self</span>::Register {
+<a href=#192 id=192 data-nosnippet>192</a>                registration: Box::new(registration),
+<a href=#193 id=193 data-nosnippet>193</a>                owner,
+<a href=#194 id=194 data-nosnippet>194</a>                lifetime,
+<a href=#195 id=195 data-nosnippet>195</a>                reply,
+<a href=#196 id=196 data-nosnippet>196</a>            },
+<a href=#197 id=197 data-nosnippet>197</a>            rx,
+<a href=#198 id=198 data-nosnippet>198</a>        )
+<a href=#199 id=199 data-nosnippet>199</a>    }
+<a href=#200 id=200 data-nosnippet>200</a>}
 </code></pre></div></section></main></body></html>
