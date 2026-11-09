@@ -1043,6 +1043,7 @@ checksum = "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890"
 [[package]]
 name = "floating-board"
 version = "0.1.0"
+source = "git+https://github.com/smearor/floating-board-rs.git?branch=main#f3576245b1b7f2ac1b39feff4573f2a15313be49"
 dependencies = [
  "fluent-bundle",
  "glib",
