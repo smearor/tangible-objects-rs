@@ -92,7 +92,9 @@ struct Cli {
     /// Pattern-matching tolerance in mm (default: 30.0)
     #[arg(long, value_name = "mm")]
     tolerance: Option<f64>,
-    /// Recording base: <base>.jsonl + <base>.evtest
+    /// Recording base: <base>.jsonl + <base>.evtest; as a --filter
+    /// modifier it produces <base>.evtest (input) + <base>.out.evtest
+    /// (the OS-visible stream after suppression) instead
     #[arg(long, value_name = "base")]
     record: Option<PathBuf>,
     /// Ground-truth label for --record
@@ -261,6 +263,7 @@ fn main() -> Result<()> {
             cli.legacy,
             detection_config(completion()?)?,
             device_profiles,
+            cli.record.as_deref(),
         );
     }
     if cli.train {

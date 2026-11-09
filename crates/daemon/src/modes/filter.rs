@@ -4,17 +4,20 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
 use std::path::Path;
+use std::time::Instant;
 
 use miette::IntoDiagnostic;
 use miette::Result;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_engine::Pipeline;
+use tangible_objects_engine::RawRecorder;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::PatternSet;
+use tangible_objects_model::RawEvent;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
@@ -50,6 +53,7 @@ pub fn run_filter(
     legacy: Option<LegacyMode>,
     config: DetectionConfig,
     device_profiles: Option<&Path>,
+    record_base: Option<&Path>,
 ) -> Result<()> {
     let mut device = TouchDevice::open(path).into_diagnostic()?;
     if config.import_slots {
@@ -78,6 +82,30 @@ pub fn run_filter(
     engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
+    // `--record <base>` taps both sides of the proxy: the input stream
+    // (`<base>.evtest`) and the emitted batch (`<base>.out.evtest`) -
+    // the OS-visible stream after the pipeline's suppression
+    // decisions. Both carry session-relative timestamps so
+    // `out.ts - in.ts` measures the proxy's per-event latency.
+    let (in_recorder, out_recorder) = match record_base {
+        Some(base) => {
+            let in_path = base.with_extension("evtest");
+            let out_path = base.with_extension("out.evtest");
+            let calibration = engine.calibration();
+            let spawn = |path: &Path| RawRecorder::spawn(path, device.name(), calibration.as_ref());
+            info!(
+                in_path = %in_path.display(),
+                out_path = %out_path.display(),
+                "proxy recording active"
+            );
+            (
+                Some(spawn(&in_path).into_diagnostic()?),
+                Some(spawn(&out_path).into_diagnostic()?),
+            )
+        }
+        None => (None, None),
+    };
+    let session_start = Instant::now();
     device.grab().into_diagnostic()?;
     info!("EVIOCGRAB active - all events flow through the proxy");
     info!("uinput clone created - tangibles are suppressed");
@@ -206,6 +234,9 @@ pub fn run_filter(
             }
         };
         for raw in events {
+            if let Some(recorder) = &in_recorder {
+                recorder.record(&raw, session_start.elapsed().as_secs_f64());
+            }
             let engine_frame = engine.process(&raw);
             pipeline.push(raw);
             let Some(engine_frame) = engine_frame else {
@@ -242,6 +273,12 @@ pub fn run_filter(
             // gone.
             let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
             virtual_device.emit(&out).into_diagnostic()?;
+            if let Some(recorder) = &out_recorder {
+                let timestamp_secs = session_start.elapsed().as_secs_f64();
+                for event in &out {
+                    recorder.record(&RawEvent::from(event), timestamp_secs);
+                }
+            }
             // The real suppression view is the union across all pipeline
             // stages - including the stateless edge/zone/field stages,
             // which `scoped` alone does not cover.
@@ -264,6 +301,11 @@ pub fn run_filter(
                 engine.occupied_field_count(),
             );
             std::io::stdout().flush().ok();
+        }
+    }
+    for recorder in [in_recorder, out_recorder].into_iter().flatten() {
+        if let Err(error) = recorder.finish() {
+            error!(%error, "proxy recording could not be finalized");
         }
     }
     Ok(())

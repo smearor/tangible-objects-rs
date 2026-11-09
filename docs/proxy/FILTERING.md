@@ -93,4 +93,15 @@ by a synthetic `BTN_TOUCH=0` so no stale key state remains.
 --zone <x0,y0,x1,y1>            # mask a rectangular zone in mm, repeatable
 --fields <file|dir>             # occupancy field sets; `suppress = true`
                                 # sets suppress inside the field stage
+--record <base>                 # record both sides of the proxy:
+                                # <base>.evtest = input stream,
+                                # <base>.out.evtest = emitted stream
+                                # (session-relative timestamps -
+                                # out.ts - in.ts = per-event latency)
 ```
+
+`--record` on filter mode writes the paired evtest artifacts so the
+suppression semantics become directly diffable: slots missing on the
+out side were suppressed, `TRACKING_ID = -1` entries without an input
+counterpart are retraction injections, and delayed positions are
+hold/gate replays.

@@ -16,7 +16,7 @@ tangible-objects --<mode> [options]
 | `--live` | ✓ | Live detection from an evdev device; console line per frame |
 | `--record <base>` | ✓ | Live + recording: `<base>.jsonl` frames + `<base>.evtest` raw stream |
 | `--replay --file <evtest>` | – | Deterministic replay of a `.evtest` artifact (hardware-free); combine with `--record` to re-record |
-| `--filter` | ✓ | Filter proxy: `EVIOCGRAB` + uinput clone, tangibles suppressed ([`../proxy/OVERVIEW.md`](../proxy/OVERVIEW.md)) |
+| `--filter` | ✓ | Filter proxy: `EVIOCGRAB` + uinput clone, tangibles suppressed ([`../proxy/OVERVIEW.md`](../proxy/OVERVIEW.md)); `--record <base>` modifier records both sides: `<base>.evtest` input + `<base>.out.evtest` emitted stream |
 | `--train --name <n>` | ✓ | Capture a figure's pin geometry into `profiles/<n>.toml` |
 | `--gui` | ✓ | Daemon-embedded GTK fullscreen visualization, feature-gated `gui` ([`../gui/OVERVIEW.md`](../gui/OVERVIEW.md)) |
 | `--list` | – | Enumerate `/dev/input/event*` with vendor:product IDs |
