@@ -305,6 +305,12 @@ impl EngineService {
         api::gui::set_ruler_visible(self, visible).await
     }
 
+    /// Shows or hides the grid overlay on the GUI canvas - ignored
+    /// on headless daemons.
+    async fn set_grid_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::gui::set_grid_visible(self, visible).await
+    }
+
     /// Shows or hides the positions overlay on the GUI canvas -
     /// ignored on headless daemons.
     async fn set_positions_visible(&self, visible: bool) -> fdo::Result<()> {

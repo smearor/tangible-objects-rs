@@ -18,12 +18,13 @@ pub struct ProfileDir {
 impl ProfileDir {
     /// Converts all loaded profiles into matchable [`TangiblePattern`]s with
     /// sequential IDs starting at 1 (deterministic, sorted by filename).
-    /// Disabled profiles (`enabled = false`) are skipped.
+    /// Profiles with `enabled = false` register as disabled patterns -
+    /// inert until a `SetProfileEnabled` command activates them at
+    /// runtime.
     pub fn into_patterns(self) -> PatternBuf {
         PatternBuf(
             self.profiles
                 .iter()
-                .filter(|(_, profile)| profile.enabled)
                 .enumerate()
                 .map(|(index, (_, profile))| profile.to_pattern(PatternId::new(index as u32 + 1)))
                 .collect(),

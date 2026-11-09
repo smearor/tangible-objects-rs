@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use i18n_embed_fl::fl;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeadZone;
+use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
@@ -101,18 +102,14 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     if s.fields_visible {
         draw_fields(cr, &s.field_sets, &to_screen);
     }
+    if s.grid_visible {
+        draw_grid(cr, &cal, &to_screen);
+    }
 
     if mode == GuiMode::Training {
         draw_training(cr, w, h, touches.into(), &to_screen, &s);
     } else {
-        draw_live(
-            cr,
-            touches.into(),
-            matches,
-            (&s.tracked).into(),
-            &to_screen,
-            &s,
-        );
+        draw_live(cr, touches.into(), matches, (&s.tracked).into(), &to_screen);
     }
 
     if s.positions_visible {
@@ -125,7 +122,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
         );
     }
     if s.ruler_visible {
-        draw_ruler(cr, w, h, &cal, &to_screen);
+        draw_ruler(cr, w, h, &cal, &to_screen, rotation);
     }
 }
 
@@ -223,6 +220,9 @@ fn draw_fields(
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
 ) {
     for set in sets {
+        // Disabled sets stay registered but inert - drawn faint so
+        // the overlay still shows their extent.
+        let alpha = if set.enabled { 1.0 } else { 0.3 };
         for field in &set.fields {
             let region = field_screen_region(set, field);
             let tl = to_screen(&Vec2::<Millimeters>::new(
@@ -234,18 +234,18 @@ fn draw_fields(
                 region.y_max.as_f64(),
             ));
 
-            cr.set_source_rgba(0.2, 0.8, 1.0, 0.08);
+            cr.set_source_rgba(0.2, 0.8, 1.0, 0.08 * alpha);
             cr.rectangle(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
             let _ = cr.fill();
             cr.set_dash(&[6.0, 4.0], 0.0);
             cr.set_line_width(1.5);
-            cr.set_source_rgba(0.2, 0.8, 1.0, 0.6);
+            cr.set_source_rgba(0.2, 0.8, 1.0, 0.6 * alpha);
             cr.rectangle(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
             let _ = cr.stroke();
             cr.set_dash(&[], 0.0);
 
             cr.set_font_size(11.0);
-            cr.set_source_rgba(0.55, 0.9, 1.0, 0.85);
+            cr.set_source_rgba(0.55, 0.9, 1.0, 0.85 * alpha);
             cr.move_to(tl.x + 4.0, tl.y + 14.0);
             let _ = cr.show_text(field.name.as_str());
         }
@@ -270,28 +270,83 @@ fn field_screen_region(set: &FieldSet, field: &tangible_objects_model::Field) ->
     }
 }
 
-/// Ruler overlay: semi-transparent strips with pixel ticks on the
-/// left edge and millimeter ticks on the bottom edge.
+/// Millimeter step shared by the grid and the mm rulers - every cell
+/// edge lines up with a ruler tick (and vice versa).
+const GRID_STEP_MM: f64 = 50.0;
+
+/// Grid overlay: a faint millimeter lattice across the whole surface,
+/// mapped through the calibration like everything else (50 mm cells,
+/// matching the ruler's millimeter ticks).
+fn draw_grid(
+    cr: &cairo::Context,
+    cal: &Calibration,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    let w_mm = cal.width_mm().as_f64();
+    let h_mm = cal.height_mm().as_f64();
+    let origin = to_screen(&Vec2::<Millimeters>::new(0.0, 0.0));
+    let extent = to_screen(&Vec2::<Millimeters>::new(w_mm, h_mm));
+
+    cr.set_source_rgba(0.8, 0.8, 0.8, 0.12);
+    cr.set_line_width(1.0);
+    let mut mm = 0.0;
+    while mm <= w_mm {
+        let from = to_screen(&Vec2::<Millimeters>::new(mm, 0.0));
+        let to = to_screen(&Vec2::<Millimeters>::new(mm, h_mm));
+        cr.move_to(from.x, from.y);
+        cr.line_to(to.x, to.y);
+        let _ = cr.stroke();
+        mm += GRID_STEP_MM;
+    }
+    let mut mm = 0.0;
+    while mm <= h_mm {
+        let from = to_screen(&Vec2::<Millimeters>::new(0.0, mm));
+        let to = to_screen(&Vec2::<Millimeters>::new(w_mm, mm));
+        cr.move_to(from.x, from.y);
+        cr.line_to(to.x, to.y);
+        let _ = cr.stroke();
+        mm += GRID_STEP_MM;
+    }
+
+    // Border of the usable surface, so the lattice visibly bounds the
+    // calibrated area instead of dissolving into the canvas edge.
+    cr.set_source_rgba(0.8, 0.8, 0.8, 0.25);
+    cr.set_line_width(1.5);
+    cr.rectangle(
+        origin.x.min(extent.x),
+        origin.y.min(extent.y),
+        (extent.x - origin.x).abs(),
+        (extent.y - origin.y).abs(),
+    );
+    let _ = cr.stroke();
+}
+
+/// Ruler overlay: semi-transparent strips on all four edges - pixel
+/// ticks on the min edges (left and top), millimeter ticks on the max
+/// edges (right and bottom). The mm ticks share [`GRID_STEP_MM`] with
+/// the grid overlay, so every grid line lands on a ruler tick.
 fn draw_ruler(
     cr: &cairo::Context,
     w: f64,
     h: f64,
     cal: &Calibration,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+    rotation: DisplayRotation,
 ) {
     const RULER_W: f64 = 56.0;
     const RULER_H: f64 = 36.0;
 
     cr.set_source_rgba(0.04, 0.04, 0.06, 0.5);
     cr.rectangle(0.0, 0.0, RULER_W, h);
-    let _ = cr.fill();
+    cr.rectangle(w - RULER_W, 0.0, RULER_W, h);
+    cr.rectangle(0.0, 0.0, w, RULER_H);
     cr.rectangle(0.0, h - RULER_H, w, RULER_H);
     let _ = cr.fill();
 
     cr.set_font_size(10.0);
     cr.set_source_rgba(0.9, 0.9, 0.9, 0.85);
 
-    // Left edge: pixel ticks every 100 px.
+    // Left edge (x min): pixel ticks every 100 px.
     let mut y = 0.0;
     while y <= h {
         cr.move_to(RULER_W - 8.0, y);
@@ -302,18 +357,73 @@ fn draw_ruler(
         y += 100.0;
     }
 
-    // Bottom edge: millimeter ticks every 50 mm.
+    // Top edge (y min): pixel ticks every 100 px.
+    let mut x = 0.0;
+    while x <= w {
+        cr.move_to(x, RULER_H - 8.0);
+        cr.line_to(x, RULER_H);
+        let _ = cr.stroke();
+        cr.move_to(x + 3.0, 12.0);
+        let _ = cr.show_text(&format!("{x} px"));
+        x += 100.0;
+    }
+
+    // The mm tick axes follow the display rotation: at 90°/270° the
+    // surface axes swap, so screen X walks the native y axis and
+    // screen Y walks the native x axis (`Deg270` maps x_mm onto
+    // screen Y - walking x_mm for the bottom edge collapsed every
+    // tick onto the right edge).
+    let extent_x = if rotation.swaps_axes() {
+        cal.height_mm().as_f64()
+    } else {
+        cal.width_mm().as_f64()
+    };
+    let extent_y = if rotation.swaps_axes() {
+        cal.width_mm().as_f64()
+    } else {
+        cal.height_mm().as_f64()
+    };
+
+    // Bottom edge (y max): millimeter ticks along screen X.
     let mut mm = 0.0;
-    while mm <= cal.width_mm().as_f64() {
-        let x = to_screen(&Vec2::<Millimeters>::new(mm, 0.0)).x;
-        if x <= w {
+    while mm <= extent_x {
+        let probe = if rotation.swaps_axes() {
+            Vec2::<Millimeters>::new(0.0, mm)
+        } else {
+            Vec2::<Millimeters>::new(mm, 0.0)
+        };
+        let x = to_screen(&probe).x;
+        if (0.0..=w).contains(&x) {
             cr.move_to(x, h - 8.0);
             cr.line_to(x, h);
             let _ = cr.stroke();
             cr.move_to(x + 3.0, h - 4.0);
             let _ = cr.show_text(&format!("{mm} mm"));
         }
-        mm += 50.0;
+        mm += GRID_STEP_MM;
+    }
+
+    // Right edge (x max): millimeter ticks along screen Y, labels
+    // rotated to read bottom-to-top inside the strip.
+    let mut mm = 0.0;
+    while mm <= extent_y {
+        let probe = if rotation.swaps_axes() {
+            Vec2::<Millimeters>::new(mm, 0.0)
+        } else {
+            Vec2::<Millimeters>::new(0.0, mm)
+        };
+        let y = to_screen(&probe).y;
+        if (0.0..=h).contains(&y) {
+            cr.move_to(w - 8.0, y);
+            cr.line_to(w, y);
+            let _ = cr.stroke();
+            let _ = cr.save();
+            cr.translate(w - 12.0, y + 4.0);
+            cr.rotate(-std::f64::consts::FRAC_PI_2);
+            let _ = cr.show_text(&format!("{mm} mm"));
+            let _ = cr.restore();
+        }
+        mm += GRID_STEP_MM;
     }
 }
 
@@ -458,7 +568,6 @@ fn draw_live(
     matches: &[PatternMatch],
     tracked: TrackedSet<'_>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
-    s: &SharedState,
 ) {
     // Collect matched indices.
     let mut matched_indices: std::collections::HashSet<usize> = std::collections::HashSet::new();
@@ -537,24 +646,4 @@ fn draw_live(
         cr.arc(p.x, p.y, 8.0, 0.0, 2.0 * std::f64::consts::PI);
         let _ = cr.fill();
     }
-
-    // Info top left.
-    cr.set_source_rgb(0.7, 0.7, 0.7);
-    cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
-    cr.set_font_size(16.0);
-    cr.move_to(20.0, 30.0);
-    let _ = cr.show_text(&fl!(
-        language_loader(),
-        "live-info",
-        figures = (matches.len() as i64),
-        touches = (touches.len() as i64),
-        occupied = (i64::from(s.occupied_fields.as_u32())),
-        fields = (i64::from(s.field_count.as_u32())),
-        zones = (s.dead_zones.len() as i64),
-        filtered = (i64::from(s.dead_zone_filtered.as_u32())),
-        suppressed = (i64::from(
-            s.edge_filtered.as_u32() + s.dead_zone_filtered.as_u32() + s.mode_suppressed.as_u32()
-        )),
-        forwarded = (i64::from(s.forwarded.as_u32()))
-    ));
 }

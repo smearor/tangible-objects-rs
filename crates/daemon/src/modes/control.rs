@@ -160,6 +160,7 @@ pub(crate) fn apply_registration(
                                 spawn_on_partial: profile.spawn_on_partial,
                                 spawn_stability: profile.spawn_stability,
                                 stage: profile.stage.clone(),
+                                enabled: profile.enabled,
                             });
                             runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
                                 pattern_id: id,
@@ -230,6 +231,7 @@ pub(crate) fn apply_registration(
                         spawn_stability: profile.spawn_stability,
                         owner: owner.clone(),
                         stage: profile.stage.clone(),
+                        enabled: profile.enabled,
                     });
                     runtime.emit_lifecycle(LifecycleEvent::ProfileRegistered {
                         pattern_id: id,
@@ -275,6 +277,22 @@ pub(crate) fn apply_registration(
                 info!(%name, "dead zone removed");
             } else {
                 warn!(%name, "dead zone not found");
+            }
+        }
+        ControlCommand::SetProfileEnabled { id, enabled } => {
+            if engine.set_pattern_enabled(id, enabled) {
+                runtime.set_profile_enabled(id, enabled);
+                info!(%id, %enabled, "profile enabled toggled");
+            } else {
+                warn!(%id, "profile not found");
+            }
+        }
+        ControlCommand::SetFieldSetEnabled { name, enabled } => {
+            if engine.set_field_set_enabled(&name, enabled) {
+                runtime.set_field_sets(engine.field_sets().to_vec());
+                info!(%name, %enabled, "field set enabled toggled");
+            } else {
+                warn!(%name, "field set not found");
             }
         }
         ControlCommand::UnregisterOwner { owner } => {
@@ -336,6 +354,11 @@ pub(crate) fn apply_registration(
         ControlCommand::SetRulerVisible(visible) => {
             info!(%visible, "ruler overlay toggled");
             runtime.set_ruler_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetGridVisible(visible) => {
+            info!(%visible, "grid overlay toggled");
+            runtime.set_grid_visible(visible);
         }
         #[cfg(feature = "gui")]
         ControlCommand::SetPositionsVisible(visible) => {

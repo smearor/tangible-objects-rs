@@ -462,6 +462,12 @@ type FieldSet {
 	occupancy is informational only.
 	"""
 	suppress: Boolean!
+	"""
+	Whether the set participates in occupancy tracking and
+	`suppress` filtering (`SetFieldSetEnabled` command). Disabled
+	sets stay registered but are inert. Default `true`.
+	"""
+	enabled: Boolean!
 }
 
 scalar FieldSetName
@@ -626,6 +632,11 @@ type MutationRoot {
 	"""
 	setRulerVisible(visible: Boolean!): Boolean!
 	"""
+	Shows or hides the grid overlay on the GUI canvas - ignored
+	on headless daemons.
+	"""
+	setGridVisible(visible: Boolean!): Boolean!
+	"""
 	Shows or hides the positions overlay on the GUI canvas -
 	ignored on headless daemons.
 	"""
@@ -766,6 +777,12 @@ type ProfileInfo {
 	(EVENT_PIPELINE.md); `None` = the general stage.
 	"""
 	stage: StageName
+	"""
+	Whether the pattern participates in matching
+	(`SetProfileEnabled` command) - disabled profiles stay
+	registered but produce no matches.
+	"""
+	enabled: Boolean!
 }
 
 type QueryRoot {

@@ -273,6 +273,32 @@ impl Engine {
         self.patterns.by_id(id)
     }
 
+    /// Enables or disables a pattern at runtime (`SetProfileEnabled`
+    /// command). Disabled patterns stay registered but produce no
+    /// matches; their incumbent tracks die as ordinary misses. Returns
+    /// `false` when no pattern with `id` is registered.
+    pub fn set_pattern_enabled(&mut self, id: PatternId, enabled: bool) -> bool {
+        let Some(pattern) = self.patterns.by_id_mut(id) else {
+            return false;
+        };
+        pattern.enabled = enabled;
+        self.matching_dirty = true;
+        true
+    }
+
+    /// Owner recorded for a field set, if any.
+    pub fn field_set_owner(&self, name: &FieldSetName) -> Option<&Owner> {
+        self.field_set_owners.get(name).and_then(Option::as_ref)
+    }
+
+    /// Enables or disables a field set at runtime
+    /// (`SetFieldSetEnabled` command). Disabled sets stay registered
+    /// but emit no occupancy events and suppress nothing. Returns
+    /// `false` when no set with `name` is registered.
+    pub fn set_field_set_enabled(&mut self, name: &FieldSetName, enabled: bool) -> bool {
+        self.fields.set_enabled(name, enabled)
+    }
+
     /// Distinct pipeline stage scopes present on registered patterns
     /// (EVENT_PIPELINE.md) - the daemon keeps a stage alive for each.
     pub fn stage_scopes(&self) -> impl Iterator<Item = &StageName> {
@@ -575,6 +601,11 @@ impl Engine {
             let Some(pattern) = self.patterns.by_id(tangible.pattern_id) else {
                 continue;
             };
+            // Disabled patterns stop confirming their incumbents - the
+            // tracker drops the track as with any missed re-match.
+            if !pattern.enabled {
+                continue;
+            }
             let Some(match_set) = self.tracker.match_set(tangible.id) else {
                 continue;
             };
@@ -1011,6 +1042,7 @@ mod tests {
                     stability: tangible_objects_model::default_stability(),
                     fields: Vec::new(),
                     suppress: false,
+                    enabled: true,
                 },
                 Some("game".into()),
             )

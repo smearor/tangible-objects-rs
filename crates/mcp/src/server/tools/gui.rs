@@ -15,6 +15,7 @@ use crate::tool_args::SetDeadZonesVisibleArgs;
 use crate::tool_args::SetDisplayRotationArgs;
 use crate::tool_args::SetEdgeMarginVisibleArgs;
 use crate::tool_args::SetFieldsVisibleArgs;
+use crate::tool_args::SetGridVisibleArgs;
 use crate::tool_args::SetGuiVisibleArgs;
 use crate::tool_args::SetPositionsVisibleArgs;
 use crate::tool_args::SetRulerVisibleArgs;
@@ -154,6 +155,25 @@ impl EngineMcp {
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "ruler overlay visible: {}",
+            args.visible
+        ))]))
+    }
+
+    /// Shows or hides the grid overlay on the daemon-embedded GUI
+    /// canvas (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Show or hide the grid overlay on the daemon-embedded GUI canvas (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_grid_visible(
+        &self,
+        Parameters(args): Parameters<SetGridVisibleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetGridVisible(args.visible))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "grid overlay visible: {}",
             args.visible
         ))]))
     }

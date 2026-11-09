@@ -138,6 +138,7 @@ mod tests {
             stability: Default::default(),
             fields: vec![cell()],
             suppress,
+            enabled: true,
         }
     }
 

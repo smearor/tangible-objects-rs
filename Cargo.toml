@@ -66,3 +66,4 @@ gtk4 = "0.11"
 gio = "0.22"
 glib = "0.22"
 cairo-rs = "0.22"
+floating-board = { path = "../floating-board-rs" }

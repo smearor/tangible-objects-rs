@@ -163,6 +163,10 @@ pub enum ControlCommand {
     /// on one edge, millimeter ticks on the other. Same availability
     /// as [`Self::SetGuiVisible`].
     SetRulerVisible(bool),
+    /// Show or hide the grid overlay on the GUI canvas - a millimeter
+    /// lattice across the whole surface. Same availability as
+    /// [`Self::SetGuiVisible`].
+    SetGridVisible(bool),
     /// Show or hide the positions overlay on the GUI canvas - mm and
     /// pixel coordinates of tangibles, touch points and field-set
     /// fields. Same availability as [`Self::SetGuiVisible`].
@@ -171,6 +175,24 @@ pub enum ControlCommand {
     /// beneath - except where a GUI element (control bar) is hit.
     /// Same availability as [`Self::SetGuiVisible`]; Wayland only.
     SetTouchPassthrough(bool),
+    /// Enable or disable a registered pattern at runtime - disabled
+    /// profiles stay registered but produce no matches and spawn no
+    /// tangibles. The GUI toggles it from the profiles card.
+    SetProfileEnabled {
+        /// Pattern to toggle.
+        id: PatternId,
+        /// New enabled state.
+        enabled: bool,
+    },
+    /// Enable or disable a registered field set at runtime - disabled
+    /// sets keep their registration but track no occupancy and
+    /// suppress nothing. The GUI toggles it from the field-sets card.
+    SetFieldSetEnabled {
+        /// Field set to toggle.
+        name: FieldSetName,
+        /// New enabled state.
+        enabled: bool,
+    },
 }
 
 impl ControlCommand {

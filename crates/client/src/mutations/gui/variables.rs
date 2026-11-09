@@ -60,6 +60,14 @@ pub(crate) struct SetRulerVisibleVariables {
     pub visible: bool,
 }
 
+/// Variables of `setGridVisible`.
+#[derive(QueryVariables)]
+#[cynic(schema_module = "tangible_objects_model::schema")]
+pub(crate) struct SetGridVisibleVariables {
+    /// `true` draws the grid overlay.
+    pub visible: bool,
+}
+
 /// Variables of `setPositionsVisible`.
 #[derive(QueryVariables)]
 #[cynic(schema_module = "tangible_objects_model::schema")]

@@ -9,6 +9,7 @@ use crate::mutations::gui::mutation::SetDeadZonesVisible;
 use crate::mutations::gui::mutation::SetDisplayRotation;
 use crate::mutations::gui::mutation::SetEdgeMarginVisible;
 use crate::mutations::gui::mutation::SetFieldsVisible;
+use crate::mutations::gui::mutation::SetGridVisible;
 use crate::mutations::gui::mutation::SetGuiVisible;
 use crate::mutations::gui::mutation::SetPositionsVisible;
 use crate::mutations::gui::mutation::SetRulerVisible;
@@ -18,6 +19,7 @@ use crate::mutations::gui::variables::SetDeadZonesVisibleVariables;
 use crate::mutations::gui::variables::SetDisplayRotationVariables;
 use crate::mutations::gui::variables::SetEdgeMarginVisibleVariables;
 use crate::mutations::gui::variables::SetFieldsVisibleVariables;
+use crate::mutations::gui::variables::SetGridVisibleVariables;
 use crate::mutations::gui::variables::SetGuiVisibleVariables;
 use crate::mutations::gui::variables::SetPositionsVisibleVariables;
 use crate::mutations::gui::variables::SetRulerVisibleVariables;
@@ -96,6 +98,16 @@ impl GraphQLClient {
         self.call_mutation::<SetRulerVisible, _, _>(
             "setRulerVisible",
             SetRulerVisibleVariables { visible },
+        )
+        .await
+    }
+
+    /// Shows or hides the grid overlay on the daemon's GUI canvas
+    /// (`setGridVisible`) - ignored by headless daemons.
+    pub async fn set_grid_visible(&self, visible: bool) -> Result<bool, ClientError> {
+        self.call_mutation::<SetGridVisible, _, _>(
+            "setGridVisible",
+            SetGridVisibleVariables { visible },
         )
         .await
     }

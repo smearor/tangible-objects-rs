@@ -9,19 +9,30 @@
 //! [`GuiHooks`] so this crate never links the daemon crate.
 
 mod background_alpha;
+mod card_layout;
 mod control_bar;
 mod draw;
 mod evdev_thread;
+mod field_set_row;
+mod field_sets_card;
+mod filter_card;
 mod gui_hooks;
 mod gui_mode;
 mod gui_options;
 mod i18n;
+mod info_card;
+mod profiles_card;
 mod shared_state;
+mod visualization_card;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use floating_board::BoundsMode;
+use floating_board::CardAnchor;
+use floating_board::CardConfig;
+use floating_board::FloatingBoard;
 use gtk4::Application;
 use gtk4::ApplicationWindow;
 use gtk4::DrawingArea;
@@ -31,6 +42,8 @@ use gtk4::prelude::*;
 use i18n_embed_fl::fl;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
+use tracing::info;
+use tracing::warn;
 
 pub use background_alpha::BackgroundAlpha;
 pub use gui_hooks::GuiHooks;
@@ -98,36 +111,110 @@ pub fn run_gui(
         });
 
         // Control bar.
-        let control_bar = control_bar::create_control_bar(
-            &state_app,
-            &profiles_dir_app,
-            &drawing_area,
-            &bg_provider,
-        );
+        let control_bar =
+            control_bar::create_control_bar(&state_app, &profiles_dir_app, &drawing_area);
 
         // Layout: drawing area + control bar overlay.
         let overlay = gtk4::Overlay::new();
         overlay.set_child(Some(&drawing_area));
         overlay.add_overlay(&control_bar);
 
+        // Free-floating cards on top of the surface view
+        // (concepts/planned/GUI.md §3): the board stacks a transparent
+        // card layer above the overlay; gestures landing outside a
+        // card fall through to the canvas.
+        let board = FloatingBoard::new(&overlay);
+        let info_body = info_card::create_info_card(&state_app);
+        let _ = board.add_card_with_id(
+            "info",
+            &info_body,
+            CardConfig {
+                title: Some(fl!(language_loader(), "info-card-title")),
+                position: CardAnchor::TopRight,
+                anchor_margin: 100.0,
+                bounds_mode: BoundsMode::Contained,
+                foldable: true,
+                ..Default::default()
+            },
+        );
+        for (id, body, title, anchor) in [
+            (
+                "visualization",
+                visualization_card::create_visualization_card(
+                    &state_app,
+                    &drawing_area,
+                    &bg_provider,
+                ),
+                fl!(language_loader(), "card-visualization-title"),
+                CardAnchor::TopLeft,
+            ),
+            (
+                "filter",
+                filter_card::create_filter_card(&state_app),
+                fl!(language_loader(), "card-filter-title"),
+                CardAnchor::CenterLeft,
+            ),
+            (
+                "profiles",
+                profiles_card::create_profiles_card(&state_app),
+                fl!(language_loader(), "card-profiles-title"),
+                CardAnchor::CenterRight,
+            ),
+            (
+                "field-sets",
+                field_sets_card::create_field_sets_card(&state_app),
+                fl!(language_loader(), "card-field-sets-title"),
+                CardAnchor::TopCenter,
+            ),
+        ] {
+            let _ = board.add_card_with_id(
+                id,
+                &body,
+                CardConfig {
+                    title: Some(title),
+                    position: anchor,
+                    anchor_margin: 100.0,
+                    bounds_mode: BoundsMode::Contained,
+                    foldable: true,
+                    ..Default::default()
+                },
+            );
+        }
+
+        // Card layout: restore `gui-cards.toml` (or arrange the
+        // default side-by-side), persist on geometry changes.
+        card_layout::wire_layout(&board);
+
+        // Touch passthrough: input reaches the control bar and the
+        // cards; everything else falls through to the desktop.
+        control_bar::wire_passthrough(&control_bar, &board, &state_app);
+
         let window = ApplicationWindow::builder()
             .application(app)
             .title(fl!(language_loader(), "window-title"))
             .default_width(1600)
             .default_height(1200)
-            .child(&overlay)
+            .child(&board)
             .build();
 
         // `--touch-passthrough` puts the window into the layer-shell
         // Overlay layer: a toplevel loses stacking when the
         // through-click focuses the window beneath (GNOME), and GTK4
         // has no `keep_above`. Must run before `present`; runtime
-        // toggles only adjust the input region.
-        if options.touch_passthrough && gtk4_layer_shell::is_supported() {
+        // toggles only adjust the input region. `init_layer_shell`
+        // degrades to a regular toplevel when the protocol is missing
+        // - logging makes the fallback visible on remote machines.
+        if options.touch_passthrough {
             use gtk4_layer_shell::Edge;
             use gtk4_layer_shell::KeyboardMode;
             use gtk4_layer_shell::Layer;
             use gtk4_layer_shell::LayerShell;
+
+            if gtk4_layer_shell::is_supported() {
+                info!("layer-shell overlay enabled (touch passthrough)");
+            } else {
+                warn!("layer-shell not supported - window stays a regular toplevel");
+            }
 
             window.init_layer_shell();
             window.set_layer(Layer::Overlay);
@@ -135,6 +222,13 @@ pub fn run_gui(
             window.set_anchor(Edge::Bottom, true);
             window.set_anchor(Edge::Left, true);
             window.set_anchor(Edge::Right, true);
+            // -1 = ignore other layer surfaces' exclusive zones - the
+            // surface spans edge-to-edge over bars/docks reserved by
+            // other apps (e.g. waybar on the same Overlay layer).
+            window.set_exclusive_zone(-1);
+            // Stable namespace so compositor rules can match the
+            // surface (e.g. Hyprland `layerrule`).
+            window.set_namespace(Some("tangible-objects"));
             window.set_keyboard_mode(KeyboardMode::None);
         }
 

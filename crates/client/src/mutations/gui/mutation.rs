@@ -6,6 +6,7 @@ use crate::mutations::gui::variables::SetDeadZonesVisibleVariablesFields;
 use crate::mutations::gui::variables::SetDisplayRotationVariablesFields;
 use crate::mutations::gui::variables::SetEdgeMarginVisibleVariablesFields;
 use crate::mutations::gui::variables::SetFieldsVisibleVariablesFields;
+use crate::mutations::gui::variables::SetGridVisibleVariablesFields;
 use crate::mutations::gui::variables::SetGuiVisibleVariablesFields;
 use crate::mutations::gui::variables::SetPositionsVisibleVariablesFields;
 use crate::mutations::gui::variables::SetRulerVisibleVariablesFields;
@@ -122,6 +123,22 @@ pub(crate) struct SetRulerVisible {
     #[cynic(rename = "setRulerVisible")]
     #[arguments(visible: $visible)]
     set_ruler_visible: bool,
+}
+
+/// Root-field wrapper for `setGridVisible`.
+#[allow(dead_code)]
+#[derive(QueryFragment)]
+#[cynic(
+    graphql_type = "MutationRoot",
+    schema_path = "../graphql/schema.graphql",
+    schema_module = "tangible_objects_model::schema",
+    variables = "SetGridVisibleVariables"
+)]
+pub(crate) struct SetGridVisible {
+    /// `setGridVisible` field.
+    #[cynic(rename = "setGridVisible")]
+    #[arguments(visible: $visible)]
+    set_grid_visible: bool,
 }
 
 /// Root-field wrapper for `setPositionsVisible`.

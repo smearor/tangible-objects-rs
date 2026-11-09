@@ -102,12 +102,14 @@ impl FieldTracker {
     ///
     /// Suppression is immediate, not debounced: a marker contact is
     /// withheld from the very first frame it appears inside a field.
+    /// Disabled sets (`SetFieldSetEnabled`) suppress nothing.
     pub fn suppressed_slots(&self, touches: TouchSet<'_>) -> SlotSet {
         touches
             .iter()
             .filter(|touch| {
                 self.sets.iter().any(|set| {
-                    set.suppress
+                    set.enabled
+                        && set.suppress
                         && set
                             .fields
                             .iter()
@@ -118,11 +120,33 @@ impl FieldTracker {
             .collect()
     }
 
+    /// Enables or disables a set (`SetFieldSetEnabled` command).
+    /// Disabling resets the set's debounce cells - no stale occupancy
+    /// survives a re-enable. Returns `false` when no set with `name`
+    /// is registered.
+    pub fn set_enabled(&mut self, name: &FieldSetName, enabled: bool) -> bool {
+        let Some(index) = self.sets.iter().position(|set| &set.name == name) else {
+            return false;
+        };
+        self.sets[index].enabled = enabled;
+        if !enabled {
+            for cell in &mut self.states[index] {
+                *cell = CellState::default();
+            }
+        }
+        true
+    }
+
     /// Evaluates a frame's touches against all fields and returns the
     /// debounced occupancy events.
     pub fn update(&mut self, touches: TouchSet<'_>) -> Vec<EngineEvent> {
         let mut events = Vec::new();
         for (set, cells) in self.sets.iter().zip(self.states.iter_mut()) {
+            // Disabled sets hold no occupancy - their cells were reset
+            // by `set_enabled` and stay inert until re-enabled.
+            if !set.enabled {
+                continue;
+            }
             for (field, cell) in set.fields.iter().zip(cells.iter_mut()) {
                 let raw = ContactCount::from(
                     touches
@@ -196,6 +220,7 @@ mod tests {
             window: None,
             stability: FrameCount::new(2),
             suppress: false,
+            enabled: true,
             fields: vec![Field {
                 name: "a1".into(),
                 region: Region {

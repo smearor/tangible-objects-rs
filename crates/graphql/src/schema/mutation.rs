@@ -226,6 +226,16 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Shows or hides the grid overlay on the GUI canvas - ignored
+    /// on headless daemons.
+    async fn set_grid_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetGridVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
     /// Shows or hides the positions overlay on the GUI canvas -
     /// ignored on headless daemons.
     async fn set_positions_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {

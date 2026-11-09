@@ -107,6 +107,7 @@ mod tests {
                 spawn_on_partial: false,
                 spawn_stability: DEFAULT_SPAWN_STABILITY,
                 stage: None,
+                enabled: true,
             }],
         );
         let schema = build_schema(handle);

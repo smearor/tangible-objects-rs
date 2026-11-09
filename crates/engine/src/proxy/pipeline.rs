@@ -699,6 +699,7 @@ mod tests {
             window: None,
             stability: FrameCount::new(2),
             suppress: true,
+            enabled: true,
             fields: vec![Field {
                 name: "a1".into(),
                 region: Region {

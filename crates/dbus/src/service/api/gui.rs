@@ -87,6 +87,16 @@ pub(crate) async fn set_ruler_visible(service: &EngineService, visible: bool) ->
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }
 
+/// Shows or hides the grid overlay on the GUI canvas - ignored on
+/// headless daemons.
+pub(crate) async fn set_grid_visible(service: &EngineService, visible: bool) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetGridVisible(visible))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}
+
 /// Shows or hides the positions overlay on the GUI canvas - ignored
 /// on headless daemons.
 pub(crate) async fn set_positions_visible(

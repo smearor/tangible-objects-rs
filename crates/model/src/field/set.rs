@@ -19,6 +19,11 @@ pub fn default_stability() -> FrameCount {
     FrameCount::new(2)
 }
 
+/// Default enabled state for field sets (`enabled = true`).
+fn default_enabled() -> bool {
+    true
+}
+
 /// A named set of occupancy fields - the application-supplied board.
 ///
 /// Loaded from a `.toml` field-set file:
@@ -70,6 +75,11 @@ pub struct FieldSet {
     /// occupancy is informational only.
     #[serde(default)]
     pub suppress: bool,
+    /// Whether the set participates in occupancy tracking and
+    /// `suppress` filtering (`SetFieldSetEnabled` command). Disabled
+    /// sets stay registered but are inert. Default `true`.
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
 }
 
 impl FieldSet {

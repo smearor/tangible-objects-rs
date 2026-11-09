@@ -28,8 +28,9 @@ use crate::Vec2;
 pub struct ProfileFile {
     /// Human-readable figure name.
     pub name: PatternName,
-    /// Whether the profile is enabled - a disabled profile is skipped at
-    /// startup (`enabled = false` keeps the file without registering).
+    /// Whether the profile is enabled - a disabled profile registers as
+    /// an inert pattern: no matches until `SetProfileEnabled` activates
+    /// it at runtime.
     #[serde(default = "default_enabled")]
     pub enabled: bool,
     /// Whether a partial match may *spawn* this tangible
@@ -125,6 +126,7 @@ impl ProfileFile {
         TangiblePattern {
             id,
             name: self.name.clone(),
+            enabled: self.enabled,
             spawn_on_partial: self.spawn_on_partial,
             spawn_stability: self.spawn_stability,
             num_points: PinCount::new(self.num_points),

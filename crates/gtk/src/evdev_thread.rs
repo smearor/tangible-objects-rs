@@ -23,6 +23,7 @@ use tangible_objects_runtime::EngineRuntime;
 
 use crate::GuiHooks;
 use crate::background_alpha::BackgroundAlpha;
+use crate::field_set_row::FieldSetRow;
 use crate::language_loader;
 use crate::shared_state::SharedState;
 use crate::shared_state::mode_is_live;
@@ -33,6 +34,21 @@ use tracing::info;
 /// Consecutive same-size frames before a point set counts as stable
 /// for profile capture.
 pub(crate) const STABLE_THRESHOLD: u32 = 10;
+
+/// Field-set card rows for `SharedState` - set name, registration
+/// owner, enabled flag and field count per registered set.
+fn field_set_rows(engine: &Engine) -> Vec<FieldSetRow> {
+    engine
+        .field_sets()
+        .iter()
+        .map(|set| FieldSetRow {
+            name: set.name.clone(),
+            owner: engine.field_set_owner(&set.name).cloned(),
+            enabled: set.enabled,
+            field_count: set.fields.len(),
+        })
+        .collect()
+}
 
 /// Device loop thread: opens the evdev device, runs the engine per
 /// `SYN_REPORT` frame, publishes snapshots/events through the runtime
@@ -197,7 +213,10 @@ pub fn evdev_thread(
                 s.edge_margin_visible = runtime.edge_margin_visible();
                 s.fields_visible = runtime.fields_visible();
                 s.field_sets = engine.field_sets().to_vec();
+                s.field_set_rows = field_set_rows(&engine);
+                s.profiles = handle.profiles();
                 s.ruler_visible = runtime.ruler_visible();
+                s.grid_visible = runtime.grid_visible();
                 s.positions_visible = runtime.positions_visible();
                 s.touch_passthrough = runtime.touch_passthrough();
                 s.filter_mode = runtime.filter_mode();
@@ -266,7 +285,10 @@ pub fn evdev_thread(
                     s.edge_margin_visible = runtime.edge_margin_visible();
                     s.fields_visible = runtime.fields_visible();
                     s.field_sets = engine.field_sets().to_vec();
+                    s.field_set_rows = field_set_rows(&engine);
+                    s.profiles = handle.profiles();
                     s.ruler_visible = runtime.ruler_visible();
+                    s.grid_visible = runtime.grid_visible();
                     s.positions_visible = runtime.positions_visible();
                     s.touch_passthrough = runtime.touch_passthrough();
                     s.touch_passthrough = runtime.touch_passthrough();

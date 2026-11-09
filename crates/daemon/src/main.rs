@@ -184,6 +184,10 @@ struct Cli {
     /// `set_ruler_visible` toggles it afterwards
     #[arg(long)]
     ruler_visible: bool,
+    /// Draw the grid overlay on the GUI canvas (--gui);
+    /// `set_grid_visible` toggles it afterwards
+    #[arg(long)]
+    grid_visible: bool,
     /// Draw the positions overlay on the GUI canvas (--gui);
     /// `set_positions_visible` toggles it afterwards
     #[arg(long)]
@@ -332,6 +336,7 @@ fn main() -> Result<()> {
                 edge_margin_visible: cli.edge_margin_visible,
                 fields_visible: cli.fields_visible,
                 ruler_visible: cli.ruler_visible,
+                grid_visible: cli.grid_visible,
                 positions_visible: cli.positions_visible,
                 touch_passthrough: cli.touch_passthrough,
                 filter_mode: cli.filter_mode.unwrap_or_default(),

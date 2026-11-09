@@ -36,6 +36,7 @@ impl From<&RegisterFieldSetInput> for FieldSet {
                 .stability
                 .unwrap_or_else(tangible_objects_model::default_stability),
             suppress: input.suppress.unwrap_or(false),
+            enabled: true,
             fields: input.fields.iter().map(Field::from).collect(),
         }
     }

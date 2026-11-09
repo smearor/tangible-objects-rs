@@ -42,6 +42,10 @@ pub struct TangiblePattern {
     pub id: PatternId,
     /// Human-readable figure name (from the profile file).
     pub name: PatternName,
+    /// Whether the pattern participates in matching
+    /// (`SetProfileEnabled` command). Disabled patterns stay
+    /// registered but produce no matches and spawn no tangibles.
+    pub enabled: bool,
     /// Whether a partial match may spawn this tangible
     /// (SPAWN_AS_PARTIAL.md); the incumbent path ignores the flag.
     pub spawn_on_partial: bool,
@@ -81,6 +85,7 @@ impl TangiblePattern {
         Self {
             id: id.into(),
             name: name.into(),
+            enabled: true,
             spawn_on_partial: false,
             spawn_stability: DEFAULT_SPAWN_STABILITY,
             num_points: PinCount::new(points.len()),

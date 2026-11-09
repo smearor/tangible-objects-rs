@@ -32,6 +32,9 @@ pub struct GuiOptions {
     /// Whether the ruler overlay starts drawn
     /// (`SetRulerVisible` commands toggle afterwards).
     pub ruler_visible: bool,
+    /// Whether the grid overlay starts drawn
+    /// (`SetGridVisible` commands toggle afterwards).
+    pub grid_visible: bool,
     /// Whether the positions overlay starts drawn
     /// (`SetPositionsVisible` commands toggle afterwards).
     pub positions_visible: bool,

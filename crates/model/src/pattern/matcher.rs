@@ -108,7 +108,10 @@ impl<'a> PatternSet<'a> {
         let mut used_indices = TakenIndices::default();
 
         // Sort by pattern ID for a deterministic evaluation order.
-        let mut sorted_patterns: Vec<&TangiblePattern> = self.iter().collect();
+        // Disabled patterns stay registered but do not match
+        // (`SetProfileEnabled`).
+        let mut sorted_patterns: Vec<&TangiblePattern> =
+            self.iter().filter(|pattern| pattern.enabled).collect();
         sorted_patterns.sort_by_key(|p| p.id);
 
         for pattern in sorted_patterns {

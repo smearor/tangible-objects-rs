@@ -76,6 +76,11 @@ pub struct EngineSnapshot {
     /// feature.
     #[cfg(feature = "gui")]
     pub ruler_visible: bool,
+    /// Whether the GUI canvas draws the grid overlay
+    /// (`SetGridVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub grid_visible: bool,
     /// Whether the GUI canvas draws the positions overlay
     /// (`SetPositionsVisible` command) - only present with the `gui`
     /// feature.

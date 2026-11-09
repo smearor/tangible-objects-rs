@@ -114,6 +114,10 @@ pub struct EngineRuntime {
     /// (`SetRulerVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     ruler_visible: bool,
+    /// Whether the GUI canvas draws the grid overlay
+    /// (`SetGridVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    grid_visible: bool,
     /// Whether the GUI canvas draws the positions overlay
     /// (`SetPositionsVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
@@ -184,6 +188,8 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             ruler_visible: false,
             #[cfg(feature = "gui")]
+            grid_visible: false,
+            #[cfg(feature = "gui")]
             positions_visible: false,
             #[cfg(feature = "gui")]
             touch_passthrough: false,
@@ -237,6 +243,17 @@ impl EngineRuntime {
     }
 
     /// Removes a profile from the shared list by pattern ID.
+    /// Updates the published enabled flag of a profile - the drain
+    /// calls it after `SetProfileEnabled` applied to the engine.
+    pub fn set_profile_enabled(&mut self, id: PatternId, enabled: bool) {
+        if let Ok(mut profiles) = self.profiles.write()
+            && let Some(info) = profiles.iter_mut().find(|info| info.pattern_id == id)
+        {
+            info.enabled = enabled;
+        }
+    }
+
+    /// Removes the published profile entry for `id`.
     pub fn remove_profile(&mut self, id: PatternId) {
         if let Ok(mut profiles) = self.profiles.write() {
             profiles.retain(|info| info.pattern_id != id);
@@ -285,6 +302,8 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             ruler_visible: self.ruler_visible,
             #[cfg(feature = "gui")]
+            grid_visible: self.grid_visible,
+            #[cfg(feature = "gui")]
             positions_visible: self.positions_visible,
             #[cfg(feature = "gui")]
             touch_passthrough: self.touch_passthrough,
@@ -327,6 +346,8 @@ impl EngineRuntime {
             fields_visible: self.fields_visible,
             #[cfg(feature = "gui")]
             ruler_visible: self.ruler_visible,
+            #[cfg(feature = "gui")]
+            grid_visible: self.grid_visible,
             #[cfg(feature = "gui")]
             positions_visible: self.positions_visible,
             #[cfg(feature = "gui")]
@@ -453,6 +474,20 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn ruler_visible(&self) -> bool {
         self.ruler_visible
+    }
+
+    /// Sets the grid overlay visibility (`SetGridVisible` command).
+    /// Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_grid_visible(&mut self, visible: bool) {
+        self.grid_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the grid overlay. Only with the
+    /// `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn grid_visible(&self) -> bool {
+        self.grid_visible
     }
 
     /// Sets the positions overlay visibility (`SetPositionsVisible`

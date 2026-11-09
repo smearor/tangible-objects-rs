@@ -49,11 +49,21 @@ pub struct ProfileInfo {
     /// Pipeline stage this pattern suppresses through
     /// (EVENT_PIPELINE.md); `None` = the general stage.
     pub stage: Option<StageName>,
+    /// Whether the pattern participates in matching
+    /// (`SetProfileEnabled` command) - disabled profiles stay
+    /// registered but produce no matches.
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+/// Default enabled state for profiles (`enabled = true`).
+fn default_enabled() -> bool {
+    true
 }
 
 #[cfg(feature = "zbus")]
 impl zvariant::Type for ProfileInfo {
-    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(ustsbt)");
+    const SIGNATURE: &'static zvariant::Signature = &zvariant::signature!("(ustsbtsb)");
 }
 
 impl From<&TangiblePattern> for ProfileInfo {
@@ -66,6 +76,7 @@ impl From<&TangiblePattern> for ProfileInfo {
             spawn_on_partial: pattern.spawn_on_partial,
             spawn_stability: pattern.spawn_stability,
             stage: pattern.stage.clone(),
+            enabled: pattern.enabled,
         }
     }
 }

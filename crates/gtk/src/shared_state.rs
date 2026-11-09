@@ -4,6 +4,8 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use tangible_objects_runtime::ControlCommand;
+
 use tangible_objects_model::Calibration;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
@@ -14,12 +16,14 @@ use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::ProfileInfo;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::EngineHandle;
 
 use crate::BackgroundAlpha;
 use crate::GuiOptions;
+use crate::field_set_row::FieldSetRow;
 use crate::gui_mode::GuiMode;
 
 /// Snapshot the draw functions consume - written by the device thread
@@ -79,9 +83,18 @@ pub struct SharedState {
     pub fields_visible: bool,
     /// Registered field sets - the overlay data set.
     pub field_sets: Vec<FieldSet>,
+    /// Display rows of the registered field sets (name, owner,
+    /// enabled, field count) - the field-sets card's data.
+    pub field_set_rows: Vec<FieldSetRow>,
+    /// Loaded and dynamically registered figure profiles - the
+    /// profiles card's data (positions come from `tracked`).
+    pub profiles: Vec<ProfileInfo>,
     /// Whether the ruler overlay is drawn
     /// (`SetRulerVisible`/`--ruler-visible`).
     pub ruler_visible: bool,
+    /// Whether the grid overlay is drawn
+    /// (`SetGridVisible`/`--grid-visible`).
+    pub grid_visible: bool,
     /// Whether the positions overlay is drawn
     /// (`SetPositionsVisible`/`--positions-visible`).
     pub positions_visible: bool,
@@ -106,6 +119,20 @@ pub struct SharedState {
     /// Command channel handle - the control-bar buttons issue the
     /// same `ControlCommand`s the interfaces do.
     pub command_handle: Option<EngineHandle>,
+}
+
+/// Sends a `ControlCommand` over the runtime's command channel - the
+/// same path the interface servers take. Uses `try_lock`: the
+/// status-sync timer calls `set_active` on the toggle buttons while
+/// holding `state`, which re-fires `connect_toggled` on this same
+/// thread - a blocking `lock()` would deadlock on the non-recursive
+/// mutex. Dropping the (idempotent) command on contention is safe.
+pub(crate) fn send_command(state: &Arc<Mutex<SharedState>>, command: ControlCommand) {
+    if let Ok(s) = state.try_lock()
+        && let Some(handle) = &s.command_handle
+    {
+        handle.try_send_command(command).ok();
+    }
 }
 
 impl SharedState {
@@ -136,7 +163,10 @@ impl SharedState {
             edge_margin_visible: options.edge_margin_visible,
             fields_visible: options.fields_visible,
             field_sets: Vec::new(),
+            field_set_rows: Vec::new(),
+            profiles: Vec::new(),
             ruler_visible: options.ruler_visible,
+            grid_visible: options.grid_visible,
             positions_visible: options.positions_visible,
             touch_passthrough: options.touch_passthrough,
             filter_mode: options.filter_mode,
