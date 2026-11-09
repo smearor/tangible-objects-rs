@@ -65,6 +65,7 @@ pub fn evdev_thread(
         engine.set_edge_margin(mm);
     }
     engine.set_fields(config.fields);
+    engine.set_dead_zones(config.dead_zones);
     engine.set_completion(config.completion);
 
     // Event hub for interface crates (GraphQL/D-Bus/MCP) - the GUI runs
@@ -75,6 +76,7 @@ pub fn evdev_thread(
     runtime.set_completion(config.completion);
     runtime.set_display_rotation(rotation);
     runtime.set_field_sets(engine.field_sets().to_vec());
+    runtime.set_dead_zones(engine.dead_zones().to_vec());
     (hooks.spawn_interfaces)(&handle);
 
     let mut touch_state = TouchState::new();
