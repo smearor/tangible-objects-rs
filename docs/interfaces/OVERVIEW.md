@@ -37,6 +37,7 @@ Queries read a `watch`-published snapshot, never the device loop:
 | `message` | current `showMessage` overlay text |
 | `gui_visible` | GUI window state (`gui` feature) |
 | `dead_zones_visible` | dead-zone overlay state (`gui` feature) |
+| `background_alpha` | canvas opacity percent (`gui` feature) |
 
 ## Operation surface
 
@@ -55,7 +56,7 @@ Queries read a `watch`-published snapshot, never the device loop:
 | Completion | `completion`, `setCompletion(config)` | `get_completion`, `set_completion` | `completion`, `set_completion` |
 | Metrics | `metrics`, `resetMetrics` | `get_metrics`, `reset_metrics` | `metrics`, `reset_metrics` |
 | Message | `message`, `showMessage(text)` | `show_message`, `tangible://message` | `message`, `show_message` |
-| GUI | `setGuiVisible`, `setDisplayRotation(deg)`, `setDeadZonesVisible` | `set_gui_visible`, `set_display_rotation`, `set_dead_zones_visible` | `set_gui_visible`, `set_display_rotation`, `set_dead_zones_visible` |
+| GUI | `setGuiVisible`, `setDisplayRotation(deg)`, `setDeadZonesVisible`, `setBackgroundAlpha(pct)` | `set_gui_visible`, `set_display_rotation`, `set_dead_zones_visible`, `set_background_alpha` | `set_gui_visible`, `set_display_rotation`, `set_dead_zones_visible`, `set_background_alpha` |
 | Registration | `registerPattern`, `updateProfile`, `unregisterPattern`, `registerFieldSet`, `unregisterFieldSet`, `registerDeadZone`, `unregisterDeadZone`, `unregisterOwner` | `register_pattern`, `update_profile`, `unregister_pattern`, `register_field_set`, `unregister_field_set`, `register_dead_zone`, `unregister_dead_zone`, `unregister_owner` | same names |
 | Analysis | `analyzeRecording(path, mode?, profilesDir?)`, `analyzeSimilarity(profilesDir?)` | `analyze_recording`, `analyze_similarity` | `analyze_recording`, `analyze_similarity` |
 | Events | `eventStream(kinds, patternId?, setId?, maxHz?)`, `tangibleEvents`, `fieldEvents` | `tangible://` snapshots (no stream) | per-kind signals + `lifecycle_event` |

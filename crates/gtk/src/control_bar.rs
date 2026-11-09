@@ -79,6 +79,7 @@ pub fn create_control_bar(
             return;
         };
         s.background_alpha = s.background_alpha.next();
+        s.background_alpha_request = Some(s.background_alpha);
         alpha_btn_clone.set_label(&fl!(
             language_loader(),
             "background-alpha",
@@ -169,12 +170,30 @@ pub fn create_control_bar(
     let state_status = state.clone();
     let status_clone = status.clone();
     let save_btn_status = save_btn.clone();
+    let alpha_btn_status = alpha_btn.clone();
+    let provider_status = bg_provider.clone();
     let da = drawing_area.clone();
+    let mut applied_alpha = state_status
+        .lock()
+        .map(|s| s.background_alpha)
+        .unwrap_or_else(|_| crate::BackgroundAlpha::from_percent(100));
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
         let s = match state_status.lock() {
             Ok(s) => s,
             Err(_) => return ControlFlow::Continue,
         };
+        // Alpha changes from `SetBackgroundAlpha` commands land in the
+        // shared state via the device loop - the provider reload and
+        // button label follow here (the toggle applies both itself).
+        if s.background_alpha != applied_alpha {
+            applied_alpha = s.background_alpha;
+            provider_status.load_from_data(&applied_alpha.surface_bg_css());
+            alpha_btn_status.set_label(&fl!(
+                language_loader(),
+                "background-alpha",
+                percent = (applied_alpha.percent() as i64)
+            ));
+        }
         let count = s.touches.len();
         match s.mode {
             GuiMode::Live => {

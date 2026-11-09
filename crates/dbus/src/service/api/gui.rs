@@ -43,3 +43,13 @@ pub(crate) async fn set_dead_zones_visible(
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }
+
+/// Sets the GUI canvas background opacity in percent, 0-100 - ignored
+/// on headless daemons.
+pub(crate) async fn set_background_alpha(service: &EngineService, percent: u8) -> fdo::Result<()> {
+    service
+        .handle
+        .send_command(ControlCommand::SetBackgroundAlpha(percent))
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
+}

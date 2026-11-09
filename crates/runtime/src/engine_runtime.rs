@@ -90,6 +90,10 @@ pub struct EngineRuntime {
     /// (`SetDeadZonesVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     dead_zones_visible: bool,
+    /// Canvas background opacity in percent (`SetBackgroundAlpha`
+    /// command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    background_alpha: u8,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -138,6 +142,8 @@ impl EngineRuntime {
             gui_visible: true,
             #[cfg(feature = "gui")]
             dead_zones_visible: false,
+            #[cfg(feature = "gui")]
+            background_alpha: 100,
             #[cfg(feature = "gui")]
             display_rotation: DisplayRotation::default(),
             training: None,
@@ -224,6 +230,8 @@ impl EngineRuntime {
             gui_visible: self.gui_visible,
             #[cfg(feature = "gui")]
             dead_zones_visible: self.dead_zones_visible,
+            #[cfg(feature = "gui")]
+            background_alpha: self.background_alpha,
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -253,6 +261,8 @@ impl EngineRuntime {
             gui_visible: self.gui_visible,
             #[cfg(feature = "gui")]
             dead_zones_visible: self.dead_zones_visible,
+            #[cfg(feature = "gui")]
+            background_alpha: self.background_alpha,
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
@@ -319,6 +329,20 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn dead_zones_visible(&self) -> bool {
         self.dead_zones_visible
+    }
+
+    /// Sets the canvas background opacity in percent, 0-100
+    /// (`SetBackgroundAlpha` command). Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_background_alpha(&mut self, percent: u8) {
+        self.background_alpha = percent.min(100);
+    }
+
+    /// Canvas background opacity in percent. Only with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub fn background_alpha(&self) -> u8 {
+        self.background_alpha
     }
 
     /// Arms remote profile capture (`TrainProfile` command) - the

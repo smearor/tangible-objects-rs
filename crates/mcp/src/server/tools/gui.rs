@@ -10,6 +10,7 @@ use tangible_objects_model::DisplayRotation;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
+use crate::tool_args::SetBackgroundAlphaArgs;
 use crate::tool_args::SetDeadZonesVisibleArgs;
 use crate::tool_args::SetDisplayRotationArgs;
 use crate::tool_args::SetGuiVisibleArgs;
@@ -73,6 +74,25 @@ impl EngineMcp {
         Ok(CallToolResult::success(vec![ContentBlock::text(format!(
             "dead-zone overlay visible: {}",
             args.visible
+        ))]))
+    }
+
+    /// Sets the GUI canvas background opacity in percent, 0-100
+    /// (`--gui` mode); no-op for headless daemons.
+    #[tool(
+        description = "Set the daemon-embedded GUI canvas background opacity in percent, 0-100 (--gui mode); no-op for headless daemons."
+    )]
+    async fn set_background_alpha(
+        &self,
+        Parameters(args): Parameters<SetBackgroundAlphaArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        self.handle
+            .send_command(ControlCommand::SetBackgroundAlpha(args.percent))
+            .await
+            .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!(
+            "background alpha: {} %",
+            args.percent
         ))]))
     }
 }

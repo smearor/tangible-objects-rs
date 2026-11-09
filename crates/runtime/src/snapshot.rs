@@ -50,4 +50,9 @@ pub struct EngineSnapshot {
     /// feature.
     #[cfg(feature = "gui")]
     pub dead_zones_visible: bool,
+    /// Canvas background opacity in percent
+    /// (`SetBackgroundAlpha` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub background_alpha: u8,
 }

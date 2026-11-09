@@ -186,6 +186,16 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Sets the GUI canvas background opacity in percent, 0-100 -
+    /// ignored on headless daemons.
+    async fn set_background_alpha(&self, ctx: &Context<'_>, percent: u8) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetBackgroundAlpha(percent))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
     /// Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
     /// needed when the desktop shows the touchscreen rotated. Ignored
     /// on headless daemons.

@@ -69,7 +69,7 @@ own `modes::*` functions in:
 | Option / command | Type | Effect |
 |------------------|------|--------|
 | `--display-rotation <0\|90\|180\|270>` | `DisplayRotation` | quarter-turn of evdev positions in the mm→px mapping (`mm_to_screen`) - matches a rotated desktop session (e.g. GNOME portrait on a landscape panel); runtime change via `setDisplayRotation`/`set_display_rotation` |
-| `--background-alpha <0-100>` | `BackgroundAlpha` | opacity of the canvas `.surface-bg` CSS layer - lower values let the desktop show through; touches/labels/chrome stay opaque. Control-bar button cycles the presets |
+| `--background-alpha <0-100>` | `BackgroundAlpha` | opacity of the canvas `.surface-bg` CSS layer - lower values let the desktop show through; touches/labels/chrome stay opaque. Control-bar button cycles the presets; runtime change via `SetBackgroundAlpha` (`setBackgroundAlpha` / `set_background_alpha`) |
 | `SetGuiVisible` command | bool | shows/hides the window without restarting the GUI (`setGuiVisible` / `set_gui_visible`) |
 | `--dead-zones-visible` | bool | draws the dead-zone overlay at startup: each registered zone renders as a dashed red circle + name beneath the figure layer; runtime toggle via `SetDeadZonesVisible` (`setDeadZonesVisible` / `set_dead_zones_visible`) |
 | `showMessage` / `ShowMessage` | string | large centered overlay text; empty clears - scripted training instructions ([`../analysis/METRICS.md`](../analysis/METRICS.md)) |

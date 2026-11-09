@@ -316,6 +316,11 @@ pub(crate) fn apply_registration(
             info!(%visible, "dead-zone overlay toggled");
             runtime.set_dead_zones_visible(visible);
         }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetBackgroundAlpha(percent) => {
+            info!(%percent, "background alpha changed");
+            runtime.set_background_alpha(percent);
+        }
         other => warn!(?other, "command ignored"),
     }
 }

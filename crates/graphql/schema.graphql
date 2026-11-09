@@ -606,6 +606,11 @@ type MutationRoot {
 	"""
 	setDeadZonesVisible(visible: Boolean!): Boolean!
 	"""
+	Sets the GUI canvas background opacity in percent, 0-100 -
+	ignored on headless daemons.
+	"""
+	setBackgroundAlpha(percent: Int!): Boolean!
+	"""
 	Quarter-turn the GUI canvas renders (0/90/180/270 degrees) -
 	needed when the desktop shows the touchscreen rotated. Ignored
 	on headless daemons.

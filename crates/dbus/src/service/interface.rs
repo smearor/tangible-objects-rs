@@ -281,6 +281,12 @@ impl EngineService {
         api::gui::set_dead_zones_visible(self, visible).await
     }
 
+    /// Sets the GUI canvas background opacity in percent, 0-100 -
+    /// ignored on headless daemons.
+    async fn set_background_alpha(&self, percent: u8) -> fdo::Result<()> {
+        api::gui::set_background_alpha(self, percent).await
+    }
+
     /// Registers a figure profile at runtime: `points` is the flat pin
     /// list `[x0, y0, x1, y1, ...]` in mm. `spawn_on_partial` allows
     /// partial spawns (SPAWN_AS_PARTIAL.md); `spawn_stability = 0` keeps

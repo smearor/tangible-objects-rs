@@ -27,3 +27,11 @@ pub(crate) struct SetDeadZonesVisibleVariables {
     /// `true` draws the dead-zone overlay.
     pub visible: bool,
 }
+
+/// Variables of `setBackgroundAlpha`.
+#[derive(QueryVariables)]
+#[cynic(schema_module = "tangible_objects_model::schema")]
+pub(crate) struct SetBackgroundAlphaVariables {
+    /// Canvas background opacity in percent, 0-100.
+    pub percent: i32,
+}

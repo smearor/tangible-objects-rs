@@ -19,6 +19,7 @@ use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
 
 use crate::GuiHooks;
+use crate::background_alpha::BackgroundAlpha;
 use crate::language_loader;
 use crate::shared_state::SharedState;
 use crate::shared_state::mode_is_live;
@@ -64,9 +65,9 @@ pub fn evdev_thread(
     if let Some(mm) = config.edge {
         engine.set_edge_margin(mm);
     }
-    let dead_zones_visible = state
+    let (dead_zones_visible, background_alpha) = state
         .lock()
-        .map(|s| s.dead_zones_visible)
+        .map(|s| (s.dead_zones_visible, s.background_alpha.percent()))
         .unwrap_or_default();
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
@@ -82,6 +83,7 @@ pub fn evdev_thread(
     runtime.set_field_sets(engine.field_sets().to_vec());
     runtime.set_dead_zones(engine.dead_zones().to_vec());
     runtime.set_dead_zones_visible(dead_zones_visible);
+    runtime.set_background_alpha(background_alpha);
     (hooks.spawn_interfaces)(&handle);
 
     let mut touch_state = TouchState::new();
@@ -135,6 +137,10 @@ pub fn evdev_thread(
                 s.rotation = runtime.display_rotation();
                 s.dead_zones_visible = runtime.dead_zones_visible();
                 s.dead_zones = engine.dead_zones().to_vec();
+                if let Some(request) = s.background_alpha_request.take() {
+                    runtime.set_background_alpha(request.percent());
+                }
+                s.background_alpha = BackgroundAlpha::from_percent(runtime.background_alpha());
             }
             runtime.publish_snapshot(engine.touches(), engine.tracked());
             continue;
@@ -181,6 +187,10 @@ pub fn evdev_thread(
                     s.rotation = runtime.display_rotation();
                     s.dead_zones_visible = runtime.dead_zones_visible();
                     s.dead_zones = engine.dead_zones().to_vec();
+                    if let Some(request) = s.background_alpha_request.take() {
+                        runtime.set_background_alpha(request.percent());
+                    }
+                    s.background_alpha = BackgroundAlpha::from_percent(runtime.background_alpha());
                 }
                 if let Some(profile) = runtime.training_tick(&frame.touches) {
                     info!(name = %profile.name, "training completed");

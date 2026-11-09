@@ -146,6 +146,10 @@ pub enum ControlCommand {
     /// availability as [`Self::SetGuiVisible`] - headless daemons
     /// ignore it.
     SetDeadZonesVisible(bool),
+    /// Canvas background opacity in percent, 0-100
+    /// (`--background-alpha`). Same availability as
+    /// [`Self::SetGuiVisible`] - headless daemons ignore it.
+    SetBackgroundAlpha(u8),
 }
 
 impl ControlCommand {

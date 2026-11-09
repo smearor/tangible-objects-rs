@@ -40,9 +40,13 @@ pub struct SharedState {
     /// Display rotation the mm→px mapping applies (`--display-rotation`)
     /// - the evdev stream always speaks the panel's native frame.
     pub rotation: DisplayRotation,
-    /// Canvas background opacity (`--background-alpha` and the alpha
-    /// toggle). GUI-local display state - no control command.
+    /// Canvas background opacity (`--background-alpha`, the alpha
+    /// toggle and `SetBackgroundAlpha` commands).
     pub background_alpha: BackgroundAlpha,
+    /// Alpha change requested by the control-bar toggle - the device
+    /// thread drains it into the runtime (`SetBackgroundAlpha`
+    /// semantics) so the interface-visible state stays authoritative.
+    pub background_alpha_request: Option<BackgroundAlpha>,
     /// Registered dead zones - the overlay data set.
     pub dead_zones: Vec<DeadZone>,
     /// Whether the dead-zone overlay is drawn
@@ -72,6 +76,7 @@ impl SharedState {
             visible,
             rotation,
             background_alpha,
+            background_alpha_request: None,
             dead_zones: Vec::new(),
             dead_zones_visible,
         }))
