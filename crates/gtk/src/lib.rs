@@ -104,11 +104,15 @@ pub fn run_gui(
         // transparent window, so the toggle sees the desktop beneath.
         // The cairo draw stays content-only on top of it.
         let bg_provider = gtk4::CssProvider::new();
-        bg_provider.load_from_data(&options.background_alpha.surface_bg_css());
+        bg_provider.load_from_string(&options.background_alpha.surface_bg_css());
         drawing_area.add_css_class("surface-bg");
-        drawing_area
-            .style_context()
-            .add_provider(&bg_provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+        if let Some(display) = gtk4::gdk::Display::default() {
+            gtk4::style_context_add_provider_for_display(
+                &display,
+                &bg_provider,
+                gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
 
         let state_draw = state_app.clone();
         drawing_area.set_draw_func(move |_, cr, w, h| {
@@ -269,7 +273,7 @@ pub fn run_gui(
         // default, covering the translucent cairo fill. Only the
         // window *background* is cleared; contents stay opaque.
         let provider = gtk4::CssProvider::new();
-        provider.load_from_data("window { background-color: transparent; }");
+        provider.load_from_string("window { background-color: transparent; }");
         if let Some(display) = gtk4::gdk::Display::default() {
             gtk4::style_context_add_provider_for_display(
                 &display,

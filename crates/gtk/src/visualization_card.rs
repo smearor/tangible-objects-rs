@@ -107,7 +107,7 @@ pub fn create_visualization_card(
             "background-alpha",
             percent = (s.background_alpha.percent() as i64)
         ));
-        provider_alpha.load_from_data(&s.background_alpha.surface_bg_css());
+        provider_alpha.load_from_string(&s.background_alpha.surface_bg_css());
         da_alpha.queue_draw();
     });
     toggles.append(&alpha_btn);
@@ -138,7 +138,7 @@ pub fn create_visualization_card(
         // button label follow here (the click applies both itself).
         if s.background_alpha != applied_alpha {
             applied_alpha = s.background_alpha;
-            provider_sync.load_from_data(&applied_alpha.surface_bg_css());
+            provider_sync.load_from_string(&applied_alpha.surface_bg_css());
             alpha_btn_sync.set_label(&fl!(
                 language_loader(),
                 "background-alpha",
