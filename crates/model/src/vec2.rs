@@ -255,6 +255,36 @@ pub mod serde_pair {
     }
 }
 
+/// Serde adapter for `#[serde(with)]`: `Vec<Vec2<U>>` as a compact
+/// `[[x, y], ...]` list - the polygon form of [`serde_pair`].
+pub mod serde_points {
+    use super::Vec2;
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde::Serialize;
+    use serde::Serializer;
+
+    /// Serializes the points as `[[x, y], ...]`.
+    pub fn serialize<U, S: Serializer>(
+        points: &[Vec2<U>],
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        points
+            .iter()
+            .map(|p| [p.x, p.y])
+            .collect::<Vec<_>>()
+            .serialize(serializer)
+    }
+
+    /// Deserializes `[[x, y], ...]` into `Vec2`s in the unit `U`.
+    pub fn deserialize<'de, U, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Vec<Vec2<U>>, D::Error> {
+        <Vec<[f64; 2]>>::deserialize(deserializer)
+            .map(|pairs| pairs.into_iter().map(Vec2::from).collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Vec2;

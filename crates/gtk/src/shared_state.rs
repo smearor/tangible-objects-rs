@@ -4,6 +4,8 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use tangible_objects_engine::LegacyMode;
+use tangible_objects_model::CompletionConfig;
 use tangible_objects_runtime::ControlCommand;
 
 use tangible_objects_model::Calibration;
@@ -18,14 +20,18 @@ use tangible_objects_model::FilterMode;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::ProfileInfo;
+use tangible_objects_model::SessionMetrics;
+use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
 use tangible_objects_runtime::EngineHandle;
 
 use crate::BackgroundAlpha;
 use crate::GuiOptions;
+use crate::calibration_source::CalibrationSource;
 use crate::field_set_row::FieldSetRow;
 use crate::gui_mode::GuiMode;
+use crate::pattern_style::PatternStyle;
 
 /// Snapshot the draw functions consume - written by the device thread
 /// once per `SYN_REPORT` frame, read by the ~30 fps GTK timer.
@@ -38,6 +44,11 @@ pub struct SharedState {
     pub tracked: Vec<TrackedTangible>,
     /// Effective axis calibration (mm conversion for the canvas scale).
     pub calibration: Option<Calibration>,
+    /// Where the active calibration came from (device vs profile
+    /// override) - `None` while uncalibrated.
+    pub calibration_source: Option<CalibrationSource>,
+    /// Accumulated session counters (Metrics card).
+    pub metrics: SessionMetrics,
     /// Consecutive frames the contact set held the same size.
     pub stable_frames: u32,
     /// Contact set stable long enough for profile capture.
@@ -107,6 +118,23 @@ pub struct SharedState {
     /// Selected suppression policy (`SetFilterMode` command +
     /// `--filter-mode` start value) - display state.
     pub filter_mode: FilterMode,
+    /// Active missing-pin completion config (Parameters card).
+    pub completion: CompletionConfig,
+    /// Legacy single-touch event policy (Parameters card).
+    pub legacy_mode: LegacyMode,
+    /// Filter pipeline stability frames, `0` until a `SetFilterMode`
+    /// command carries `stability` (Parameters card).
+    pub filter_stability: u64,
+    /// Draws the bounding box of every matched figure - debugging aid
+    /// (GUI-local toggle, Parameters card).
+    pub profile_bounds_visible: bool,
+    /// Which layers the live view draws per matched tangible
+    /// (GUI-local toggle on the visualization card).
+    pub render_mode: TangibleRenderMode,
+    /// Declared profile styles (color/shape) keyed like
+    /// `engine.patterns()` - the draw loop colors figures and outlines
+    /// physical shapes from it.
+    pub pattern_styles: Vec<PatternStyle>,
     /// Active contacts before ingest filtering on the last frame.
     pub incoming_contacts: ContactCount,
     /// Touches dropped by edge-margin filtering on the last frame.
@@ -147,6 +175,8 @@ impl SharedState {
             matches: Vec::new(),
             tracked: Vec::new(),
             calibration: None,
+            calibration_source: None,
+            metrics: SessionMetrics::default(),
             stable_frames: 0,
             stable: false,
             mode: GuiMode::Live,
@@ -174,6 +204,12 @@ impl SharedState {
             positions_visible: options.positions_visible,
             touch_passthrough: options.touch_passthrough,
             filter_mode: options.filter_mode,
+            completion: CompletionConfig::default(),
+            legacy_mode: LegacyMode::default(),
+            filter_stability: 0,
+            profile_bounds_visible: false,
+            render_mode: TangibleRenderMode::default(),
+            pattern_styles: Vec::new(),
             incoming_contacts: ContactCount::default(),
             edge_filtered: ContactCount::default(),
             mode_suppressed: ContactCount::default(),

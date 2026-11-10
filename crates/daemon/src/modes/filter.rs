@@ -149,11 +149,24 @@ pub fn run_filter(
                 } => {
                     pipeline.set_mode(mode, stability, stage.as_ref());
                     runtime.set_filter_mode(mode);
+                    if let Some(frames) = stability {
+                        runtime.set_filter_stability(frames);
+                    }
                     runtime.emit_lifecycle(LifecycleEvent::FilterModeChanged(mode));
                     match &stage {
                         Some(stage) => info!("filter mode: {mode} (stage {stage})"),
                         None => info!("filter mode: {mode}"),
                     }
+                }
+                ControlCommand::SetEdgeMargin(margin) => {
+                    engine.set_edge_margin(margin);
+                    runtime.set_edge_margin(margin);
+                    info!(margin = %margin.as_f64(), "edge margin set");
+                }
+                ControlCommand::SetLegacyMode(mode) => {
+                    pipeline.set_legacy_mode(mode);
+                    runtime.set_legacy_mode(mode);
+                    info!(%mode, "legacy mode set");
                 }
                 ControlCommand::RegisterStage { name } => {
                     if pipeline.register_stage(name.clone()) {

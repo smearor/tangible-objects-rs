@@ -1,4 +1,5 @@
 name = "Holzklotz3"
+color = "#7a5230"
 num_points = 3
 tolerance = 3.0
 # Per-index tolerances recalibrated on the SiS panel (11.3k-sample

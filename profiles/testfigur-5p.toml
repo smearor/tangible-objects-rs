@@ -1,4 +1,5 @@
 name = "TestFigur-5P"
+color = "#26a69a"
 num_points = 4
 tolerance = 3.0
 sorted_sides = [34.98, 37.08, 39.67, 44.83, 54.32, 55.94]

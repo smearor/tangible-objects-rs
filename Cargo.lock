@@ -3703,6 +3703,7 @@ dependencies = [
  "tangible-objects-engine",
  "tangible-objects-model",
  "tangible-objects-runtime",
+ "tokio",
  "toml 0.8.23",
  "tracing",
 ]

@@ -1,4 +1,5 @@
 name = "Figur8"
+color = "#9575cd"
 enabled = false
 num_points = 4
 tolerance = 3.0

@@ -14,6 +14,7 @@ use tangible_objects_model::FieldCount;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FieldSetName;
+use tangible_objects_model::FigureColor;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
@@ -283,6 +284,18 @@ impl Engine {
         };
         pattern.enabled = enabled;
         self.matching_dirty = true;
+        true
+    }
+
+    /// Overrides a pattern's declared render color at runtime
+    /// (`SetProfileColor` command) - session-only, display concern
+    /// (no `matching_dirty`: geometry unchanged). Returns `false`
+    /// when no pattern with `id` is registered.
+    pub fn set_pattern_color(&mut self, id: PatternId, color: FigureColor) -> bool {
+        let Some(pattern) = self.patterns.by_id_mut(id) else {
+            return false;
+        };
+        pattern.color = Some(color);
         true
     }
 

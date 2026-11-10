@@ -1,4 +1,5 @@
 name = "Figur10"
+color = "#ef5350"
 num_points = 3
 tolerance = 3.0
 sorted_sides = [

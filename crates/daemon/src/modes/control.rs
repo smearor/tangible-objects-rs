@@ -36,9 +36,23 @@ pub(crate) fn drain_control_commands(
 ) {
     while let Ok(command) = runtime.try_recv_command() {
         match command {
-            ControlCommand::SetFilterMode { mode, .. } => {
+            ControlCommand::SetFilterMode {
+                mode, stability, ..
+            } => {
                 runtime.set_filter_mode(mode);
+                if let Some(frames) = stability {
+                    runtime.set_filter_stability(frames);
+                }
                 warn!(%mode, "filter mode command - only honored in --filter mode");
+            }
+            ControlCommand::SetEdgeMargin(margin) => {
+                engine.set_edge_margin(margin);
+                runtime.set_edge_margin(margin);
+                info!(margin = %margin.as_f64(), "edge margin set");
+            }
+            ControlCommand::SetLegacyMode(mode) => {
+                runtime.set_legacy_mode(mode);
+                warn!(%mode, "legacy mode command - only honored in --filter mode");
             }
             ControlCommand::RegisterStage { .. } | ControlCommand::UnregisterStage { .. } => {
                 warn!("stage commands - only honored in --filter mode");
@@ -286,6 +300,9 @@ pub(crate) fn apply_registration(
             } else {
                 warn!(%id, "profile not found");
             }
+        }
+        ControlCommand::SetProfileColor { id, color } => {
+            let _ = engine.set_pattern_color(id, color);
         }
         ControlCommand::SetFieldSetEnabled { name, enabled } => {
             if engine.set_field_set_enabled(&name, enabled) {

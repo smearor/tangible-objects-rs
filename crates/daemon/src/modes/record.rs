@@ -138,7 +138,12 @@ pub fn run_record(
         // so `stop_recording` flushes even while the device is idle.
         while let Ok(command) = runtime.try_recv_command() {
             match command {
-                ControlCommand::SetFilterMode { mode, .. } => {
+                ControlCommand::SetFilterMode {
+                    mode, stability, ..
+                } => {
+                    if let Some(frames) = stability {
+                        runtime.set_filter_stability(frames);
+                    }
                     warn!(%mode, "filter mode command - only honored in --filter mode");
                 }
                 ControlCommand::TrainProfile(name) => {
@@ -154,6 +159,15 @@ pub fn run_record(
                 }
                 ControlCommand::SetRecordLabel(new_label) => {
                     session.set_label(new_label);
+                }
+                ControlCommand::SetEdgeMargin(margin) => {
+                    engine.set_edge_margin(margin);
+                    runtime.set_edge_margin(margin);
+                    info!(margin = %margin.as_f64(), "edge margin set");
+                }
+                ControlCommand::SetLegacyMode(mode) => {
+                    runtime.set_legacy_mode(mode);
+                    warn!(%mode, "legacy mode command - only honored in --filter mode");
                 }
                 ControlCommand::SetCompletion(config) => {
                     engine.set_completion(config);

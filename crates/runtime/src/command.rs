@@ -1,12 +1,15 @@
 use std::path::PathBuf;
+use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSetName;
+use tangible_objects_model::FigureColor;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Lifetime;
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
@@ -75,6 +78,15 @@ pub enum ControlCommand {
     /// (TRACKING_STABILIZATION.md). Applies to matching and suppression in
     /// all modes from the next frame on.
     SetCompletion(CompletionConfig),
+    /// Edge-margin ghost filter width - touches closer than `margin` to
+    /// the surface edge are dropped before matching (GUI.md §5).
+    /// Applies in every mode; `0` disables the filter.
+    SetEdgeMargin(Millimeters),
+    /// Legacy single-touch event policy on the filter proxy's virtual
+    /// device (`Auto`/`Always`/`Never`, GUI.md §5). Only the
+    /// `--filter` pipeline emits legacy events; other modes publish it
+    /// as display state.
+    SetLegacyMode(LegacyMode),
     /// Reset the accumulated [`crate::SessionMetrics`] counters - e.g.
     /// between automated test runs.
     ResetMetrics,
@@ -183,6 +195,15 @@ pub enum ControlCommand {
         id: PatternId,
         /// New enabled state.
         enabled: bool,
+    },
+    /// Override a registered pattern's declared render color at
+    /// runtime - session-only (the profile file on disk keeps its
+    /// `color`). The profiles card's color picker sends it.
+    SetProfileColor {
+        /// Pattern to recolor.
+        id: PatternId,
+        /// New render color.
+        color: FigureColor,
     },
     /// Enable or disable a registered field set at runtime - disabled
     /// sets keep their registration but track no occupancy and

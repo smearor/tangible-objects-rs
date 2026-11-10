@@ -1,4 +1,5 @@
 name = "Holzklotz4"
+color = "#c8995c"
 num_points = 3
 tolerance = 3.0
 sorted_sides = [

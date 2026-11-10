@@ -17,12 +17,14 @@ use crate::Combination;
 use crate::CompletionConfig;
 use crate::DEFAULT_SPAWN_STABILITY;
 use crate::Deviations;
+use crate::FigureColor;
 use crate::FrameCount;
 use crate::MatchError;
 use crate::MatchScore;
 use crate::Millimeters;
 use crate::PatternMatch;
 use crate::PatternName;
+use crate::PhysicalShape;
 use crate::PointSet;
 use crate::Region;
 use crate::StageName;
@@ -72,6 +74,10 @@ pub struct TangiblePattern {
     /// Pipeline stage this pattern suppresses through
     /// (EVENT_PIPELINE.md). `None` = the general stage.
     pub stage: Option<StageName>,
+    /// Declared render color - overrides the GUI's hash palette.
+    pub color: Option<FigureColor>,
+    /// Declared physical outline - the GUI's shape render modes.
+    pub shape: Option<PhysicalShape>,
 }
 
 impl TangiblePattern {
@@ -95,6 +101,8 @@ impl TangiblePattern {
             ref_points: Some(points.to_vec().into()),
             regions: Vec::new(),
             stage: None,
+            color: None,
+            shape: None,
         }
     }
 

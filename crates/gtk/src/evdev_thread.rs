@@ -23,6 +23,7 @@ use tangible_objects_runtime::EngineRuntime;
 
 use crate::GuiHooks;
 use crate::background_alpha::BackgroundAlpha;
+use crate::calibration_source::CalibrationSource;
 use crate::field_set_row::FieldSetRow;
 use crate::language_loader;
 use crate::shared_state::SharedState;
@@ -166,6 +167,13 @@ pub fn evdev_thread(
         engine.set_calibration(cal);
         if let Ok(mut s) = state.lock() {
             s.calibration = Some(cal);
+            // The effective calibration differs from the firmware
+            // values exactly when a device profile overrode them.
+            s.calibration_source = Some(if device.calibration() == Some(cal) {
+                CalibrationSource::Device
+            } else {
+                CalibrationSource::Profile
+            });
         }
     }
     // Report the calibration the engine actually uses (profile override
@@ -224,6 +232,22 @@ pub fn evdev_thread(
                 s.positions_visible = runtime.positions_visible();
                 s.touch_passthrough = runtime.touch_passthrough();
                 s.filter_mode = runtime.filter_mode();
+                s.completion = engine.completion();
+                s.legacy_mode = runtime.legacy_mode();
+                s.filter_stability = runtime
+                    .filter_stability()
+                    .map(|frames| frames.as_u64())
+                    .unwrap_or(0);
+                s.metrics = runtime.metrics().clone();
+                s.pattern_styles = engine
+                    .patterns()
+                    .iter()
+                    .map(|pattern| crate::pattern_style::PatternStyle {
+                        pattern_id: pattern.id,
+                        color: pattern.color,
+                        shape: pattern.shape.clone(),
+                    })
+                    .collect();
                 s.incoming_contacts = engine.incoming_contacts();
                 s.edge_filtered = engine.edge_filtered();
                 let (mode_suppressed, forwarded) =
@@ -295,8 +319,23 @@ pub fn evdev_thread(
                     s.grid_visible = runtime.grid_visible();
                     s.positions_visible = runtime.positions_visible();
                     s.touch_passthrough = runtime.touch_passthrough();
-                    s.touch_passthrough = runtime.touch_passthrough();
                     s.filter_mode = runtime.filter_mode();
+                    s.completion = engine.completion();
+                    s.legacy_mode = runtime.legacy_mode();
+                    s.filter_stability = runtime
+                        .filter_stability()
+                        .map(|frames| frames.as_u64())
+                        .unwrap_or(0);
+                    s.metrics = runtime.metrics().clone();
+                    s.pattern_styles = engine
+                        .patterns()
+                        .iter()
+                        .map(|pattern| crate::pattern_style::PatternStyle {
+                            pattern_id: pattern.id,
+                            color: pattern.color,
+                            shape: pattern.shape.clone(),
+                        })
+                        .collect();
                     s.incoming_contacts = engine.incoming_contacts();
                     s.edge_filtered = engine.edge_filtered();
                     let (mode_suppressed, forwarded) = virtual_suppression(

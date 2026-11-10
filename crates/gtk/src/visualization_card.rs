@@ -15,6 +15,7 @@ use gtk4::ToggleButton;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
+use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::language_loader;
@@ -60,6 +61,11 @@ pub fn create_visualization_card(
         ControlCommand::SetFieldsVisible,
     );
     add_overlay_toggle(
+        &fl!(language_loader(), "toggle-dead-zones"),
+        |s| s.dead_zones_visible,
+        ControlCommand::SetDeadZonesVisible,
+    );
+    add_overlay_toggle(
         &fl!(language_loader(), "toggle-ruler"),
         |s| s.ruler_visible,
         ControlCommand::SetRulerVisible,
@@ -79,6 +85,24 @@ pub fn create_visualization_card(
         |s| s.touch_passthrough,
         ControlCommand::SetTouchPassthrough,
     );
+
+    // Render-mode cycler - GUI-local: touch points, physical shape,
+    // or both (GUI.md tangible render modes).
+    let render_btn = Button::with_label(&fl!(language_loader(), "render-mode-both"));
+    let state_render = state.clone();
+    render_btn.connect_clicked(move |_| {
+        let Ok(mut s) = state_render.lock() else {
+            return;
+        };
+        s.render_mode = match s.render_mode {
+            TangibleRenderMode::TouchPoints => TangibleRenderMode::PhysicalGeometry,
+            TangibleRenderMode::PhysicalGeometry => {
+                TangibleRenderMode::TouchPointsAndPhysicalGeometry
+            }
+            TangibleRenderMode::TouchPointsAndPhysicalGeometry => TangibleRenderMode::TouchPoints,
+        };
+    });
+    toggles.append(&render_btn);
 
     toggles.append(&Separator::new(Orientation::Horizontal));
 
@@ -112,6 +136,7 @@ pub fn create_visualization_card(
     });
     toggles.append(&alpha_btn);
 
+    let render_btn_sync = render_btn.clone();
     let state_sync = state.clone();
     let mut applied = state_sync
         .lock()
@@ -155,6 +180,15 @@ pub fn create_visualization_card(
                 btn.set_active(current);
             }
         }
+        render_btn_sync.set_label(&match s.render_mode {
+            TangibleRenderMode::TouchPoints => fl!(language_loader(), "render-mode-points"),
+            TangibleRenderMode::PhysicalGeometry => {
+                fl!(language_loader(), "render-mode-geometry")
+            }
+            TangibleRenderMode::TouchPointsAndPhysicalGeometry => {
+                fl!(language_loader(), "render-mode-both")
+            }
+        });
         ControlFlow::Continue
     });
 

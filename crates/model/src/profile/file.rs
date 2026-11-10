@@ -8,12 +8,14 @@ use serde::Serialize;
 use super::ProfileDir;
 use super::ProfileError;
 use crate::Distances;
+use crate::FigureColor;
 use crate::FrameCount;
 use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
 use crate::PatternTolerance;
 use crate::PatternTolerances;
+use crate::PhysicalShape;
 use crate::PinCount;
 use crate::Region;
 use crate::StageName;
@@ -74,6 +76,15 @@ pub struct ProfileFile {
     /// holding all untagged patterns.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stage: Option<StageName>,
+    /// Declared render color (`color = "#rrggbb"`) - overrides the GUI's
+    /// hash palette when set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<FigureColor>,
+    /// Declared physical outline (`[shape]` section) - rendered by the
+    /// GUI's `PhysicalGeometry`/`TouchPointsAndPhysicalGeometry` render
+    /// modes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<PhysicalShape>,
 }
 
 /// Default enabled state for profile files (`enabled = true`).
@@ -118,6 +129,8 @@ impl ProfileFile {
             points: points.to_vec(),
             regions: Vec::new(),
             stage: None,
+            color: None,
+            shape: None,
         }
     }
 
@@ -140,6 +153,8 @@ impl ProfileFile {
             },
             regions: self.regions.clone(),
             stage: self.stage.clone(),
+            color: self.color,
+            shape: self.shape.clone(),
         }
     }
 

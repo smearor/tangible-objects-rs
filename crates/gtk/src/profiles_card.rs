@@ -16,6 +16,7 @@ use gtk4::Switch;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
+use tangible_objects_model::FigureColor;
 use tangible_objects_model::PatternId;
 use tangible_objects_runtime::ControlCommand;
 
@@ -32,6 +33,8 @@ struct ProfileRow {
     owner: Label,
     /// Enable switch - sends `SetProfileEnabled`.
     enabled: Switch,
+    /// Color preview + picker - sends `SetProfileColor`.
+    color: gtk4::ColorDialogButton,
     /// Current surface position cell.
     position: Label,
 }
@@ -48,6 +51,7 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         fl!(language_loader(), "col-name"),
         fl!(language_loader(), "col-owner"),
         fl!(language_loader(), "col-enabled"),
+        fl!(language_loader(), "col-color"),
         fl!(language_loader(), "col-position"),
     ]
     .iter()
@@ -101,22 +105,62 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     );
                     gtk4::glib::Propagation::Proceed
                 });
+                let color = gtk4::ColorDialogButton::new(Some(gtk4::ColorDialog::new()));
+                let (r, g, b) = crate::draw::figure_color(profile.pattern_id);
+                color.set_rgba(&gtk4::gdk::RGBA::new(r as f32, g as f32, b as f32, 1.0));
+                color.set_halign(gtk4::Align::Start);
+                let pattern_id_color = profile.pattern_id;
+                let state_color = state_tick.clone();
+                color.connect_notify_local(Some("rgba"), move |button, _| {
+                    let rgba = button.rgba();
+                    send_command(
+                        &state_color,
+                        ControlCommand::SetProfileColor {
+                            id: pattern_id_color,
+                            color: FigureColor::new(
+                                rgba.red() as f64,
+                                rgba.green() as f64,
+                                rgba.blue() as f64,
+                            ),
+                        },
+                    );
+                });
                 let position = Label::new(None);
                 position.set_halign(gtk4::Align::Start);
                 let row = index as i32 + 1;
                 grid.attach(&name, 0, row, 1, 1);
                 grid.attach(&owner, 1, row, 1, 1);
                 grid.attach(&enabled, 2, row, 1, 1);
-                grid.attach(&position, 3, row, 1, 1);
+                grid.attach(&color, 3, row, 1, 1);
+                grid.attach(&position, 4, row, 1, 1);
                 rows.push(ProfileRow {
                     id: profile.pattern_id,
                     owner,
                     enabled,
+                    color,
                     position,
                 });
             }
         }
         for (profile, row) in s.profiles.iter().zip(rows.iter()) {
+            // Reflect the live color (declared `color=` or a
+            // `SetProfileColor` from elsewhere).
+            let (r, g, b) = s
+                .pattern_styles
+                .iter()
+                .find(|style| style.pattern_id == profile.pattern_id)
+                .and_then(|style| style.color)
+                .map(|color| color.rgb())
+                .unwrap_or_else(|| crate::draw::figure_color(profile.pattern_id));
+            let current = row.color.rgba();
+            let epsilon = 1.0 / 255.0;
+            if (current.red() as f64 - r).abs() > epsilon
+                || (current.green() as f64 - g).abs() > epsilon
+                || (current.blue() as f64 - b).abs() > epsilon
+            {
+                row.color
+                    .set_rgba(&gtk4::gdk::RGBA::new(r as f32, g as f32, b as f32, 1.0));
+            }
             row.owner.set_label(
                 profile
                     .owner

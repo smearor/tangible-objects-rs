@@ -23,4 +23,5 @@ tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
 tracing.workspace = true
 tangible-objects-runtime = { workspace = true, features = ["gui"] }
+tokio.workspace = true
 gtk4-layer-shell = "0.8"

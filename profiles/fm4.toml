@@ -1,4 +1,5 @@
 name = "FM4"
+color = "#66bb6a"
 spawn_on_partial = true
 spawn_stability = 15
 num_points = 4

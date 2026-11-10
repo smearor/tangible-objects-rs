@@ -1,4 +1,7 @@
 name = "Figur7"
+color = "#4fc3f7"
+# Close to eifelturm-gross.toml
+enabled = false
 num_points = 3
 tolerance = 3.0
 sorted_sides = [

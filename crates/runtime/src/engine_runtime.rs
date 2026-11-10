@@ -7,6 +7,7 @@ use tokio::sync::watch;
 
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
+use tangible_objects_engine::LegacyMode;
 #[cfg(feature = "gui")]
 use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
@@ -16,6 +17,8 @@ use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
+use tangible_objects_model::FrameCount;
+use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
@@ -130,6 +133,14 @@ pub struct EngineRuntime {
     /// Selected suppression policy (`SetFilterMode` command) - display
     /// state in `--gui`; honored by the proxy in `--filter`.
     filter_mode: FilterMode,
+    /// Current edge-margin ghost filter width (Parameters card).
+    edge_margin: Millimeters,
+    /// Current legacy single-touch event policy (Parameters card).
+    legacy_mode: LegacyMode,
+    /// Frame-count stability the filter pipeline was last configured
+    /// with (Parameters card; `None` until a `SetFilterMode` carries
+    /// `stability`).
+    filter_stability: Option<FrameCount>,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -194,6 +205,9 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             touch_passthrough: false,
             filter_mode: FilterMode::default(),
+            edge_margin: Millimeters::new(0.0),
+            legacy_mode: LegacyMode::default(),
+            filter_stability: None,
             #[cfg(feature = "gui")]
             display_rotation: DisplayRotation::default(),
             training: None,
@@ -528,6 +542,38 @@ impl EngineRuntime {
     /// The selected suppression policy.
     pub fn filter_mode(&self) -> FilterMode {
         self.filter_mode
+    }
+
+    /// Publishes the edge-margin ghost filter width (Parameters card).
+    pub fn set_edge_margin(&mut self, margin: Millimeters) {
+        self.edge_margin = margin;
+    }
+
+    /// The currently published edge-margin filter width.
+    pub fn edge_margin(&self) -> Millimeters {
+        self.edge_margin
+    }
+
+    /// Publishes the legacy single-touch event policy (Parameters
+    /// card); the `--filter` pipeline applies it on its boundary.
+    pub fn set_legacy_mode(&mut self, mode: LegacyMode) {
+        self.legacy_mode = mode;
+    }
+
+    /// The currently published legacy event policy.
+    pub fn legacy_mode(&self) -> LegacyMode {
+        self.legacy_mode
+    }
+
+    /// Publishes the last stability frame-count handed to the filter
+    /// pipeline via `SetFilterMode` (Parameters card).
+    pub fn set_filter_stability(&mut self, stability: FrameCount) {
+        self.filter_stability = Some(stability);
+    }
+
+    /// The last published filter stability, `None` when unset.
+    pub fn filter_stability(&self) -> Option<FrameCount> {
+        self.filter_stability
     }
 
     /// Arms remote profile capture (`TrainProfile` command) - the

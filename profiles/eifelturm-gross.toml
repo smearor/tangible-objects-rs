@@ -1,4 +1,5 @@
 name = "Eifelturm gross"
+color = "#8d5a3b"
 # Used by quai-des-orfévres 36
 enabled = false
 spawn_on_partial = false

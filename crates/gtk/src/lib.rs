@@ -9,7 +9,10 @@
 //! [`GuiHooks`] so this crate never links the daemon crate.
 
 mod background_alpha;
+mod calibration_card;
+mod calibration_source;
 mod card_layout;
+mod dead_zones_card;
 mod device_card;
 mod draw;
 mod evdev_thread;
@@ -21,9 +24,13 @@ mod gui_mode;
 mod gui_options;
 mod i18n;
 mod info_card;
+mod metrics_card;
+mod parameters_card;
 mod passthrough;
+mod pattern_style;
 mod profiles_card;
 mod shared_state;
+mod touches_card;
 mod training_card;
 mod visualization_card;
 
@@ -174,6 +181,30 @@ pub fn run_gui(
                 CardAnchor::BottomCenter,
             ),
             (
+                "parameters",
+                parameters_card::create_parameters_card(&state_app),
+                fl!(language_loader(), "card-parameters-title"),
+                CardAnchor::BottomRight,
+            ),
+            (
+                "touches",
+                touches_card::create_touches_card(&state_app),
+                fl!(language_loader(), "card-touches-title"),
+                CardAnchor::BottomCenter,
+            ),
+            (
+                "calibration",
+                calibration_card::create_calibration_card(&state_app),
+                fl!(language_loader(), "card-calibration-title"),
+                CardAnchor::Center,
+            ),
+            (
+                "metrics",
+                metrics_card::create_metrics_card(&state_app),
+                fl!(language_loader(), "card-metrics-title"),
+                CardAnchor::CenterRight,
+            ),
+            (
                 "profiles",
                 profiles_card::create_profiles_card(&state_app),
                 fl!(language_loader(), "card-profiles-title"),
@@ -184,6 +215,12 @@ pub fn run_gui(
                 field_sets_card::create_field_sets_card(&state_app),
                 fl!(language_loader(), "card-field-sets-title"),
                 CardAnchor::TopCenter,
+            ),
+            (
+                "dead-zones",
+                dead_zones_card::create_dead_zones_card(&state_app),
+                fl!(language_loader(), "card-dead-zones-title"),
+                CardAnchor::BottomLeft,
             ),
         ] {
             let _ = board.add_card_with_id(
