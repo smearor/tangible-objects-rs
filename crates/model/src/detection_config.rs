@@ -3,6 +3,7 @@ use crate::DeadZone;
 use crate::FieldSet;
 use crate::Millimeters;
 use crate::Region;
+use crate::Spell;
 
 /// Optional detection settings bundled for the daemon's run modes.
 #[derive(Debug, Clone)]
@@ -23,6 +24,8 @@ pub struct DetectionConfig {
     /// disables it) - contacts held open before the reader attached
     /// become visible to the engine immediately.
     pub import_slots: bool,
+    /// Startup spell set (`spells.d/` runtime-store reload, SPELLS.md).
+    pub spells: Vec<Spell>,
 }
 
 impl Default for DetectionConfig {
@@ -34,6 +37,7 @@ impl Default for DetectionConfig {
             zones: Vec::new(),
             dead_zones: Vec::new(),
             import_slots: true,
+            spells: Vec::new(),
         }
     }
 }

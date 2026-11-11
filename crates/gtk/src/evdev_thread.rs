@@ -111,6 +111,7 @@ pub fn evdev_thread(
     }
     let (
         dead_zones_visible,
+        spells_visible,
         background_alpha,
         edge_margin_visible,
         fields_visible,
@@ -123,6 +124,7 @@ pub fn evdev_thread(
         .map(|s| {
             (
                 s.dead_zones_visible,
+                s.spells_visible,
                 s.background_alpha.percent(),
                 s.edge_margin_visible,
                 s.fields_visible,
@@ -150,6 +152,7 @@ pub fn evdev_thread(
         s.command_handle = Some(handle.clone());
     }
     runtime.set_dead_zones_visible(dead_zones_visible);
+    runtime.set_spells_visible(spells_visible);
     runtime.set_background_alpha(background_alpha.into());
     runtime.set_edge_margin_visible(edge_margin_visible);
     runtime.set_fields_visible(fields_visible);
@@ -220,7 +223,13 @@ pub fn evdev_thread(
                 s.visible = runtime.gui_visible();
                 s.rotation = runtime.display_rotation();
                 s.dead_zones_visible = runtime.dead_zones_visible();
+                s.spells_visible = runtime.spells_visible();
                 s.dead_zones = engine.dead_zones().to_vec();
+                s.trajectories = engine
+                    .gesture_trajectories()
+                    .values()
+                    .map(|traj| traj.points.clone())
+                    .collect();
                 s.edge_margin = engine.edge_margin();
                 s.edge_margin_visible = runtime.edge_margin_visible();
                 s.fields_visible = runtime.fields_visible();
@@ -307,7 +316,16 @@ pub fn evdev_thread(
                     s.visible = runtime.gui_visible();
                     s.rotation = runtime.display_rotation();
                     s.dead_zones_visible = runtime.dead_zones_visible();
+                    s.spells_visible = runtime.spells_visible();
                     s.dead_zones = engine.dead_zones().to_vec();
+                    s.trajectories = engine
+                        .gesture_trajectories()
+                        .values()
+                        .map(|traj| traj.points.clone())
+                        .collect();
+                    if let Some(matched) = frame.spell_matches.first() {
+                        s.last_spell = Some((matched.clone(), std::time::Instant::now()));
+                    }
                     s.dead_zone_filtered = frame.dead_zone_filtered;
                     s.edge_margin = engine.edge_margin();
                     s.edge_margin_visible = runtime.edge_margin_visible();

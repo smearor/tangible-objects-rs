@@ -23,6 +23,9 @@ pub struct GuiOptions {
     /// Whether the dead-zone overlay starts drawn
     /// (`SetDeadZonesVisible` commands toggle afterwards).
     pub dead_zones_visible: bool,
+    /// Whether the spell-gesture overlay starts drawn
+    /// (`SetSpellsVisible` commands toggle afterwards).
+    pub spells_visible: bool,
     /// Whether the edge-margin overlay starts drawn
     /// (`SetEdgeMarginVisible` commands toggle afterwards).
     pub edge_margin_visible: bool,

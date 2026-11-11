@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::Instant;
 
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::CompletionConfig;
@@ -21,9 +22,11 @@ use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::ProfileInfo;
 use tangible_objects_model::SessionMetrics;
+use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
+use tangible_objects_model::Vec2;
 use tangible_objects_runtime::EngineHandle;
 
 use crate::BackgroundAlpha;
@@ -78,6 +81,13 @@ pub struct SharedState {
     /// Whether the dead-zone overlay is drawn
     /// (`SetDeadZonesVisible`/`--dead-zones-visible`).
     pub dead_zones_visible: bool,
+    /// Spell-gesture overlay visible (`SetSpellsVisible`, SPELLS.md).
+    pub spells_visible: bool,
+    /// Live gesture trajectories per slot - debug polylines for the
+    /// spell overlay.
+    pub trajectories: Vec<Vec<Vec2<Millimeters>>>,
+    /// Most recent spell match and when it fired - the match flash.
+    pub last_spell: Option<(SpellMatched, Instant)>,
     /// Contacts dropped by dead-zone filtering on the last frame.
     pub dead_zone_filtered: ContactCount,
     /// Registered field sets (snapshot `field_sets` count).
@@ -166,6 +176,23 @@ pub(crate) fn send_command(state: &Arc<Mutex<SharedState>>, command: ControlComm
     }
 }
 
+/// Like [`send_command`], but builds the command's payload under
+/// the same try-lock - for commands that merge live state (e.g.
+/// `SetCompletion` carrying the untouched fields). A blocking
+/// `state.lock()` inside a `connect_toggled` handler deadlocks
+/// whenever a sync tick holds the guard while calling `set_active`
+/// (non-recursive mutex, same thread).
+pub(crate) fn send_command_built(
+    state: &Arc<Mutex<SharedState>>,
+    build: impl FnOnce(&SharedState) -> ControlCommand,
+) {
+    if let Ok(s) = state.try_lock()
+        && let Some(handle) = &s.command_handle
+    {
+        handle.try_send_command(build(&s)).ok();
+    }
+}
+
 impl SharedState {
     /// Initial state from the launch options - `SetGuiVisible` and
     /// friends toggle the flags afterwards.
@@ -189,6 +216,9 @@ impl SharedState {
             background_alpha_request: None,
             dead_zones: Vec::new(),
             dead_zones_visible: options.dead_zones_visible,
+            spells_visible: options.spells_visible,
+            trajectories: Vec::new(),
+            last_spell: None,
             dead_zone_filtered: ContactCount::default(),
             field_set_count: FieldSetCount::default(),
             field_count: FieldCount::default(),

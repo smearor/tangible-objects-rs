@@ -74,6 +74,7 @@ mod tests {
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PinCount;
     use tangible_objects_model::RotationRad;
+    use tangible_objects_model::SlotSet;
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TrackedTangible;
     use tangible_objects_model::Vec2;
@@ -121,6 +122,9 @@ mod tests {
                 ran_generic: true,
                 candidates_tested: 0.into(),
                 dead_zone_filtered: ContactCount::default(),
+                spell_matches: Vec::new(),
+                gesture_slots: SlotSet::default(),
+                consumed_slots: SlotSet::default(),
             },
             (&tracked()).into(),
         );
@@ -201,6 +205,9 @@ mod tests {
                         ran_generic: true,
                         candidates_tested: 0.into(),
                         dead_zone_filtered: ContactCount::default(),
+                        spell_matches: Vec::new(),
+                        gesture_slots: SlotSet::default(),
+                        consumed_slots: SlotSet::default(),
                     },
                     (&[]).into(),
                 );

@@ -24,6 +24,7 @@ pub(crate) fn persist_registration(registration: &Registration) {
         Registration::Pattern(_) => "profiles.d",
         Registration::FieldSet(_) => "fields.d",
         Registration::DeadZone(_) => "dead_zones.d",
+        Registration::Spell(_) => "spells.d",
     }) else {
         return;
     };
@@ -53,6 +54,11 @@ pub(crate) fn persist_registration(registration: &Registration) {
                     toml::to_string_pretty(zone).unwrap_or_default(),
                 )
             }),
+        ),
+        Registration::Spell(spell) => (
+            spell.name.as_str().to_string(),
+            std::fs::create_dir_all(&store)
+                .and_then(|_| spell.save(&store.join(format!("{}.toml", spell.name)))),
         ),
     };
     match result {

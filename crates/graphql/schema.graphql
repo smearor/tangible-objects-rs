@@ -313,6 +313,18 @@ enum EventKind {
 	"""
 	DEAD_ZONE_UNREGISTERED
 	"""
+	A spell was registered.
+	"""
+	SPELL_REGISTERED
+	"""
+	A spell was removed.
+	"""
+	SPELL_UNREGISTERED
+	"""
+	A gesture matched a spell.
+	"""
+	SPELL_MATCHED
+	"""
 	A scoped tangible stage was created on the pipeline.
 	"""
 	STAGE_REGISTERED
@@ -1083,6 +1095,11 @@ enum RejectionKind {
 	A dead zone with this name is already registered.
 	"""
 	DUPLICATE_DEAD_ZONE
+	"""
+	The spell's exclusive zone overlaps a field (SPELLS.md's
+	zone/field exclusion).
+	"""
+	SPELL_ZONE_OVERLAPS_FIELD
 }
 
 scalar RotationRad

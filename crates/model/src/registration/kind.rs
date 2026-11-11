@@ -33,4 +33,7 @@ pub enum RejectionKind {
     DuplicateFieldSet,
     /// A dead zone with this name is already registered.
     DuplicateDeadZone,
+    /// The spell's exclusive zone overlaps a field (SPELLS.md's
+    /// zone/field exclusion).
+    SpellZoneOverlapsField,
 }

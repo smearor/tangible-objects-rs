@@ -1,6 +1,9 @@
 //! `Spell` - a named multi-finger gesture: per-finger template
 //! strokes plus a matching corridor (SPELLS.md).
 
+use std::path::Path;
+use std::path::PathBuf;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -114,6 +117,46 @@ impl Spell {
             best = best.min(score);
         });
         Some(Millimeters::new(best))
+    }
+}
+
+impl Spell {
+    /// Loads a single spell `.toml` file.
+    pub fn load(path: &Path) -> std::io::Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        toml::from_str(&content)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))
+    }
+
+    /// Loads all `.toml` spell files from a directory, sorted by
+    /// filename. Unreadable or invalid files are skipped and returned
+    /// in the error list.
+    pub fn load_dir(dir: &Path) -> (Vec<Self>, Vec<(PathBuf, std::io::Error)>) {
+        let mut spells = Vec::new();
+        let mut errors = Vec::new();
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return (spells, errors);
+        };
+        let mut files: Vec<PathBuf> = entries
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "toml"))
+            .collect();
+        files.sort();
+        for file in files {
+            match Self::load(&file) {
+                Ok(spell) => spells.push(spell),
+                Err(error) => errors.push((file, error)),
+            }
+        }
+        (spells, errors)
+    }
+
+    /// Saves the spell as a TOML file (runtime-store persistence).
+    pub fn save(&self, path: &Path) -> std::io::Result<()> {
+        let content = toml::to_string_pretty(self)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+        std::fs::write(path, content)
     }
 }
 

@@ -24,6 +24,7 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::SetTracker;
+use tangible_objects_model::Spell;
 use tangible_objects_model::TangibleSet;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedSet;
@@ -79,6 +80,7 @@ pub struct EngineRuntime {
     /// Active dead zones (runtime-store set + dynamically registered)
     /// embedded in every snapshot.
     dead_zones: Vec<DeadZone>,
+    spells: Vec<Spell>,
     /// Contacts dropped by dead-zone filtering on the last processed
     /// frame - forwarded into every snapshot.
     dead_zone_filtered: ContactCount,
@@ -101,6 +103,10 @@ pub struct EngineRuntime {
     /// (`SetDeadZonesVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     dead_zones_visible: bool,
+    /// Whether the GUI draws the live spell-gesture overlay
+    /// (`SetSpellsVisible` command, SPELLS.md) - `gui` feature only.
+    #[cfg(feature = "gui")]
+    spells_visible: bool,
     /// Canvas background opacity (`SetBackgroundAlpha` command) -
     /// only with the `gui` feature.
     #[cfg(feature = "gui")]
@@ -182,6 +188,7 @@ impl EngineRuntime {
             completion: None,
             field_sets: Vec::new(),
             dead_zones: Vec::new(),
+            spells: Vec::new(),
             dead_zone_filtered: ContactCount::default(),
             profiles: profiles.clone(),
             metrics: SessionMetrics::default(),
@@ -190,6 +197,8 @@ impl EngineRuntime {
             gui_visible: true,
             #[cfg(feature = "gui")]
             dead_zones_visible: false,
+            #[cfg(feature = "gui")]
+            spells_visible: false,
             #[cfg(feature = "gui")]
             background_alpha: AlphaPercent::default(),
             #[cfg(feature = "gui")]
@@ -248,6 +257,11 @@ impl EngineRuntime {
         self.dead_zones = dead_zones;
     }
 
+    /// Publishes the spell list (mirrors `engine.spells()`).
+    pub fn set_spells(&mut self, spells: Vec<Spell>) {
+        self.spells = spells;
+    }
+
     /// Adds a registered profile to the shared profile list visible to
     /// interface readers.
     pub fn add_profile(&mut self, info: ProfileInfo) {
@@ -300,6 +314,7 @@ impl EngineRuntime {
             completion: self.completion,
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
+            spells: self.spells.clone(),
             dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
@@ -307,6 +322,8 @@ impl EngineRuntime {
             gui_visible: self.gui_visible,
             #[cfg(feature = "gui")]
             dead_zones_visible: self.dead_zones_visible,
+            #[cfg(feature = "gui")]
+            spells_visible: self.spells_visible,
             #[cfg(feature = "gui")]
             background_alpha: self.background_alpha,
             #[cfg(feature = "gui")]
@@ -329,6 +346,16 @@ impl EngineRuntime {
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
         }
+        // SPELLS.md: completed gesture episodes surface as lifecycle
+        // events - every subscription (GraphQL/D-Bus/MCP/TUI) sees
+        // them without a per-mode drain.
+        for matched in &frame.spell_matches {
+            self.emit_lifecycle(LifecycleEvent::SpellMatched {
+                name: matched.name.clone(),
+                center: matched.center,
+                score: matched.score,
+            });
+        }
     }
 
     /// Publishes the current engine state without a frame - used on the
@@ -345,6 +372,7 @@ impl EngineRuntime {
             completion: self.completion,
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
+            spells: self.spells.clone(),
             dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
@@ -352,6 +380,8 @@ impl EngineRuntime {
             gui_visible: self.gui_visible,
             #[cfg(feature = "gui")]
             dead_zones_visible: self.dead_zones_visible,
+            #[cfg(feature = "gui")]
+            spells_visible: self.spells_visible,
             #[cfg(feature = "gui")]
             background_alpha: self.background_alpha,
             #[cfg(feature = "gui")]
@@ -433,6 +463,21 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn dead_zones_visible(&self) -> bool {
         self.dead_zones_visible
+    }
+
+    /// Shows or hides the live spell-gesture overlay on the GUI
+    /// canvas (`SetSpellsVisible` command, SPELLS.md). Only with the
+    /// `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_spells_visible(&mut self, visible: bool) {
+        self.spells_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the live spell-gesture overlay.
+    /// Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn spells_visible(&self) -> bool {
+        self.spells_visible
     }
 
     /// Sets the canvas background opacity (`SetBackgroundAlpha`
@@ -629,9 +674,14 @@ mod tests {
     use tangible_objects_model::ContactCount;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
+    use tangible_objects_model::LifecycleEvent;
+    use tangible_objects_model::Millimeters;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::RotationRad;
     use tangible_objects_model::SetAction;
+    use tangible_objects_model::SlotSet;
+    use tangible_objects_model::SpellMatched;
+    use tangible_objects_model::SpellName;
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TangibleSet;
     use tangible_objects_model::TangibleSetId;
@@ -667,6 +717,9 @@ mod tests {
             touches: Vec::new(),
             events,
             candidates: Vec::new(),
+            spell_matches: Vec::new(),
+            gesture_slots: SlotSet::default(),
+            consumed_slots: SlotSet::default(),
             ran_generic: true,
             candidates_tested: 0.into(),
             dead_zone_filtered: ContactCount::default(),
@@ -702,6 +755,27 @@ mod tests {
         assert!(matches!(
             receiver.try_recv(),
             Ok(DomainEvent::Set(SetAction::ObjectAdded(_, _)))
+        ));
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[test]
+    fn publish_emits_spell_matched_lifecycle() {
+        let (mut runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
+        let mut receiver = handle.subscribe();
+
+        let mut frame = frame(Vec::new());
+        frame.spell_matches.push(SpellMatched {
+            name: SpellName::new("V"),
+            center: Vec2::new(100.0, 80.0),
+            score: Millimeters::new(3.5),
+        });
+        runtime.publish(&frame, (&Vec::new()).into());
+
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(DomainEvent::Lifecycle(LifecycleEvent::SpellMatched { ref name, .. }))
+                if name.as_str() == "V"
         ));
         assert!(receiver.try_recv().is_err());
     }

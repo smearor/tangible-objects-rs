@@ -2,6 +2,8 @@ use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateReport;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::SlotSet;
+use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TouchPoint;
 
 use super::EngineEvent;
@@ -34,4 +36,15 @@ pub struct EngineFrame {
     /// Contacts dropped by dead-zone filtering this frame - the
     /// ingest-level suppression count (edge-margin ghosts excluded).
     pub dead_zone_filtered: ContactCount,
+    /// Spells recognized on gesture-episode close this frame
+    /// (SPELLS.md - empty on almost every frame).
+    pub spell_matches: Vec<SpellMatched>,
+    /// Slots inside an armed gesture episode (SPELLS.md's
+    /// state-gated suppression) - the filter boundary withholds them
+    /// from the virtual device like matched tangible slots.
+    pub gesture_slots: SlotSet,
+    /// Slots consumed by a spell dispatched this frame - the
+    /// boundary drops their withheld events permanently instead of
+    /// replaying the stroke onto the desktop.
+    pub consumed_slots: SlotSet,
 }

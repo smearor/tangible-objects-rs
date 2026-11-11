@@ -66,4 +66,4 @@ gtk4 = "0.11"
 gio = "0.22"
 glib = "0.22"
 cairo-rs = "0.22"
-floating-board = { git = "https://github.com/smearor/floating-board-rs.git", branch = "main" }
+floating-board = { path = "../floating-board-rs" }

@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::Instant;
 
 use i18n_embed_fl::fl;
 use tangible_objects_model::Calibration;
@@ -15,6 +16,7 @@ use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PhysicalShape;
 use tangible_objects_model::Pixels;
 use tangible_objects_model::Region;
+use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::TrackedSet;
@@ -96,6 +98,9 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
         cal.mm_to_screen(*pos, Vec2::new(w, h), rotation)
     };
 
+    if s.spells_visible {
+        draw_spells(cr, &s.trajectories, s.last_spell.as_ref(), &to_screen);
+    }
     if s.dead_zones_visible {
         draw_dead_zones(cr, &s.dead_zones, touches.into(), &to_screen);
     }
@@ -140,6 +145,66 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     }
     if s.ruler_visible {
         draw_ruler(cr, w, h, &cal, &to_screen, rotation);
+    }
+}
+
+/// Spell-gesture overlay (SPELLS.md): live finger trajectories as
+/// fading polylines plus a flash of the matched spell's name at the
+/// gesture centroid - the debug view for the recognition pipeline.
+fn draw_spells(
+    cr: &cairo::Context,
+    trajectories: &[Vec<Vec2<Millimeters>>],
+    last_spell: Option<&(SpellMatched, Instant)>,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    // Live trajectories: cyan-ish strokes, newest points brightest.
+    for (ti, traj) in trajectories.iter().enumerate() {
+        let color = figure_color((ti as u32).into());
+        cr.set_line_width(3.0);
+        cr.set_line_cap(cairo::LineCap::Round);
+        for window in traj.windows(2) {
+            let a = to_screen(&window[0]);
+            let b = to_screen(&window[1]);
+            cr.set_source_rgba(color.0, color.1, color.2, 0.7);
+            cr.move_to(a.x, a.y);
+            cr.line_to(b.x, b.y);
+            let _ = cr.stroke();
+        }
+        // Head marker.
+        if let Some(last) = traj.last() {
+            let p = to_screen(last);
+            cr.set_source_rgba(color.0, color.1, color.2, 0.9);
+            cr.arc(p.x, p.y, 6.0, 0.0, 2.0 * std::f64::consts::PI);
+            let _ = cr.fill();
+        }
+    }
+
+    // Match flash: spell name at the gesture centroid, fading out
+    // over ~1.5 s.
+    let Some((matched, at)) = last_spell else {
+        return;
+    };
+    let age = at.elapsed().as_secs_f64();
+    let alpha = (1.5 - age).clamp(0.0, 1.0);
+    if alpha <= 0.0 {
+        return;
+    }
+    let center = to_screen(&matched.center);
+    cr.set_source_rgba(1.0, 1.0, 1.0, 0.25 * alpha);
+    cr.arc(
+        center.x,
+        center.y,
+        60.0 + age * 40.0,
+        0.0,
+        2.0 * std::f64::consts::PI,
+    );
+    let _ = cr.stroke();
+    cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
+    cr.set_font_size(36.0);
+    cr.set_source_rgba(1.0, 1.0, 1.0, alpha);
+    if let Ok(ext) = cr.text_extents(matched.name.as_str()) {
+        cr.move_to(center.x - ext.width() / 2.0, center.y);
+        let _ = cr.show_text(matched.name.as_str());
     }
 }
 

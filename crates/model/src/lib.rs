@@ -190,6 +190,7 @@ pub use spell::REFERENCE_EXTENT_MM;
 pub use spell::STROKE_SAMPLES;
 pub use spell::Spell;
 pub use spell::SpellArming;
+pub use spell::SpellMatched;
 pub use spell::SpellName;
 pub use spell::StrokePolyline;
 pub use square_millimeters::SquareMillimeters;

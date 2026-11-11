@@ -6,6 +6,7 @@ use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::SessionMetrics;
+use tangible_objects_model::Spell;
 use tangible_objects_model::TangibleSetId;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
@@ -38,6 +39,8 @@ pub struct EngineSnapshot {
     pub field_sets: Vec<FieldSet>,
     /// Active dead zones - startup set plus dynamically registered ones.
     pub dead_zones: Vec<DeadZone>,
+    /// Registered spells (SPELLS.md).
+    pub spells: Vec<Spell>,
     /// Accumulated session recognition metrics - uptime, re-ID churn,
     /// match quality, per-slot contact stability.
     pub metrics: SessionMetrics,
@@ -57,6 +60,10 @@ pub struct EngineSnapshot {
     /// feature.
     #[cfg(feature = "gui")]
     pub dead_zones_visible: bool,
+    /// Whether the spell-gesture overlay draws (`SetSpellsVisible`,
+    /// SPELLS.md) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub spells_visible: bool,
     /// Canvas background opacity (`SetBackgroundAlpha` command) -
     /// only present with the `gui` feature.
     #[cfg(feature = "gui")]

@@ -3,10 +3,13 @@ use crate::DeadZoneName;
 use crate::FieldSetName;
 use crate::FilterMode;
 use crate::FrameCount;
+use crate::Millimeters;
 use crate::Owner;
 use crate::PatternId;
 use crate::PatternName;
+use crate::SpellName;
 use crate::StageName;
+use crate::Vec2;
 use serde::Serialize;
 
 /// Lifecycle event emitted when the device loop *applies* a control
@@ -57,6 +60,27 @@ pub enum LifecycleEvent {
     DeadZoneUnregistered {
         /// Removed dead-zone name.
         name: DeadZoneName,
+    },
+    /// A spell was registered.
+    SpellRegistered {
+        /// Registered spell name.
+        name: SpellName,
+        /// Owning application, when bound to one.
+        owner: Option<Owner>,
+    },
+    /// A spell was removed (unregister or owner cleanup).
+    SpellUnregistered {
+        /// Removed spell name.
+        name: SpellName,
+    },
+    /// A gesture completed inside a spell's corridor (SPELLS.md).
+    SpellMatched {
+        /// The matched spell.
+        name: SpellName,
+        /// Surface position of the gesture centroid (mm).
+        center: Vec2<Millimeters>,
+        /// Worst per-stroke deviation of the winning assignment.
+        score: Millimeters,
     },
     /// A scoped tangible stage was created on the pipeline - the first
     /// `stage = "name"` profile registered (EVENT_PIPELINE.md phase 6).

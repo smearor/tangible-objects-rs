@@ -25,13 +25,19 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RawEvent;
+use tangible_objects_model::Region;
 use tangible_objects_model::RegistrationError;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::SmoothingAlpha;
+use tangible_objects_model::Spell;
+use tangible_objects_model::SpellArming;
+use tangible_objects_model::SpellMatched;
+use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TakenIndices;
 use tangible_objects_model::TangiblePattern;
 use tangible_objects_model::TouchPoint;
+use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::TrackedSet;
 use tracing::debug;
@@ -39,8 +45,11 @@ use tracing::debug;
 use super::EngineEvent;
 use super::EngineFrame;
 use super::FieldTracker;
+use super::GestureTracker;
+use super::RemovedRegistrations;
 use super::TouchState;
 use super::Tracker;
+use super::Trajectory;
 use super::smoothed_contacts::SmoothedContacts;
 
 /// Default EMA smoothing factor for tracked poses.
@@ -69,6 +78,8 @@ pub struct Engine {
     tracker: Tracker,
     /// Occupancy tracking for single-contact field sets.
     fields: FieldTracker,
+    /// Per-slot gesture trajectories and spell dispatch (SPELLS.md).
+    gestures: GestureTracker,
     /// Raw-to-millimeter conversion derived from the device's `ABS_INFO`,
     /// possibly overridden by the device profile. `None` on replays
     /// without an evtest header.
@@ -88,6 +99,8 @@ pub struct Engine {
     dead_zones: DeadZones,
     /// Owner per dynamically added dead zone, keyed by zone name.
     dead_zone_owners: HashMap<DeadZoneName, Option<Owner>>,
+    /// Owner per dynamically registered spell, keyed by spell name.
+    spell_owners: HashMap<SpellName, Option<Owner>>,
     /// Touches dropped by dead-zone filtering on the last processed
     /// frame - the ingest-level suppression counter.
     dead_zone_filtered: ContactCount,
@@ -140,12 +153,14 @@ impl Engine {
                 DEFAULT_MAX_FRAMES_WITHOUT_MATCH,
             ),
             fields: FieldTracker::new(),
+            gestures: GestureTracker::new(),
             completion: CompletionConfig::default(),
             next_pattern_id,
             pattern_owners: HashMap::new(),
             field_set_owners: HashMap::new(),
             dead_zones: DeadZones::default(),
             dead_zone_owners: HashMap::new(),
+            spell_owners: HashMap::new(),
             dead_zone_filtered: ContactCount::default(),
             edge_filtered: ContactCount::default(),
             incoming_contacts: ContactCount::default(),
@@ -159,6 +174,78 @@ impl Engine {
     }
 
     /// Sets the device calibration used for raw-to-mm conversion.
+    /// Replaces the spell set (`set_spells` in the load path).
+    pub fn set_spells(&mut self, spells: Vec<Spell>) {
+        self.gestures.set_spells(spells);
+    }
+
+    /// Registers a spell at runtime (`Register`/`Registration::Spell`).
+    ///
+    /// Rejects an `exclusive-zone` spell whose region overlaps a
+    /// field - the zone reserves its area for gestures while the
+    /// field expects occupancy (SPELLS.md's zone/field exclusion).
+    pub fn add_spell(
+        &mut self,
+        spell: Spell,
+        owner: Option<Owner>,
+    ) -> Result<(), RegistrationError> {
+        if let SpellArming::ExclusiveZone { region } = &spell.arming {
+            for set in self.fields.sets() {
+                for field in &set.fields {
+                    if region.overlaps(&field.region) {
+                        return Err(RegistrationError::SpellZoneOverlapsField(
+                            spell.name.clone(),
+                            field.name.clone(),
+                        ));
+                    }
+                }
+            }
+        }
+        self.spell_owners.insert(spell.name.clone(), owner);
+        self.gestures.add_spell(spell);
+        Ok(())
+    }
+
+    /// Exclusive spell zones (SPELLS.md): regions where contacts
+    /// never form NEW tangible matches - incumbent re-matching is
+    /// unaffected, so tracked tangibles may be dragged through.
+    fn spell_zones(&self) -> impl Iterator<Item = Region> + '_ {
+        self.gestures
+            .spells()
+            .iter()
+            .filter_map(|s| match &s.arming {
+                SpellArming::ExclusiveZone { region } => Some(*region),
+                _ => None,
+            })
+    }
+
+    /// Unregisters a spell - `false` when unknown.
+    pub fn remove_spell(&mut self, name: &SpellName) -> bool {
+        self.spell_owners.remove(name);
+        self.gestures.remove_spell(name)
+    }
+
+    /// Owner recorded for a spell, if any.
+    pub fn spell_owner(&self, name: &SpellName) -> Option<&Owner> {
+        self.spell_owners.get(name).and_then(Option::as_ref)
+    }
+
+    /// The registered spells.
+    pub fn spells(&self) -> &[Spell] {
+        self.gestures.spells()
+    }
+
+    /// Live gesture trajectories per slot (debug overlay source).
+    pub fn gesture_trajectories(&self) -> &HashMap<TouchPointSlot, Trajectory> {
+        self.gestures.trajectories()
+    }
+
+    /// Slots inside an armed gesture episode - the spell
+    /// suppression set (SPELLS.md).
+    pub fn gesture_slots(&self) -> SlotSet {
+        self.gestures.gesture_slots(std::time::Instant::now())
+    }
+
     pub fn set_calibration(&mut self, calibration: Calibration) {
         self.calibration = Some(calibration);
         self.touch_state.set_calibration(calibration);
@@ -326,14 +413,7 @@ impl Engine {
     /// (disconnect cleanup). Returns `(id, name)` pairs for patterns
     /// and names for field sets and dead zones - names let the caller
     /// remove persisted files too.
-    pub fn remove_by_owner(
-        &mut self,
-        owner: &Owner,
-    ) -> (
-        Vec<(PatternId, PatternName)>,
-        Vec<FieldSetName>,
-        Vec<DeadZoneName>,
-    ) {
+    pub fn remove_by_owner(&mut self, owner: &Owner) -> RemovedRegistrations {
         let patterns: Vec<(PatternId, PatternName)> = self
             .pattern_owners
             .iter()
@@ -365,7 +445,21 @@ impl Engine {
         for name in &zone_names {
             self.remove_dead_zone(name);
         }
-        (patterns, set_names, zone_names)
+        let spell_names: Vec<SpellName> = self
+            .spell_owners
+            .iter()
+            .filter(|(_, o)| o.as_ref() == Some(owner))
+            .map(|(name, _)| name.clone())
+            .collect();
+        for name in &spell_names {
+            self.remove_spell(name);
+        }
+        RemovedRegistrations {
+            patterns,
+            field_sets: set_names,
+            dead_zones: zone_names,
+            spells: spell_names,
+        }
     }
 
     /// Adds an occupancy field set at runtime; rejected on overlapping
@@ -574,6 +668,11 @@ impl Engine {
         touches.retain(|touch| !self.dead_zones.contains(&touch.pos));
         self.dead_zone_filtered = (before_dead_zones - touches.len()).into();
         self.smooth_touches(&mut touches);
+        let spell_matches: Vec<SpellMatched> = self
+            .gestures
+            .observe_frame(&touches, self.tracker.active().0, std::time::Instant::now())
+            .into_iter()
+            .collect();
         // Compared before matching (SKIP_UNCHANGED.md): the generic pass
         // is a pure function of the smoothed touch set, so it only runs
         // when it can find something new - changed contacts, a pending
@@ -604,6 +703,20 @@ impl Engine {
                         .map(|(index, _)| index),
                 );
             }
+        }
+        // SPELLS.md's exclusive spell zones: contacts inside a
+        // registered zone reserve the area for gestures and never
+        // form NEW matches. The incumbent pass below is unaffected -
+        // a tracked tangible may be dragged through the zone.
+        let zones: Vec<Region> = self.spell_zones().collect();
+        if !zones.is_empty() {
+            reserved.extend(
+                touches
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, touch)| zones.iter().any(|z| z.contains(&touch.pos)))
+                    .map(|(index, _)| index),
+            );
         }
 
         // Pass 2: incumbent re-match on the genuinely matched slots only
@@ -727,6 +840,9 @@ impl Engine {
             ran_generic,
             candidates_tested,
             dead_zone_filtered: self.dead_zone_filtered,
+            spell_matches,
+            gesture_slots: self.gestures.gesture_slots(std::time::Instant::now()),
+            consumed_slots: self.gestures.take_consumed(),
         })
     }
 
@@ -1060,18 +1176,19 @@ mod tests {
                 Some("game".into()),
             )
             .expect("register field set");
-        let (patterns, sets, zones) = engine.remove_by_owner(&"game".into());
-        assert_eq!(patterns.len(), 1);
-        assert_eq!(sets, vec!["grid".into()]);
-        assert!(zones.is_empty());
+        let removed = engine.remove_by_owner(&"game".into());
+        assert_eq!(removed.patterns.len(), 1);
+        assert_eq!(removed.field_sets, vec!["grid".into()]);
+        assert!(removed.dead_zones.is_empty());
+        assert!(removed.spells.is_empty());
         assert!(engine.patterns().is_empty());
         assert!(engine.field_sets().is_empty());
         // Other owners stay untouched.
         engine
             .add_pattern(&shape, Some("other".into()))
             .expect("register");
-        let (patterns, _, _) = engine.remove_by_owner(&"game".into());
-        assert!(patterns.is_empty());
+        let removed = engine.remove_by_owner(&"game".into());
+        assert!(removed.patterns.is_empty());
         assert_eq!(engine.patterns().len(), 1);
     }
 

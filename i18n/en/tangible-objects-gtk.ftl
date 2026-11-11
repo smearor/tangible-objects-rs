@@ -105,3 +105,4 @@ render-mode-points = Render: points
 render-mode-geometry = Render: shape
 render-mode-both = Render: both
 col-color = Color
+toggle-spells = Spells

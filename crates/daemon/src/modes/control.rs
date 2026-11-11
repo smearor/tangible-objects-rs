@@ -225,6 +225,24 @@ pub(crate) fn apply_registration(
                         }
                     }
                 }
+                Registration::Spell(ref spell) => {
+                    let name = spell.name.clone();
+                    match engine.add_spell(spell.clone(), owner.clone()) {
+                        Ok(()) => {
+                            info!(%name, ?owner, %lifetime, "spell registered");
+                            runtime.set_spells(engine.spells().to_vec());
+                            runtime.emit_lifecycle(LifecycleEvent::SpellRegistered {
+                                name: name.clone(),
+                                owner: owner.clone(),
+                            });
+                            Ok(RegistrationApplied::Spell)
+                        }
+                        Err(reason) => {
+                            warn!(%reason, "spell rejected");
+                            Err(reason)
+                        }
+                    }
+                }
             };
             if result.is_ok() && lifetime == Lifetime::Persistent {
                 persist_registration(&registration);
@@ -293,6 +311,16 @@ pub(crate) fn apply_registration(
                 warn!(%name, "dead zone not found");
             }
         }
+        ControlCommand::UnregisterSpell { name } => {
+            if engine.remove_spell(&name) {
+                runtime.set_spells(engine.spells().to_vec());
+                unpersist("spells.d", name.as_str());
+                runtime.emit_lifecycle(LifecycleEvent::SpellUnregistered { name: name.clone() });
+                info!(%name, "spell removed");
+            } else {
+                warn!(%name, "spell not found");
+            }
+        }
         ControlCommand::SetProfileEnabled { id, enabled } => {
             if engine.set_pattern_enabled(id, enabled) {
                 runtime.set_profile_enabled(id, enabled);
@@ -313,25 +341,30 @@ pub(crate) fn apply_registration(
             }
         }
         ControlCommand::UnregisterOwner { owner } => {
-            let (patterns, field_sets, dead_zones) = engine.remove_by_owner(&owner);
-            for (id, name) in &patterns {
+            let removed = engine.remove_by_owner(&owner);
+            for (id, name) in &removed.patterns {
                 runtime.remove_profile(*id);
                 unpersist("profiles.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::ProfileUnregistered { pattern_id: *id });
             }
-            for name in &field_sets {
+            for name in &removed.field_sets {
                 unpersist("fields.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
             }
-            for name in &dead_zones {
+            for name in &removed.dead_zones {
                 unpersist("dead_zones.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::DeadZoneUnregistered { name: name.clone() });
             }
+            for name in &removed.spells {
+                unpersist("spells.d", name.as_str());
+                runtime.emit_lifecycle(LifecycleEvent::SpellUnregistered { name: name.clone() });
+            }
             runtime.set_field_sets(engine.field_sets().to_vec());
             runtime.set_dead_zones(engine.dead_zones().to_vec());
+            runtime.set_spells(engine.spells().to_vec());
             info!(
-                %owner, profiles = patterns.len(), field_sets = field_sets.len(),
-                dead_zones = dead_zones.len(),
+                %owner, profiles = removed.patterns.len(), field_sets = removed.field_sets.len(),
+                dead_zones = removed.dead_zones.len(), spells = removed.spells.len(),
                 "owner cleaned up"
             );
         }
@@ -351,6 +384,11 @@ pub(crate) fn apply_registration(
         ControlCommand::SetDeadZonesVisible(visible) => {
             info!(%visible, "dead-zone overlay toggled");
             runtime.set_dead_zones_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetSpellsVisible(visible) => {
+            info!(%visible, "spell overlay toggled");
+            runtime.set_spells_visible(visible);
         }
         #[cfg(feature = "gui")]
         ControlCommand::SetBackgroundAlpha(percent) => {

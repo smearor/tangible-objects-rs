@@ -64,6 +64,7 @@ pub fn run_live(
     }
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
+    engine.set_spells(config.spells);
     engine.set_completion(config.completion);
     info!("Ctrl+C to quit\n");
 
@@ -74,6 +75,7 @@ pub fn run_live(
     runtime.set_completion(config.completion);
     runtime.set_field_sets(engine.field_sets().to_vec());
     runtime.set_dead_zones(engine.dead_zones().to_vec());
+    runtime.set_spells(engine.spells().to_vec());
     spawn_interfaces(&handle, &interfaces);
     // Report the calibration the engine actually uses (profile override
     // applied), not the firmware-reported one - clients size their field

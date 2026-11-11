@@ -49,6 +49,9 @@ impl From<RegistrationError> for RegistrationRejected {
             ),
             RegistrationError::DuplicateFieldSet(_) => (RejectionKind::DuplicateFieldSet, None),
             RegistrationError::DuplicateDeadZone(_) => (RejectionKind::DuplicateDeadZone, None),
+            RegistrationError::SpellZoneOverlapsField(_, _) => {
+                (RejectionKind::SpellZoneOverlapsField, None)
+            }
         };
         Self {
             reason: error.to_string(),

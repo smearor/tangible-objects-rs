@@ -14,4 +14,6 @@ pub enum RegistrationApplied {
     /// A dead zone registered - the name was already known by the
     /// caller.
     DeadZone,
+    /// A spell registered - the name was already known by the caller.
+    Spell,
 }

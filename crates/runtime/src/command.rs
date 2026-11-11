@@ -18,6 +18,7 @@ use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
 use tangible_objects_model::RegistrationError;
+use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
 use tokio::sync::oneshot;
 
@@ -140,6 +141,12 @@ pub enum ControlCommand {
         /// Dead zone to remove.
         name: DeadZoneName,
     },
+    /// Remove a registered spell by name (`Registration::Spell`
+    /// undo, SPELLS.md).
+    UnregisterSpell {
+        /// Spell to remove.
+        name: SpellName,
+    },
     /// Remove every pattern, field set and dead zone owned by `owner` -
     /// used for explicit app cleanup and D-Bus disconnect handling.
     UnregisterOwner {
@@ -159,6 +166,9 @@ pub enum ControlCommand {
     /// availability as [`Self::SetGuiVisible`] - headless daemons
     /// ignore it.
     SetDeadZonesVisible(bool),
+    /// Show or hide the live spell-gesture overlay
+    /// (SPELLS.md debug visualization).
+    SetSpellsVisible(bool),
     /// Canvas background opacity (`--background-alpha`). Same
     /// availability as [`Self::SetGuiVisible`] - headless daemons
     /// ignore it.

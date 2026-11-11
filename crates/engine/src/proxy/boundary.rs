@@ -90,7 +90,15 @@ impl EmitBoundary {
     /// globally when *any* stage carries it, `Guarded` withholds when any
     /// stage is guarded (released by that stage's own gate), and a lift
     /// releases the slot on every stage.
-    pub fn finish(&mut self, stages: &mut Stages, matched: &SlotSet) -> Vec<InputEvent> {
+    /// `consumed`: slots a spell consumed this frame (SPELLS.md) -
+    /// their withheld events drop permanently instead of replaying
+    /// the stroke onto the desktop on release.
+    pub fn finish(
+        &mut self,
+        stages: &mut Stages,
+        matched: &SlotSet,
+        consumed: &SlotSet,
+    ) -> Vec<InputEvent> {
         let mode = stages.merged_mode();
         let stability_gate = stages.merged_gate();
 
@@ -131,7 +139,11 @@ impl EmitBoundary {
         // replayed so nothing is lost.
         let mut release = Vec::new();
         for (&slot, held) in self.held.iter_mut() {
-            if mode != FilterMode::Guarded || stages.was_suppressed(slot) {
+            if consumed.contains(&slot) {
+                // A spell consumed the stroke - the withheld events
+                // die with it, never reaching the virtual device.
+                release.push(slot);
+            } else if mode != FilterMode::Guarded || stages.was_suppressed(slot) {
                 release.push(slot);
             } else if matched.contains(&slot) {
                 held.unmatched = FrameCount::new(0);
@@ -144,6 +156,9 @@ impl EmitBoundary {
         }
         for slot in release {
             let held = self.held.remove(&slot).unwrap_or_default();
+            if consumed.contains(&slot) {
+                continue; // spell-consumed: drop the withheld events
+            }
             if mode == FilterMode::Guarded && stages.was_suppressed(slot) {
                 continue; // pending tangible: drop the withheld events
             }

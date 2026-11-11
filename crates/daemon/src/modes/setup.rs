@@ -14,6 +14,7 @@ use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::Spell;
 use tracing::info;
 use tracing::warn;
 
@@ -160,6 +161,24 @@ pub fn load_dead_zones() -> Vec<DeadZone> {
         zones.extend(stored);
     }
     zones
+}
+
+/// Loads the startup spells from the runtime store (`spells.d/`
+/// under the config directory - `Lifetime::Persistent`
+/// registrations reload with the daemon). Invalid files are
+/// reported and skipped.
+pub fn load_spells() -> Vec<Spell> {
+    let mut spells = Vec::new();
+    if let Some(store) = runtime_store_dir("spells.d")
+        && store.is_dir()
+    {
+        let (stored, errors) = Spell::load_dir(&store);
+        for (file, error) in &errors {
+            warn!(file = %file.display(), %error, "spell could not be loaded");
+        }
+        spells.extend(stored);
+    }
+    spells
 }
 
 /// Loads occupancy field sets from a file or directory (`--fields`).

@@ -194,22 +194,35 @@ impl Pipeline {
     /// Finishes the buffered frame with `matched` treated as the general
     /// stage's set - the unscoped convenience for single-scope setups.
     pub fn finish(&mut self, matched: &SlotSet, touches: TouchSet<'_>) -> Vec<InputEvent> {
+        self.finish_consumed(matched, touches, &SlotSet::default())
+    }
+
+    /// `finish` with spell-consumed slots dropped at the boundary.
+    pub fn finish_consumed(
+        &mut self,
+        matched: &SlotSet,
+        touches: TouchSet<'_>,
+        consumed: &SlotSet,
+    ) -> Vec<InputEvent> {
         let scoped = ScopedMatches::from([(None, matched.clone())]);
-        self.finish_scoped(&scoped, touches)
+        self.finish_scoped(&scoped, touches, consumed)
     }
 
     /// Finishes the buffered frame: every stage classifies the subset of
     /// `matched` keyed by its own scope (input masking), then the emit
     /// boundary merges the stage decisions - the mechanism sees the
     /// union - into the emitted frame, ending in `SYN_REPORT`.
+    /// `consumed`: spell-consumed slots (SPELLS.md) - their withheld
+    /// events drop permanently at the boundary.
     pub fn finish_scoped(
         &mut self,
         matched: &ScopedMatches,
         touches: TouchSet<'_>,
+        consumed: &SlotSet,
     ) -> Vec<InputEvent> {
         self.stages.classify(matched, touches);
         let union: SlotSet = matched.values().flatten().copied().collect();
-        self.emit.finish(&mut self.stages, &union)
+        self.emit.finish(&mut self.stages, &union, consumed)
     }
 
     /// Union of every stage's suppressed slots after the last
@@ -784,7 +797,7 @@ mod tests {
             .entry(None)
             .or_default()
             .insert(TouchPointSlot::new(1));
-        let out = pipeline.finish_scoped(&scoped, TouchSet::EMPTY);
+        let out = pipeline.finish_scoped(&scoped, TouchSet::EMPTY, &SlotSet::default());
         // "game" matched slot suppressed immediately; the general slot
         // is still inside its gate and passes. Without scope narrowing
         // the Immediate mode would have suppressed slot 1 as well.

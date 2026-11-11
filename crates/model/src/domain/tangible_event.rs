@@ -184,6 +184,9 @@ impl From<&LifecycleEvent> for TangibleEvent {
             LifecycleEvent::FieldSetUnregistered { .. } => EventKind::FieldSetUnregistered,
             LifecycleEvent::DeadZoneRegistered { .. } => EventKind::DeadZoneRegistered,
             LifecycleEvent::DeadZoneUnregistered { .. } => EventKind::DeadZoneUnregistered,
+            LifecycleEvent::SpellRegistered { .. } => EventKind::SpellRegistered,
+            LifecycleEvent::SpellUnregistered { .. } => EventKind::SpellUnregistered,
+            LifecycleEvent::SpellMatched { .. } => EventKind::SpellMatched,
             LifecycleEvent::StageRegistered { .. } => EventKind::StageRegistered,
             LifecycleEvent::StageUnregistered { .. } => EventKind::StageUnregistered,
             LifecycleEvent::CompletionChanged(_) => EventKind::CompletionChanged,
@@ -218,6 +221,24 @@ impl From<&LifecycleEvent> for TangibleEvent {
             }
             LifecycleEvent::DeadZoneUnregistered { name } => {
                 event_out.name = Some(name.to_string());
+            }
+            LifecycleEvent::SpellRegistered { name, owner } => {
+                event_out.name = Some(name.to_string());
+                event_out.owner = owner.clone();
+            }
+            LifecycleEvent::SpellUnregistered { name } => {
+                event_out.name = Some(name.to_string());
+            }
+            LifecycleEvent::SpellMatched {
+                name,
+                center,
+                score,
+            } => {
+                event_out.name = Some(name.to_string());
+                event_out.detail = Some(format!(
+                    "at {:.0},{:.0} mm (score {:.1} mm)",
+                    center.x, center.y, score
+                ));
             }
             LifecycleEvent::StageRegistered { name }
             | LifecycleEvent::StageUnregistered { name } => {

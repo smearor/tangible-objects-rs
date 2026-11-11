@@ -80,6 +80,7 @@ pub fn run_filter(
     }
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
+    engine.set_spells(config.spells);
     engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;
@@ -100,6 +101,7 @@ pub fn run_filter(
     runtime.set_completion(config.completion);
     runtime.set_field_sets(engine.field_sets().to_vec());
     runtime.set_dead_zones(engine.dead_zones().to_vec());
+    runtime.set_spells(engine.spells().to_vec());
     spawn_interfaces(&handle, &interfaces);
     // Report the calibration the engine actually uses (profile override
     // applied), not the firmware-reported one - clients size their field
@@ -305,10 +307,21 @@ pub fn run_filter(
                     );
                 }
             }
+            // Spell gesture contacts are withheld like matched
+            // tangible slots - a stroke in progress never reaches the
+            // virtual device (SPELLS.md's state-gated suppression).
+            scoped
+                .entry(None)
+                .or_default()
+                .extend(engine_frame.gesture_slots.iter().copied());
             // `suppress`-enabled field sets suppress via the pipeline's
             // field stage (SINGLE_CONTACT_FIELD.md) - the daemon merge is
             // gone.
-            let out = pipeline.finish_scoped(&scoped, (&engine_frame.touches).into());
+            let out = pipeline.finish_scoped(
+                &scoped,
+                (&engine_frame.touches).into(),
+                &engine_frame.consumed_slots,
+            );
             virtual_device.emit(&out).into_diagnostic()?;
             if let Some(recording) = &mut proxy_recording {
                 recording.record_out(out.iter().map(RawEvent::from));

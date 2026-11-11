@@ -4,6 +4,7 @@ use crate::FieldSetName;
 use crate::PatternId;
 use crate::PatternName;
 use crate::Region;
+use crate::SpellName;
 use thiserror::Error;
 
 /// Errors produced by runtime profile and field-set registration
@@ -34,4 +35,11 @@ pub enum RegistrationError {
     /// A dead zone with this name is already registered.
     #[error("dead zone '{0}' already registered")]
     DuplicateDeadZone(DeadZoneName),
+    /// The spell's exclusive zone overlaps a field - the zone
+    /// reserves its area for gestures while the field expects
+    /// occupancy (SPELLS.md). Carries the spell and the offending
+    /// field so the rejection explains itself in logs and
+    /// responses.
+    #[error("spell '{0}' exclusive zone overlaps field '{1}'")]
+    SpellZoneOverlapsField(SpellName, FieldName),
 }

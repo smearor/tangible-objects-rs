@@ -149,6 +149,7 @@ mod tests {
     use tangible_objects_model::Milliseconds;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternTolerance;
+    use tangible_objects_model::SlotSet;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
@@ -172,6 +173,9 @@ mod tests {
             ran_generic: true,
             candidates_tested: 0.into(),
             dead_zone_filtered: ContactCount::default(),
+            spell_matches: Vec::new(),
+            gesture_slots: SlotSet::default(),
+            consumed_slots: SlotSet::default(),
             candidates: vec![CandidateReport {
                 pattern_id: PatternId::new(5),
                 pattern_name: "TestFigur-5P".into(),

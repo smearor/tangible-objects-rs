@@ -172,6 +172,10 @@ struct Cli {
     /// `set_dead_zones_visible` toggles it afterwards
     #[arg(long)]
     dead_zones_visible: bool,
+    /// Draw the live spell-gesture overlay on the GUI canvas (--gui);
+    /// `set_spells_visible` toggles it afterwards (SPELLS.md)
+    #[arg(long)]
+    spells_visible: bool,
     /// Draw the edge-margin overlay on the GUI canvas (--gui);
     /// `set_edge_margin_visible` toggles it afterwards
     #[arg(long)]
@@ -243,6 +247,7 @@ fn main() -> Result<()> {
             completion,
             zones: cli.zone.clone(),
             dead_zones: modes::load_dead_zones(),
+            spells: modes::load_spells(),
             import_slots: !cli.no_import_slots,
         })
     };
@@ -333,6 +338,7 @@ fn main() -> Result<()> {
                     .map(BackgroundAlpha::from_percent)
                     .unwrap_or_default(),
                 dead_zones_visible: cli.dead_zones_visible,
+                spells_visible: cli.spells_visible,
                 edge_margin_visible: cli.edge_margin_visible,
                 fields_visible: cli.fields_visible,
                 ruler_visible: cli.ruler_visible,

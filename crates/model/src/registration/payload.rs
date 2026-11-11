@@ -1,6 +1,7 @@
 use crate::DeadZone;
 use crate::FieldSet;
 use crate::ProfileFile;
+use crate::Spell;
 
 /// A dynamically registerable entity (DYNAMIC_PROFILES.md).
 ///
@@ -14,6 +15,8 @@ pub enum Registration {
     Pattern(ProfileFile),
     /// An occupancy field set.
     FieldSet(FieldSet),
+    /// A spell - a trainable multi-finger gesture (SPELLS.md).
+    Spell(Spell),
     /// A dead zone - a blacklisted surface position suppressing ghost
     /// contacts at ingest.
     DeadZone(DeadZone),

@@ -66,6 +66,11 @@ pub fn create_visualization_card(
         ControlCommand::SetDeadZonesVisible,
     );
     add_overlay_toggle(
+        &fl!(language_loader(), "toggle-spells"),
+        |s| s.spells_visible,
+        ControlCommand::SetSpellsVisible,
+    );
+    add_overlay_toggle(
         &fl!(language_loader(), "toggle-ruler"),
         |s| s.ruler_visible,
         ControlCommand::SetRulerVisible,

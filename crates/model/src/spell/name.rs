@@ -21,6 +21,12 @@ impl SpellName {
     }
 }
 
+impl std::fmt::Display for SpellName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl From<String> for SpellName {
     fn from(name: String) -> Self {
         Self::new(name)

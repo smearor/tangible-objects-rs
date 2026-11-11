@@ -26,7 +26,7 @@ use tangible_objects_runtime::ControlCommand;
 
 use crate::language_loader;
 use crate::shared_state::SharedState;
-use crate::shared_state::send_command;
+use crate::shared_state::send_command_built;
 
 /// A linked button row: the group plus the last synced value.
 struct Row<T: Copy + PartialEq> {
@@ -71,7 +71,7 @@ pub fn create_parameters_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             (CompletionMode::Exact, fl!(language_loader(), "param-exact")),
         ],
         |state, mode| {
-            let mut config = state.lock().map(|s| s.completion).unwrap_or_default();
+            let mut config = state.completion;
             config.mode = mode;
             ControlCommand::SetCompletion(config)
         },
@@ -87,7 +87,7 @@ pub fn create_parameters_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             (2u32, "2".to_string()),
         ],
         |state, missing| {
-            let mut config = state.lock().map(|s| s.completion).unwrap_or_default();
+            let mut config = state.completion;
             config.max_missing = missing;
             ControlCommand::SetCompletion(config)
         },
@@ -105,7 +105,7 @@ pub fn create_parameters_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             (3.0f64, "3.0".to_string()),
         ],
         |state, radius| {
-            let mut config = state.lock().map(|s| s.completion).unwrap_or_default();
+            let mut config = state.completion;
             config.radius_factor = radius;
             ControlCommand::SetCompletion(config)
         },
@@ -121,13 +121,10 @@ pub fn create_parameters_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         &(0u64..=5)
             .map(|frames| (frames, frames.to_string()))
             .collect::<Vec<_>>(),
-        |state, frames| {
-            let mode = state.lock().map(|s| s.filter_mode).unwrap_or_default();
-            ControlCommand::SetFilterMode {
-                mode,
-                stability: Some(FrameCount::new(frames)),
-                stage: None,
-            }
+        |state, frames| ControlCommand::SetFilterMode {
+            mode: state.filter_mode,
+            stability: Some(FrameCount::new(frames)),
+            stage: None,
         },
     );
     let mut legacy = add_row(
@@ -165,25 +162,36 @@ pub fn create_parameters_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
     );
     let state_bounds = state.clone();
     bounds_toggle.connect_toggled(move |button| {
-        if let Ok(mut s) = state_bounds.lock() {
+        if let Ok(mut s) = state_bounds.try_lock() {
             s.profile_bounds_visible = button.is_active();
         }
     });
 
     let state_sync = state.clone();
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
-        let s = match state_sync.lock() {
-            Ok(s) => s,
-            Err(_) => return ControlFlow::Continue,
+        // Read under lock, drop the guard BEFORE `Row::sync` -
+        // `set_active` re-fires `connect_toggled`, whose command
+        // build locks `state` again (non-recursive mutex
+        // self-deadlock, seen in production).
+        let Ok(s) = state_sync.lock() else {
+            return ControlFlow::Continue;
         };
-        completion_mode.sync(s.completion.mode);
-        completion_missing.sync(s.completion.max_missing);
-        completion_radius.sync(s.completion.radius_factor);
-        stability.sync(s.filter_stability);
-        legacy.sync(s.legacy_mode);
-        edge.sync(s.edge_margin);
-        if s.profile_bounds_visible != bounds_toggle_sync.is_active() {
-            bounds_toggle_sync.set_active(s.profile_bounds_visible);
+        let mode = s.completion.mode;
+        let missing = s.completion.max_missing;
+        let radius = s.completion.radius_factor;
+        let stability_frames = s.filter_stability;
+        let legacy_mode = s.legacy_mode;
+        let margin = s.edge_margin;
+        let bounds = s.profile_bounds_visible;
+        drop(s);
+        completion_mode.sync(mode);
+        completion_missing.sync(missing);
+        completion_radius.sync(radius);
+        stability.sync(stability_frames);
+        legacy.sync(legacy_mode);
+        edge.sync(margin);
+        if bounds != bounds_toggle_sync.is_active() {
+            bounds_toggle_sync.set_active(bounds);
         }
         ControlFlow::Continue
     });
@@ -203,7 +211,7 @@ fn add_row<T: Copy + PartialEq + 'static>(
     state: &Arc<Mutex<SharedState>>,
     name: &str,
     values: &[(T, String)],
-    command: impl Fn(&Arc<Mutex<SharedState>>, T) -> ControlCommand + 'static,
+    command: impl Fn(&SharedState, T) -> ControlCommand + 'static,
 ) -> Row<T> {
     let command = std::rc::Rc::new(command);
     let name_label = Label::new(Some(name));
@@ -228,7 +236,7 @@ fn add_row<T: Copy + PartialEq + 'static>(
         let command = command.clone();
         button.connect_toggled(move |b| {
             if b.is_active() {
-                send_command(&state_click, command(&state_click, value));
+                send_command_built(&state_click, |s| command(s, value));
             }
         });
         button_box.append(&button);
