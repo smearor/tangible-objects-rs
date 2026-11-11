@@ -3,9 +3,9 @@ use serde::Serialize;
 
 use super::AffinityFactor;
 use super::CompletionMode;
-use super::SmoothingAlpha;
 #[cfg(feature = "cynic")]
 use crate::schema;
+use smearor_commons_geometry::SmoothingAlpha;
 
 /// Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
 ///

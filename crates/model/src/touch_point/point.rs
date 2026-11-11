@@ -14,16 +14,6 @@ use serde::Serialize;
 /// the position.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
-#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
-#[cfg_attr(
-    feature = "cynic",
-    cynic(
-        schema_path = "../graphql/schema.graphql",
-        graphql_type = "TouchPoint",
-        no_deserialize,
-        rename_all = "camelCase"
-    )
-)]
 pub struct TouchPoint {
     /// Multitouch slot number the contact is assigned to.
     pub slot: TouchPointSlot,
@@ -70,5 +60,29 @@ impl<'de> Deserialize<'de> for TouchPoint {
             tracking_id: h.tracking_id,
             pos,
         })
+    }
+}
+
+#[cfg(feature = "cynic")]
+impl cynic::QueryFragment for TouchPoint {
+    type SchemaType = schema::TouchPoint;
+    type VariablesFields = ();
+    const TYPE: Option<&'static str> = Some("TouchPoint");
+
+    /// Selects `slot`, `trackingId` and `pos { x y }` - the response
+    /// still decodes through the hand-written `Deserialize`, the
+    /// fields are selection markers only.
+    fn query(
+        builder: cynic::queries::SelectionBuilder<'_, Self::SchemaType, Self::VariablesFields>,
+    ) {
+        let mut builder = builder;
+        let _ =
+            builder.select_field::<schema::__fields::TouchPoint::slot, schema::TouchPointSlot>();
+        let _ =
+            builder.select_field::<schema::__fields::TouchPoint::trackingId, schema::TrackingId>();
+        let mut pos = builder.select_field::<schema::__fields::TouchPoint::pos, schema::Point>();
+        let mut point = pos.select_children::<()>();
+        let _ = point.select_field::<schema::__fields::Point::x, f64>();
+        let _ = point.select_field::<schema::__fields::Point::y, f64>();
     }
 }

@@ -27,7 +27,7 @@ cynic::impl_scalar!(crate::SpellName, schema::SpellName);
 cynic::impl_scalar!(crate::RawAxisValue, schema::RawAxisValue);
 cynic::impl_scalar!(crate::RecordLabel, schema::RecordLabel);
 cynic::impl_scalar!(crate::RotationRad, schema::RotationRad);
-cynic::impl_scalar!(crate::completion::SmoothingAlpha, schema::SmoothingAlpha);
+cynic::impl_scalar!(crate::SmoothingAlpha, schema::SmoothingAlpha);
 cynic::impl_scalar!(crate::StageName, schema::StageName);
 cynic::impl_scalar!(crate::TangibleId, schema::TangibleId);
 cynic::impl_scalar!(crate::TangibleSetId, schema::TangibleSetId);

@@ -2,12 +2,12 @@
 //! touches fall through to the desktop beneath except where a card is
 //! hit (`SetTouchPassthrough` / `--touch-passthrough`).
 
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
 use floating_board::FloatingBoard;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::time::Duration;
 use tracing::debug;
 
 use crate::shared_state::SharedState;

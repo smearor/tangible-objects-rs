@@ -3369,6 +3369,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 
 [[package]]
+name = "smearor-commons-geometry"
+version = "0.1.0"
+source = "git+https://github.com/smearor/smearor-commons.git#8b64db3a118dc3b7d1be0cb5e2d2b986a625cd6e"
+dependencies = [
+ "async-graphql",
+ "schemars",
+ "serde",
+ "thiserror 2.0.21",
+ "zvariant",
+]
+
+[[package]]
 name = "smearor-wrot-rotation"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3764,6 +3776,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "smearor-commons-geometry",
  "thiserror 2.0.21",
  "toml 0.8.23",
  "zvariant",

@@ -7,9 +7,7 @@
 mod affinity;
 mod config;
 mod mode;
-mod smoothing;
 
 pub use affinity::AffinityFactor;
 pub use config::CompletionConfig;
 pub use mode::CompletionMode;
-pub use smoothing::SmoothingAlpha;

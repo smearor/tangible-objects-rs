@@ -10,11 +10,11 @@ homepage.workspace = true
 description = "Domain model for the tangible-objects platform: touch points, patterns, profiles."
 
 [features]
-async-graphql = ["dep:async-graphql"]
+async-graphql = ["dep:async-graphql", "smearor-commons-geometry/async-graphql"]
 cynic = ["dep:cynic", "dep:serde_json"]
 evdev = ["dep:evdev"]
-mcp = ["dep:schemars"]
-zbus = ["dep:zvariant"]
+mcp = ["dep:schemars", "smearor-commons-geometry/schemars"]
+zbus = ["dep:zvariant", "smearor-commons-geometry/zbus"]
 
 [dependencies]
 async-graphql = { workspace = true, optional = true }
@@ -22,6 +22,7 @@ cynic = { workspace = true, optional = true }
 evdev = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde.workspace = true
+smearor-commons-geometry.workspace = true
 serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
 toml.workspace = true

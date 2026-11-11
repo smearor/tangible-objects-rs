@@ -20,16 +20,6 @@ use crate::Vec2;
 /// interface default radius is 10 mm.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
-#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
-#[cfg_attr(
-    feature = "cynic",
-    cynic(
-        schema_path = "../graphql/schema.graphql",
-        graphql_type = "DeadZone",
-        no_deserialize,
-        rename_all = "camelCase"
-    )
-)]
 pub struct DeadZone {
     /// Identity of the zone - addresses it for unregister and the
     /// runtime store.
@@ -84,5 +74,28 @@ impl DeadZone {
             }
         }
         (zones, errors)
+    }
+}
+
+#[cfg(feature = "cynic")]
+impl cynic::QueryFragment for DeadZone {
+    type SchemaType = schema::DeadZone;
+    type VariablesFields = ();
+    const TYPE: Option<&'static str> = Some("DeadZone");
+
+    /// Selects `name`, `center { x y }` and `radius` - the response
+    /// still decodes through `Deserialize`, the fields are selection
+    /// markers only.
+    fn query(
+        builder: cynic::queries::SelectionBuilder<'_, Self::SchemaType, Self::VariablesFields>,
+    ) {
+        let mut builder = builder;
+        let _ = builder.select_field::<schema::__fields::DeadZone::name, schema::DeadZoneName>();
+        let mut center =
+            builder.select_field::<schema::__fields::DeadZone::center, schema::Point>();
+        let mut point = center.select_children::<()>();
+        let _ = point.select_field::<schema::__fields::Point::x, f64>();
+        let _ = point.select_field::<schema::__fields::Point::y, f64>();
+        let _ = builder.select_field::<schema::__fields::DeadZone::radius, schema::Millimeters>();
     }
 }
