@@ -3,13 +3,13 @@
 
 use async_graphql::Error;
 use async_graphql::Result;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::StageName;
-use tangible_objects_model::Vec2;
 
 /// Input for `registerPattern`: a figure defined by its pin positions.
 #[derive(async_graphql::InputObject)]

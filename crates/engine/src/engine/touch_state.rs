@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::ABS_MT_POSITION_X;
 use tangible_objects_model::ABS_MT_POSITION_Y;
 use tangible_objects_model::ABS_MT_SLOT;
@@ -11,7 +12,6 @@ use tangible_objects_model::RawEvent;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TrackingId;
-use tangible_objects_model::Vec2;
 
 /// Multitouch slot state machine for the Linux type B protocol.
 ///

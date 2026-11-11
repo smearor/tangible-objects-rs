@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tangible_objects_model::SmoothingAlpha;
+use smearor_commons_geometry::SmoothingAlpha;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 
@@ -48,11 +48,11 @@ impl SmoothedContacts {
 #[cfg(test)]
 mod tests {
     use super::SmoothedContacts;
-    use tangible_objects_model::SmoothingAlpha;
+    use smearor_commons_geometry::SmoothingAlpha;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     fn touch(slot: u32, tracking: i32, x: f64, y: f64) -> TouchPoint {
         TouchPoint {

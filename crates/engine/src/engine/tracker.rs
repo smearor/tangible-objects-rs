@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::SmoothingAlpha;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
-use tangible_objects_model::RotationRad;
-use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TouchSet;
 
@@ -266,14 +266,14 @@ impl Tracker {
 mod tests {
     use super::*;
     use crate::EngineEvent;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::SmoothingAlpha;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
     use tangible_objects_model::RefIndices;
-    use tangible_objects_model::RotationRad;
-    use tangible_objects_model::SmoothingAlpha;
-    use tangible_objects_model::Vec2;
 
     fn pattern_match(id: u32, x: f64, y: f64) -> PatternMatch {
         PatternMatch {

@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
 use std::ops::Deref;
 
 use crate::Deviations;
-use crate::Millimeters;
 use crate::PointSet;
 
 /// Sorted pairwise-distance fingerprint of a point set.

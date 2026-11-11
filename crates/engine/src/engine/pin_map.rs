@@ -5,11 +5,11 @@
 
 use std::collections::HashMap;
 
+use smearor_commons_geometry::RotationRad;
 use tangible_objects_model::CombinationBuf;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::RefIndex;
 use tangible_objects_model::RefPoints;
-use tangible_objects_model::RotationRad;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TouchSet;
@@ -97,17 +97,17 @@ impl PinMap {
 #[cfg(test)]
 mod tests {
     use super::PinMap;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::ClaimedIndices;
     use tangible_objects_model::CombinationBuf;
     use tangible_objects_model::FrameCount;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
-    use tangible_objects_model::RotationRad;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     /// Touch points `slot`, `(x, y)` - a fixed square under `angle`.
     fn touches(angle: f64) -> Vec<TouchPoint> {

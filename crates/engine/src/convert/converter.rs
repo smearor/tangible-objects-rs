@@ -3,12 +3,12 @@ use std::io::BufWriter;
 use std::io::Write;
 use std::path::Path;
 
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::ABS_MT_POSITION_X;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeviceProfile;
 use tangible_objects_model::EventCode;
 use tangible_objects_model::EventType;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::RawEvent;
 
 use super::ConvertStats;

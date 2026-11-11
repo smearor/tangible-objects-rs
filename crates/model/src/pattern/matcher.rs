@@ -16,13 +16,13 @@ use crate::CombinationBuf;
 use crate::Combinations;
 use crate::CompletionConfig;
 use crate::MatchScore;
-use crate::Millimeters;
 use crate::PatternMatch;
 use crate::PointSet;
 use crate::RefIndices;
 use crate::TangiblePattern;
 use crate::TouchSet;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 impl<'a> PatternSet<'a> {
     /// Finds all pattern matches in the current set of touch points.
@@ -438,7 +438,6 @@ mod tests {
     use super::combinations;
     use super::combinations_within;
     use crate::CompletionConfig;
-    use crate::Millimeters;
     use crate::PatternSet;
     use crate::Region;
     use crate::TakenIndices;
@@ -446,7 +445,8 @@ mod tests {
     use crate::TouchPoint;
     use crate::TouchPointSlot;
     use crate::TrackingId;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn touch_point(slot: u32, x: f64, y: f64) -> TouchPoint {
         TouchPoint {

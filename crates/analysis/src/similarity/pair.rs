@@ -1,14 +1,14 @@
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::Deviation;
 use tangible_objects_model::Distances;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::PointSet;
 use tangible_objects_model::TangiblePattern;
-use tangible_objects_model::Vec2;
 
 use super::MatchRisk;
 use super::subset_collision::SubsetCollision;

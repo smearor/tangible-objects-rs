@@ -1,9 +1,9 @@
 use crate::Combination;
-use crate::Millimeters;
 use crate::PointSet;
 use crate::RefPoints;
-use crate::RotationRad;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::Vec2;
 
 /// Rigid 2D transform (rotation + translation) fitted to the measured
 /// points. `mapping[i]` maps `measured[i]` to `refs[mapping[i]]` -
@@ -48,10 +48,10 @@ impl RigidTransform {
 #[cfg(test)]
 mod tests {
     use super::RigidTransform;
-    use crate::Millimeters;
     use crate::PointSet;
     use crate::RefPoints;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn refs() -> RefPoints {
         vec![

@@ -2,9 +2,8 @@
 use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::Millimeters;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// Window anchor of a [`crate::FieldSet`]: the top-left corner of the
 /// application's window in screen millimeters.
@@ -54,8 +53,8 @@ impl WindowAnchor {
 #[cfg(test)]
 mod tests {
     use super::WindowAnchor;
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     #[test]
     fn to_local_subtracts_the_offset() {

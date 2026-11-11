@@ -6,21 +6,21 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use i18n_embed_fl::fl;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PhysicalShape;
-use tangible_objects_model::Pixels;
 use tangible_objects_model::Region;
 use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchSet;
 use tangible_objects_model::TrackedSet;
-use tangible_objects_model::Vec2;
 
 use crate::evdev_thread::STABLE_THRESHOLD;
 use crate::gui_mode::GuiMode;

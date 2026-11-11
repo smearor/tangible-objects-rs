@@ -3,10 +3,10 @@ use std::fmt::Display;
 
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::CombinationBuf;
 use tangible_objects_model::Combinations;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternSet;
 use tangible_objects_model::PointSet;

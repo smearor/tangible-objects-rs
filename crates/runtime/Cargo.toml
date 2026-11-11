@@ -19,6 +19,7 @@ async-graphql = { workspace = true, optional = true }
 serde.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
+smearor-commons-geometry.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 zvariant = { workspace = true, optional = true }

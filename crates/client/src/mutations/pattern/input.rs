@@ -1,8 +1,8 @@
 //! `RegisterPatternInput` - the cynic input object for
 //! `registerPattern`/`updateProfile`, a wire DTO of [`ProfileFile`].
 
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;

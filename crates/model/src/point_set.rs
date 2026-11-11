@@ -1,9 +1,9 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::Vec2;
 use std::ops::Deref;
 
-use crate::Millimeters;
 use crate::PointBuf;
-use crate::RotationRad;
-use crate::Vec2;
 
 /// Measured contact positions of one frame - a borrowed view, not an
 /// allocation.
@@ -124,8 +124,8 @@ impl<'a> Deref for PointSet<'a> {
 #[cfg(test)]
 mod tests {
     use super::PointSet;
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     #[test]
     fn rotation_of_triangle_uses_opposite_vertex() {

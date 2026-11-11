@@ -1,9 +1,9 @@
 use crate::CompletionConfig;
 use crate::DeadZone;
 use crate::FieldSet;
-use crate::Millimeters;
 use crate::Region;
 use crate::Spell;
+use smearor_commons_geometry::Millimeters;
 
 /// Optional detection settings bundled for the daemon's run modes.
 #[derive(Debug, Clone)]

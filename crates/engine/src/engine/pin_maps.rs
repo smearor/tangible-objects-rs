@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+use smearor_commons_geometry::RotationRad;
 use tangible_objects_model::PatternMatch;
-use tangible_objects_model::RotationRad;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TouchSet;
 
@@ -65,19 +65,19 @@ impl DerefMut for PinMaps {
 #[cfg(test)]
 mod tests {
     use super::PinMaps;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::ClaimedIndices;
     use tangible_objects_model::CombinationBuf;
     use tangible_objects_model::FrameCount;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternMatch;
     use tangible_objects_model::RefIndices;
-    use tangible_objects_model::RotationRad;
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     fn square() -> Vec<Vec2<Millimeters>> {
         vec![

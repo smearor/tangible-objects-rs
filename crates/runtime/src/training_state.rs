@@ -2,12 +2,12 @@
 //! capture request living on the runtime; the device loops call
 //! [`TrainingState::tick`] per frame and register the built profile.
 
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::TouchPoint;
-use tangible_objects_model::Vec2;
 
 /// Default tolerance for remotely trained profiles (matches the GUI's
 /// save button).

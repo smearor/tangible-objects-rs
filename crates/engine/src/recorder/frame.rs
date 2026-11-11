@@ -141,11 +141,12 @@ mod tests {
     use super::FrameContext;
     use super::FrameRecorder;
     use crate::EngineFrame;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::CandidateReport;
     use tangible_objects_model::ContactCount;
     use tangible_objects_model::Deviation;
     use tangible_objects_model::EventCount;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::Milliseconds;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternTolerance;
@@ -153,7 +154,6 @@ mod tests {
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     fn temp_path(name: &str) -> std::path::PathBuf {
         std::env::temp_dir().join(format!("robofigure-{name}-{}", std::process::id()))

@@ -1,10 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::UnitsPerMm;
 use std::fmt::Display;
 use std::ops::Div;
 use std::ops::Sub;
-
-use crate::UnitsPerMm;
 
 /// Raw axis value reported by the device (bounds of `ABS_MT_POSITION_X/Y`).
 ///

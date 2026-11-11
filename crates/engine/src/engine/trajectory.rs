@@ -1,8 +1,8 @@
 //! `Trajectory` - one contact's accumulated gesture stroke in
 //! surface millimeters (SPELLS.md).
 
-use tangible_objects_model::Millimeters;
-use tangible_objects_model::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// Ordered stroke points with cumulative path length - the gesture
 /// tracker's per-slot record, decimated while collecting.

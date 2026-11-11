@@ -1,10 +1,10 @@
+use smearor_commons_geometry::Millimeters;
 use std::ops::Deref;
 
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::PatternTolerance;
-use crate::Millimeters;
 
 /// Per-index tolerances of a pattern - parallel to the sorted
 /// distance fingerprint.

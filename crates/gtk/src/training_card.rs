@@ -24,10 +24,10 @@ use gtk4::Orientation;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
-use tangible_objects_model::Vec2;
 use tracing::error;
 use tracing::info;
 

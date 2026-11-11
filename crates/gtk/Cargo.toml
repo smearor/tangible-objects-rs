@@ -21,6 +21,7 @@ rust-embed.workspace = true
 toml.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
+smearor-commons-geometry.workspace = true
 tracing.workspace = true
 tangible-objects-runtime = { workspace = true, features = ["gui"] }
 tokio.workspace = true

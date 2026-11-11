@@ -22,7 +22,8 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::time::Instant;
 
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::Region;
 use tangible_objects_model::SlotSet;
@@ -34,7 +35,6 @@ use tangible_objects_model::TangibleId;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TrackedTangible;
-use tangible_objects_model::Vec2;
 
 use super::Trajectory;
 use crate::engine::spell_training::SpellTraining;
@@ -495,14 +495,15 @@ fn all_points_inside(strokes: &[Vec<Vec2<Millimeters>>], region: &Region) -> boo
 #[cfg(test)]
 mod tests {
     use super::GestureTracker;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
     use std::time::Instant;
     use tangible_objects_model::FingerCount;
     use tangible_objects_model::FrameCount;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternName;
     use tangible_objects_model::Region;
-    use tangible_objects_model::RotationRad;
     use tangible_objects_model::Spell;
     use tangible_objects_model::SpellArming;
     use tangible_objects_model::SpellMatched;
@@ -511,7 +512,6 @@ mod tests {
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TrackedTangible;
-    use tangible_objects_model::Vec2;
 
     fn touch(slot: u32, x: f64, y: f64) -> TouchPoint {
         TouchPoint {

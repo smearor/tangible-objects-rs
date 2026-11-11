@@ -1,3 +1,6 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::Vec2;
 use std::ops::Deref;
 
 use serde::Deserialize;
@@ -9,13 +12,10 @@ use super::RotationFit;
 use crate::BestScore;
 use crate::Combination;
 use crate::CombinationBuf;
-use crate::Millimeters;
 use crate::PatternTolerance;
 use crate::PointSet;
 use crate::RefIndices;
 use crate::RigidTransform;
-use crate::RotationRad;
-use crate::Vec2;
 
 /// Maximum number of correspondence mappings enumerated for a solve -
 /// symmetric footprints admit factorially many; the deterministic
@@ -207,12 +207,12 @@ impl Deref for RefPoints {
 #[cfg(test)]
 mod tests {
     use super::RefPoints;
-    use crate::Millimeters;
     use crate::PatternTolerance;
     use crate::PointSet;
     use crate::RefIndex;
     use crate::RefIndices;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     /// Rotates/translates every ref point by `angle` + `translate`.
     fn moved(refs: &RefPoints, angle: f64) -> Vec<Vec2<Millimeters>> {

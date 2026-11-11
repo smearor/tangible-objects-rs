@@ -5,7 +5,7 @@ use std::time::Duration;
 
 /// A duration or timestamp in milliseconds.
 ///
-/// Unit counterpart to [`crate::Millimeters`]; used for frame timestamps in
+/// Unit counterpart to [`smearor_commons_geometry::Millimeters`]; used for frame timestamps in
 /// recordings (`timestamp_ms`). Wraps the plain `u64` so timestamps cannot be
 /// confused with frame numbers or millimeter values. Serializes as a bare
 /// number.

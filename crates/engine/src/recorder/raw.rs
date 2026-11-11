@@ -158,7 +158,7 @@ fn axis_block(
     code: EventCode,
     min: tangible_objects_model::RawAxisValue,
     max: tangible_objects_model::RawAxisValue,
-    resolution: tangible_objects_model::UnitsPerMm,
+    resolution: smearor_commons_geometry::UnitsPerMm,
 ) -> String {
     format!(
         "    Event code {} ({})\n      Value        0\n      Min          {}\n      Max          {}\n      Resolution   {}\n",

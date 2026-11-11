@@ -1,6 +1,6 @@
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Region;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::TouchPointSlot;
@@ -94,13 +94,13 @@ mod tests {
     use super::EdgeStage;
     use super::Stage;
     use crate::proxy::stage_frame::StageFrame;
-    use tangible_objects_model::Millimeters;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::Region;
     use tangible_objects_model::SlotSet;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     fn surface() -> Region {
         Region {

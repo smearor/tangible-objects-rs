@@ -1,8 +1,8 @@
 //! `FieldInput` - the cynic input object for one occupancy cell.
 
 use cynic::InputObject;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::FieldName;
-use tangible_objects_model::Millimeters;
 
 /// The `FieldInput` input object - a flat-named occupancy cell with
 /// millimeter bounds.

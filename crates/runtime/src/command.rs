@@ -1,3 +1,4 @@
+use smearor_commons_geometry::Millimeters;
 use std::path::PathBuf;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::AlphaPercent;
@@ -9,7 +10,6 @@ use tangible_objects_model::FigureColor;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::Lifetime;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;

@@ -1,5 +1,5 @@
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternTolerance;
 
 /// Per-cell accumulation state of the collision matrix.

@@ -83,7 +83,7 @@ mod tests {
     use crate::PinCount;
     use crate::RefIndex;
     use crate::RefPoints;
-    use crate::Vec2;
+    use smearor_commons_geometry::Vec2;
 
     /// `all` produces the full `0..n` pin range.
     #[test]

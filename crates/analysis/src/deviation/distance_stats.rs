@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 
 /// Per-distance-index deviation statistics of one pattern over a
 /// recording - the causal "why did the match fail" answer.

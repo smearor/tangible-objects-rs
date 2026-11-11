@@ -2,13 +2,13 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::DisplayRotation;
-use crate::Millimeters;
-use crate::Pixels;
 use crate::RawAxisValue;
 use crate::Region;
 use crate::SurfaceFit;
-use crate::UnitsPerMm;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::UnitsPerMm;
+use smearor_commons_geometry::Vec2;
 
 /// Device calibration: converts raw device coordinates into millimeters.
 ///
@@ -137,7 +137,7 @@ impl Calibration {
 mod tests {
     use super::Calibration;
     use crate::RawAxisValue;
-    use crate::Vec2;
+    use smearor_commons_geometry::Vec2;
 
     #[test]
     fn raw_coordinate_converts_to_mm() {

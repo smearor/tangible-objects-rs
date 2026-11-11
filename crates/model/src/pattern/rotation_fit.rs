@@ -1,5 +1,5 @@
 use crate::RefIndices;
-use crate::RotationRad;
+use smearor_commons_geometry::RotationRad;
 
 /// A correspondence-fitted rotation (ROTATION.md): the solved angle
 /// plus the pin assignment it was fitted under.

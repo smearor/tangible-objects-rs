@@ -1,8 +1,8 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::ops::Deref;
 
-use crate::Millimeters;
 use crate::PointSet;
-use crate::Vec2;
 
 /// Owned set of measured contact positions - the materialized
 /// counterpart of the borrowed [`PointSet`] view.

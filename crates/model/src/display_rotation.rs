@@ -1,3 +1,5 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::fmt;
 use std::str::FromStr;
 
@@ -7,9 +9,6 @@ use crate::schema;
 use serde::Deserialize;
 #[cfg(not(feature = "cynic"))]
 use serde::Serialize;
-
-use crate::Millimeters;
-use crate::Vec2;
 
 /// Quarter-turn rotation of the *display output* relative to the touch
 /// panel's native orientation.
@@ -116,8 +115,8 @@ impl FromStr for DisplayRotation {
 #[cfg(test)]
 mod tests {
     use super::DisplayRotation;
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     #[test]
     fn quarter_turns_rotate_inside_bounds() {

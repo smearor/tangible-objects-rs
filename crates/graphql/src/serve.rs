@@ -65,6 +65,8 @@ async fn graphiql() -> impl IntoResponse {
 #[cfg(test)]
 mod tests {
     use super::build_schema;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
     use tangible_objects_model::ContactCount;
@@ -73,11 +75,9 @@ mod tests {
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PinCount;
-    use tangible_objects_model::RotationRad;
     use tangible_objects_model::SlotSet;
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TrackedTangible;
-    use tangible_objects_model::Vec2;
     use tangible_objects_runtime::ControlCommand;
     use tangible_objects_runtime::EngineRuntime;
     use tangible_objects_runtime::ProfileInfo;

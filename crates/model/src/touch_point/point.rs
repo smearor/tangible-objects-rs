@@ -1,12 +1,12 @@
 use super::TouchPointSlot;
 use super::TrackingId;
-use crate::Millimeters;
-use crate::Vec2;
 #[cfg(feature = "cynic")]
 use crate::schema;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// A single active multitouch contact tracked by its slot.
 ///

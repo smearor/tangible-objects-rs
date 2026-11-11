@@ -108,13 +108,13 @@ mod tests {
     use crate::EventKind;
     use crate::StreamEvent;
     use crate::TangibleEvent;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
-    use tangible_objects_model::RotationRad;
     use tangible_objects_model::TangibleId;
     use tangible_objects_model::TrackedTangible;
-    use tangible_objects_model::Vec2;
 
     fn event(kind: EventKind) -> TangibleEvent {
         TangibleEvent {

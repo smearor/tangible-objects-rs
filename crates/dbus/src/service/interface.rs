@@ -10,6 +10,7 @@
 //! maps them onto the same `s`/`u`/`t`/`d` signatures the plain
 //! string/integer args produced before.
 
+use smearor_commons_geometry::SmoothingAlpha;
 use std::path::Path;
 use tangible_objects_model::AffinityFactor;
 use tangible_objects_model::DeadZoneName;
@@ -20,7 +21,6 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::RecordLabel;
-use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TangibleId;

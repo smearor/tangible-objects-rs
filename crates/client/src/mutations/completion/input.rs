@@ -1,10 +1,10 @@
 //! `CompletionInput` - the cynic input object for `setCompletion`,
 //! a wire DTO of [`CompletionConfig`].
 
+use smearor_commons_geometry::SmoothingAlpha;
 use tangible_objects_model::AffinityFactor;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
-use tangible_objects_model::SmoothingAlpha;
 
 /// The `CompletionInput` input object - wire DTO of
 /// [`CompletionConfig`] (`max_missing` narrows to the `Int` scalar).

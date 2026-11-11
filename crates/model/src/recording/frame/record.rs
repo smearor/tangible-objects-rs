@@ -22,7 +22,7 @@ pub const RECORD_SCHEMA_VERSION: u16 = 1;
 ///
 /// Written once per non-empty `SYN_REPORT` frame - never for frames without
 /// touches and tracked tangibles. All spatial quantities are in
-/// [`Millimeters`](crate::Millimeters); when `calibration` is `null` the
+/// [`Millimeters`](smearor_commons_geometry::Millimeters); when `calibration` is `null` the
 /// device was uncalibrated and positions are raw axis values.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FrameRecord {
@@ -76,15 +76,15 @@ mod tests {
     use super::FrameRecord;
     use super::RECORD_SCHEMA_VERSION;
     use crate::EventCount;
-    use crate::Millimeters;
     use crate::Milliseconds;
     use crate::PatternId;
     use crate::PatternTolerance;
     use crate::TouchPoint;
     use crate::TouchPointSlot;
     use crate::TrackingId;
-    use crate::Vec2;
     use crate::recording::CandidateReport;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn sample_record() -> FrameRecord {
         FrameRecord {

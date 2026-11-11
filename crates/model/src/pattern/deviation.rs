@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::Millimeters;
+use smearor_commons_geometry::Millimeters;
 
 /// Absolute deviation `|measured - reference|` of one fingerprint
 /// index - a delta in millimeters, not a distance.

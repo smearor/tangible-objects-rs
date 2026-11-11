@@ -1,3 +1,5 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::ops::Deref;
 
 use serde::Deserialize;
@@ -5,9 +7,7 @@ use serde::Serialize;
 
 use super::DeadZone;
 use super::DeadZoneName;
-use crate::Millimeters;
 use crate::RegistrationError;
-use crate::Vec2;
 
 /// The registered dead zones of a session.
 ///
@@ -62,8 +62,8 @@ mod tests {
     use super::DeadZone;
     use super::DeadZoneName;
     use super::DeadZones;
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn zone(name: &str, x: f64, y: f64, radius: f64) -> DeadZone {
         DeadZone::new(

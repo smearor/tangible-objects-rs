@@ -7,10 +7,10 @@ use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::DEFAULT_DEAD_ZONE_RADIUS;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::Registration;
-use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;

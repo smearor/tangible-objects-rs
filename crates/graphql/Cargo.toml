@@ -18,6 +18,7 @@ serde_json.workspace = true
 tangible-objects-analysis.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model = { workspace = true, features = ["async-graphql"] }
+smearor-commons-geometry.workspace = true
 tangible-objects-runtime = { workspace = true, features = ["async-graphql"] }
 tokio.workspace = true
 tokio-stream.workspace = true

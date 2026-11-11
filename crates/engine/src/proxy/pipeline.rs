@@ -2,10 +2,10 @@ use std::collections::HashSet;
 
 use evdev::InputEvent;
 
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::Region;
 use tangible_objects_model::SlotSet;
@@ -238,6 +238,8 @@ impl Pipeline {
 mod tests {
     use super::Pipeline;
     use crate::proxy::tangible_stage::SUPPRESSION_HYSTERESIS;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
     use std::collections::HashMap;
     use std::collections::HashSet;
     use tangible_objects_model::ABS_MT_POSITION_X;
@@ -253,7 +255,6 @@ mod tests {
     use tangible_objects_model::FieldSet;
     use tangible_objects_model::FilterMode;
     use tangible_objects_model::FrameCount;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::RawEvent;
     use tangible_objects_model::Region;
     use tangible_objects_model::SYN_REPORT;
@@ -263,7 +264,6 @@ mod tests {
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TouchSet;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     fn abs(code: EventCode, value: i32) -> RawEvent {
         RawEvent::new(EventType::Abs, code, value)

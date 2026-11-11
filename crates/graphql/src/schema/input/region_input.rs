@@ -1,7 +1,7 @@
 //! `RegionInput` - a bounding-box wire DTO of [`Region`], shared by
 //! spell-arming zones.
 
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::Region;
 
 /// Input for a bounding-box region in millimeters.

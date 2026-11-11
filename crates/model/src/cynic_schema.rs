@@ -17,7 +17,7 @@ cynic::impl_scalar!(crate::EventCount, schema::EventCount);
 cynic::impl_scalar!(crate::FieldName, schema::FieldName);
 cynic::impl_scalar!(crate::FieldSetName, schema::FieldSetName);
 cynic::impl_scalar!(crate::FrameCount, schema::FrameCount);
-cynic::impl_scalar!(crate::Millimeters, schema::Millimeters);
+cynic::impl_scalar!(smearor_commons_geometry::Millimeters, schema::Millimeters);
 cynic::impl_scalar!(crate::Owner, schema::Owner);
 cynic::impl_scalar!(crate::PatternId, schema::PatternId);
 cynic::impl_scalar!(crate::PatternName, schema::PatternName);
@@ -26,14 +26,17 @@ cynic::impl_scalar!(crate::PinCount, schema::PinCount);
 cynic::impl_scalar!(crate::SpellName, schema::SpellName);
 cynic::impl_scalar!(crate::RawAxisValue, schema::RawAxisValue);
 cynic::impl_scalar!(crate::RecordLabel, schema::RecordLabel);
-cynic::impl_scalar!(crate::RotationRad, schema::RotationRad);
-cynic::impl_scalar!(crate::SmoothingAlpha, schema::SmoothingAlpha);
+cynic::impl_scalar!(smearor_commons_geometry::RotationRad, schema::RotationRad);
+cynic::impl_scalar!(
+    smearor_commons_geometry::SmoothingAlpha,
+    schema::SmoothingAlpha
+);
 cynic::impl_scalar!(crate::StageName, schema::StageName);
 cynic::impl_scalar!(crate::TangibleId, schema::TangibleId);
 cynic::impl_scalar!(crate::TangibleSetId, schema::TangibleSetId);
 cynic::impl_scalar!(crate::TouchPointSlot, schema::TouchPointSlot);
 cynic::impl_scalar!(crate::TrackingId, schema::TrackingId);
-cynic::impl_scalar!(crate::UnitsPerMm, schema::UnitsPerMm);
+cynic::impl_scalar!(smearor_commons_geometry::UnitsPerMm, schema::UnitsPerMm);
 // `JSON` passthrough fields (`metrics`, `analyze*`) select as
 // `serde_json::Value` - the response still decodes into the typed
 // reports through the model's `Deserialize`.

@@ -4,9 +4,8 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::Millimeters;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// The physical outline of a tangible's body in the pattern's frame
 /// (millimeters relative to the tangible center, pattern
@@ -45,7 +44,7 @@ pub enum PhysicalShape {
     /// as a polygon; points in millimeters relative to the center.
     Polygon {
         /// Polygon vertices in pattern-space millimeters.
-        #[serde(with = "crate::serde_points")]
+        #[serde(with = "smearor_commons_geometry::serde_points")]
         points: Vec<Vec2<Millimeters>>,
     },
 }

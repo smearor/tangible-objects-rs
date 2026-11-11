@@ -1,8 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
 use std::fmt::Display;
-
-use crate::Millimeters;
 
 /// Normalized deviation score of a candidate: `max_i dev[i] / tolerance[i]`.
 ///

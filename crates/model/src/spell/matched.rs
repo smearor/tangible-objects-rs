@@ -5,8 +5,8 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::SpellName;
-use crate::Millimeters;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// A successfully recognized spell - the payload of
 /// `LifecycleEvent::SpellMatched` and the gesture tracker's

@@ -3,7 +3,7 @@
 //! [`tangible_objects_model::WindowAnchor`].
 
 use cynic::InputObject;
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
 
 /// The `WindowInput` input object - wire DTO of
 /// [`tangible_objects_model::WindowAnchor`].

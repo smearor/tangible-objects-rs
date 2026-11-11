@@ -5,13 +5,13 @@ use serde::Serializer;
 use serde::ser::SerializeStruct;
 
 use crate::FrameCount;
-use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
-use crate::RotationRad;
 use crate::TangibleId;
 use crate::TrackedTangible;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::Vec2;
 
 /// Recorded view of a [`TrackedTangible`] within a [`crate::FrameRecord`].
 ///
@@ -99,10 +99,10 @@ mod tests {
     use super::TrackedRecord;
     use crate::DEFAULT_SPAWN_STABILITY;
     use crate::FrameCount;
-    use crate::RotationRad;
     use crate::TangibleId;
     use crate::TrackedTangible;
-    use crate::Vec2;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
 
     fn tracked_tangible() -> TrackedTangible {
         TrackedTangible {

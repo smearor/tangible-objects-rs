@@ -3,13 +3,13 @@
 
 use async_graphql::Error;
 use async_graphql::Result;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::FingerCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellArming;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::StrokePolyline;
-use tangible_objects_model::Vec2;
 
 use super::spell_arming_input::SpellArmingInput;
 

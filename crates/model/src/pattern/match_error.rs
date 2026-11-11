@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::Millimeters;
+use smearor_commons_geometry::Millimeters;
 
 /// Total absolute deviation of a candidate - the sum over the
 /// [`crate::Deviations`] vector; lower is better.

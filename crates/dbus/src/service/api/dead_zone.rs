@@ -1,13 +1,13 @@
 //! Dead-zone methods - `register_dead_zone`, `unregister_dead_zone`.
 
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::DEFAULT_DEAD_ZONE_RADIUS;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::Lifetime;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
 use tangible_objects_model::Registration;
-use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
 use zbus::fdo;
 use zbus::message::Header;

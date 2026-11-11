@@ -1,11 +1,11 @@
 //! `RegisterDeadZoneInput` - the `registerDeadZone` input object, a
 //! wire DTO of [`DeadZone`].
 
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::DEFAULT_DEAD_ZONE_RADIUS;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeadZoneName;
-use tangible_objects_model::Millimeters;
-use tangible_objects_model::Vec2;
 
 /// Input for `registerDeadZone`.
 #[derive(async_graphql::InputObject)]

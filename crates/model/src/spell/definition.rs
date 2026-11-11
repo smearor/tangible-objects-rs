@@ -1,6 +1,8 @@
 //! `Spell` - a named multi-finger gesture: per-finger template
 //! strokes plus a matching corridor (SPELLS.md).
 
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -11,8 +13,6 @@ use super::FingerCount;
 use super::SpellArming;
 use super::SpellName;
 use super::StrokePolyline;
-use crate::Millimeters;
-use crate::Vec2;
 
 /// Reference extent scale-normalized strokes are matched at.
 pub const REFERENCE_EXTENT_MM: f64 = 60.0;
@@ -180,9 +180,9 @@ mod tests {
     use super::SpellArming;
     use super::SpellName;
     use crate::FingerCount;
-    use crate::Millimeters;
     use crate::StrokePolyline;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn v_shape() -> Spell {
         Spell {

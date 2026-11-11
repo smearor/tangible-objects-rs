@@ -1,10 +1,10 @@
+use smearor_commons_geometry::Millimeters;
 use std::fmt::Display;
 
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::AffinityFactor;
-use crate::Millimeters;
 
 /// Matching tolerance for a figure pattern.
 ///

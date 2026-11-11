@@ -15,6 +15,7 @@ use clap::CommandFactory;
 use clap::Parser;
 use miette::IntoDiagnostic;
 use miette::Result;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_gtk::BackgroundAlpha;
 use tangible_objects_gtk::GuiHooks;
@@ -25,7 +26,6 @@ use tangible_objects_model::CompletionMode;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FilterMode;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Region;
 

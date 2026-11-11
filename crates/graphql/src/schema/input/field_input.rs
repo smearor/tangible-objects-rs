@@ -1,9 +1,9 @@
 //! `FieldInput` - one occupancy cell of a field set, a wire DTO of
 //! [`Field`].
 
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::Field;
 use tangible_objects_model::FieldName;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Region;
 
 /// One occupancy cell.

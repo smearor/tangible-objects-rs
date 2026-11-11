@@ -17,6 +17,7 @@ serde.workspace = true
 serde_json.workspace = true
 tangible-objects-analysis.workspace = true
 tangible-objects-model = { workspace = true, features = ["mcp"] }
+smearor-commons-geometry.workspace = true
 tangible-objects-runtime.workspace = true
 tokio.workspace = true
 toml.workspace = true

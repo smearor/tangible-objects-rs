@@ -27,6 +27,7 @@ tangible-objects-engine.workspace = true
 tangible-objects-graphql.workspace = true
 tangible-objects-mcp.workspace = true
 tangible-objects-model.workspace = true
+smearor-commons-geometry.workspace = true
 tangible-objects-runtime.workspace = true
 toml.workspace = true
 tracing.workspace = true

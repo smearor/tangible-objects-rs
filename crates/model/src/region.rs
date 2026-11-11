@@ -2,9 +2,8 @@
 use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::Millimeters;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// A rectangular detection region in millimeters.
 ///
@@ -127,16 +126,16 @@ impl Region {
 /// Serde adapter for `#[serde(with)]`: `Region` as a compact
 /// `[x_min, y_min, x_max, y_max]` array instead of the default map.
 ///
-/// Parallel to [`crate::serde_pair`] - dataset-style formats that
+/// Parallel to [`smearor_commons_geometry::serde_pair`] - dataset-style formats that
 /// prefer the tighter array shape use
 /// `#[serde(with = "tangible_objects_model::serde_quad")]`.
 pub mod serde_quad {
     use super::Region;
-    use crate::Millimeters;
     use serde::Deserialize;
     use serde::Deserializer;
     use serde::Serialize;
     use serde::Serializer;
+    use smearor_commons_geometry::Millimeters;
 
     /// Serializes the region as `[x_min, y_min, x_max, y_max]`.
     pub fn serialize<S: Serializer>(region: &Region, serializer: S) -> Result<S::Ok, S::Error> {
@@ -205,8 +204,8 @@ pub struct ParseRegionError(String);
 #[cfg(test)]
 mod tests {
     use super::Region;
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn half(x_min: f64, x_max: f64) -> Region {
         Region {

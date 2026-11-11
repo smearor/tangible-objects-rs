@@ -7,12 +7,12 @@ use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
 use rmcp::tool;
 use rmcp::tool_router;
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
 use tangible_objects_model::StageName;
-use tangible_objects_model::Vec2;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;

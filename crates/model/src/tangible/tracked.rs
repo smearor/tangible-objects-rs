@@ -1,11 +1,7 @@
 use super::TangibleId;
 use crate::FrameCount;
-use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
-use crate::RotationRad;
-use crate::SmoothingAlpha;
-use crate::Vec2;
 #[cfg(feature = "cynic")]
 use crate::schema;
 use serde::Deserialize;
@@ -13,6 +9,10 @@ use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
 use serde::ser::SerializeStruct;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::SmoothingAlpha;
+use smearor_commons_geometry::Vec2;
 
 /// A tangible figure tracked across frames with a smoothed pose.
 ///

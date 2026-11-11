@@ -150,13 +150,13 @@ mod tests {
     use crate::DEFAULT_SPAWN_STABILITY;
     use crate::FrameCount;
     use crate::PatternId;
-    use crate::RotationRad;
     use crate::SetAction;
     use crate::TangibleId;
     use crate::TangibleSet;
     use crate::TangibleSetId;
     use crate::TrackedTangible;
-    use crate::Vec2;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
 
     fn tangible(instance: u32, pattern: u32, x: f64, y: f64) -> TrackedTangible {
         TrackedTangible {

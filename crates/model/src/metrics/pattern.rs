@@ -3,8 +3,8 @@ use serde::Serialize;
 
 use crate::ContactCount;
 use crate::FrameCount;
-use crate::Millimeters;
 use crate::TangibleCount;
+use smearor_commons_geometry::Millimeters;
 
 /// Per-pattern recognition counters of a session.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

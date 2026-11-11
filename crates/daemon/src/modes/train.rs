@@ -7,11 +7,11 @@ use std::path::PathBuf;
 
 use miette::IntoDiagnostic;
 use miette::Result;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::TouchDevice;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::ProfileFile;
-use tangible_objects_model::Vec2;
 
 use super::setup::effective_calibration;
 use tracing::error;

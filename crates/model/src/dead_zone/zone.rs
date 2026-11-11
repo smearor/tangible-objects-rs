@@ -1,3 +1,5 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -7,8 +9,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::DeadZoneName;
-use crate::Millimeters;
-use crate::Vec2;
 
 /// A blacklisted surface position: contacts inside `radius` of `center`
 /// are dropped at ingest.

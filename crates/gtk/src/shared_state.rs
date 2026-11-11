@@ -9,6 +9,8 @@ use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_runtime::ControlCommand;
 
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
@@ -18,7 +20,6 @@ use tangible_objects_model::FieldCount;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FilterMode;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::ProfileInfo;
 use tangible_objects_model::SessionMetrics;
@@ -26,7 +27,6 @@ use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
-use tangible_objects_model::Vec2;
 use tangible_objects_runtime::EngineHandle;
 
 use crate::BackgroundAlpha;

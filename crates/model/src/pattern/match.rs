@@ -4,15 +4,15 @@ use super::RefPoints;
 use crate::ClaimedIndices;
 use crate::CombinationBuf;
 use crate::FrameCount;
-use crate::Millimeters;
 use crate::PatternName;
 use crate::PointSet;
-use crate::RotationRad;
 use crate::SlotSet;
 use crate::TangiblePattern;
 use crate::TouchPointSlot;
 use crate::TouchSet;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::Vec2;
 use std::collections::HashMap;
 
 /// A successful pattern match within a single input frame.
@@ -144,8 +144,8 @@ mod tests {
     use crate::PatternId;
     use crate::RefIndex;
     use crate::RefIndices;
-    use crate::RotationRad;
-    use crate::Vec2;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
 
     #[test]
     fn partial_flag_and_all_indices() {

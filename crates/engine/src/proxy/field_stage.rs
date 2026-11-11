@@ -109,15 +109,15 @@ mod tests {
     use super::FieldStage;
     use super::Stage;
     use crate::proxy::stage_frame::StageFrame;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::Field;
     use tangible_objects_model::FieldSet;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::Region;
     use tangible_objects_model::SlotSet;
     use tangible_objects_model::TouchPoint;
     use tangible_objects_model::TouchPointSlot;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     fn cell() -> Field {
         Field {

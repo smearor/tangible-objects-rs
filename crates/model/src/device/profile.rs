@@ -4,9 +4,9 @@ use serde::Serialize;
 use crate::Calibration;
 use crate::EventCode;
 use crate::EventType;
-use crate::Millimeters;
 use crate::RawAxisValue;
-use crate::UnitsPerMm;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::UnitsPerMm;
 
 /// Complete profile of a touchscreen device - everything needed to convert
 /// raw `.evtest` recordings between devices (TRAINING.md device profiles).
@@ -122,7 +122,7 @@ mod tests {
     use super::DeviceProfile;
     use crate::EventCode;
     use crate::EventType;
-    use crate::Millimeters;
+    use smearor_commons_geometry::Millimeters;
 
     fn profile() -> DeviceProfile {
         DeviceProfile {
@@ -152,7 +152,10 @@ mod tests {
         assert_eq!(raw.as_f64(), 2000.0);
         assert!(!clamped);
         // Round-trip through to_mm.
-        let back = calibration.to_mm(crate::Vec2::new(raw.as_f64(), raw.as_f64()));
+        let back = calibration.to_mm(smearor_commons_geometry::Vec2::new(
+            raw.as_f64(),
+            raw.as_f64(),
+        ));
         assert!((back.x - 250.0).abs() < 0.01);
     }
 

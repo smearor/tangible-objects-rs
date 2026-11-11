@@ -1,8 +1,8 @@
 use crate::DisplayRotation;
-use crate::Millimeters;
-use crate::Pixels;
-use crate::PixelsPerMm;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::PixelsPerMm;
+use smearor_commons_geometry::Vec2;
 
 /// Composed mm↔px mapping of a surface onto a display area.
 ///
@@ -81,9 +81,9 @@ impl SurfaceFit {
 mod tests {
     use super::SurfaceFit;
     use crate::DisplayRotation;
-    use crate::Millimeters;
-    use crate::Pixels;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Pixels;
+    use smearor_commons_geometry::Vec2;
 
     /// 400×300 mm surface on a 1000×1000 px display.
     fn fit(rotation: DisplayRotation) -> SurfaceFit {

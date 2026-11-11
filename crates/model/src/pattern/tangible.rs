@@ -21,7 +21,6 @@ use crate::FigureColor;
 use crate::FrameCount;
 use crate::MatchError;
 use crate::MatchScore;
-use crate::Millimeters;
 use crate::PatternMatch;
 use crate::PatternName;
 use crate::PhysicalShape;
@@ -29,7 +28,8 @@ use crate::PointSet;
 use crate::Region;
 use crate::StageName;
 use crate::TouchSet;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::collections::HashSet;
 
 /// A tangible figure pattern defined by invariant pairwise distances.
@@ -469,8 +469,8 @@ impl TangiblePattern {
 #[cfg(test)]
 mod tests {
     use super::TangiblePattern;
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     fn triangle() -> Vec<Vec2<Millimeters>> {
         vec![

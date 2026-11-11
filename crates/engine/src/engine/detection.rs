@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::SmoothingAlpha;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::CandidateCount;
 use tangible_objects_model::CandidateIndices;
@@ -16,7 +18,6 @@ use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FigureColor;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::PatternId;
@@ -28,7 +29,6 @@ use tangible_objects_model::RawEvent;
 use tangible_objects_model::Region;
 use tangible_objects_model::RegistrationError;
 use tangible_objects_model::SlotSet;
-use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellArming;
 use tangible_objects_model::SpellMatched;
@@ -917,6 +917,7 @@ mod tests {
     use super::Engine;
     use crate::EngineEvent;
     use crate::EngineFrame;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::ABS_MT_POSITION_X;
     use tangible_objects_model::ABS_MT_POSITION_Y;
     use tangible_objects_model::ABS_MT_SLOT;
@@ -929,7 +930,6 @@ mod tests {
     use tangible_objects_model::RawEvent;
     use tangible_objects_model::TangiblePattern;
     use tangible_objects_model::TouchPointSlot;
-    use tangible_objects_model::Vec2;
 
     fn triangle_pattern() -> TangiblePattern {
         let reference = vec![

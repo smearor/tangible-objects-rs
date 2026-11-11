@@ -1,3 +1,4 @@
+use smearor_commons_geometry::Millimeters;
 use std::ops::Deref;
 
 use serde::Deserialize;
@@ -6,7 +7,6 @@ use serde::Serialize;
 use crate::Deviation;
 use crate::MatchError;
 use crate::MatchScore;
-use crate::Millimeters;
 
 /// Per-index absolute deviations `|measured[i] - reference[i]|`
 /// between a measured fingerprint and a reference fingerprint -
@@ -66,7 +66,7 @@ impl Deref for Deviations {
 mod tests {
     use super::Deviations;
     use crate::Deviation;
-    use crate::Millimeters;
+    use smearor_commons_geometry::Millimeters;
 
     /// Per-index tolerances: `deviation[i] / tolerance(i)` - the worst
     /// (highest) normalized score wins.

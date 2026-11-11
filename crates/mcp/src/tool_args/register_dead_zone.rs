@@ -3,8 +3,8 @@
 
 use schemars::JsonSchema;
 use serde::Deserialize;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::DeadZoneName;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::Owner;
 
 /// Arguments for the `register_dead_zone` tool.

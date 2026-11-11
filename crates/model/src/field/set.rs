@@ -1,3 +1,4 @@
+use smearor_commons_geometry::Vec2;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -12,7 +13,6 @@ use super::WindowAnchor;
 use crate::FrameCount;
 use crate::Region;
 use crate::TouchPoint;
-use crate::Vec2;
 
 /// Default debounce stability for field sets (2 frames).
 pub fn default_stability() -> FrameCount {
@@ -149,7 +149,7 @@ impl FieldSet {
 #[cfg(test)]
 mod tests {
     use super::FieldSet;
-    use crate::Vec2;
+    use smearor_commons_geometry::Vec2;
 
     fn parse(toml: &str) -> Result<FieldSet, toml::de::Error> {
         toml::from_str(toml)

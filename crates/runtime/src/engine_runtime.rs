@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::watch;
 
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
 use tangible_objects_engine::LegacyMode;
@@ -18,7 +19,6 @@ use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
@@ -669,15 +669,16 @@ mod tests {
     use super::EngineRuntime;
     use crate::ControlCommand;
     use crate::DomainEvent;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_engine::EngineEvent;
     use tangible_objects_engine::EngineFrame;
     use tangible_objects_model::ContactCount;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::LifecycleEvent;
-    use tangible_objects_model::Millimeters;
     use tangible_objects_model::PatternId;
-    use tangible_objects_model::RotationRad;
     use tangible_objects_model::SetAction;
     use tangible_objects_model::SlotSet;
     use tangible_objects_model::SpellMatched;
@@ -686,7 +687,6 @@ mod tests {
     use tangible_objects_model::TangibleSet;
     use tangible_objects_model::TangibleSetId;
     use tangible_objects_model::TrackedTangible;
-    use tangible_objects_model::Vec2;
 
     fn tangible(id: u32, pattern: u32) -> TrackedTangible {
         TrackedTangible {

@@ -1,9 +1,9 @@
 //! Completion methods - `completion`, `set_completion`.
 
+use smearor_commons_geometry::SmoothingAlpha;
 use tangible_objects_model::AffinityFactor;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::CompletionMode;
-use tangible_objects_model::SmoothingAlpha;
 use tangible_objects_runtime::ControlCommand;
 use zbus::fdo;
 

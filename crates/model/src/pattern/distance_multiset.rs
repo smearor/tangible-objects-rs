@@ -1,6 +1,5 @@
-use crate::Millimeters;
-use crate::Vec2;
-
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 /// Sorted distance multiset of one point to all other points in its
 /// set - the per-point fingerprint correspondence solving compares
 /// (ROTATION.md). Two equal multisets mean the two points occupy the

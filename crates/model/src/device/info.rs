@@ -1,10 +1,10 @@
 use crate::Calibration;
 use crate::RawAxisValue;
-use crate::UnitsPerMm;
 #[cfg(feature = "cynic")]
 use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::UnitsPerMm;
 
 /// Static information about the input device attached to this daemon -
 /// the identity needed to interpret or convert its raw event stream.

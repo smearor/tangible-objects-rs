@@ -1,7 +1,7 @@
 //! `WindowInput` - the optional window anchor of a field set, a wire
 //! DTO of [`WindowAnchor`].
 
-use tangible_objects_model::Millimeters;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_model::WindowAnchor;
 
 /// Window anchor for a field set.

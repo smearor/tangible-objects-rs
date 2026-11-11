@@ -152,13 +152,13 @@ mod tests {
     use crate::PatternId;
     use crate::PatternMatch;
     use crate::RefIndices;
-    use crate::RotationRad;
     use crate::TangibleId;
     use crate::TouchPoint;
     use crate::TouchPointSlot;
     use crate::TrackedTangible;
     use crate::TrackingId;
-    use crate::Vec2;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_geometry::Vec2;
 
     fn touch(slot: u32, id: i32) -> TouchPoint {
         TouchPoint {

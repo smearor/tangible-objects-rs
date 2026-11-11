@@ -8,11 +8,10 @@
 //! `Registration::DeadZone` command (session or persistent lifetime),
 //! mirroring field-set registration.
 
+use smearor_commons_geometry::Millimeters;
 mod name;
 mod zone;
 mod zones;
-
-use crate::Millimeters;
 
 /// Interface default for a dead zone's suppression radius: 10 mm.
 /// Used when a registration omits the radius (`null`/`0` on the wire).

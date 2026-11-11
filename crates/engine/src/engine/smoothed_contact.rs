@@ -1,7 +1,7 @@
-use tangible_objects_model::Millimeters;
-use tangible_objects_model::SmoothingAlpha;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::SmoothingAlpha;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::TrackingId;
-use tangible_objects_model::Vec2;
 
 /// Per-slot EMA smoothing state (TRACKING_STABILIZATION.md): the
 /// tracking ID the smoothed position belongs to plus the position
@@ -42,9 +42,9 @@ impl SmoothedContact {
 #[cfg(test)]
 mod tests {
     use super::SmoothedContact;
-    use tangible_objects_model::SmoothingAlpha;
+    use smearor_commons_geometry::SmoothingAlpha;
+    use smearor_commons_geometry::Vec2;
     use tangible_objects_model::TrackingId;
-    use tangible_objects_model::Vec2;
 
     /// A matching tracking ID EMA-blends toward the stored position.
     #[test]

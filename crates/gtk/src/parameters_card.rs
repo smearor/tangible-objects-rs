@@ -18,10 +18,10 @@ use gtk4::ToggleButton;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
+use smearor_commons_geometry::Millimeters;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::CompletionMode;
 use tangible_objects_model::FrameCount;
-use tangible_objects_model::Millimeters;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::language_loader;

@@ -3,9 +3,8 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::Millimeters;
-use crate::Vec2;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// Samples per resampled stroke - enough to keep shape detail,
 /// cheap enough to run the Fréchet scan per frame (SPELLS.md).
@@ -19,7 +18,7 @@ pub const STROKE_SAMPLES: usize = 64;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct StrokePolyline {
     /// Ordered stroke points in millimeters.
-    #[serde(with = "crate::serde_points")]
+    #[serde(with = "smearor_commons_geometry::serde_points")]
     pub points: Vec<Vec2<Millimeters>>,
 }
 
@@ -152,7 +151,7 @@ impl StrokePolyline {
 #[cfg(test)]
 mod tests {
     use super::StrokePolyline;
-    use crate::Vec2;
+    use smearor_commons_geometry::Vec2;
 
     fn stroke(coords: &[(f64, f64)]) -> StrokePolyline {
         StrokePolyline::new(coords.iter().map(|&(x, y)| Vec2::new(x, y)).collect())

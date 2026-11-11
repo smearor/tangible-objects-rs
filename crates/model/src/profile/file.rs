@@ -1,3 +1,5 @@
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -10,7 +12,6 @@ use super::ProfileError;
 use crate::Distances;
 use crate::FigureColor;
 use crate::FrameCount;
-use crate::Millimeters;
 use crate::PatternId;
 use crate::PatternName;
 use crate::PatternTolerance;
@@ -20,7 +21,6 @@ use crate::PinCount;
 use crate::Region;
 use crate::StageName;
 use crate::TangiblePattern;
-use crate::Vec2;
 
 /// TOML-serializable figure profile.
 ///
@@ -212,8 +212,8 @@ mod flat_points {
     use serde::Serializer;
     use serde::ser::SerializeSeq;
 
-    use crate::Millimeters;
-    use crate::Vec2;
+    use smearor_commons_geometry::Millimeters;
+    use smearor_commons_geometry::Vec2;
 
     pub fn serialize<S>(points: &[Vec2<Millimeters>], serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -246,7 +246,7 @@ mod tests {
 
     use super::ProfileFile;
     use crate::PatternId;
-    use crate::Vec2;
+    use smearor_commons_geometry::Vec2;
 
     #[test]
     fn toml_round_trip_preserves_fields() -> Result<(), Box<dyn std::error::Error>> {

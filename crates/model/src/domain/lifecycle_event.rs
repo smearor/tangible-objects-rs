@@ -3,14 +3,14 @@ use crate::DeadZoneName;
 use crate::FieldSetName;
 use crate::FilterMode;
 use crate::FrameCount;
-use crate::Millimeters;
 use crate::Owner;
 use crate::PatternId;
 use crate::PatternName;
 use crate::SpellName;
 use crate::StageName;
-use crate::Vec2;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Vec2;
 
 /// Lifecycle event emitted when the device loop *applies* a control
 /// command - not frame-derived like [`EngineEvent`] but a session-level
