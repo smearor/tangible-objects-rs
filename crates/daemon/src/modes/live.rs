@@ -19,6 +19,7 @@ use tangible_objects_runtime::ProfileInfo;
 use super::control::drain_control_commands;
 use super::control::spawn_interfaces;
 use super::control::status_of_session;
+use super::control::tick_spell_training;
 use super::control::tick_training;
 use super::interfaces::Interfaces;
 use super::setup::effective_calibration;
@@ -133,6 +134,7 @@ pub fn run_live(
                 runtime.publish(&engine_frame, engine.tracked());
                 drain_control_commands(&mut runtime, &mut recording, &mut engine, device.name());
                 tick_training(&mut runtime, &mut engine, &engine_frame.touches);
+                tick_spell_training(&mut runtime, &mut engine);
 
                 if let Some(session) = &mut recording {
                     session.record_frame(

@@ -37,6 +37,7 @@ use tangible_objects_model::TrackedTangible;
 use tangible_objects_model::Vec2;
 
 use super::Trajectory;
+use crate::engine::spell_training::SpellTraining;
 
 /// Minimum stroke path length for a slot to count as a gesture
 /// candidate (mm) - below it a contact is a rest or a normal touch
@@ -111,6 +112,12 @@ pub struct GestureTracker {
     /// Slots consumed by the last dispatched spell - the boundary
     /// drops their withheld events instead of replaying them.
     consumed: SlotSet,
+    /// Active spell-training session - episodes are captured as
+    /// template repetitions instead of matched (SPELLS.md).
+    training: Option<SpellTraining>,
+    /// The spell the last training session derived - the device loop
+    /// picks it up and registers it persistently.
+    trained: Option<Spell>,
     /// Center trajectory per wand tangible, keyed by tangible ID -
     /// only tangibles whose pattern backs a `tangible-chord` spell.
     chords: HashMap<TangibleId, (PatternName, Trajectory)>,
@@ -256,9 +263,45 @@ impl GestureTracker {
             if episode.five_tap_armed {
                 self.five_tap_armed_until = None;
             }
+            // A training session consumes the episode instead of
+            // matching it - the strokes become template repetitions
+            // (SPELLS.md's learn-by-repetition).
+            if self.training.is_some() {
+                self.capture_training(episode.polylines());
+                return None;
+            }
             return self.dispatch(&episode);
         }
         None
+    }
+
+    /// Feeds a completed episode into the training buffer; a full
+    /// session moves the finished spell into `trained` and disarms.
+    fn capture_training(&mut self, strokes: Vec<Vec<Vec2<Millimeters>>>) {
+        if let Some(training) = self.training.as_mut()
+            && let Some(spell) = training.capture(strokes)
+        {
+            self.trained = Some(spell);
+            self.training = None;
+        }
+    }
+
+    /// Arms spell training (`TrainSpell` command): episodes are
+    /// captured as template repetitions instead of matched until
+    /// [`SPELL_TRAINING_REPETITIONS`] consistent ones land.
+    pub fn start_training(&mut self, name: SpellName, arming: SpellArming) {
+        self.training = Some(SpellTraining::new(name, arming));
+    }
+
+    /// Whether a training session is currently capturing.
+    pub fn is_training(&self) -> bool {
+        self.training.is_some()
+    }
+
+    /// The finished trained spell, once - `None` until the
+    /// repetition count landed.
+    pub fn take_trained_spell(&mut self) -> Option<Spell> {
+        self.trained.take()
     }
 
     /// `true` while the five-finger-tap latch is held.
@@ -516,6 +559,33 @@ mod tests {
             tracker.observe_frame(&[touch(0, *x, *y)], &[], now);
         }
         tracker.observe_frame(&[], &[], now)
+    }
+
+    #[test]
+    fn training_derives_template_and_corridor() {
+        let mut tracker = GestureTracker::new();
+        tracker.start_training(SpellName::new("learned-v"), SpellArming::Free);
+        let now = Instant::now();
+        // Three repetitions at slight offsets - each returns None
+        // (the episode is captured, not matched).
+        assert!(draw_v(&mut tracker, (100.0, 100.0), now).is_none());
+        assert!(tracker.is_training());
+        assert!(draw_v(&mut tracker, (103.0, 98.0), now).is_none());
+        assert!(draw_v(&mut tracker, (97.0, 102.0), now).is_none());
+        assert!(!tracker.is_training());
+
+        let spell = tracker
+            .take_trained_spell()
+            .expect("three repetitions should finish the session");
+        assert_eq!(spell.name.as_str(), "learned-v");
+        assert_eq!(spell.fingers.as_usize(), 1);
+        assert_eq!(spell.strokes.len(), 1);
+        assert!(spell.corridor.as_f64() >= 5.0);
+        assert!(spell.corridor.as_f64() < 15.0);
+
+        // The trained spell itself matches a drawn V.
+        tracker.add_spell(spell);
+        assert!(draw_v(&mut tracker, (200.0, 200.0), now).is_some());
     }
 
     #[test]

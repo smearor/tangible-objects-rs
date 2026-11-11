@@ -21,6 +21,7 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::SmoothingAlpha;
+use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TangibleId;
 use tangible_objects_model::TangibleSetId;
@@ -402,6 +403,24 @@ impl EngineService {
     /// Removes a field set by name.
     async fn unregister_field_set(&self, name: FieldSetName) -> fdo::Result<()> {
         api::field_set::unregister_field_set(self, name).await
+    }
+
+    /// Registers a spell gesture from a TOML string (same shape as
+    /// `spells.d` files: `name`, `fingers`, `corridor`, `[[strokes]]`
+    /// plus the `[arming]` section, SPELLS.md).
+    async fn register_spell(
+        &self,
+        toml_str: &str,
+        owner: Owner,
+        persistent: bool,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<()> {
+        api::spell::register_spell(self, toml_str, owner, persistent, &header).await
+    }
+
+    /// Removes a registered spell by name.
+    async fn unregister_spell(&self, name: SpellName) -> fdo::Result<()> {
+        api::spell::unregister_spell(self, name).await
     }
 
     /// Blacklists a circular spot on the surface (`x`/`y` mm): contacts

@@ -23,6 +23,7 @@ cynic::impl_scalar!(crate::PatternId, schema::PatternId);
 cynic::impl_scalar!(crate::PatternName, schema::PatternName);
 cynic::impl_scalar!(crate::PatternTolerance, schema::PatternTolerance);
 cynic::impl_scalar!(crate::PinCount, schema::PinCount);
+cynic::impl_scalar!(crate::SpellName, schema::SpellName);
 cynic::impl_scalar!(crate::RawAxisValue, schema::RawAxisValue);
 cynic::impl_scalar!(crate::RecordLabel, schema::RecordLabel);
 cynic::impl_scalar!(crate::RotationRad, schema::RotationRad);

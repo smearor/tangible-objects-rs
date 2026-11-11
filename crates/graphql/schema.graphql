@@ -702,6 +702,17 @@ type MutationRoot {
 	"""
 	registerDeadZone(input: RegisterDeadZoneInput!, owner: Owner, lifetime: Lifetime): RegisterDeadZoneResult!
 	"""
+	Registers a spell gesture at runtime (SPELLS.md): per-finger
+	template strokes plus a matching corridor and an arming
+	declaration. `lifetime: persistent` writes it to `spells.d`
+	so it reloads on daemon start.
+	"""
+	registerSpell(input: RegisterSpellInput!, owner: Owner, lifetime: Lifetime): RegisterSpellResult!
+	"""
+	Removes a registered spell by name.
+	"""
+	unregisterSpell(name: SpellName!): Boolean!
+	"""
 	Removes a dead zone by name.
 	"""
 	unregisterDeadZone(name: DeadZoneName!): Boolean!
@@ -942,6 +953,28 @@ type Region {
 }
 
 """
+Input for a bounding-box region in millimeters.
+"""
+input RegionInput {
+	"""
+	Lower x bound.
+	"""
+	xMin: Millimeters!
+	"""
+	Lower y bound.
+	"""
+	yMin: Millimeters!
+	"""
+	Upper x bound.
+	"""
+	xMax: Millimeters!
+	"""
+	Upper y bound.
+	"""
+	yMax: Millimeters!
+}
+
+"""
 Input for `registerDeadZone`.
 """
 input RegisterDeadZoneInput {
@@ -1048,6 +1081,50 @@ fragments.
 union RegisterPatternResult = PatternRegistered | RegistrationRejected
 
 """
+Input for `registerSpell`: a gesture defined by per-finger
+template strokes.
+"""
+input RegisterSpellInput {
+	"""
+	Spell name (identity for unregister and the runtime store).
+	"""
+	name: SpellName!
+	"""
+	Max per-stroke deviation in millimeters; `null` = 12 mm.
+	"""
+	corridor: Millimeters
+	"""
+	Whether the gesture may be drawn larger/smaller than the
+	template; `null` = true.
+	"""
+	scaleInvariant: Boolean
+	"""
+	Whether the spell matches; `null` = true.
+	"""
+	enabled: Boolean
+	"""
+	Per-finger template strokes - `strokes[i]` is finger i's flat
+	polyline `[x0, y0, x1, y1, ...]` in millimeters (same shape as
+	`registerPattern.points`). The count defines `fingers`.
+	"""
+	strokes: [[Millimeters!]!]!
+	"""
+	How the gesture is initiated; `null` = `free`.
+	"""
+	arming: SpellArmingInput
+}
+
+"""
+`registerSpell` result union - the applied outcome either
+registered the spell or carries the typed rejection.
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union RegisterSpellResult = SpellRegistered | RegistrationRejected
+
+"""
 A rejected registration - `reason` is the human-readable error
 string, `kind` the machine category; structured payloads ride per
 kind (`overlap` for `FIELDS_OVERLAP`).
@@ -1105,6 +1182,64 @@ enum RejectionKind {
 scalar RotationRad
 
 scalar SmoothingAlpha
+
+"""
+Input for a spell's arming configuration - `region` is required
+for `EXCLUSIVE_ZONE`/`START_SPOT`, `pattern` for `TANGIBLE_CHORD`.
+"""
+input SpellArmingInput {
+	"""
+	Which trigger arms the spell.
+	"""
+	kind: SpellArmingKind!
+	"""
+	Bounding box for `EXCLUSIVE_ZONE` / `START_SPOT` arming.
+	"""
+	region: RegionInput
+	"""
+	Tangible pattern for `TANGIBLE_CHORD` arming; `null` = any
+	tangible may act as the wand.
+	"""
+	pattern: PatternName
+}
+
+"""
+The arming type - maps kebab-case spell TOML values.
+"""
+enum SpellArmingKind {
+	"""
+	Freeform stroke - always armed (legacy/fallback behavior).
+	"""
+	FREE
+	"""
+	A spell-dedicated area; every stroke point must stay inside.
+	"""
+	EXCLUSIVE_ZONE
+	"""
+	A small region the episode's first contact must start inside.
+	"""
+	START_SPOT
+	"""
+	A short simultaneous five-contact tap arms the next episode.
+	"""
+	FIVE_FINGER_TAP
+	"""
+	A tracked tangible of `pattern` acts as the wand.
+	"""
+	TANGIBLE_CHORD
+}
+
+scalar SpellName
+
+"""
+`registerSpell` applied - the spell was registered.
+"""
+type SpellRegistered {
+	"""
+	Name of the registered spell.
+	"""
+	name: SpellName!
+}
 
 scalar StageName
 

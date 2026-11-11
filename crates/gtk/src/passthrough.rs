@@ -5,9 +5,10 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
-
+use floating_board::FloatingBoard;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
+use tracing::debug;
 
 use crate::shared_state::SharedState;
 
@@ -19,7 +20,7 @@ use crate::shared_state::SharedState;
 /// rebuilt on every tick: card footprints move, rotate and scale with
 /// the gestures. Called once from `run_gui` after the `FloatingBoard`
 /// exists.
-pub fn wire_passthrough(board: &floating_board::FloatingBoard, state: &Arc<Mutex<SharedState>>) {
+pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) {
     let board_sync = board.clone();
     let state_passthrough = state.clone();
     let mut applied = false;
@@ -41,6 +42,23 @@ pub fn wire_passthrough(board: &floating_board::FloatingBoard, state: &Arc<Mutex
                 surface.set_input_region(Some(&region));
                 applied = true;
             }
+            // Debug: dump each card's footprint vs its visible geometry -
+            // a card missing from the union is completely input-dead.
+            for card in board_sync.cards() {
+                let geometry = card.geometry();
+                let footprint = card.footprint();
+                let extents = gtk4::cairo::RectangleInt::new(0, 0, 0, 0);
+                footprint.extents(&extents);
+                debug!(
+                    card = %card.id(),
+                    position = ?geometry.position,
+                    rotation = ?geometry.rotation,
+                    scale = ?geometry.scale,
+                    footprint = ?(extents.x(), extents.y(), extents.width(), extents.height()),
+                    visible = %card.is_visible(),
+                    "passthrough card footprint"
+                );
+            }
         } else if applied {
             applied = false;
             board_sync.set_input_region_managed(false);
@@ -54,7 +72,7 @@ pub fn wire_passthrough(board: &floating_board::FloatingBoard, state: &Arc<Mutex
 
 /// The passthrough input region in surface coordinates: the rotated
 /// footprints of every card on the board.
-fn passthrough_region(board: &floating_board::FloatingBoard) -> Option<gtk4::cairo::Region> {
+fn passthrough_region(board: &FloatingBoard) -> Option<gtk4::cairo::Region> {
     let native = board.native()?;
     let cards = board.cards_region();
     if cards.is_empty() {

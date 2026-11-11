@@ -7,6 +7,7 @@ use serde::Serialize;
 /// Human-readable spell name - the lookup key like `PatternName` /
 /// `DeadZoneName`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
 pub struct SpellName(pub String);
 
 impl SpellName {
@@ -32,3 +33,11 @@ impl From<String> for SpellName {
         Self::new(name)
     }
 }
+
+#[cfg(feature = "zbus")]
+impl zvariant::Type for SpellName {
+    const SIGNATURE: &'static zvariant::Signature = <String as zvariant::Type>::SIGNATURE;
+}
+
+#[cfg(feature = "async-graphql")]
+async_graphql::scalar!(SpellName);

@@ -109,6 +109,7 @@ impl EngineMcp {
         router.merge(Self::pattern_router());
         router.merge(Self::profiles_router());
         router.merge(Self::recording_router());
+        router.merge(Self::spell_router());
         router.merge(Self::stage_router());
         router.merge(Self::tangibles_router());
         router.merge(Self::training_router());

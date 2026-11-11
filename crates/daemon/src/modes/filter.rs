@@ -26,6 +26,7 @@ use tangible_objects_runtime::ProfileInfo;
 
 use super::control::apply_registration;
 use super::control::spawn_interfaces;
+use super::control::tick_spell_training;
 use super::control::tick_training;
 use super::interfaces::Interfaces;
 use super::proxy_recording::ProxyRecording;
@@ -335,6 +336,7 @@ pub fn run_filter(
             // A completed capture registers the profile persistently -
             // its stage scope may need the pipeline sync.
             tick_training(&mut runtime, &mut engine, &engine_frame.touches);
+            tick_spell_training(&mut runtime, &mut engine);
             sync_stages(&mut runtime, &mut pipeline, &engine);
 
             let forwarded = engine_frame.touches.len().saturating_sub(suppressed);

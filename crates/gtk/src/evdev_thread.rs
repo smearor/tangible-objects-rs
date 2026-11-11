@@ -14,10 +14,13 @@ use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameNumber;
+use tangible_objects_model::Lifetime;
 use tangible_objects_model::Milliseconds;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileInfo;
+use tangible_objects_model::Registration;
 use tangible_objects_model::TouchSet;
+use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineRuntime;
 
@@ -310,6 +313,18 @@ pub fn evdev_thread(
                     &mut engine,
                     device.name(),
                 );
+                // A finished spell-training session queues its spell
+                // as a persistent registration through the normal
+                // command path (drain → `spells.d` + lifecycle event).
+                if let Some(spell) = engine.take_trained_spell() {
+                    info!(name = %spell.name, "spell training completed");
+                    let (command, _rx) = ControlCommand::register(
+                        Registration::Spell(spell),
+                        None,
+                        Lifetime::Persistent,
+                    );
+                    let _ = handle.try_send_command(command);
+                }
                 runtime.set_recording_status(recording.as_ref().map(hooks.status_of_session));
                 if let Ok(mut s) = state.lock() {
                     s.message = runtime.message().map(str::to_string);

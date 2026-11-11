@@ -18,6 +18,7 @@ use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
 use tangible_objects_model::RegistrationError;
+use tangible_objects_model::SpellArming;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
 use tokio::sync::oneshot;
@@ -63,6 +64,16 @@ pub enum ControlCommand {
     },
     /// Capture a new figure profile with the given name.
     TrainProfile(PatternName),
+    /// Capture a new spell gesture: the next
+    /// [`tangible_objects_engine`] training repetitions become the
+    /// template; the finished spell registers persistently
+    /// (SPELLS.md's learn-by-repetition).
+    TrainSpell {
+        /// Spell name - addresses it for unregister and the store.
+        name: SpellName,
+        /// Arming the finished spell carries.
+        arming: SpellArming,
+    },
     /// Start a recording session writing `<base_path>.jsonl` (frames) and
     /// `<base_path>.evtest` (raw events).
     StartRecording {

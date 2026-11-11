@@ -24,8 +24,12 @@ use tangible_objects_model::RecordLabel;
 use tangible_objects_model::RegisterDeadZoneResult;
 use tangible_objects_model::RegisterFieldSetResult;
 use tangible_objects_model::RegisterPatternResult;
+use tangible_objects_model::RegisterSpellResult;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
+use tangible_objects_model::Spell;
+use tangible_objects_model::SpellName;
+use tangible_objects_model::SpellRegistered;
 use tangible_objects_model::StageName;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
@@ -33,6 +37,7 @@ use tangible_objects_runtime::EngineHandle;
 use crate::schema::input::RegisterDeadZoneInput;
 use crate::schema::input::RegisterFieldSetInput;
 use crate::schema::input::RegisterPatternInput;
+use crate::schema::input::RegisterSpellInput;
 
 /// Control operations forwarded to the daemon's device loop.
 pub struct MutationRoot;
@@ -421,6 +426,49 @@ impl MutationRoot {
             Ok(Err(error)) => Ok(RegisterDeadZoneResult::Rejected(error.into())),
             Err(_) => Err(Error::new("device loop closed the registration reply")),
         }
+    }
+
+    /// Registers a spell gesture at runtime (SPELLS.md): per-finger
+    /// template strokes plus a matching corridor and an arming
+    /// declaration. `lifetime: persistent` writes it to `spells.d`
+    /// so it reloads on daemon start.
+    async fn register_spell(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterSpellInput,
+        owner: Option<Owner>,
+        lifetime: Option<Lifetime>,
+    ) -> Result<RegisterSpellResult> {
+        let spell = Spell::try_from(&input)?;
+        let name = spell.name.clone();
+        let (command, rx) = ControlCommand::register(
+            Registration::Spell(spell),
+            owner,
+            lifetime.unwrap_or_default(),
+        );
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(RegistrationApplied::Spell)) => {
+                Ok(RegisterSpellResult::Registered(SpellRegistered { name }))
+            }
+            Ok(Ok(_)) => Err(Error::new(
+                "device loop returned a mismatched registration result",
+            )),
+            Ok(Err(error)) => Ok(RegisterSpellResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the registration reply")),
+        }
+    }
+
+    /// Removes a registered spell by name.
+    async fn unregister_spell(&self, ctx: &Context<'_>, name: SpellName) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::UnregisterSpell { name })
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
     }
 
     /// Removes a dead zone by name.

@@ -9,6 +9,8 @@ mod pattern_result;
 mod payload;
 mod rejected;
 mod result;
+mod spell_registered;
+mod spell_result;
 
 pub use applied::RegistrationApplied;
 pub use error::RegistrationError;
@@ -24,3 +26,5 @@ pub use result::DeadZoneRegistered;
 pub use result::FieldSetRegistered;
 pub use result::RegisterDeadZoneResult;
 pub use result::RegisterFieldSetResult;
+pub use spell_registered::SpellRegistered;
+pub use spell_result::RegisterSpellResult;

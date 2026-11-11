@@ -246,6 +246,25 @@ impl Engine {
         self.gestures.gesture_slots(std::time::Instant::now())
     }
 
+    /// Arms spell training (`TrainSpell` command): the next
+    /// [`crate::engine::spell_training::SPELL_TRAINING_REPETITIONS`]
+    /// consistent gesture episodes become the template instead of
+    /// matching (SPELLS.md's learn-by-repetition).
+    pub fn start_spell_training(&mut self, name: SpellName, arming: SpellArming) {
+        self.gestures.start_training(name, arming);
+    }
+
+    /// Whether a spell-training session is currently capturing.
+    pub fn is_spell_training(&self) -> bool {
+        self.gestures.is_training()
+    }
+
+    /// The finished trained spell, once - the device loop registers
+    /// it persistently (SPELLS.md).
+    pub fn take_trained_spell(&mut self) -> Option<Spell> {
+        self.gestures.take_trained_spell()
+    }
+
     pub fn set_calibration(&mut self, calibration: Calibration) {
         self.calibration = Some(calibration);
         self.touch_state.set_calibration(calibration);

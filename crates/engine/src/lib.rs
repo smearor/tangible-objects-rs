@@ -21,6 +21,7 @@ pub use engine::EngineError;
 pub use engine::EngineEvent;
 pub use engine::EngineFrame;
 pub use engine::RegistrationError;
+pub use engine::SPELL_TRAINING_REPETITIONS;
 pub use engine::TouchState;
 pub use engine::Tracker;
 pub use proxy::LegacyMode;

@@ -3,6 +3,7 @@
 
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::RecordingSession;
+use tangible_objects_engine::SPELL_TRAINING_REPETITIONS;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::PinCount;
 #[cfg(feature = "gui")]
@@ -61,6 +62,12 @@ pub(crate) fn drain_control_commands(
                 runtime.start_training(&name);
                 runtime.set_message(Some(format!(
                     "Training '{name}': place the figure and hold still"
+                )));
+            }
+            ControlCommand::TrainSpell { name, arming } => {
+                engine.start_spell_training(name.clone(), arming);
+                runtime.set_message(Some(format!(
+                    "Spell training '{name}': draw the gesture {SPELL_TRAINING_REPETITIONS}x"
                 )));
             }
             ControlCommand::StartRecording { base_path, label } => {
@@ -443,6 +450,20 @@ pub(crate) fn tick_training(
         runtime.set_message(None);
         let (command, _rx) =
             ControlCommand::register(Registration::Pattern(profile), None, Lifetime::Persistent);
+        apply_registration(runtime, engine, command);
+    }
+}
+
+/// Advances spell training: picks up the finished spell once the
+/// `GestureTracker` collected its repetitions and applies a
+/// persistent `Register` (template + corridor → `spells.d`,
+/// `SpellRegistered` lifecycle event).
+pub(crate) fn tick_spell_training(runtime: &mut EngineRuntime, engine: &mut Engine) {
+    if let Some(spell) = engine.take_trained_spell() {
+        info!(name = %spell.name, "spell training completed");
+        runtime.set_message(None);
+        let (command, _rx) =
+            ControlCommand::register(Registration::Spell(spell), None, Lifetime::Persistent);
         apply_registration(runtime, engine, command);
     }
 }
