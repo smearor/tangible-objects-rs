@@ -24,6 +24,7 @@ mod gui_mode;
 mod gui_options;
 mod i18n;
 mod info_card;
+mod menu_card;
 mod metrics_card;
 mod parameters_card;
 mod passthrough;
@@ -154,6 +155,8 @@ pub fn run_gui(
                 anchor_margin: 100.0,
                 bounds_mode: BoundsMode::Contained,
                 foldable: true,
+                closable: true,
+                close_action: floating_board::CardCloseAction::Hide,
                 ..Default::default()
             },
         );
@@ -232,10 +235,29 @@ pub fn run_gui(
                     anchor_margin: 100.0,
                     bounds_mode: BoundsMode::Contained,
                     foldable: true,
+                    // X hides the card (not remove) - the menu re-opens it.
+                    closable: true,
+                    close_action: floating_board::CardCloseAction::Hide,
                     ..Default::default()
                 },
             );
         }
+
+        // Main-menu card: always-open root listing every other card -
+        // the only card that cannot be closed (`closable: false`).
+        let menu_body = menu_card::create_menu_card(&board);
+        let _ = board.add_card_with_id(
+            menu_card::MENU_CARD_ID,
+            &menu_body,
+            CardConfig {
+                title: Some(fl!(language_loader(), "card-menu-title")),
+                position: CardAnchor::TopLeft,
+                anchor_margin: 100.0,
+                bounds_mode: BoundsMode::Contained,
+                foldable: true,
+                ..Default::default()
+            },
+        );
 
         // Card layout: restore `gui-cards.toml` (or arrange the
         // default side-by-side), persist on geometry changes.
@@ -256,6 +278,14 @@ pub fn run_gui(
             &profiles_dir_app,
             training_placement,
         );
+
+        // Initially only the menu is open (GUI.md): every other card
+        // starts hidden and is opened via the menu's toggle list.
+        for card in board.cards() {
+            if card.id() != CardId::new(menu_card::MENU_CARD_ID) {
+                let _ = board.set_card_visible(&card.id(), false);
+            }
+        }
 
         // Touch passthrough: input reaches the cards; everything else
         // falls through to the desktop.

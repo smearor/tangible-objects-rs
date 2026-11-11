@@ -44,6 +44,7 @@ window-title = Tangible Objects - Surface Monitor
 background-alpha = Alpha: { $percent }%
 
 # GTK - cards
+card-menu-title = Menu
 card-visualization-title = Visualization
 card-filter-title = Filter mode
 card-profiles-title = Profiles
