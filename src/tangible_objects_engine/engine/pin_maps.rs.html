@@ -2,8 +2,8 @@
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::ops::Deref;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::ops::DerefMut;
 <a href=#4 id=4 data-nosnippet>4</a>
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>tangible_objects_model::PatternMatch;
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>tangible_objects_model::RotationRad;
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>smearor_commons_geometry::RotationRad;
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>tangible_objects_model::PatternMatch;
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>tangible_objects_model::TangibleId;
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>tangible_objects_model::TouchSet;
 <a href=#9 id=9 data-nosnippet>9</a>
@@ -65,19 +65,19 @@
 <a href=#65 id=65 data-nosnippet>65</a><span class="attr">#[cfg(test)]
 <a href=#66 id=66 data-nosnippet>66</a></span><span class="kw">mod </span>tests {
 <a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">use </span><span class="kw">super</span>::PinMaps;
-<a href=#68 id=68 data-nosnippet>68</a>    <span class="kw">use </span>tangible_objects_model::ClaimedIndices;
-<a href=#69 id=69 data-nosnippet>69</a>    <span class="kw">use </span>tangible_objects_model::CombinationBuf;
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">use </span>tangible_objects_model::FrameCount;
-<a href=#71 id=71 data-nosnippet>71</a>    <span class="kw">use </span>tangible_objects_model::Millimeters;
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
-<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">use </span>tangible_objects_model::PatternMatch;
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">use </span>tangible_objects_model::RefIndices;
-<a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">use </span>tangible_objects_model::RotationRad;
-<a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span>tangible_objects_model::TangibleId;
-<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">use </span>tangible_objects_model::TouchPoint;
-<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span>tangible_objects_model::TouchPointSlot;
-<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">use </span>tangible_objects_model::TrackingId;
-<a href=#80 id=80 data-nosnippet>80</a>    <span class="kw">use </span>tangible_objects_model::Vec2;
+<a href=#68 id=68 data-nosnippet>68</a>    <span class="kw">use </span>smearor_commons_geometry::Millimeters;
+<a href=#69 id=69 data-nosnippet>69</a>    <span class="kw">use </span>smearor_commons_geometry::RotationRad;
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">use </span>smearor_commons_geometry::Vec2;
+<a href=#71 id=71 data-nosnippet>71</a>    <span class="kw">use </span>tangible_objects_model::ClaimedIndices;
+<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">use </span>tangible_objects_model::CombinationBuf;
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">use </span>tangible_objects_model::FrameCount;
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
+<a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">use </span>tangible_objects_model::PatternMatch;
+<a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span>tangible_objects_model::RefIndices;
+<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">use </span>tangible_objects_model::TangibleId;
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span>tangible_objects_model::TouchPoint;
+<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">use </span>tangible_objects_model::TouchPointSlot;
+<a href=#80 id=80 data-nosnippet>80</a>    <span class="kw">use </span>tangible_objects_model::TrackingId;
 <a href=#81 id=81 data-nosnippet>81</a>
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">fn </span>square() -&gt; Vec&lt;Vec2&lt;Millimeters&gt;&gt; {
 <a href=#83 id=83 data-nosnippet>83</a>        <span class="macro">vec!</span>[

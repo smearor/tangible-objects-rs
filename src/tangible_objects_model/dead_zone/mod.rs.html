@@ -8,17 +8,16 @@
 <a href=#8 id=8 data-nosnippet>8</a>//! `Registration::DeadZone` command (session or persistent lifetime),
 <a href=#9 id=9 data-nosnippet>9</a>//! mirroring field-set registration.
 <a href=#10 id=10 data-nosnippet>10</a>
-<a href=#11 id=11 data-nosnippet>11</a></span><span class="kw">mod </span>name;
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">mod </span>zone;
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">mod </span>zones;
-<a href=#14 id=14 data-nosnippet>14</a>
-<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::Millimeters;
-<a href=#16 id=16 data-nosnippet>16</a>
-<a href=#17 id=17 data-nosnippet>17</a><span class="doccomment">/// Interface default for a dead zone's suppression radius: 10 mm.
-<a href=#18 id=18 data-nosnippet>18</a>/// Used when a registration omits the radius (`null`/`0` on the wire).
-<a href=#19 id=19 data-nosnippet>19</a></span><span class="kw">pub const </span>DEFAULT_DEAD_ZONE_RADIUS: Millimeters = Millimeters::new(<span class="number">10.0</span>);
-<a href=#20 id=20 data-nosnippet>20</a>
-<a href=#21 id=21 data-nosnippet>21</a><span class="kw">pub use </span>name::DeadZoneName;
-<a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub use </span>zone::DeadZone;
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">pub use </span>zones::DeadZones;
+<a href=#11 id=11 data-nosnippet>11</a></span><span class="kw">use </span>smearor_commons_geometry::Millimeters;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">mod </span>name;
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">mod </span>zone;
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">mod </span>zones;
+<a href=#15 id=15 data-nosnippet>15</a>
+<a href=#16 id=16 data-nosnippet>16</a><span class="doccomment">/// Interface default for a dead zone's suppression radius: 10 mm.
+<a href=#17 id=17 data-nosnippet>17</a>/// Used when a registration omits the radius (`null`/`0` on the wire).
+<a href=#18 id=18 data-nosnippet>18</a></span><span class="kw">pub const </span>DEFAULT_DEAD_ZONE_RADIUS: Millimeters = Millimeters::new(<span class="number">10.0</span>);
+<a href=#19 id=19 data-nosnippet>19</a>
+<a href=#20 id=20 data-nosnippet>20</a><span class="kw">pub use </span>name::DeadZoneName;
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">pub use </span>zone::DeadZone;
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub use </span>zones::DeadZones;
 </code></pre></div></section></main></body></html>

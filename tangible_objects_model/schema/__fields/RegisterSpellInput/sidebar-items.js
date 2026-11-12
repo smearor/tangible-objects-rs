@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["arming","corridor","enabled","name","scaleInvariant","strokes"]};

@@ -22,7 +22,7 @@
 <a href=#22 id=22 data-nosnippet>22</a>///
 <a href=#23 id=23 data-nosnippet>23</a>/// Written once per non-empty `SYN_REPORT` frame - never for frames without
 <a href=#24 id=24 data-nosnippet>24</a>/// touches and tracked tangibles. All spatial quantities are in
-<a href=#25 id=25 data-nosnippet>25</a>/// [`Millimeters`](crate::Millimeters); when `calibration` is `null` the
+<a href=#25 id=25 data-nosnippet>25</a>/// [`Millimeters`](smearor_commons_geometry::Millimeters); when `calibration` is `null` the
 <a href=#26 id=26 data-nosnippet>26</a>/// device was uncalibrated and positions are raw axis values.
 <a href=#27 id=27 data-nosnippet>27</a></span><span class="attr">#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 <a href=#28 id=28 data-nosnippet>28</a></span><span class="kw">pub struct </span>FrameRecord {
@@ -76,15 +76,15 @@
 <a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span><span class="kw">super</span>::FrameRecord;
 <a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">use </span><span class="kw">super</span>::RECORD_SCHEMA_VERSION;
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span><span class="kw">crate</span>::EventCount;
-<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">use </span><span class="kw">crate</span>::Millimeters;
-<a href=#80 id=80 data-nosnippet>80</a>    <span class="kw">use </span><span class="kw">crate</span>::Milliseconds;
-<a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">use </span><span class="kw">crate</span>::PatternId;
-<a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">use </span><span class="kw">crate</span>::PatternTolerance;
-<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPoint;
-<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPointSlot;
-<a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">use </span><span class="kw">crate</span>::TrackingId;
-<a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">use </span><span class="kw">crate</span>::Vec2;
-<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">use </span><span class="kw">crate</span>::recording::CandidateReport;
+<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">use </span><span class="kw">crate</span>::Milliseconds;
+<a href=#80 id=80 data-nosnippet>80</a>    <span class="kw">use </span><span class="kw">crate</span>::PatternId;
+<a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">use </span><span class="kw">crate</span>::PatternTolerance;
+<a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPoint;
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPointSlot;
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">use </span><span class="kw">crate</span>::TrackingId;
+<a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">use </span><span class="kw">crate</span>::recording::CandidateReport;
+<a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">use </span>smearor_commons_geometry::Millimeters;
+<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">use </span>smearor_commons_geometry::Vec2;
 <a href=#88 id=88 data-nosnippet>88</a>
 <a href=#89 id=89 data-nosnippet>89</a>    <span class="kw">fn </span>sample_record() -&gt; FrameRecord {
 <a href=#90 id=90 data-nosnippet>90</a>        FrameRecord {

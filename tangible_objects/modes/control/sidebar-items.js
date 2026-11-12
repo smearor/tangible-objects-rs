@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["apply_registration","drain_control_commands","register_profile_hook","spawn_interfaces","status_of_session","tick_training"]};
+window.SIDEBAR_ITEMS = {"fn":["apply_registration","drain_control_commands","register_profile_hook","spawn_interfaces","status_of_session","tick_spell_training","tick_training"]};

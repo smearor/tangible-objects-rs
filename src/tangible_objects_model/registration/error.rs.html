@@ -4,35 +4,43 @@
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span><span class="kw">crate</span>::PatternId;
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::PatternName;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::Region;
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>thiserror::Error;
-<a href=#8 id=8 data-nosnippet>8</a>
-<a href=#9 id=9 data-nosnippet>9</a><span class="doccomment">/// Errors produced by runtime profile and field-set registration
-<a href=#10 id=10 data-nosnippet>10</a>/// (DYNAMIC_PROFILES.md).
-<a href=#11 id=11 data-nosnippet>11</a>///
-<a href=#12 id=12 data-nosnippet>12</a>/// Lives in `model` so the control-command reply channel can carry the
-<a href=#13 id=13 data-nosnippet>13</a>/// typed rejection to interface crates (GraphQL/D-Bus/MCP) instead of a
-<a href=#14 id=14 data-nosnippet>14</a>/// pre-formatted string.
-<a href=#15 id=15 data-nosnippet>15</a></span><span class="attr">#[derive(Debug, Error)]
-<a href=#16 id=16 data-nosnippet>16</a></span><span class="kw">pub enum </span>RegistrationError {
-<a href=#17 id=17 data-nosnippet>17</a>    <span class="doccomment">/// The referenced pattern ID is not registered.
-<a href=#18 id=18 data-nosnippet>18</a>    </span><span class="attr">#[error(<span class="string">"pattern {0} not found"</span>)]
-<a href=#19 id=19 data-nosnippet>19</a>    </span>PatternNotFound(PatternId),
-<a href=#20 id=20 data-nosnippet>20</a>    <span class="doccomment">/// The profile's geometric fingerprint collides with an already
-<a href=#21 id=21 data-nosnippet>21</a>    /// registered pattern - registration is rejected so the new
-<a href=#22 id=22 data-nosnippet>22</a>    /// profile cannot shadow the incumbent.
-<a href=#23 id=23 data-nosnippet>23</a>    </span><span class="attr">#[error(<span class="string">"fingerprint collides with registered profile '{0}'"</span>)]
-<a href=#24 id=24 data-nosnippet>24</a>    </span>FingerprintCollision(PatternName),
-<a href=#25 id=25 data-nosnippet>25</a>    <span class="doccomment">/// The field set contains overlapping fields - an occupancy field
-<a href=#26 id=26 data-nosnippet>26</a>    /// must not suppress the same slot twice. Carries the offending pair
-<a href=#27 id=27 data-nosnippet>27</a>    /// and the intersection region so the rejection explains itself in
-<a href=#28 id=28 data-nosnippet>28</a>    /// logs and responses.
-<a href=#29 id=29 data-nosnippet>29</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' has overlapping fields: '{1}' overlaps '{2}' (overlap: {3})"</span>)]
-<a href=#30 id=30 data-nosnippet>30</a>    </span>FieldsOverlap(FieldSetName, FieldName, FieldName, Region),
-<a href=#31 id=31 data-nosnippet>31</a>    <span class="doccomment">/// A field set with this name is already registered.
-<a href=#32 id=32 data-nosnippet>32</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' already registered"</span>)]
-<a href=#33 id=33 data-nosnippet>33</a>    </span>DuplicateFieldSet(FieldSetName),
-<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// A dead zone with this name is already registered.
-<a href=#35 id=35 data-nosnippet>35</a>    </span><span class="attr">#[error(<span class="string">"dead zone '{0}' already registered"</span>)]
-<a href=#36 id=36 data-nosnippet>36</a>    </span>DuplicateDeadZone(DeadZoneName),
-<a href=#37 id=37 data-nosnippet>37</a>}
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::SpellName;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>thiserror::Error;
+<a href=#9 id=9 data-nosnippet>9</a>
+<a href=#10 id=10 data-nosnippet>10</a><span class="doccomment">/// Errors produced by runtime profile and field-set registration
+<a href=#11 id=11 data-nosnippet>11</a>/// (DYNAMIC_PROFILES.md).
+<a href=#12 id=12 data-nosnippet>12</a>///
+<a href=#13 id=13 data-nosnippet>13</a>/// Lives in `model` so the control-command reply channel can carry the
+<a href=#14 id=14 data-nosnippet>14</a>/// typed rejection to interface crates (GraphQL/D-Bus/MCP) instead of a
+<a href=#15 id=15 data-nosnippet>15</a>/// pre-formatted string.
+<a href=#16 id=16 data-nosnippet>16</a></span><span class="attr">#[derive(Debug, Error)]
+<a href=#17 id=17 data-nosnippet>17</a></span><span class="kw">pub enum </span>RegistrationError {
+<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// The referenced pattern ID is not registered.
+<a href=#19 id=19 data-nosnippet>19</a>    </span><span class="attr">#[error(<span class="string">"pattern {0} not found"</span>)]
+<a href=#20 id=20 data-nosnippet>20</a>    </span>PatternNotFound(PatternId),
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// The profile's geometric fingerprint collides with an already
+<a href=#22 id=22 data-nosnippet>22</a>    /// registered pattern - registration is rejected so the new
+<a href=#23 id=23 data-nosnippet>23</a>    /// profile cannot shadow the incumbent.
+<a href=#24 id=24 data-nosnippet>24</a>    </span><span class="attr">#[error(<span class="string">"fingerprint collides with registered profile '{0}'"</span>)]
+<a href=#25 id=25 data-nosnippet>25</a>    </span>FingerprintCollision(PatternName),
+<a href=#26 id=26 data-nosnippet>26</a>    <span class="doccomment">/// The field set contains overlapping fields - an occupancy field
+<a href=#27 id=27 data-nosnippet>27</a>    /// must not suppress the same slot twice. Carries the offending pair
+<a href=#28 id=28 data-nosnippet>28</a>    /// and the intersection region so the rejection explains itself in
+<a href=#29 id=29 data-nosnippet>29</a>    /// logs and responses.
+<a href=#30 id=30 data-nosnippet>30</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' has overlapping fields: '{1}' overlaps '{2}' (overlap: {3})"</span>)]
+<a href=#31 id=31 data-nosnippet>31</a>    </span>FieldsOverlap(FieldSetName, FieldName, FieldName, Region),
+<a href=#32 id=32 data-nosnippet>32</a>    <span class="doccomment">/// A field set with this name is already registered.
+<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' already registered"</span>)]
+<a href=#34 id=34 data-nosnippet>34</a>    </span>DuplicateFieldSet(FieldSetName),
+<a href=#35 id=35 data-nosnippet>35</a>    <span class="doccomment">/// A dead zone with this name is already registered.
+<a href=#36 id=36 data-nosnippet>36</a>    </span><span class="attr">#[error(<span class="string">"dead zone '{0}' already registered"</span>)]
+<a href=#37 id=37 data-nosnippet>37</a>    </span>DuplicateDeadZone(DeadZoneName),
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="doccomment">/// The spell's exclusive zone overlaps a field - the zone
+<a href=#39 id=39 data-nosnippet>39</a>    /// reserves its area for gestures while the field expects
+<a href=#40 id=40 data-nosnippet>40</a>    /// occupancy (SPELLS.md). Carries the spell and the offending
+<a href=#41 id=41 data-nosnippet>41</a>    /// field so the rejection explains itself in logs and
+<a href=#42 id=42 data-nosnippet>42</a>    /// responses.
+<a href=#43 id=43 data-nosnippet>43</a>    </span><span class="attr">#[error(<span class="string">"spell '{0}' exclusive zone overlaps field '{1}'"</span>)]
+<a href=#44 id=44 data-nosnippet>44</a>    </span>SpellZoneOverlapsField(SpellName, FieldName),
+<a href=#45 id=45 data-nosnippet>45</a>}
 </code></pre></div></section></main></body></html>

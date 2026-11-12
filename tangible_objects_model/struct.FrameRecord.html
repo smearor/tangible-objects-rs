@@ -11,7 +11,7 @@
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>One JSONL line of a frame recording (TRAINING.md schema <code>"v": 1</code>).</p>
 <p>Written once per non-empty <code>SYN_REPORT</code> frame - never for frames without
 touches and tracked tangibles. All spatial quantities are in
-<a href="struct.Millimeters.html" title="struct tangible_objects_model::Millimeters"><code>Millimeters</code></a>; when <code>calibration</code> is <code>null</code> the
+<a href="smearor_commons_geometry::Millimeters"><code>Millimeters</code></a>; when <code>calibration</code> is <code>null</code> the
 device was uncalibrated and positions are raw axis values.</p>
 </div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.schema_version" class="structfield section-header"><a href="#structfield.schema_version" class="anchor field">§</a><code>schema_version: <a class="primitive" href="https://doc.rust-lang.org/1.99.1/std/primitive.u16.html">u16</a></code></span><div class="docblock"><p>Schema version; serialized as <code>"v"</code> and always
 <a href="constant.RECORD_SCHEMA_VERSION.html" title="constant tangible_objects_model::RECORD_SCHEMA_VERSION"><code>RECORD_SCHEMA_VERSION</code></a> for newly written records.</p>

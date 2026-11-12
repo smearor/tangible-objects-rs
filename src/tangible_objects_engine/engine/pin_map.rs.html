@@ -5,11 +5,11 @@
 <a href=#5 id=5 data-nosnippet>5</a>
 <a href=#6 id=6 data-nosnippet>6</a></span><span class="kw">use </span>std::collections::HashMap;
 <a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>tangible_objects_model::CombinationBuf;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>tangible_objects_model::PatternMatch;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>tangible_objects_model::RefIndex;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>tangible_objects_model::RefPoints;
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>tangible_objects_model::RotationRad;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>smearor_commons_geometry::RotationRad;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>tangible_objects_model::CombinationBuf;
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>tangible_objects_model::PatternMatch;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>tangible_objects_model::RefIndex;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>tangible_objects_model::RefPoints;
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>tangible_objects_model::SlotSet;
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>tangible_objects_model::TouchPointSlot;
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>tangible_objects_model::TouchSet;
@@ -97,17 +97,17 @@
 <a href=#97 id=97 data-nosnippet>97</a><span class="attr">#[cfg(test)]
 <a href=#98 id=98 data-nosnippet>98</a></span><span class="kw">mod </span>tests {
 <a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">use </span><span class="kw">super</span>::PinMap;
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">use </span>tangible_objects_model::ClaimedIndices;
-<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">use </span>tangible_objects_model::CombinationBuf;
-<a href=#102 id=102 data-nosnippet>102</a>    <span class="kw">use </span>tangible_objects_model::FrameCount;
-<a href=#103 id=103 data-nosnippet>103</a>    <span class="kw">use </span>tangible_objects_model::Millimeters;
-<a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
-<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">use </span>tangible_objects_model::PatternMatch;
-<a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">use </span>tangible_objects_model::RotationRad;
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">use </span>tangible_objects_model::TouchPoint;
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">use </span>tangible_objects_model::TouchPointSlot;
-<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">use </span>tangible_objects_model::TrackingId;
-<a href=#110 id=110 data-nosnippet>110</a>    <span class="kw">use </span>tangible_objects_model::Vec2;
+<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">use </span>smearor_commons_geometry::Millimeters;
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">use </span>smearor_commons_geometry::RotationRad;
+<a href=#102 id=102 data-nosnippet>102</a>    <span class="kw">use </span>smearor_commons_geometry::Vec2;
+<a href=#103 id=103 data-nosnippet>103</a>    <span class="kw">use </span>tangible_objects_model::ClaimedIndices;
+<a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">use </span>tangible_objects_model::CombinationBuf;
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">use </span>tangible_objects_model::FrameCount;
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">use </span>tangible_objects_model::PatternId;
+<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">use </span>tangible_objects_model::PatternMatch;
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">use </span>tangible_objects_model::TouchPoint;
+<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">use </span>tangible_objects_model::TouchPointSlot;
+<a href=#110 id=110 data-nosnippet>110</a>    <span class="kw">use </span>tangible_objects_model::TrackingId;
 <a href=#111 id=111 data-nosnippet>111</a>
 <a href=#112 id=112 data-nosnippet>112</a>    <span class="doccomment">/// Touch points `slot`, `(x, y)` - a fixed square under `angle`.
 <a href=#113 id=113 data-nosnippet>113</a>    </span><span class="kw">fn </span>touches(angle: f64) -&gt; Vec&lt;TouchPoint&gt; {

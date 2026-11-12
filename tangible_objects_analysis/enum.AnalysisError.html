@@ -5,7 +5,7 @@
     },
     Parse {
         line: <a class="primitive" href="https://doc.rust-lang.org/1.99.1/std/primitive.usize.html">usize</a>,
-        source: <a class="struct" href="https://docs.rs/serde_json/1.0.152/serde_json/error/struct.Error.html" title="struct serde_json::error::Error">Error</a>,
+        source: <a class="struct" href="https://docs.rs/serde_json/1.0.154/serde_json/error/struct.Error.html" title="struct serde_json::error::Error">Error</a>,
     },
     UnsupportedVersion {
         line: <a class="primitive" href="https://doc.rust-lang.org/1.99.1/std/primitive.usize.html">usize</a>,
@@ -18,7 +18,7 @@
 </div></div><div class="sub-variant-field"><span id="variant.Io.field.source" class="section-header"><a href="#variant.Io.field.source" class="anchor field">§</a><code>source: <a class="struct" href="https://doc.rust-lang.org/1.99.1/core/io/error/struct.Error.html" title="struct core::io::error::Error">Error</a></code></span><div class="docblock"><p>Underlying I/O error.</p>
 </div></div></div><section id="variant.Parse" class="variant"><a href="#variant.Parse" class="anchor">§</a><h3 class="code-header">Parse</h3></section><div class="docblock"><p>A JSONL line failed to parse as a <code>FrameRecord</code>.</p>
 </div><div class="sub-variant" id="variant.Parse.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.Parse.field.line" class="section-header"><a href="#variant.Parse.field.line" class="anchor field">§</a><code>line: <a class="primitive" href="https://doc.rust-lang.org/1.99.1/std/primitive.usize.html">usize</a></code></span><div class="docblock"><p>1-based line number of the malformed record.</p>
-</div></div><div class="sub-variant-field"><span id="variant.Parse.field.source" class="section-header"><a href="#variant.Parse.field.source" class="anchor field">§</a><code>source: <a class="struct" href="https://docs.rs/serde_json/1.0.152/serde_json/error/struct.Error.html" title="struct serde_json::error::Error">Error</a></code></span><div class="docblock"><p>Underlying JSON error.</p>
+</div></div><div class="sub-variant-field"><span id="variant.Parse.field.source" class="section-header"><a href="#variant.Parse.field.source" class="anchor field">§</a><code>source: <a class="struct" href="https://docs.rs/serde_json/1.0.154/serde_json/error/struct.Error.html" title="struct serde_json::error::Error">Error</a></code></span><div class="docblock"><p>Underlying JSON error.</p>
 </div></div></div><section id="variant.UnsupportedVersion" class="variant"><a href="#variant.UnsupportedVersion" class="anchor">§</a><h3 class="code-header">UnsupportedVersion</h3></section><div class="docblock"><p>The recording uses a schema version this analyzer does not understand.</p>
 </div><div class="sub-variant" id="variant.UnsupportedVersion.fields"><h4>Fields</h4><div class="sub-variant-field"><span id="variant.UnsupportedVersion.field.line" class="section-header"><a href="#variant.UnsupportedVersion.field.line" class="anchor field">§</a><code>line: <a class="primitive" href="https://doc.rust-lang.org/1.99.1/std/primitive.usize.html">usize</a></code></span><div class="docblock"><p>1-based line number of the offending record.</p>
 </div></div><div class="sub-variant-field"><span id="variant.UnsupportedVersion.field.found" class="section-header"><a href="#variant.UnsupportedVersion.field.found" class="anchor field">§</a><code>found: <a class="primitive" href="https://doc.rust-lang.org/1.99.1/std/primitive.u16.html">u16</a></code></span><div class="docblock"><p>Schema version found in the record.</p>

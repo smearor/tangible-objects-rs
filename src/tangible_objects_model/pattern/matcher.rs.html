@@ -16,13 +16,13 @@
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::Combinations;
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span><span class="kw">crate</span>::CompletionConfig;
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span><span class="kw">crate</span>::MatchScore;
-<a href=#19 id=19 data-nosnippet>19</a><span class="kw">use </span><span class="kw">crate</span>::Millimeters;
-<a href=#20 id=20 data-nosnippet>20</a><span class="kw">use </span><span class="kw">crate</span>::PatternMatch;
-<a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span><span class="kw">crate</span>::PointSet;
-<a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span><span class="kw">crate</span>::RefIndices;
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span><span class="kw">crate</span>::TangiblePattern;
-<a href=#24 id=24 data-nosnippet>24</a><span class="kw">use </span><span class="kw">crate</span>::TouchSet;
-<a href=#25 id=25 data-nosnippet>25</a><span class="kw">use </span><span class="kw">crate</span>::Vec2;
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">use </span><span class="kw">crate</span>::PatternMatch;
+<a href=#20 id=20 data-nosnippet>20</a><span class="kw">use </span><span class="kw">crate</span>::PointSet;
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span><span class="kw">crate</span>::RefIndices;
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span><span class="kw">crate</span>::TangiblePattern;
+<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span><span class="kw">crate</span>::TouchSet;
+<a href=#24 id=24 data-nosnippet>24</a><span class="kw">use </span>smearor_commons_geometry::Millimeters;
+<a href=#25 id=25 data-nosnippet>25</a><span class="kw">use </span>smearor_commons_geometry::Vec2;
 <a href=#26 id=26 data-nosnippet>26</a>
 <a href=#27 id=27 data-nosnippet>27</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; PatternSet&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#28 id=28 data-nosnippet>28</a>    <span class="doccomment">/// Finds all pattern matches in the current set of touch points.
@@ -438,15 +438,15 @@
 <a href=#438 id=438 data-nosnippet>438</a>    <span class="kw">use </span><span class="kw">super</span>::combinations;
 <a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">use </span><span class="kw">super</span>::combinations_within;
 <a href=#440 id=440 data-nosnippet>440</a>    <span class="kw">use </span><span class="kw">crate</span>::CompletionConfig;
-<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">use </span><span class="kw">crate</span>::Millimeters;
-<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">use </span><span class="kw">crate</span>::PatternSet;
-<a href=#443 id=443 data-nosnippet>443</a>    <span class="kw">use </span><span class="kw">crate</span>::Region;
-<a href=#444 id=444 data-nosnippet>444</a>    <span class="kw">use </span><span class="kw">crate</span>::TakenIndices;
-<a href=#445 id=445 data-nosnippet>445</a>    <span class="kw">use </span><span class="kw">crate</span>::TangiblePattern;
-<a href=#446 id=446 data-nosnippet>446</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPoint;
-<a href=#447 id=447 data-nosnippet>447</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPointSlot;
-<a href=#448 id=448 data-nosnippet>448</a>    <span class="kw">use </span><span class="kw">crate</span>::TrackingId;
-<a href=#449 id=449 data-nosnippet>449</a>    <span class="kw">use </span><span class="kw">crate</span>::Vec2;
+<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">use </span><span class="kw">crate</span>::PatternSet;
+<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">use </span><span class="kw">crate</span>::Region;
+<a href=#443 id=443 data-nosnippet>443</a>    <span class="kw">use </span><span class="kw">crate</span>::TakenIndices;
+<a href=#444 id=444 data-nosnippet>444</a>    <span class="kw">use </span><span class="kw">crate</span>::TangiblePattern;
+<a href=#445 id=445 data-nosnippet>445</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPoint;
+<a href=#446 id=446 data-nosnippet>446</a>    <span class="kw">use </span><span class="kw">crate</span>::TouchPointSlot;
+<a href=#447 id=447 data-nosnippet>447</a>    <span class="kw">use </span><span class="kw">crate</span>::TrackingId;
+<a href=#448 id=448 data-nosnippet>448</a>    <span class="kw">use </span>smearor_commons_geometry::Millimeters;
+<a href=#449 id=449 data-nosnippet>449</a>    <span class="kw">use </span>smearor_commons_geometry::Vec2;
 <a href=#450 id=450 data-nosnippet>450</a>
 <a href=#451 id=451 data-nosnippet>451</a>    <span class="kw">fn </span>touch_point(slot: u32, x: f64, y: f64) -&gt; TouchPoint {
 <a href=#452 id=452 data-nosnippet>452</a>        TouchPoint {

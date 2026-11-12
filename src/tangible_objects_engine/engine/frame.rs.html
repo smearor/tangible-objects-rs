@@ -2,37 +2,50 @@
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>tangible_objects_model::CandidateReport;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>tangible_objects_model::ContactCount;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>tangible_objects_model::PatternMatch;
-<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>tangible_objects_model::TouchPoint;
-<a href=#6 id=6 data-nosnippet>6</a>
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">super</span>::EngineEvent;
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>tangible_objects_model::SlotSet;
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>tangible_objects_model::SpellMatched;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>tangible_objects_model::TouchPoint;
 <a href=#8 id=8 data-nosnippet>8</a>
-<a href=#9 id=9 data-nosnippet>9</a><span class="doccomment">/// Result of one completed input frame (`SYN_REPORT` boundary).
-<a href=#10 id=10 data-nosnippet>10</a>///
-<a href=#11 id=11 data-nosnippet>11</a>/// Returned by [`crate::Engine::process`] whenever a frame was evaluated.
-<a href=#12 id=12 data-nosnippet>12</a></span><span class="attr">#[derive(Debug, Clone)]
-<a href=#13 id=13 data-nosnippet>13</a></span><span class="kw">pub struct </span>EngineFrame {
-<a href=#14 id=14 data-nosnippet>14</a>    <span class="doccomment">/// All pattern matches detected in this frame.
-<a href=#15 id=15 data-nosnippet>15</a>    </span><span class="kw">pub </span>matches: Vec&lt;PatternMatch&gt;,
-<a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// Active touch points at frame end, sorted by slot.
-<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub </span>touches: Vec&lt;TouchPoint&gt;,
-<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// Domain events produced by this frame (touch changes, tangible
-<a href=#19 id=19 data-nosnippet>19</a>    /// added/moved/removed), in emission order.
-<a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">pub </span>events: Vec&lt;EngineEvent&gt;,
-<a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// Diagnostics: every candidate combination tested in this frame -
-<a href=#22 id=22 data-nosnippet>22</a>    /// empty unless the frame was produced by
-<a href=#23 id=23 data-nosnippet>23</a>    /// [`Engine::process_with_diagnostics`](crate::Engine::process_with_diagnostics).
-<a href=#24 id=24 data-nosnippet>24</a>    </span><span class="kw">pub </span>candidates: Vec&lt;CandidateReport&gt;,
-<a href=#25 id=25 data-nosnippet>25</a>    <span class="doccomment">/// Whether the generic matching pass ran this frame
-<a href=#26 id=26 data-nosnippet>26</a>    /// (SKIP_UNCHANGED.md): `false` on idle-board frames where the
-<a href=#27 id=27 data-nosnippet>27</a>    /// contact set was unchanged, no spawn was pending and no matcher
-<a href=#28 id=28 data-nosnippet>28</a>    /// input changed.
-<a href=#29 id=29 data-nosnippet>29</a>    </span><span class="kw">pub </span>ran_generic: bool,
-<a href=#30 id=30 data-nosnippet>30</a>    <span class="doccomment">/// Candidate combinations evaluated in this frame's generic pass -
-<a href=#31 id=31 data-nosnippet>31</a>    /// the pruning ratio is observable as this count versus the
-<a href=#32 id=32 data-nosnippet>32</a>    /// unpruned C(touches, k) per pattern (SPATIAL_CLUSTERING.md).
-<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="kw">pub </span>candidates_tested: CandidateCount,
-<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// Contacts dropped by dead-zone filtering this frame - the
-<a href=#35 id=35 data-nosnippet>35</a>    /// ingest-level suppression count (edge-margin ghosts excluded).
-<a href=#36 id=36 data-nosnippet>36</a>    </span><span class="kw">pub </span>dead_zone_filtered: ContactCount,
-<a href=#37 id=37 data-nosnippet>37</a>}
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">super</span>::EngineEvent;
+<a href=#10 id=10 data-nosnippet>10</a>
+<a href=#11 id=11 data-nosnippet>11</a><span class="doccomment">/// Result of one completed input frame (`SYN_REPORT` boundary).
+<a href=#12 id=12 data-nosnippet>12</a>///
+<a href=#13 id=13 data-nosnippet>13</a>/// Returned by [`crate::Engine::process`] whenever a frame was evaluated.
+<a href=#14 id=14 data-nosnippet>14</a></span><span class="attr">#[derive(Debug, Clone)]
+<a href=#15 id=15 data-nosnippet>15</a></span><span class="kw">pub struct </span>EngineFrame {
+<a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// All pattern matches detected in this frame.
+<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub </span>matches: Vec&lt;PatternMatch&gt;,
+<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// Active touch points at frame end, sorted by slot.
+<a href=#19 id=19 data-nosnippet>19</a>    </span><span class="kw">pub </span>touches: Vec&lt;TouchPoint&gt;,
+<a href=#20 id=20 data-nosnippet>20</a>    <span class="doccomment">/// Domain events produced by this frame (touch changes, tangible
+<a href=#21 id=21 data-nosnippet>21</a>    /// added/moved/removed), in emission order.
+<a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">pub </span>events: Vec&lt;EngineEvent&gt;,
+<a href=#23 id=23 data-nosnippet>23</a>    <span class="doccomment">/// Diagnostics: every candidate combination tested in this frame -
+<a href=#24 id=24 data-nosnippet>24</a>    /// empty unless the frame was produced by
+<a href=#25 id=25 data-nosnippet>25</a>    /// [`Engine::process_with_diagnostics`](crate::Engine::process_with_diagnostics).
+<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">pub </span>candidates: Vec&lt;CandidateReport&gt;,
+<a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// Whether the generic matching pass ran this frame
+<a href=#28 id=28 data-nosnippet>28</a>    /// (SKIP_UNCHANGED.md): `false` on idle-board frames where the
+<a href=#29 id=29 data-nosnippet>29</a>    /// contact set was unchanged, no spawn was pending and no matcher
+<a href=#30 id=30 data-nosnippet>30</a>    /// input changed.
+<a href=#31 id=31 data-nosnippet>31</a>    </span><span class="kw">pub </span>ran_generic: bool,
+<a href=#32 id=32 data-nosnippet>32</a>    <span class="doccomment">/// Candidate combinations evaluated in this frame's generic pass -
+<a href=#33 id=33 data-nosnippet>33</a>    /// the pruning ratio is observable as this count versus the
+<a href=#34 id=34 data-nosnippet>34</a>    /// unpruned C(touches, k) per pattern (SPATIAL_CLUSTERING.md).
+<a href=#35 id=35 data-nosnippet>35</a>    </span><span class="kw">pub </span>candidates_tested: CandidateCount,
+<a href=#36 id=36 data-nosnippet>36</a>    <span class="doccomment">/// Contacts dropped by dead-zone filtering this frame - the
+<a href=#37 id=37 data-nosnippet>37</a>    /// ingest-level suppression count (edge-margin ghosts excluded).
+<a href=#38 id=38 data-nosnippet>38</a>    </span><span class="kw">pub </span>dead_zone_filtered: ContactCount,
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="doccomment">/// Spells recognized on gesture-episode close this frame
+<a href=#40 id=40 data-nosnippet>40</a>    /// (SPELLS.md - empty on almost every frame).
+<a href=#41 id=41 data-nosnippet>41</a>    </span><span class="kw">pub </span>spell_matches: Vec&lt;SpellMatched&gt;,
+<a href=#42 id=42 data-nosnippet>42</a>    <span class="doccomment">/// Slots inside an armed gesture episode (SPELLS.md's
+<a href=#43 id=43 data-nosnippet>43</a>    /// state-gated suppression) - the filter boundary withholds them
+<a href=#44 id=44 data-nosnippet>44</a>    /// from the virtual device like matched tangible slots.
+<a href=#45 id=45 data-nosnippet>45</a>    </span><span class="kw">pub </span>gesture_slots: SlotSet,
+<a href=#46 id=46 data-nosnippet>46</a>    <span class="doccomment">/// Slots consumed by a spell dispatched this frame - the
+<a href=#47 id=47 data-nosnippet>47</a>    /// boundary drops their withheld events permanently instead of
+<a href=#48 id=48 data-nosnippet>48</a>    /// replaying the stroke onto the desktop.
+<a href=#49 id=49 data-nosnippet>49</a>    </span><span class="kw">pub </span>consumed_slots: SlotSet,
+<a href=#50 id=50 data-nosnippet>50</a>}
 </code></pre></div></section></main></body></html>
