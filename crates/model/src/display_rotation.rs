@@ -1,4 +1,5 @@
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::QuarterTurn;
 use smearor_commons_geometry::Vec2;
 use std::fmt;
 use std::str::FromStr;
@@ -22,6 +23,9 @@ use serde::Serialize;
 /// The direction is **clockwise as seen by the viewer**: `Deg90` is the
 /// panel's native landscape top edge displayed on the viewer's right.
 /// When the desktop is rotated the other way, use `Deg270`.
+///
+/// The geometry lives on [`QuarterTurn`]; this enum carries the
+/// cynic/serde wire shape for the display domain.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 #[cfg_attr(not(feature = "cynic"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
@@ -55,17 +59,13 @@ pub enum DisplayRotation {
 impl DisplayRotation {
     /// Whether the quarter turn swaps the surface's width and height.
     pub fn swaps_axes(self) -> bool {
-        matches!(self, Self::Deg90 | Self::Deg270)
+        QuarterTurn::from(self).swaps_axes()
     }
 
     /// The rotation undoing this one - `Deg0`/`Deg180` are their own
     /// inverses, the two quarter turns swap.
     pub fn inverse(self) -> Self {
-        match self {
-            Self::Deg0 | Self::Deg180 => self,
-            Self::Deg90 => Self::Deg270,
-            Self::Deg270 => Self::Deg90,
-        }
+        QuarterTurn::from(self).inverse().into()
     }
 
     /// Rotates a millimeter position inside the `bounds` surface into
@@ -73,11 +73,31 @@ impl DisplayRotation {
     /// quarter turn swaps axes - the caller uses the returned position
     /// against `(bounds.y, bounds.x)` in that case.
     pub fn apply(self, pos: Vec2<Millimeters>, bounds: Vec2<Millimeters>) -> Vec2<Millimeters> {
-        match self {
-            Self::Deg0 => pos,
-            Self::Deg90 => Vec2::new(pos.y, bounds.x - pos.x),
-            Self::Deg180 => Vec2::new(bounds.x - pos.x, bounds.y - pos.y),
-            Self::Deg270 => Vec2::new(bounds.y - pos.y, pos.x),
+        QuarterTurn::from(self).apply(pos, bounds)
+    }
+}
+
+/// The display rotation as a technical [`QuarterTurn`].
+impl From<DisplayRotation> for QuarterTurn {
+    fn from(rotation: DisplayRotation) -> Self {
+        match rotation {
+            DisplayRotation::Deg0 => Self::Deg0,
+            DisplayRotation::Deg90 => Self::Deg90,
+            DisplayRotation::Deg180 => Self::Deg180,
+            DisplayRotation::Deg270 => Self::Deg270,
+        }
+    }
+}
+
+/// A technical [`QuarterTurn`] as a display rotation (identical
+/// geometry, different wire shape).
+impl From<QuarterTurn> for DisplayRotation {
+    fn from(turn: QuarterTurn) -> Self {
+        match turn {
+            QuarterTurn::Deg0 => Self::Deg0,
+            QuarterTurn::Deg90 => Self::Deg90,
+            QuarterTurn::Deg180 => Self::Deg180,
+            QuarterTurn::Deg270 => Self::Deg270,
         }
     }
 }
@@ -85,13 +105,7 @@ impl DisplayRotation {
 impl fmt::Display for DisplayRotation {
     /// The degrees spelling accepted by [`FromStr`].
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let deg = match self {
-            Self::Deg0 => 0,
-            Self::Deg90 => 90,
-            Self::Deg180 => 180,
-            Self::Deg270 => 270,
-        };
-        write!(f, "{deg}")
+        QuarterTurn::from(*self).fmt(f)
     }
 }
 
@@ -100,15 +114,9 @@ impl FromStr for DisplayRotation {
 
     /// Accepts the quarter-turn values `0`, `90`, `180` or `270`.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "0" => Ok(Self::Deg0),
-            "90" => Ok(Self::Deg90),
-            "180" => Ok(Self::Deg180),
-            "270" => Ok(Self::Deg270),
-            _ => Err(format!(
-                "invalid display rotation '{s}' - use 0, 90, 180 or 270"
-            )),
-        }
+        s.parse::<QuarterTurn>()
+            .map(Self::from)
+            .map_err(|_| format!("invalid display rotation '{s}' - use 0, 90, 180 or 270"))
     }
 }
 
