@@ -34,7 +34,7 @@ miette = "7.6"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # engine
-evdev = "0.12"
+evdev = "0.13"
 libc = "0.2"
 futures = "0.3"
 futures-lite = "2"
