@@ -15,6 +15,7 @@ use floating_board::CardConfig;
 use floating_board::CardId;
 use floating_board::CardPlacement;
 use floating_board::FloatingBoard;
+use smearor_commons_geometry::Pixels;
 
 use gtk4::Box as GtkBox;
 use gtk4::Button;
@@ -226,7 +227,7 @@ fn add_training_card(
         CardConfig {
             title: Some(fl!(language_loader(), "card-training-title")),
             position: CardAnchor::BottomLeft,
-            anchor_margin: 100.0,
+            anchor_margin: Pixels::new(100.0),
             bounds_mode: BoundsMode::Contained,
             foldable: true,
             ..Default::default()

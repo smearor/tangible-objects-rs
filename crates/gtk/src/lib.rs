@@ -51,6 +51,7 @@ use gtk4::glib::ControlFlow;
 use gtk4::glib::Propagation;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
+use smearor_commons_geometry::Pixels;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
 use tracing::info;
@@ -152,7 +153,7 @@ pub fn run_gui(
             CardConfig {
                 title: Some(fl!(language_loader(), "info-card-title")),
                 position: CardAnchor::TopRight,
-                anchor_margin: 100.0,
+                anchor_margin: Pixels::new(100.0),
                 bounds_mode: BoundsMode::Contained,
                 foldable: true,
                 closable: true,
@@ -232,7 +233,7 @@ pub fn run_gui(
                 CardConfig {
                     title: Some(title),
                     position: anchor,
-                    anchor_margin: 100.0,
+                    anchor_margin: Pixels::new(100.0),
                     bounds_mode: BoundsMode::Contained,
                     foldable: true,
                     // X hides the card (not remove) - the menu re-opens it.
@@ -252,7 +253,7 @@ pub fn run_gui(
             CardConfig {
                 title: Some(fl!(language_loader(), "card-menu-title")),
                 position: CardAnchor::TopLeft,
-                anchor_margin: 100.0,
+                anchor_margin: Pixels::new(100.0),
                 bounds_mode: BoundsMode::Contained,
                 foldable: true,
                 ..Default::default()

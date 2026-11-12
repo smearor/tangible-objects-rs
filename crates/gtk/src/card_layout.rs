@@ -15,6 +15,7 @@ use floating_board::FloatingBoard;
 use gtk4::Orientation;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
+use smearor_commons_geometry::Vec2;
 use tracing::warn;
 
 /// Layout file name inside the `tangible-objects` config dir.
@@ -131,7 +132,7 @@ fn arrange_default(board: &FloatingBoard) {
             row_h = 0.0;
         }
         // `CardGeometry.position` is the card's center point.
-        card.set_position(CardPosition::new(x + w / 2.0, y + h / 2.0));
+        card.set_position(CardPosition::new(Vec2::new(x + w / 2.0, y + h / 2.0)));
         x += w + CARD_GAP;
         row_h = row_h.max(h);
     }
