@@ -1,7 +1,10 @@
 //! `FigureColor` - the profile-declared render color of a tangible
 //! (`color = "#rrggbb"` in the profile TOML).
 
+use smearor_commons_color::Color;
+use smearor_commons_color::ParseColorError;
 use std::fmt::Display;
+use std::ops::Deref;
 use std::str::FromStr;
 
 use serde::Deserialize;
@@ -9,24 +12,19 @@ use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
 
-/// An RGB color for figure rendering, channels in `0.0..=1.0`.
+/// An RGB color for figure rendering, channels in `0.0..=1.0` -
+/// a [`Color<f64>`] carrying the profile domain's `#rrggbb`
+/// (lowercase) wire format.
 ///
 /// Serializes as a `#rrggbb` hex string (a `#rgb` short form parses
 /// too, each nibble duplicated).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FigureColor {
-    /// Red channel.
-    pub r: f64,
-    /// Green channel.
-    pub g: f64,
-    /// Blue channel.
-    pub b: f64,
-}
+pub struct FigureColor(pub Color<f64>);
 
 impl FigureColor {
     /// Creates a color from `0.0..=1.0` channels.
     pub const fn new(r: f64, g: f64, b: f64) -> Self {
-        Self { r, g, b }
+        Self(Color::<f64>::new(r, g, b))
     }
 
     /// The channels as `(r, g, b)` tuple for cairo `set_source_*`.
@@ -35,45 +33,45 @@ impl FigureColor {
     }
 }
 
+/// Direct field access (`color.r`) and shared [`Color<f64>`]
+/// operations (`luminance`, `lerp`, `lighten`, `clamp`).
+impl Deref for FigureColor {
+    type Target = Color<f64>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// A shared [`Color<f64>`] as a profile figure color.
+impl From<Color<f64>> for FigureColor {
+    fn from(color: Color<f64>) -> Self {
+        Self(color)
+    }
+}
+
+/// The wrapped [`Color<f64>`].
+impl From<FigureColor> for Color<f64> {
+    fn from(color: FigureColor) -> Self {
+        color.0
+    }
+}
+
 impl Display for FigureColor {
+    /// The `#rrggbb` spelling of the profile wire format, delegated
+    /// to the wrapped color.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let byte = |channel: f64| (channel.clamp(0.0, 1.0) * 255.0).round() as u8;
-        write!(
-            f,
-            "#{:02x}{:02x}{:02x}",
-            byte(self.r),
-            byte(self.g),
-            byte(self.b)
-        )
+        self.0.fmt(f)
     }
 }
 
 impl FromStr for FigureColor {
-    type Err = std::io::Error;
+    type Err = ParseColorError;
 
+    /// Parses `#rgb`/`#rrggbb` (the commons parser also accepts
+    /// alpha forms and a missing `#`).
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let invalid = || {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("invalid figure color '{s}' - expected #rgb or #rrggbb"),
-            )
-        };
-        let hex = s.strip_prefix('#').ok_or_else(invalid)?;
-        let byte = |from: &str| u8::from_str_radix(from, 16).map_err(|_| invalid());
-        let (r, g, b) = match hex.len() {
-            3 => (
-                byte(&hex[0..1].repeat(2))?,
-                byte(&hex[1..2].repeat(2))?,
-                byte(&hex[2..3].repeat(2))?,
-            ),
-            6 => (byte(&hex[0..2])?, byte(&hex[2..4])?, byte(&hex[4..6])?),
-            _ => return Err(invalid()),
-        };
-        Ok(Self::new(
-            r as f64 / 255.0,
-            g as f64 / 255.0,
-            b as f64 / 255.0,
-        ))
+        Ok(Self(s.parse()?))
     }
 }
 

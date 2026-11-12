@@ -22,6 +22,7 @@ cynic = { workspace = true, optional = true }
 evdev = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde.workspace = true
+smearor-commons-color.workspace = true
 smearor-commons-geometry.workspace = true
 serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
