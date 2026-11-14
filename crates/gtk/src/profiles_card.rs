@@ -4,6 +4,7 @@
 
 use std::cell::Cell;
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -12,6 +13,7 @@ use std::time::Instant;
 
 use gtk4::Align;
 use gtk4::Box as GtkBox;
+use gtk4::Button;
 use gtk4::ColorDialog;
 use gtk4::ColorDialogButton;
 use gtk4::Grid;
@@ -58,7 +60,10 @@ struct ProfileRow {
 /// Position` grid refreshed from [`SharedState`] every 100 ms. Rows
 /// rebuild only when the registered set changes; the volatile cells
 /// (enabled flag, live position) update in place.
-pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
+pub fn create_profiles_card(
+    state: &Arc<Mutex<SharedState>>,
+    profiles_dir: Option<PathBuf>,
+) -> GtkBox {
     let grid = Grid::new();
     grid.set_column_spacing(10);
     grid.set_row_spacing(4);
@@ -215,7 +220,23 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         ControlFlow::Continue
     });
 
-    let body = GtkBox::new(Orientation::Vertical, 0);
+    // Persists the runtime `enabled`/`color` overrides of every row
+    // back into the profile files (`SaveProfiles` drains through the
+    // device loop like the switches' commands do).
+    let save = Button::with_label(&fl!(language_loader(), "profiles-save"));
+    save.set_halign(Align::End);
+    let state_save = state.clone();
+    save.connect_clicked(move |_| {
+        send_command(
+            &state_save,
+            ControlCommand::SaveProfiles {
+                profiles_dir: profiles_dir.clone(),
+            },
+        );
+    });
+
+    let body = GtkBox::new(Orientation::Vertical, 6);
     body.append(&grid);
+    body.append(&save);
     body
 }

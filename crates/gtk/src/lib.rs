@@ -149,6 +149,12 @@ pub fn run_gui(
         // card fall through to the canvas.
         let board = FloatingBoard::new(&overlay);
         let info_body = info_card::create_info_card(&state_app);
+        // The profiles card's Save button needs the `--profiles`
+        // source dir - built before the uniform card loop.
+        let profiles_body = profiles_card::create_profiles_card(
+            &state_app,
+            profiles_dir_app.clone().map(PathBuf::from),
+        );
         let _ = board.add_card_with_id(
             "info",
             &info_body,
@@ -212,7 +218,7 @@ pub fn run_gui(
             ),
             (
                 "profiles",
-                profiles_card::create_profiles_card(&state_app),
+                profiles_body,
                 fl!(language_loader(), "card-profiles-title"),
                 CardAnchor::CenterRight,
             ),

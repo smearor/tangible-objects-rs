@@ -57,6 +57,7 @@ col-owner = Besitzer
 col-enabled = Aktiv
 col-position = Position
 col-fields = Felder
+profiles-save = Speichern
 train-hint = In den Trainingsmodus wechseln, um ein Profil zu erfassen
 device-name = Name
 device-path = Pfad

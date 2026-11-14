@@ -57,6 +57,7 @@ col-owner = Owner
 col-enabled = Enabled
 col-position = Position
 col-fields = Fields
+profiles-save = Save
 train-hint = Switch to training mode to capture a profile
 device-name = Name
 device-path = Path

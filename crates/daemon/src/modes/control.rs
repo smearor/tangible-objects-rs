@@ -21,6 +21,7 @@ use tracing::warn;
 
 use super::interfaces::Interfaces;
 use super::store::persist_registration;
+use super::store::save_profile_states;
 use super::store::unpersist;
 
 /// Spawns the selected interface endpoints (GraphQL/D-Bus/MCP, Phase 2).
@@ -338,6 +339,11 @@ pub(crate) fn apply_registration(
         }
         ControlCommand::SetProfileColor { id, color } => {
             let _ = engine.set_pattern_color(id, color);
+        }
+        ControlCommand::SaveProfiles { profiles_dir } => {
+            let written = save_profile_states(engine, profiles_dir.as_deref());
+            runtime.set_message(Some(format!("{written} profile(s) saved")));
+            info!(%written, "profile states persisted");
         }
         ControlCommand::SetFieldSetEnabled { name, enabled } => {
             if engine.set_field_set_enabled(&name, enabled) {

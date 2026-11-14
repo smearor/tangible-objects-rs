@@ -235,6 +235,15 @@ pub enum ControlCommand {
         /// New enabled state.
         enabled: bool,
     },
+    /// Persists every registered pattern's runtime `enabled`/`color`
+    /// overrides back into its profile file on disk - the profiles
+    /// card's Save button. The `profiles.d` runtime store is always
+    /// included; session-only patterns without a file are skipped.
+    SaveProfiles {
+        /// Profile source directory to scan (`--profiles`); `None`
+        /// falls back to the default `profiles/` directory.
+        profiles_dir: Option<PathBuf>,
+    },
 }
 
 impl ControlCommand {
