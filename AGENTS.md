@@ -159,6 +159,7 @@
 - Use conventional commit format
 - Keep commits small and focused
 - Review own code before requesting review
+- **NEVER `git stash`** - uncommitted changes must never be stashed, not even temporarily
 
 ## Learning and Growth
 
