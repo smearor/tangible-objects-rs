@@ -470,7 +470,7 @@
 <a href=#470 id=470 data-nosnippet>470</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#471 id=471 data-nosnippet>471</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">50.0</span>),
 <a href=#472 id=472 data-nosnippet>472</a>        ];
-<a href=#473 id=473 data-nosnippet>473</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[TangiblePattern::from_points(
+<a href=#473 id=473 data-nosnippet>473</a>        <span class="kw">let </span>patterns = [TangiblePattern::from_points(
 <a href=#474 id=474 data-nosnippet>474</a>            <span class="number">1</span>,
 <a href=#475 id=475 data-nosnippet>475</a>            <span class="string">"triangle"</span>,
 <a href=#476 id=476 data-nosnippet>476</a>            (<span class="kw-2">&amp;</span>reference).into(),
@@ -498,7 +498,7 @@
 <a href=#498 id=498 data-nosnippet>498</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#499 id=499 data-nosnippet>499</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">50.0</span>),
 <a href=#500 id=500 data-nosnippet>500</a>        ];
-<a href=#501 id=501 data-nosnippet>501</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[TangiblePattern::from_points(
+<a href=#501 id=501 data-nosnippet>501</a>        <span class="kw">let </span>patterns = [TangiblePattern::from_points(
 <a href=#502 id=502 data-nosnippet>502</a>            <span class="number">1</span>,
 <a href=#503 id=503 data-nosnippet>503</a>            <span class="string">"triangle"</span>,
 <a href=#504 id=504 data-nosnippet>504</a>            (<span class="kw-2">&amp;</span>reference).into(),
@@ -520,7 +520,7 @@
 <a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">fn </span>combinations_within_prunes_far_spans() {
 <a href=#521 id=521 data-nosnippet>521</a>        <span class="comment">// Points at 0 / 50 / 500 mm: with a 60 mm span limit only the
 <a href=#522 id=522 data-nosnippet>522</a>        // {0,1} pair can ever satisfy a small-figure fingerprint.
-<a href=#523 id=523 data-nosnippet>523</a>        </span><span class="kw">let </span>positions = <span class="macro">vec!</span>[
+<a href=#523 id=523 data-nosnippet>523</a>        </span><span class="kw">let </span>positions = [
 <a href=#524 id=524 data-nosnippet>524</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
 <a href=#525 id=525 data-nosnippet>525</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#526 id=526 data-nosnippet>526</a>            Vec2::new(<span class="number">500.0</span>, <span class="number">0.0</span>),
@@ -535,7 +535,7 @@
 <a href=#535 id=535 data-nosnippet>535</a>    </span><span class="kw">fn </span>combinations_within_degenerates_to_full_enumeration() {
 <a href=#536 id=536 data-nosnippet>536</a>        <span class="comment">// A span limit beyond every pairwise distance keeps all
 <a href=#537 id=537 data-nosnippet>537</a>        // combinations - the worst case degrades to full enumeration.
-<a href=#538 id=538 data-nosnippet>538</a>        </span><span class="kw">let </span>positions = <span class="macro">vec!</span>[
+<a href=#538 id=538 data-nosnippet>538</a>        </span><span class="kw">let </span>positions = [
 <a href=#539 id=539 data-nosnippet>539</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
 <a href=#540 id=540 data-nosnippet>540</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#541 id=541 data-nosnippet>541</a>            Vec2::new(<span class="number">500.0</span>, <span class="number">0.0</span>),
@@ -550,7 +550,7 @@
 <a href=#550 id=550 data-nosnippet>550</a>    /// the footprint - pruning can never reject a matching candidate.
 <a href=#551 id=551 data-nosnippet>551</a>    </span><span class="attr">#[test]
 <a href=#552 id=552 data-nosnippet>552</a>    </span><span class="kw">fn </span>pruned_combinations_provably_exceed_footprint() {
-<a href=#553 id=553 data-nosnippet>553</a>        <span class="kw">let </span>positions = <span class="macro">vec!</span>[
+<a href=#553 id=553 data-nosnippet>553</a>        <span class="kw">let </span>positions = [
 <a href=#554 id=554 data-nosnippet>554</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">0.0</span>),
 <a href=#555 id=555 data-nosnippet>555</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#556 id=556 data-nosnippet>556</a>            Vec2::new(<span class="number">80.0</span>, <span class="number">40.0</span>),
@@ -608,7 +608,7 @@
 <a href=#608 id=608 data-nosnippet>608</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#609 id=609 data-nosnippet>609</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">50.0</span>),
 <a href=#610 id=610 data-nosnippet>610</a>        ];
-<a href=#611 id=611 data-nosnippet>611</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[TangiblePattern::from_points(
+<a href=#611 id=611 data-nosnippet>611</a>        <span class="kw">let </span>patterns = [TangiblePattern::from_points(
 <a href=#612 id=612 data-nosnippet>612</a>            <span class="number">1</span>,
 <a href=#613 id=613 data-nosnippet>613</a>            <span class="string">"triangle"</span>,
 <a href=#614 id=614 data-nosnippet>614</a>            (<span class="kw-2">&amp;</span>reference).into(),
@@ -634,7 +634,7 @@
 <a href=#634 id=634 data-nosnippet>634</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#635 id=635 data-nosnippet>635</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">50.0</span>),
 <a href=#636 id=636 data-nosnippet>636</a>        ];
-<a href=#637 id=637 data-nosnippet>637</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[TangiblePattern::from_points(
+<a href=#637 id=637 data-nosnippet>637</a>        <span class="kw">let </span>patterns = [TangiblePattern::from_points(
 <a href=#638 id=638 data-nosnippet>638</a>            <span class="number">1</span>,
 <a href=#639 id=639 data-nosnippet>639</a>            <span class="string">"triangle"</span>,
 <a href=#640 id=640 data-nosnippet>640</a>            (<span class="kw-2">&amp;</span>reference).into(),
@@ -686,7 +686,7 @@
 <a href=#686 id=686 data-nosnippet>686</a>            Vec2::new(<span class="number">50.0</span>, <span class="number">0.0</span>),
 <a href=#687 id=687 data-nosnippet>687</a>            Vec2::new(<span class="number">0.0</span>, <span class="number">50.0</span>),
 <a href=#688 id=688 data-nosnippet>688</a>        ];
-<a href=#689 id=689 data-nosnippet>689</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[TangiblePattern::from_points(
+<a href=#689 id=689 data-nosnippet>689</a>        <span class="kw">let </span>patterns = [TangiblePattern::from_points(
 <a href=#690 id=690 data-nosnippet>690</a>            <span class="number">1</span>,
 <a href=#691 id=691 data-nosnippet>691</a>            <span class="string">"triangle"</span>,
 <a href=#692 id=692 data-nosnippet>692</a>            (<span class="kw-2">&amp;</span>reference).into(),
@@ -727,7 +727,7 @@
 <a href=#727 id=727 data-nosnippet>727</a>        ];
 <a href=#728 id=728 data-nosnippet>728</a>        <span class="kw">let </span><span class="kw-2">mut </span>pattern = TangiblePattern::from_points(<span class="number">1</span>, <span class="string">"square"</span>, (<span class="kw-2">&amp;</span>square).into(), <span class="number">5.0</span>);
 <a href=#729 id=729 data-nosnippet>729</a>        pattern.spawn_on_partial = <span class="bool-val">true</span>;
-<a href=#730 id=730 data-nosnippet>730</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[pattern];
+<a href=#730 id=730 data-nosnippet>730</a>        <span class="kw">let </span>patterns = [pattern];
 <a href=#731 id=731 data-nosnippet>731</a>        <span class="comment">// One pin missing - three square contacts plus a distractor touch
 <a href=#732 id=732 data-nosnippet>732</a>        // (partial matching requires at least num_points active touches).
 <a href=#733 id=733 data-nosnippet>733</a>        </span><span class="kw">let </span>touches = <span class="macro">vec!</span>[
@@ -774,7 +774,7 @@
 <a href=#774 id=774 data-nosnippet>774</a>            x_max: Millimeters::new(<span class="number">200.0</span>),
 <a href=#775 id=775 data-nosnippet>775</a>            y_max: Millimeters::new(<span class="number">1000.0</span>),
 <a href=#776 id=776 data-nosnippet>776</a>        }];
-<a href=#777 id=777 data-nosnippet>777</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[pattern];
+<a href=#777 id=777 data-nosnippet>777</a>        <span class="kw">let </span>patterns = [pattern];
 <a href=#778 id=778 data-nosnippet>778</a>
 <a href=#779 id=779 data-nosnippet>779</a>        <span class="kw">let </span>inside = <span class="macro">vec!</span>[
 <a href=#780 id=780 data-nosnippet>780</a>            touch_point(<span class="number">0</span>, <span class="number">100.0</span>, <span class="number">100.0</span>),
@@ -815,7 +815,7 @@
 <a href=#815 id=815 data-nosnippet>815</a>            x_max: Millimeters::new(<span class="number">200.0</span>),
 <a href=#816 id=816 data-nosnippet>816</a>            y_max: Millimeters::new(<span class="number">1000.0</span>),
 <a href=#817 id=817 data-nosnippet>817</a>        }];
-<a href=#818 id=818 data-nosnippet>818</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[pattern];
+<a href=#818 id=818 data-nosnippet>818</a>        <span class="kw">let </span>patterns = [pattern];
 <a href=#819 id=819 data-nosnippet>819</a>
 <a href=#820 id=820 data-nosnippet>820</a>        <span class="comment">// Two points inside, one point outside - the candidate is
 <a href=#821 id=821 data-nosnippet>821</a>        // rejected as a whole (conservative rule).
@@ -854,7 +854,7 @@
 <a href=#854 id=854 data-nosnippet>854</a>        ];
 <a href=#855 id=855 data-nosnippet>855</a>        <span class="kw">let </span><span class="kw-2">mut </span>pattern = TangiblePattern::from_points(<span class="number">1</span>, <span class="string">"square"</span>, (<span class="kw-2">&amp;</span>square).into(), <span class="number">5.0</span>);
 <a href=#856 id=856 data-nosnippet>856</a>        pattern.spawn_on_partial = <span class="bool-val">true</span>;
-<a href=#857 id=857 data-nosnippet>857</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[pattern];
+<a href=#857 id=857 data-nosnippet>857</a>        <span class="kw">let </span>patterns = [pattern];
 <a href=#858 id=858 data-nosnippet>858</a>        <span class="comment">// True missing-pin case: only num_points - 1 touches exist (a pin
 <a href=#859 id=859 data-nosnippet>859</a>        // lost contact entirely - e.g. Figur8 with one pin swallowed).
 <a href=#860 id=860 data-nosnippet>860</a>        </span><span class="kw">let </span>touches = <span class="macro">vec!</span>[
@@ -889,7 +889,7 @@
 <a href=#889 id=889 data-nosnippet>889</a>        ];
 <a href=#890 id=890 data-nosnippet>890</a>        <span class="kw">let </span><span class="kw-2">mut </span>pattern = TangiblePattern::from_points(<span class="number">1</span>, <span class="string">"square"</span>, (<span class="kw-2">&amp;</span>square).into(), <span class="number">5.0</span>);
 <a href=#891 id=891 data-nosnippet>891</a>        pattern.spawn_on_partial = <span class="bool-val">true</span>;
-<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[pattern];
+<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">let </span>patterns = [pattern];
 <a href=#893 id=893 data-nosnippet>893</a>        <span class="comment">// Three matched pins at translated positions + a fourth touch near
 <a href=#894 id=894 data-nosnippet>894</a>        // the predicted missing pin (translated (40,40) → (140,140)).
 <a href=#895 id=895 data-nosnippet>895</a>        </span><span class="kw">let </span>touches = <span class="macro">vec!</span>[
@@ -936,7 +936,7 @@
 <a href=#936 id=936 data-nosnippet>936</a>        ];
 <a href=#937 id=937 data-nosnippet>937</a>        <span class="kw">let </span><span class="kw-2">mut </span>pattern = TangiblePattern::from_points(<span class="number">1</span>, <span class="string">"square"</span>, (<span class="kw-2">&amp;</span>square).into(), <span class="number">5.0</span>);
 <a href=#938 id=938 data-nosnippet>938</a>        pattern.spawn_on_partial = <span class="bool-val">true</span>;
-<a href=#939 id=939 data-nosnippet>939</a>        <span class="kw">let </span>patterns = <span class="macro">vec!</span>[pattern];
+<a href=#939 id=939 data-nosnippet>939</a>        <span class="kw">let </span>patterns = [pattern];
 <a href=#940 id=940 data-nosnippet>940</a>        <span class="comment">// Fourth touch 30mm from the predicted position - outside the
 <a href=#941 id=941 data-nosnippet>941</a>        // claim radius (tolerance 5 × factor 2 = 10mm).
 <a href=#942 id=942 data-nosnippet>942</a>        </span><span class="kw">let </span>touches = <span class="macro">vec!</span>[
