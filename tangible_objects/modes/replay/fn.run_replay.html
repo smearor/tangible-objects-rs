@@ -4,7 +4,7 @@
     record_base: <a class="enum" href="https://doc.rust-lang.org/1.100.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="https://doc.rust-lang.org/1.100.0/std/path/struct.Path.html" title="struct std::path::Path">Path</a>&gt;,
     label: <a class="enum" href="https://doc.rust-lang.org/1.100.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RecordLabel&gt;,
 ) -&gt; Result&lt;<a class="primitive" href="https://doc.rust-lang.org/1.100.0/std/primitive.unit.html">()</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Replays an <code>evtest</code> recording through the detection pipeline.</p>
-<p>With <code>record_base</code> a <a href="../../../tangible_objects_engine/recorder/session/struct.RecordingSession.html" title="struct tangible_objects_engine::recorder::session::RecordingSession"><code>RecordingSession</code></a> additionally writes
+<p>With <code>record_base</code> a [<code>RecordingSession</code>] additionally writes
 <code>&lt;base&gt;.jsonl</code> + <code>&lt;base&gt;.evtest</code>; event timestamps come from the input
 file itself (offset to the first event), so the artifacts are
 deterministic.</p>
