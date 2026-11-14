@@ -424,13 +424,14 @@
 <a href=#424 id=424 data-nosnippet>424</a>
 <a href=#425 id=425 data-nosnippet>425</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = state.lock() {
 <a href=#426 id=426 data-nosnippet>426</a>                    s.touches = touches;
-<a href=#427 id=427 data-nosnippet>427</a>                    s.tracked = engine.tracked().to_vec();
-<a href=#428 id=428 data-nosnippet>428</a>                    s.matches = matches;
-<a href=#429 id=429 data-nosnippet>429</a>                    s.stable_frames = stable_frames;
-<a href=#430 id=430 data-nosnippet>430</a>                    s.stable = stable_frames &gt;= STABLE_THRESHOLD &amp;&amp; count &gt;= <span class="number">3</span>;
-<a href=#431 id=431 data-nosnippet>431</a>                }
-<a href=#432 id=432 data-nosnippet>432</a>            }
-<a href=#433 id=433 data-nosnippet>433</a>        }
-<a href=#434 id=434 data-nosnippet>434</a>    }
-<a href=#435 id=435 data-nosnippet>435</a>}
+<a href=#427 id=427 data-nosnippet>427</a>                    s.unfiltered_touches = touch_state.active_touches();
+<a href=#428 id=428 data-nosnippet>428</a>                    s.tracked = engine.tracked().to_vec();
+<a href=#429 id=429 data-nosnippet>429</a>                    s.matches = matches;
+<a href=#430 id=430 data-nosnippet>430</a>                    s.stable_frames = stable_frames;
+<a href=#431 id=431 data-nosnippet>431</a>                    s.stable = stable_frames &gt;= STABLE_THRESHOLD &amp;&amp; count &gt;= <span class="number">3</span>;
+<a href=#432 id=432 data-nosnippet>432</a>                }
+<a href=#433 id=433 data-nosnippet>433</a>            }
+<a href=#434 id=434 data-nosnippet>434</a>        }
+<a href=#435 id=435 data-nosnippet>435</a>    }
+<a href=#436 id=436 data-nosnippet>436</a>}
 </code></pre></div></section></main></body></html>
