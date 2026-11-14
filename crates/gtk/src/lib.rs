@@ -42,15 +42,28 @@ use std::time::Duration;
 
 use floating_board::BoundsMode;
 use floating_board::CardAnchor;
+use floating_board::CardCloseAction;
 use floating_board::CardConfig;
 use floating_board::CardId;
 use floating_board::FloatingBoard;
 use gtk4::Application;
 use gtk4::ApplicationWindow;
+use gtk4::CssProvider;
 use gtk4::DrawingArea;
+use gtk4::EventControllerKey;
+use gtk4::EventControllerLegacy;
+use gtk4::Overlay;
+use gtk4::PropagationPhase;
+use gtk4::gdk::Display;
+use gtk4::gdk::EventType;
+use gtk4::gdk::Key;
 use gtk4::glib::ControlFlow;
 use gtk4::glib::Propagation;
 use gtk4::prelude::*;
+use gtk4_layer_shell::Edge;
+use gtk4_layer_shell::KeyboardMode;
+use gtk4_layer_shell::Layer;
+use gtk4_layer_shell::LayerShell;
 use i18n_embed_fl::fl;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
@@ -115,10 +128,10 @@ pub fn run_gui(
         // layer (`.surface-bg`) - its alpha blends against the
         // transparent window, so the toggle sees the desktop beneath.
         // The cairo draw stays content-only on top of it.
-        let bg_provider = gtk4::CssProvider::new();
+        let bg_provider = CssProvider::new();
         bg_provider.load_from_string(&options.background_alpha.surface_bg_css());
         drawing_area.add_css_class("surface-bg");
-        if let Some(display) = gtk4::gdk::Display::default() {
+        if let Some(display) = Display::default() {
             gtk4::style_context_add_provider_for_display(
                 &display,
                 &bg_provider,
@@ -133,15 +146,15 @@ pub fn run_gui(
 
         // Layout: the drawing area fills the window; all controls live
         // on floating cards.
-        let overlay = gtk4::Overlay::new();
+        let overlay = Overlay::new();
         overlay.set_child(Some(&drawing_area));
 
         // Canvas redraw cadence - the evdev thread writes
         // `SharedState` per frame; this tick repaints at ~10 Hz.
         let da_tick = drawing_area.clone();
-        gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+        gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
             da_tick.queue_draw();
-            gtk4::glib::ControlFlow::Continue
+            ControlFlow::Continue
         });
 
         // Free-floating cards on top of the surface view
@@ -167,7 +180,7 @@ pub fn run_gui(
                 foldable: true,
                 resizable: true,
                 closable: true,
-                close_action: floating_board::CardCloseAction::Hide,
+                close_action: CardCloseAction::Hide,
                 ..Default::default()
             },
         );
@@ -249,7 +262,7 @@ pub fn run_gui(
                     resizable: true,
                     // X hides the card (not remove) - the menu re-opens it.
                     closable: true,
-                    close_action: floating_board::CardCloseAction::Hide,
+                    close_action: CardCloseAction::Hide,
                     ..Default::default()
                 },
             );
@@ -317,14 +330,15 @@ pub fn run_gui(
         // the counter so a dead card splits into "event never arrived"
         // (applied region wrong) vs "arrived but eaten" (gesture claim).
         let state_probe = state_app.clone();
-        let probe = gtk4::EventControllerLegacy::new();
-        probe.set_propagation_phase(gtk4::PropagationPhase::Capture);
+        let probe = EventControllerLegacy::new();
+        probe.set_propagation_phase(PropagationPhase::Capture);
         probe.connect_event(move |_, event| {
-            if event.event_type() == gtk4::gdk::EventType::TouchBegin {
-                let (x, y) = event.position().unwrap_or_default();
-                if let Ok(mut s) = state_probe.lock() {
-                    s.touch_downs_seen += 1;
-                    s.last_touch_down = Some(Vec2::<Pixels>::new(x, y));
+            let event_type = event.event_type();
+            if let Ok(mut s) = state_probe.lock() {
+                *s.event_counts.entry(format!("{event_type:?}")).or_insert(0) += 1;
+                if matches!(event_type, EventType::TouchBegin | EventType::ButtonPress) {
+                    let (x, y) = event.position().unwrap_or_default();
+                    s.last_event_position = Some(Vec2::<Pixels>::new(x, y));
                 }
             }
             Propagation::Proceed
@@ -339,11 +353,6 @@ pub fn run_gui(
         // degrades to a regular toplevel when the protocol is missing
         // - logging makes the fallback visible on remote machines.
         if options.touch_passthrough {
-            use gtk4_layer_shell::Edge;
-            use gtk4_layer_shell::KeyboardMode;
-            use gtk4_layer_shell::Layer;
-            use gtk4_layer_shell::LayerShell;
-
             if gtk4_layer_shell::is_supported() {
                 info!("layer-shell overlay enabled (touch passthrough)");
             } else {
@@ -373,7 +382,7 @@ pub fn run_gui(
         // window *background* is cleared; contents stay opaque.
         let provider = gtk4::CssProvider::new();
         provider.load_from_string("window { background-color: transparent; }");
-        if let Some(display) = gtk4::gdk::Display::default() {
+        if let Some(display) = Display::default() {
             gtk4::style_context_add_provider_for_display(
                 &display,
                 &provider,
@@ -399,9 +408,9 @@ pub fn run_gui(
         });
 
         // Escape exits fullscreen.
-        let key_controller = gtk4::EventControllerKey::new();
+        let key_controller = EventControllerKey::new();
         key_controller.connect_key_pressed(|_, keyval, _, _| {
-            if keyval == gtk4::gdk::Key::Escape {
+            if keyval == Key::Escape {
                 std::process::exit(0);
             }
             Propagation::Proceed

@@ -3,6 +3,7 @@ use serde::Serialize;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::Vec2;
+use std::collections::BTreeMap;
 
 use crate::CardFootprint;
 
@@ -31,14 +32,16 @@ pub struct InputRegionDiagnostics {
     /// First stored rectangle of the unioned region - where the
     /// rasterization actually landed when `extents` reads zero.
     pub first_rectangle: Option<Rect<Pixels, i32>>,
-    /// Total `TouchBegin` events observed at the window since startup.
-    /// A tap on a card that does not increment this never reached the
+    /// Events observed at the window since startup, counted by event
+    /// type name (`TouchBegin`, `ButtonPress`, `MotionNotify`, ...).
+    /// A tap on a card that increments nothing never reached the
     /// surface - the *applied* input region differs from the diagnosed
-    /// one. A tap that increments it but produces no widget reaction is
+    /// one. A tap that increments but produces no widget reaction is
     /// consumed inside the widget tree (gesture claiming).
-    pub touch_downs: u64,
-    /// Surface-space position of the most recent `TouchBegin`.
-    pub last_touch_down: Option<Vec2<Pixels>>,
+    pub event_counts: BTreeMap<String, u64>,
+    /// Surface-space position of the most recent observed touch or
+    /// button event.
+    pub last_event_position: Option<Vec2<Pixels>>,
     /// Per-card footprints in board-layer coordinates.
     pub cards: Vec<CardFootprint>,
 }

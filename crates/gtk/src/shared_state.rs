@@ -1,6 +1,7 @@
 //! The render model shared between the device thread (writer) and the
 //! GTK main loop (reader) - the GUI's entire cross-thread contract.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
@@ -136,13 +137,14 @@ pub struct SharedState {
     /// snapshot so interfaces (`input_region_diagnostics`) can compare
     /// footprints against rendered cards.
     pub input_region_diagnostics: InputRegionDiagnostics,
-    /// `TouchBegin` events observed by the window-level probe
-    /// (capture-phase `EventControllerLegacy`). A tap on a card that
-    /// does not increment this never reached the surface - the applied
-    /// input region then differs from the diagnosed one.
-    pub touch_downs_seen: u64,
-    /// Surface-space position of the most recent probed `TouchBegin`.
-    pub last_touch_down: Option<Vec2<Pixels>>,
+    /// Events observed by the window-level probe (capture-phase
+    /// `EventControllerLegacy`), counted by event-type name. A tap on
+    /// a card that increments nothing never reached the surface - the
+    /// applied input region then differs from the diagnosed one.
+    pub event_counts: BTreeMap<String, u64>,
+    /// Surface-space position of the most recent probed touch or
+    /// button event.
+    pub last_event_position: Option<Vec2<Pixels>>,
     /// Selected suppression policy (`SetFilterMode` command +
     /// `--filter-mode` start value) - display state.
     pub filter_mode: FilterMode,
@@ -253,8 +255,8 @@ impl SharedState {
             positions_visible: options.positions_visible,
             touch_passthrough: options.touch_passthrough,
             input_region_diagnostics: InputRegionDiagnostics::default(),
-            touch_downs_seen: 0,
-            last_touch_down: None,
+            event_counts: BTreeMap::new(),
+            last_event_position: None,
             filter_mode: options.filter_mode,
             completion: CompletionConfig::default(),
             legacy_mode: LegacyMode::default(),

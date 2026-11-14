@@ -46,7 +46,7 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
         // Read the flag and the zone inputs under lock, drop it before
         // the GTK surface calls - `set_input_region` may dispatch into
         // event handlers that take `state` themselves.
-        let (enabled, dead_zones, calibration, rotation, touch_downs, last_touch_down) =
+        let (enabled, dead_zones, calibration, rotation, event_counts, last_event_position) =
             state_passthrough
                 .lock()
                 .map(|s| {
@@ -55,8 +55,8 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                         s.dead_zones.clone(),
                         s.calibration,
                         s.rotation,
-                        s.touch_downs_seen,
-                        s.last_touch_down,
+                        s.event_counts.clone(),
+                        s.last_event_position,
                     )
                 })
                 .unwrap_or_default();
@@ -65,8 +65,8 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
             // allocation - the consumer owns it while passthrough runs.
             board_sync.set_input_region_managed(true);
             let mut diagnostics = InputRegionDiagnostics {
-                touch_downs,
-                last_touch_down,
+                event_counts,
+                last_event_position,
                 ..Default::default()
             };
             if let Some((region, origin)) =
