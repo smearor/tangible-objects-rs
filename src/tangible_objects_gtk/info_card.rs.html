@@ -6,7 +6,7 @@
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>std::sync::Mutex;
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>std::time::Duration;
 <a href=#8 id=8 data-nosnippet>8</a>
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>gtk4::Box <span class="kw">as </span>GtkBox;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>gtk4::{Align, Box <span class="kw">as </span>GtkBox};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>gtk4::Button;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>gtk4::Grid;
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>gtk4::Label;
@@ -122,12 +122,12 @@
 <a href=#122 id=122 data-nosnippet>122</a>/// column 1.
 <a href=#123 id=123 data-nosnippet>123</a></span><span class="kw">fn </span>add_row(grid: <span class="kw-2">&amp;</span>Grid, row: i32, label: <span class="kw-2">&amp;</span>str) -&gt; Label {
 <a href=#124 id=124 data-nosnippet>124</a>    <span class="kw">let </span>name = Label::new(<span class="prelude-val">Some</span>(label));
-<a href=#125 id=125 data-nosnippet>125</a>    name.set_halign(gtk4::Align::Start);
+<a href=#125 id=125 data-nosnippet>125</a>    name.set_halign(Align::Start);
 <a href=#126 id=126 data-nosnippet>126</a>    name.add_css_class(<span class="string">"dim-label"</span>);
 <a href=#127 id=127 data-nosnippet>127</a>    grid.attach(<span class="kw-2">&amp;</span>name, <span class="number">0</span>, row, <span class="number">1</span>, <span class="number">1</span>);
 <a href=#128 id=128 data-nosnippet>128</a>
 <a href=#129 id=129 data-nosnippet>129</a>    <span class="kw">let </span>value = Label::new(<span class="prelude-val">Some</span>(<span class="string">"–"</span>));
-<a href=#130 id=130 data-nosnippet>130</a>    value.set_halign(gtk4::Align::Start);
+<a href=#130 id=130 data-nosnippet>130</a>    value.set_halign(Align::Start);
 <a href=#131 id=131 data-nosnippet>131</a>    grid.attach(<span class="kw-2">&amp;</span>value, <span class="number">1</span>, row, <span class="number">1</span>, <span class="number">1</span>);
 <a href=#132 id=132 data-nosnippet>132</a>    value
 <a href=#133 id=133 data-nosnippet>133</a>}

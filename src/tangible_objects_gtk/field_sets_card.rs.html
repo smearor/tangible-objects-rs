@@ -10,7 +10,7 @@
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>std::time::Duration;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>std::time::Instant;
 <a href=#12 id=12 data-nosnippet>12</a>
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>gtk4::Box <span class="kw">as </span>GtkBox;
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>gtk4::{Align, Box <span class="kw">as </span>GtkBox};
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>gtk4::Grid;
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>gtk4::Label;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>gtk4::Orientation;
@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>    .enumerate()
 <a href=#66 id=66 data-nosnippet>66</a>    {
 <a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>label = Label::new(<span class="prelude-val">Some</span>(header));
-<a href=#68 id=68 data-nosnippet>68</a>        label.set_halign(gtk4::Align::Start);
+<a href=#68 id=68 data-nosnippet>68</a>        label.set_halign(Align::Start);
 <a href=#69 id=69 data-nosnippet>69</a>        label.add_css_class(<span class="string">"dim-label"</span>);
 <a href=#70 id=70 data-nosnippet>70</a>        grid.attach(<span class="kw-2">&amp;</span>label, column <span class="kw">as </span>i32, <span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>);
 <a href=#71 id=71 data-nosnippet>71</a>    }
@@ -95,11 +95,11 @@
 <a href=#95 id=95 data-nosnippet>95</a>            }
 <a href=#96 id=96 data-nosnippet>96</a>            <span class="kw">for </span>(index, set) <span class="kw">in </span>s.field_set_rows.iter().enumerate() {
 <a href=#97 id=97 data-nosnippet>97</a>                <span class="kw">let </span>name = Label::new(<span class="prelude-val">Some</span>(set.name.as_str()));
-<a href=#98 id=98 data-nosnippet>98</a>                name.set_halign(gtk4::Align::Start);
+<a href=#98 id=98 data-nosnippet>98</a>                name.set_halign(Align::Start);
 <a href=#99 id=99 data-nosnippet>99</a>                <span class="kw">let </span>owner = Label::new(<span class="prelude-val">None</span>);
-<a href=#100 id=100 data-nosnippet>100</a>                owner.set_halign(gtk4::Align::Start);
+<a href=#100 id=100 data-nosnippet>100</a>                owner.set_halign(Align::Start);
 <a href=#101 id=101 data-nosnippet>101</a>                <span class="kw">let </span>enabled = Switch::new();
-<a href=#102 id=102 data-nosnippet>102</a>                enabled.set_halign(gtk4::Align::Start);
+<a href=#102 id=102 data-nosnippet>102</a>                enabled.set_halign(Align::Start);
 <a href=#103 id=103 data-nosnippet>103</a>                <span class="kw">let </span>set_name = set.name.clone();
 <a href=#104 id=104 data-nosnippet>104</a>                <span class="kw">let </span>state_enabled = state_tick.clone();
 <a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>enabled_pending = Rc::new(Cell::new(<span class="prelude-val">None</span>));
@@ -118,7 +118,7 @@
 <a href=#118 id=118 data-nosnippet>118</a>                    })
 <a href=#119 id=119 data-nosnippet>119</a>                };
 <a href=#120 id=120 data-nosnippet>120</a>                <span class="kw">let </span>field_count = Label::new(<span class="prelude-val">None</span>);
-<a href=#121 id=121 data-nosnippet>121</a>                field_count.set_halign(gtk4::Align::Start);
+<a href=#121 id=121 data-nosnippet>121</a>                field_count.set_halign(Align::Start);
 <a href=#122 id=122 data-nosnippet>122</a>                <span class="kw">let </span>row = index <span class="kw">as </span>i32 + <span class="number">1</span>;
 <a href=#123 id=123 data-nosnippet>123</a>                grid.attach(<span class="kw-2">&amp;</span>name, <span class="number">0</span>, row, <span class="number">1</span>, <span class="number">1</span>);
 <a href=#124 id=124 data-nosnippet>124</a>                grid.attach(<span class="kw-2">&amp;</span>owner, <span class="number">1</span>, row, <span class="number">1</span>, <span class="number">1</span>);
