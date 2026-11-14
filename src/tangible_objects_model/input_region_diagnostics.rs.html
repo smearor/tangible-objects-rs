@@ -3,43 +3,46 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>smearor_commons_geometry::Pixels;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>smearor_commons_geometry::Rect;
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>smearor_commons_geometry::Vec2;
-<a href=#6 id=6 data-nosnippet>6</a>
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::CardFootprint;
-<a href=#8 id=8 data-nosnippet>8</a>
-<a href=#9 id=9 data-nosnippet>9</a><span class="doccomment">/// The touch-passthrough input region as last applied to the GUI
-<a href=#10 id=10 data-nosnippet>10</a>/// surface - diagnostics for touches not reaching widgets they
-<a href=#11 id=11 data-nosnippet>11</a>/// visibly hit.
-<a href=#12 id=12 data-nosnippet>12</a>///
-<a href=#13 id=13 data-nosnippet>13</a>/// Emitted by the daemon-embedded GUI's region sync (~10 Hz while
-<a href=#14 id=14 data-nosnippet>14</a>/// `touch_passthrough` is on). Headless daemons and the disabled
-<a href=#15 id=15 data-nosnippet>15</a>/// state report `applied: false` with empty data.
-<a href=#16 id=16 data-nosnippet>16</a></span><span class="attr">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-<a href=#17 id=17 data-nosnippet>17</a></span><span class="kw">pub struct </span>InputRegionDiagnostics {
-<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// Whether `set_input_region` actually ran on the last tick.
-<a href=#19 id=19 data-nosnippet>19</a>    </span><span class="kw">pub </span>applied: bool,
-<a href=#20 id=20 data-nosnippet>20</a>    <span class="doccomment">/// Board-to-surface origin offset applied to every footprint
-<a href=#21 id=21 data-nosnippet>21</a>    /// before upload, in pixels.
-<a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">pub </span>origin: Vec2&lt;Pixels&gt;,
-<a href=#23 id=23 data-nosnippet>23</a>    <span class="doccomment">/// Bounds of the unioned region in surface pixels; `None` when
-<a href=#24 id=24 data-nosnippet>24</a>    /// the region is empty (whole surface input-dead).
-<a href=#25 id=25 data-nosnippet>25</a>    </span><span class="kw">pub </span>extents: <span class="prelude-ty">Option</span>&lt;Rect&lt;Pixels, i32&gt;&gt;,
-<a href=#26 id=26 data-nosnippet>26</a>    <span class="doccomment">/// Rectangle count in the unioned region - complexity signal.
-<a href=#27 id=27 data-nosnippet>27</a>    </span><span class="kw">pub </span>rectangles: usize,
-<a href=#28 id=28 data-nosnippet>28</a>    <span class="doccomment">/// Cairo status of the unioned region; `Some` when the region is
-<a href=#29 id=29 data-nosnippet>29</a>    /// in an error state (extents/contents then report garbage).
-<a href=#30 id=30 data-nosnippet>30</a>    </span><span class="kw">pub </span>status: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#31 id=31 data-nosnippet>31</a>    <span class="doccomment">/// First stored rectangle of the unioned region - where the
-<a href=#32 id=32 data-nosnippet>32</a>    /// rasterization actually landed when `extents` reads zero.
-<a href=#33 id=33 data-nosnippet>33</a>    </span><span class="kw">pub </span>first_rectangle: <span class="prelude-ty">Option</span>&lt;Rect&lt;Pixels, i32&gt;&gt;,
-<a href=#34 id=34 data-nosnippet>34</a>    <span class="doccomment">/// Total `TouchBegin` events observed at the window since startup.
-<a href=#35 id=35 data-nosnippet>35</a>    /// A tap on a card that does not increment this never reached the
-<a href=#36 id=36 data-nosnippet>36</a>    /// surface - the *applied* input region differs from the diagnosed
-<a href=#37 id=37 data-nosnippet>37</a>    /// one. A tap that increments it but produces no widget reaction is
-<a href=#38 id=38 data-nosnippet>38</a>    /// consumed inside the widget tree (gesture claiming).
-<a href=#39 id=39 data-nosnippet>39</a>    </span><span class="kw">pub </span>touch_downs: u64,
-<a href=#40 id=40 data-nosnippet>40</a>    <span class="doccomment">/// Surface-space position of the most recent `TouchBegin`.
-<a href=#41 id=41 data-nosnippet>41</a>    </span><span class="kw">pub </span>last_touch_down: <span class="prelude-ty">Option</span>&lt;Vec2&lt;Pixels&gt;&gt;,
-<a href=#42 id=42 data-nosnippet>42</a>    <span class="doccomment">/// Per-card footprints in board-layer coordinates.
-<a href=#43 id=43 data-nosnippet>43</a>    </span><span class="kw">pub </span>cards: Vec&lt;CardFootprint&gt;,
-<a href=#44 id=44 data-nosnippet>44</a>}
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>std::collections::BTreeMap;
+<a href=#7 id=7 data-nosnippet>7</a>
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::CardFootprint;
+<a href=#9 id=9 data-nosnippet>9</a>
+<a href=#10 id=10 data-nosnippet>10</a><span class="doccomment">/// The touch-passthrough input region as last applied to the GUI
+<a href=#11 id=11 data-nosnippet>11</a>/// surface - diagnostics for touches not reaching widgets they
+<a href=#12 id=12 data-nosnippet>12</a>/// visibly hit.
+<a href=#13 id=13 data-nosnippet>13</a>///
+<a href=#14 id=14 data-nosnippet>14</a>/// Emitted by the daemon-embedded GUI's region sync (~10 Hz while
+<a href=#15 id=15 data-nosnippet>15</a>/// `touch_passthrough` is on). Headless daemons and the disabled
+<a href=#16 id=16 data-nosnippet>16</a>/// state report `applied: false` with empty data.
+<a href=#17 id=17 data-nosnippet>17</a></span><span class="attr">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+<a href=#18 id=18 data-nosnippet>18</a></span><span class="kw">pub struct </span>InputRegionDiagnostics {
+<a href=#19 id=19 data-nosnippet>19</a>    <span class="doccomment">/// Whether `set_input_region` actually ran on the last tick.
+<a href=#20 id=20 data-nosnippet>20</a>    </span><span class="kw">pub </span>applied: bool,
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// Board-to-surface origin offset applied to every footprint
+<a href=#22 id=22 data-nosnippet>22</a>    /// before upload, in pixels.
+<a href=#23 id=23 data-nosnippet>23</a>    </span><span class="kw">pub </span>origin: Vec2&lt;Pixels&gt;,
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="doccomment">/// Bounds of the unioned region in surface pixels; `None` when
+<a href=#25 id=25 data-nosnippet>25</a>    /// the region is empty (whole surface input-dead).
+<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">pub </span>extents: <span class="prelude-ty">Option</span>&lt;Rect&lt;Pixels, i32&gt;&gt;,
+<a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// Rectangle count in the unioned region - complexity signal.
+<a href=#28 id=28 data-nosnippet>28</a>    </span><span class="kw">pub </span>rectangles: usize,
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="doccomment">/// Cairo status of the unioned region; `Some` when the region is
+<a href=#30 id=30 data-nosnippet>30</a>    /// in an error state (extents/contents then report garbage).
+<a href=#31 id=31 data-nosnippet>31</a>    </span><span class="kw">pub </span>status: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#32 id=32 data-nosnippet>32</a>    <span class="doccomment">/// First stored rectangle of the unioned region - where the
+<a href=#33 id=33 data-nosnippet>33</a>    /// rasterization actually landed when `extents` reads zero.
+<a href=#34 id=34 data-nosnippet>34</a>    </span><span class="kw">pub </span>first_rectangle: <span class="prelude-ty">Option</span>&lt;Rect&lt;Pixels, i32&gt;&gt;,
+<a href=#35 id=35 data-nosnippet>35</a>    <span class="doccomment">/// Events observed at the window since startup, counted by event
+<a href=#36 id=36 data-nosnippet>36</a>    /// type name (`TouchBegin`, `ButtonPress`, `MotionNotify`, ...).
+<a href=#37 id=37 data-nosnippet>37</a>    /// A tap on a card that increments nothing never reached the
+<a href=#38 id=38 data-nosnippet>38</a>    /// surface - the *applied* input region differs from the diagnosed
+<a href=#39 id=39 data-nosnippet>39</a>    /// one. A tap that increments but produces no widget reaction is
+<a href=#40 id=40 data-nosnippet>40</a>    /// consumed inside the widget tree (gesture claiming).
+<a href=#41 id=41 data-nosnippet>41</a>    </span><span class="kw">pub </span>event_counts: BTreeMap&lt;String, u64&gt;,
+<a href=#42 id=42 data-nosnippet>42</a>    <span class="doccomment">/// Surface-space position of the most recent observed touch or
+<a href=#43 id=43 data-nosnippet>43</a>    /// button event.
+<a href=#44 id=44 data-nosnippet>44</a>    </span><span class="kw">pub </span>last_event_position: <span class="prelude-ty">Option</span>&lt;Vec2&lt;Pixels&gt;&gt;,
+<a href=#45 id=45 data-nosnippet>45</a>    <span class="doccomment">/// Per-card footprints in board-layer coordinates.
+<a href=#46 id=46 data-nosnippet>46</a>    </span><span class="kw">pub </span>cards: Vec&lt;CardFootprint&gt;,
+<a href=#47 id=47 data-nosnippet>47</a>}
 </code></pre></div></section></main></body></html>
