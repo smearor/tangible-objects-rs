@@ -41,6 +41,10 @@ use crate::pattern_style::PatternStyle;
 pub struct SharedState {
     /// Active touch points.
     pub touches: Vec<TouchPoint>,
+    /// Active contacts before ingest filtering (edge margin and dead
+    /// zones) - `touches` holds the filtered set, so the dead-zone
+    /// overlay's active indicator reads the suppressed positions here.
+    pub unfiltered_touches: Vec<TouchPoint>,
     /// Raw pattern matches of the last frame (live view).
     pub matches: Vec<PatternMatch>,
     /// Currently tracked tangibles (pending flags render dimmed).
@@ -199,6 +203,7 @@ impl SharedState {
     pub fn new(options: &GuiOptions) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
             touches: Vec::new(),
+            unfiltered_touches: Vec::new(),
             matches: Vec::new(),
             tracked: Vec::new(),
             calibration: None,

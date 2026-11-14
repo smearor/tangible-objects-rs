@@ -99,7 +99,14 @@ pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<Shared
         draw_spells(cr, &s.trajectories, s.last_spell.as_ref(), &to_screen);
     }
     if s.dead_zones_visible {
-        draw_dead_zones(cr, &s.dead_zones, touches.into(), &to_screen);
+        // Unfiltered contacts: `s.touches` is the ingest-filtered set,
+        // so a suppressed contact inside a zone only shows up here.
+        draw_dead_zones(
+            cr,
+            &s.dead_zones,
+            (&s.unfiltered_touches).into(),
+            &to_screen,
+        );
     }
     if s.edge_margin_visible {
         draw_edge_margin(cr, s.edge_margin, &cal, &to_screen);

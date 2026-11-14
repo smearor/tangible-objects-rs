@@ -424,6 +424,7 @@ pub fn evdev_thread(
 
                 if let Ok(mut s) = state.lock() {
                     s.touches = touches;
+                    s.unfiltered_touches = touch_state.active_touches();
                     s.tracked = engine.tracked().to_vec();
                     s.matches = matches;
                     s.stable_frames = stable_frames;
