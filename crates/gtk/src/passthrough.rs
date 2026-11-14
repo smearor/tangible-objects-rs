@@ -12,6 +12,7 @@ use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::ScaleFactor;
 use smearor_commons_geometry::Vec2;
+use smearor_commons_geometry::WidgetSizeExt;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -67,6 +68,8 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                 diagnostics.origin = origin;
                 diagnostics.rectangles = region.num_rectangles() as usize;
                 diagnostics.extents = region_extents(&region);
+                diagnostics.status = region.status().err().map(|e| e.to_string());
+                diagnostics.first_rectangle = first_rectangle(&region);
                 if let Some(surface) = board_sync.native().and_then(|n| n.surface()) {
                     surface.set_input_region(Some(&region));
                     diagnostics.applied = true;
@@ -90,6 +93,7 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                     visible = %card.is_visible(),
                     "passthrough card footprint"
                 );
+                let (_, natural) = card.measure_size();
                 diagnostics.cards.push(CardFootprint {
                     card_id: CardId::new(card.id().to_string()),
                     position: geometry.position.into(),
@@ -97,6 +101,11 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                     scale: ScaleFactor::new(geometry.scale.into()),
                     visible: card.is_visible(),
                     footprint: extents,
+                    natural: natural.with_unit::<Pixels>(),
+                    allocated: card.allocated_size().with_unit::<Pixels>(),
+                    footprint_status: footprint.status().err().map(|e| e.to_string()),
+                    footprint_rectangles: footprint.num_rectangles() as usize,
+                    first_rectangle: first_rectangle(&footprint),
                 });
             }
             if let Ok(mut s) = state_passthrough.lock() {
@@ -152,6 +161,19 @@ fn region_extents(region: &Region) -> Option<Rect<Pixels, i32>> {
     Some(Rect::new(
         Vec2::new(extents.x(), extents.y()),
         Vec2::new(extents.width(), extents.height()),
+    ))
+}
+
+/// The region's first stored rectangle - a direct coordinate probe
+/// that bypasses `extents` entirely.
+fn first_rectangle(region: &Region) -> Option<Rect<Pixels, i32>> {
+    if region.is_empty() || region.num_rectangles() <= 0 {
+        return None;
+    }
+    let rect = region.rectangle(0);
+    Some(Rect::new(
+        Vec2::new(rect.x(), rect.y()),
+        Vec2::new(rect.width(), rect.height()),
     ))
 }
 
@@ -294,52 +316,5 @@ mod tests {
     #[test]
     fn circle_rects_empty_for_zero_radius() {
         assert!(circle_rects(Vec2::<Pixels>::new(10.0, 10.0), 0.0).is_empty());
-    }
-}
-
-#[cfg(test)]
-mod repro {
-    use gtk4::cairo::RectangleInt;
-    use gtk4::cairo::Region;
-
-    #[test]
-    fn union_then_extents() {
-        let union = Region::create();
-        let sub = Region::create();
-        let _ = sub.union_rectangle(&RectangleInt::new(2000, 300, 100, 50));
-        let _ = union.union(&sub);
-        let e = RectangleInt::new(0, 0, 0, 0);
-        union.extents(&e);
-        eprintln!(
-            "union(): empty={} num={} extents={},{},{}x{}",
-            union.is_empty(),
-            union.num_rectangles(),
-            e.x(),
-            e.y(),
-            e.width(),
-            e.height()
-        );
-        let _ = union.union_rectangle(&RectangleInt::new(10, 10, 5, 5));
-        union.extents(&e);
-        eprintln!("+rect: extents={},{},{}x{}", e.x(), e.y(), e.width(), e.height());
-    }
-
-    #[test]
-    fn degenerate_union_rects() {
-        for w in [0, -5, 3] {
-            let r = Region::create();
-            let _ = r.union_rectangle(&RectangleInt::new(2000, 300, w, 1));
-            let e = RectangleInt::new(0, 0, 0, 0);
-            r.extents(&e);
-            eprintln!(
-                "w={w}: empty={} num={} extents={},{},{}x{}",
-                r.is_empty(),
-                r.num_rectangles(),
-                e.x(),
-                e.y(),
-                e.width(),
-                e.height()
-            );
-        }
     }
 }

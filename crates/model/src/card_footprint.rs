@@ -30,4 +30,19 @@ pub struct CardFootprint {
     /// when the card could not be measured or rasterized - a missing
     /// footprint makes the card completely input-dead.
     pub footprint: Option<Rect<Pixels, i32>>,
+    /// Natural size the footprint was rasterized from (`measure_size`
+    /// natural, unscaled). A degenerate value here rasterizes to a
+    /// degenerate footprint even when the card renders fine.
+    pub natural: Vec2<Pixels, i32>,
+    /// The card widget's last GTK allocation - the ground truth of
+    /// what is actually rendered on screen.
+    pub allocated: Vec2<Pixels, i32>,
+    /// Cairo status of the footprint region; `Some` when the region
+    /// is in an error state and its contents are unusable.
+    pub footprint_status: Option<String>,
+    /// Rectangle count in the footprint region.
+    pub footprint_rectangles: usize,
+    /// First stored rectangle - where the rasterization actually
+    /// landed when `extents` reads zero.
+    pub first_rectangle: Option<Rect<Pixels, i32>>,
 }

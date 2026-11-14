@@ -25,6 +25,12 @@ pub struct InputRegionDiagnostics {
     pub extents: Option<Rect<Pixels, i32>>,
     /// Rectangle count in the unioned region - complexity signal.
     pub rectangles: usize,
+    /// Cairo status of the unioned region; `Some` when the region is
+    /// in an error state (extents/contents then report garbage).
+    pub status: Option<String>,
+    /// First stored rectangle of the unioned region - where the
+    /// rasterization actually landed when `extents` reads zero.
+    pub first_rectangle: Option<Rect<Pixels, i32>>,
     /// Per-card footprints in board-layer coordinates.
     pub cards: Vec<CardFootprint>,
 }
