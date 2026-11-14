@@ -101,6 +101,7 @@ dead-zone-name = Name
 dead-zone-position = Position
 dead-zone-radius = Radius
 dead-zone-hit = Hit
+dead-zone-remove = Remove
 dead-zone-add = Add
 dead-zones-empty = no dead zones
 render-mode-points = Render: points

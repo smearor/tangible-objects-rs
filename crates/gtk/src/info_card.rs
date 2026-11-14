@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use gtk4::Box as GtkBox;
+use gtk4::{Align, Box as GtkBox};
 use gtk4::Button;
 use gtk4::Grid;
 use gtk4::Label;
@@ -122,12 +122,12 @@ pub fn create_info_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
 /// column 1.
 fn add_row(grid: &Grid, row: i32, label: &str) -> Label {
     let name = Label::new(Some(label));
-    name.set_halign(gtk4::Align::Start);
+    name.set_halign(Align::Start);
     name.add_css_class("dim-label");
     grid.attach(&name, 0, row, 1, 1);
 
     let value = Label::new(Some("–"));
-    value.set_halign(gtk4::Align::Start);
+    value.set_halign(Align::Start);
     grid.attach(&value, 1, row, 1, 1);
     value
 }

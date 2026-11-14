@@ -17,7 +17,7 @@ use floating_board::CardPlacement;
 use floating_board::FloatingBoard;
 use smearor_commons_geometry::Pixels;
 
-use gtk4::Box as GtkBox;
+use gtk4::{Align, Box as GtkBox};
 use gtk4::Button;
 use gtk4::Entry;
 use gtk4::Label;
@@ -58,7 +58,7 @@ pub fn create_training_card(
     save_btn.set_sensitive(false);
 
     let status = Label::new(Some(""));
-    status.set_halign(gtk4::Align::Start);
+    status.set_halign(Align::Start);
 
     // Save callback.
     let state_save = state.clone();

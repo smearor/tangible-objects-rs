@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use gtk4::Box as GtkBox;
+use gtk4::{Align, Box as GtkBox};
 use gtk4::Grid;
 use gtk4::Label;
 use gtk4::Orientation;
@@ -215,7 +215,7 @@ fn add_row<T: Copy + PartialEq + 'static>(
 ) -> Row<T> {
     let command = std::rc::Rc::new(command);
     let name_label = Label::new(Some(name));
-    name_label.set_halign(gtk4::Align::Start);
+    name_label.set_halign(Align::Start);
     name_label.set_opacity(0.6);
     grid.attach(&name_label, 0, row, 1, 1);
 

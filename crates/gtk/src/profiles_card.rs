@@ -78,7 +78,7 @@ pub fn create_profiles_card(
     .enumerate()
     {
         let label = Label::new(Some(header));
-        label.set_halign(gtk4::Align::Start);
+        label.set_halign(Align::Start);
         label.add_css_class("dim-label");
         grid.attach(&label, column as i32, 0, 1, 1);
     }

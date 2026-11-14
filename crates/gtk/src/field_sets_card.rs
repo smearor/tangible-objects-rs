@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use std::time::Instant;
 
-use gtk4::Box as GtkBox;
+use gtk4::{Align, Box as GtkBox};
 use gtk4::Grid;
 use gtk4::Label;
 use gtk4::Orientation;
@@ -65,7 +65,7 @@ pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
     .enumerate()
     {
         let label = Label::new(Some(header));
-        label.set_halign(gtk4::Align::Start);
+        label.set_halign(Align::Start);
         label.add_css_class("dim-label");
         grid.attach(&label, column as i32, 0, 1, 1);
     }
@@ -95,11 +95,11 @@ pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             }
             for (index, set) in s.field_set_rows.iter().enumerate() {
                 let name = Label::new(Some(set.name.as_str()));
-                name.set_halign(gtk4::Align::Start);
+                name.set_halign(Align::Start);
                 let owner = Label::new(None);
-                owner.set_halign(gtk4::Align::Start);
+                owner.set_halign(Align::Start);
                 let enabled = Switch::new();
-                enabled.set_halign(gtk4::Align::Start);
+                enabled.set_halign(Align::Start);
                 let set_name = set.name.clone();
                 let state_enabled = state_tick.clone();
                 let enabled_pending = Rc::new(Cell::new(None));
@@ -118,7 +118,7 @@ pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     })
                 };
                 let field_count = Label::new(None);
-                field_count.set_halign(gtk4::Align::Start);
+                field_count.set_halign(Align::Start);
                 let row = index as i32 + 1;
                 grid.attach(&name, 0, row, 1, 1);
                 grid.attach(&owner, 1, row, 1, 1);
