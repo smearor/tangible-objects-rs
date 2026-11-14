@@ -353,86 +353,87 @@
 <a href=#353 id=353 data-nosnippet>353</a>                    s.grid_visible = runtime.grid_visible();
 <a href=#354 id=354 data-nosnippet>354</a>                    s.positions_visible = runtime.positions_visible();
 <a href=#355 id=355 data-nosnippet>355</a>                    s.touch_passthrough = runtime.touch_passthrough();
-<a href=#356 id=356 data-nosnippet>356</a>                    s.filter_mode = runtime.filter_mode();
-<a href=#357 id=357 data-nosnippet>357</a>                    s.completion = engine.completion();
-<a href=#358 id=358 data-nosnippet>358</a>                    s.legacy_mode = runtime.legacy_mode();
-<a href=#359 id=359 data-nosnippet>359</a>                    s.filter_stability = runtime
-<a href=#360 id=360 data-nosnippet>360</a>                        .filter_stability()
-<a href=#361 id=361 data-nosnippet>361</a>                        .map(|frames| frames.as_u64())
-<a href=#362 id=362 data-nosnippet>362</a>                        .unwrap_or(<span class="number">0</span>);
-<a href=#363 id=363 data-nosnippet>363</a>                    s.metrics = runtime.metrics().clone();
-<a href=#364 id=364 data-nosnippet>364</a>                    s.pattern_styles = engine
-<a href=#365 id=365 data-nosnippet>365</a>                        .patterns()
-<a href=#366 id=366 data-nosnippet>366</a>                        .iter()
-<a href=#367 id=367 data-nosnippet>367</a>                        .map(|pattern| <span class="kw">crate</span>::pattern_style::PatternStyle {
-<a href=#368 id=368 data-nosnippet>368</a>                            pattern_id: pattern.id,
-<a href=#369 id=369 data-nosnippet>369</a>                            color: pattern.color,
-<a href=#370 id=370 data-nosnippet>370</a>                            shape: pattern.shape.clone(),
-<a href=#371 id=371 data-nosnippet>371</a>                        })
-<a href=#372 id=372 data-nosnippet>372</a>                        .collect();
-<a href=#373 id=373 data-nosnippet>373</a>                    s.incoming_contacts = engine.incoming_contacts();
-<a href=#374 id=374 data-nosnippet>374</a>                    s.edge_filtered = engine.edge_filtered();
-<a href=#375 id=375 data-nosnippet>375</a>                    <span class="kw">let </span>(mode_suppressed, forwarded) = virtual_suppression(
-<a href=#376 id=376 data-nosnippet>376</a>                        <span class="kw-2">&amp;</span>engine,
-<a href=#377 id=377 data-nosnippet>377</a>                        runtime.filter_mode(),
-<a href=#378 id=378 data-nosnippet>378</a>                        (<span class="kw-2">&amp;</span>frame.touches).into(),
-<a href=#379 id=379 data-nosnippet>379</a>                    );
-<a href=#380 id=380 data-nosnippet>380</a>                    s.mode_suppressed = mode_suppressed;
-<a href=#381 id=381 data-nosnippet>381</a>                    s.forwarded = forwarded;
-<a href=#382 id=382 data-nosnippet>382</a>                    s.field_set_count = engine.field_set_count();
-<a href=#383 id=383 data-nosnippet>383</a>                    s.field_count = engine.field_count();
-<a href=#384 id=384 data-nosnippet>384</a>                    s.occupied_fields = engine.occupied_field_count();
-<a href=#385 id=385 data-nosnippet>385</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = s.background_alpha_request.take() {
-<a href=#386 id=386 data-nosnippet>386</a>                        runtime.set_background_alpha(request.percent().into());
-<a href=#387 id=387 data-nosnippet>387</a>                    }
-<a href=#388 id=388 data-nosnippet>388</a>                    s.background_alpha =
-<a href=#389 id=389 data-nosnippet>389</a>                        BackgroundAlpha::from_percent(runtime.background_alpha().percent());
-<a href=#390 id=390 data-nosnippet>390</a>                }
-<a href=#391 id=391 data-nosnippet>391</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(profile) = runtime.training_tick(<span class="kw-2">&amp;</span>frame.touches) {
-<a href=#392 id=392 data-nosnippet>392</a>                    <span class="macro">info!</span>(name = %profile.name, <span class="string">"training completed"</span>);
-<a href=#393 id=393 data-nosnippet>393</a>                    runtime.set_message(<span class="prelude-val">None</span>);
-<a href=#394 id=394 data-nosnippet>394</a>                    (hooks.register_profile)(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>engine, profile);
-<a href=#395 id=395 data-nosnippet>395</a>                }
-<a href=#396 id=396 data-nosnippet>396</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = <span class="kw-2">&amp;mut </span>recording {
-<a href=#397 id=397 data-nosnippet>397</a>                    session.record_frame(
-<a href=#398 id=398 data-nosnippet>398</a>                        FrameNumber::new(frame_no),
-<a href=#399 id=399 data-nosnippet>399</a>                        Milliseconds::from(session_start.elapsed()),
-<a href=#400 id=400 data-nosnippet>400</a>                        frame,
-<a href=#401 id=401 data-nosnippet>401</a>                        engine.tracked(),
-<a href=#402 id=402 data-nosnippet>402</a>                    );
-<a href=#403 id=403 data-nosnippet>403</a>                }
-<a href=#404 id=404 data-nosnippet>404</a>            }
-<a href=#405 id=405 data-nosnippet>405</a>
-<a href=#406 id=406 data-nosnippet>406</a>            <span class="kw">if </span>raw.is_syn_report() {
-<a href=#407 id=407 data-nosnippet>407</a>                <span class="comment">// In live mode the frame's own touch list is authoritative:
-<a href=#408 id=408 data-nosnippet>408</a>                // `touch_indices` in matches index into it (slot-sorted).
-<a href=#409 id=409 data-nosnippet>409</a>                // The GUI's touch_state (HashMap order) would misalign them
-<a href=#410 id=410 data-nosnippet>410</a>                // and draw figure lines across objects.
-<a href=#411 id=411 data-nosnippet>411</a>                </span><span class="kw">let </span>touches = <span class="kw">match </span><span class="kw-2">&amp;</span>frame {
-<a href=#412 id=412 data-nosnippet>412</a>                    <span class="prelude-val">Some</span>(engine_frame) =&gt; engine_frame.touches.clone(),
-<a href=#413 id=413 data-nosnippet>413</a>                    <span class="prelude-val">None </span>=&gt; touch_state.active_touches(),
-<a href=#414 id=414 data-nosnippet>414</a>                };
-<a href=#415 id=415 data-nosnippet>415</a>                <span class="kw">let </span>count = touches.len();
-<a href=#416 id=416 data-nosnippet>416</a>                <span class="kw">let </span>matches = frame.map(|f| f.matches).unwrap_or_default();
-<a href=#417 id=417 data-nosnippet>417</a>
-<a href=#418 id=418 data-nosnippet>418</a>                <span class="comment">// Stability check (for training mode).
-<a href=#419 id=419 data-nosnippet>419</a>                </span><span class="kw">if </span>stable_count == <span class="prelude-val">Some</span>(count) &amp;&amp; count &gt;= <span class="number">3 </span>{
-<a href=#420 id=420 data-nosnippet>420</a>                    stable_frames += <span class="number">1</span>;
-<a href=#421 id=421 data-nosnippet>421</a>                } <span class="kw">else </span>{
-<a href=#422 id=422 data-nosnippet>422</a>                    stable_count = <span class="prelude-val">Some</span>(count);
-<a href=#423 id=423 data-nosnippet>423</a>                    stable_frames = <span class="number">0</span>;
-<a href=#424 id=424 data-nosnippet>424</a>                }
-<a href=#425 id=425 data-nosnippet>425</a>
-<a href=#426 id=426 data-nosnippet>426</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = state.lock() {
-<a href=#427 id=427 data-nosnippet>427</a>                    s.touches = touches;
-<a href=#428 id=428 data-nosnippet>428</a>                    s.unfiltered_touches = touch_state.active_touches();
-<a href=#429 id=429 data-nosnippet>429</a>                    s.tracked = engine.tracked().to_vec();
-<a href=#430 id=430 data-nosnippet>430</a>                    s.matches = matches;
-<a href=#431 id=431 data-nosnippet>431</a>                    s.stable_frames = stable_frames;
-<a href=#432 id=432 data-nosnippet>432</a>                    s.stable = stable_frames &gt;= STABLE_THRESHOLD &amp;&amp; count &gt;= <span class="number">3</span>;
-<a href=#433 id=433 data-nosnippet>433</a>                }
-<a href=#434 id=434 data-nosnippet>434</a>            }
-<a href=#435 id=435 data-nosnippet>435</a>        }
-<a href=#436 id=436 data-nosnippet>436</a>    }
-<a href=#437 id=437 data-nosnippet>437</a>}
+<a href=#356 id=356 data-nosnippet>356</a>                    runtime.set_input_region_diagnostics(s.input_region_diagnostics.clone());
+<a href=#357 id=357 data-nosnippet>357</a>                    s.filter_mode = runtime.filter_mode();
+<a href=#358 id=358 data-nosnippet>358</a>                    s.completion = engine.completion();
+<a href=#359 id=359 data-nosnippet>359</a>                    s.legacy_mode = runtime.legacy_mode();
+<a href=#360 id=360 data-nosnippet>360</a>                    s.filter_stability = runtime
+<a href=#361 id=361 data-nosnippet>361</a>                        .filter_stability()
+<a href=#362 id=362 data-nosnippet>362</a>                        .map(|frames| frames.as_u64())
+<a href=#363 id=363 data-nosnippet>363</a>                        .unwrap_or(<span class="number">0</span>);
+<a href=#364 id=364 data-nosnippet>364</a>                    s.metrics = runtime.metrics().clone();
+<a href=#365 id=365 data-nosnippet>365</a>                    s.pattern_styles = engine
+<a href=#366 id=366 data-nosnippet>366</a>                        .patterns()
+<a href=#367 id=367 data-nosnippet>367</a>                        .iter()
+<a href=#368 id=368 data-nosnippet>368</a>                        .map(|pattern| <span class="kw">crate</span>::pattern_style::PatternStyle {
+<a href=#369 id=369 data-nosnippet>369</a>                            pattern_id: pattern.id,
+<a href=#370 id=370 data-nosnippet>370</a>                            color: pattern.color,
+<a href=#371 id=371 data-nosnippet>371</a>                            shape: pattern.shape.clone(),
+<a href=#372 id=372 data-nosnippet>372</a>                        })
+<a href=#373 id=373 data-nosnippet>373</a>                        .collect();
+<a href=#374 id=374 data-nosnippet>374</a>                    s.incoming_contacts = engine.incoming_contacts();
+<a href=#375 id=375 data-nosnippet>375</a>                    s.edge_filtered = engine.edge_filtered();
+<a href=#376 id=376 data-nosnippet>376</a>                    <span class="kw">let </span>(mode_suppressed, forwarded) = virtual_suppression(
+<a href=#377 id=377 data-nosnippet>377</a>                        <span class="kw-2">&amp;</span>engine,
+<a href=#378 id=378 data-nosnippet>378</a>                        runtime.filter_mode(),
+<a href=#379 id=379 data-nosnippet>379</a>                        (<span class="kw-2">&amp;</span>frame.touches).into(),
+<a href=#380 id=380 data-nosnippet>380</a>                    );
+<a href=#381 id=381 data-nosnippet>381</a>                    s.mode_suppressed = mode_suppressed;
+<a href=#382 id=382 data-nosnippet>382</a>                    s.forwarded = forwarded;
+<a href=#383 id=383 data-nosnippet>383</a>                    s.field_set_count = engine.field_set_count();
+<a href=#384 id=384 data-nosnippet>384</a>                    s.field_count = engine.field_count();
+<a href=#385 id=385 data-nosnippet>385</a>                    s.occupied_fields = engine.occupied_field_count();
+<a href=#386 id=386 data-nosnippet>386</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(request) = s.background_alpha_request.take() {
+<a href=#387 id=387 data-nosnippet>387</a>                        runtime.set_background_alpha(request.percent().into());
+<a href=#388 id=388 data-nosnippet>388</a>                    }
+<a href=#389 id=389 data-nosnippet>389</a>                    s.background_alpha =
+<a href=#390 id=390 data-nosnippet>390</a>                        BackgroundAlpha::from_percent(runtime.background_alpha().percent());
+<a href=#391 id=391 data-nosnippet>391</a>                }
+<a href=#392 id=392 data-nosnippet>392</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(profile) = runtime.training_tick(<span class="kw-2">&amp;</span>frame.touches) {
+<a href=#393 id=393 data-nosnippet>393</a>                    <span class="macro">info!</span>(name = %profile.name, <span class="string">"training completed"</span>);
+<a href=#394 id=394 data-nosnippet>394</a>                    runtime.set_message(<span class="prelude-val">None</span>);
+<a href=#395 id=395 data-nosnippet>395</a>                    (hooks.register_profile)(<span class="kw-2">&amp;mut </span>runtime, <span class="kw-2">&amp;mut </span>engine, profile);
+<a href=#396 id=396 data-nosnippet>396</a>                }
+<a href=#397 id=397 data-nosnippet>397</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = <span class="kw-2">&amp;mut </span>recording {
+<a href=#398 id=398 data-nosnippet>398</a>                    session.record_frame(
+<a href=#399 id=399 data-nosnippet>399</a>                        FrameNumber::new(frame_no),
+<a href=#400 id=400 data-nosnippet>400</a>                        Milliseconds::from(session_start.elapsed()),
+<a href=#401 id=401 data-nosnippet>401</a>                        frame,
+<a href=#402 id=402 data-nosnippet>402</a>                        engine.tracked(),
+<a href=#403 id=403 data-nosnippet>403</a>                    );
+<a href=#404 id=404 data-nosnippet>404</a>                }
+<a href=#405 id=405 data-nosnippet>405</a>            }
+<a href=#406 id=406 data-nosnippet>406</a>
+<a href=#407 id=407 data-nosnippet>407</a>            <span class="kw">if </span>raw.is_syn_report() {
+<a href=#408 id=408 data-nosnippet>408</a>                <span class="comment">// In live mode the frame's own touch list is authoritative:
+<a href=#409 id=409 data-nosnippet>409</a>                // `touch_indices` in matches index into it (slot-sorted).
+<a href=#410 id=410 data-nosnippet>410</a>                // The GUI's touch_state (HashMap order) would misalign them
+<a href=#411 id=411 data-nosnippet>411</a>                // and draw figure lines across objects.
+<a href=#412 id=412 data-nosnippet>412</a>                </span><span class="kw">let </span>touches = <span class="kw">match </span><span class="kw-2">&amp;</span>frame {
+<a href=#413 id=413 data-nosnippet>413</a>                    <span class="prelude-val">Some</span>(engine_frame) =&gt; engine_frame.touches.clone(),
+<a href=#414 id=414 data-nosnippet>414</a>                    <span class="prelude-val">None </span>=&gt; touch_state.active_touches(),
+<a href=#415 id=415 data-nosnippet>415</a>                };
+<a href=#416 id=416 data-nosnippet>416</a>                <span class="kw">let </span>count = touches.len();
+<a href=#417 id=417 data-nosnippet>417</a>                <span class="kw">let </span>matches = frame.map(|f| f.matches).unwrap_or_default();
+<a href=#418 id=418 data-nosnippet>418</a>
+<a href=#419 id=419 data-nosnippet>419</a>                <span class="comment">// Stability check (for training mode).
+<a href=#420 id=420 data-nosnippet>420</a>                </span><span class="kw">if </span>stable_count == <span class="prelude-val">Some</span>(count) &amp;&amp; count &gt;= <span class="number">3 </span>{
+<a href=#421 id=421 data-nosnippet>421</a>                    stable_frames += <span class="number">1</span>;
+<a href=#422 id=422 data-nosnippet>422</a>                } <span class="kw">else </span>{
+<a href=#423 id=423 data-nosnippet>423</a>                    stable_count = <span class="prelude-val">Some</span>(count);
+<a href=#424 id=424 data-nosnippet>424</a>                    stable_frames = <span class="number">0</span>;
+<a href=#425 id=425 data-nosnippet>425</a>                }
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = state.lock() {
+<a href=#428 id=428 data-nosnippet>428</a>                    s.touches = touches;
+<a href=#429 id=429 data-nosnippet>429</a>                    s.unfiltered_touches = touch_state.active_touches();
+<a href=#430 id=430 data-nosnippet>430</a>                    s.tracked = engine.tracked().to_vec();
+<a href=#431 id=431 data-nosnippet>431</a>                    s.matches = matches;
+<a href=#432 id=432 data-nosnippet>432</a>                    s.stable_frames = stable_frames;
+<a href=#433 id=433 data-nosnippet>433</a>                    s.stable = stable_frames &gt;= STABLE_THRESHOLD &amp;&amp; count &gt;= <span class="number">3</span>;
+<a href=#434 id=434 data-nosnippet>434</a>                }
+<a href=#435 id=435 data-nosnippet>435</a>            }
+<a href=#436 id=436 data-nosnippet>436</a>        }
+<a href=#437 id=437 data-nosnippet>437</a>    }
+<a href=#438 id=438 data-nosnippet>438</a>}
 </code></pre></div></section></main></body></html>
