@@ -104,8 +104,8 @@ impl<'de> Deserialize<'de> for TrackedTangible {
         });
         let rotation_rad = h
             .rotation_rad
-            .or_else(|| h.rotation_deg.map(|deg| RotationRad(deg.to_radians())))
-            .unwrap_or(RotationRad(0.0));
+            .or_else(|| h.rotation_deg.map(|deg| RotationRad::new(deg.to_radians())))
+            .unwrap_or(RotationRad::new(0.0));
         Ok(Self {
             id: h.id,
             pattern_id: h.pattern_id,
