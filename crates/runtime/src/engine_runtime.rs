@@ -19,6 +19,7 @@ use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::InputRegionDiagnostics;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
@@ -147,6 +148,11 @@ pub struct EngineRuntime {
     /// with (Parameters card; `None` until a `SetFilterMode` carries
     /// `stability`).
     filter_stability: Option<FrameCount>,
+    /// The passthrough input region as last applied by the
+    /// daemon-embedded GUI - diagnostics for touches not reaching
+    /// the expected widgets. Ungated so interface crates can read it
+    /// without the `gui` feature; stays default on headless daemons.
+    input_region_diagnostics: InputRegionDiagnostics,
     /// Pending remote profile capture (`TrainProfile` command) -
     /// the device loops tick it with each frame's touches.
     training: Option<TrainingState>,
@@ -219,6 +225,7 @@ impl EngineRuntime {
             filter_stability: None,
             #[cfg(feature = "gui")]
             display_rotation: DisplayRotation::default(),
+            input_region_diagnostics: InputRegionDiagnostics::default(),
             training: None,
         };
         let handle = EngineHandle::new(events, snapshot_rx, command_tx, Arc::new(sets), profiles);
@@ -339,6 +346,7 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             touch_passthrough: self.touch_passthrough,
             filter_mode: self.filter_mode,
+            input_region_diagnostics: self.input_region_diagnostics.clone(),
         });
         for event in &frame.events {
             self.broadcast(DomainEvent::Engine(event.clone()));
@@ -397,6 +405,7 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             touch_passthrough: self.touch_passthrough,
             filter_mode: self.filter_mode,
+            input_region_diagnostics: self.input_region_diagnostics.clone(),
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
@@ -576,6 +585,18 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn touch_passthrough(&self) -> bool {
         self.touch_passthrough
+    }
+
+    /// Publishes the passthrough input region as last applied by the
+    /// daemon-embedded GUI - the device loop pushes it once per frame
+    /// so interface snapshots mirror the effective region state.
+    pub fn set_input_region_diagnostics(&mut self, diagnostics: InputRegionDiagnostics) {
+        self.input_region_diagnostics = diagnostics;
+    }
+
+    /// The input-region diagnostics currently embedded in snapshots.
+    pub fn input_region_diagnostics(&self) -> &InputRegionDiagnostics {
+        &self.input_region_diagnostics
     }
 
     /// Sets the displayed filter mode (`SetFilterMode` command -

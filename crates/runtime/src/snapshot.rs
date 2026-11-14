@@ -5,6 +5,7 @@ use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
+use tangible_objects_model::InputRegionDiagnostics;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::Spell;
 use tangible_objects_model::TangibleSetId;
@@ -101,4 +102,10 @@ pub struct EngineSnapshot {
     /// Selected suppression policy (`SetFilterMode` command) -
     /// display intent on daemons without a proxy.
     pub filter_mode: FilterMode,
+    /// The touch-passthrough input region as last applied to the GUI
+    /// surface - per-card footprints, unioned extents and applied
+    /// state. Empty (`applied: false`) on headless daemons and while
+    /// passthrough is off; published unconditionally so interface
+    /// crates can read it without the `gui` feature.
+    pub input_region_diagnostics: InputRegionDiagnostics,
 }

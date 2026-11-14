@@ -10,6 +10,7 @@ use tangible_objects_model::DisplayRotation;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::server::engine_mcp::EngineMcp;
+use crate::server::helpers::json_pretty;
 use crate::tool_args::SetBackgroundAlphaArgs;
 use crate::tool_args::SetDeadZonesVisibleArgs;
 use crate::tool_args::SetDisplayRotationArgs;
@@ -215,5 +216,21 @@ impl EngineMcp {
             "touch passthrough enabled: {}",
             args.enabled
         ))]))
+    }
+
+    /// The passthrough input region as last applied to the GUI surface:
+    /// per-card footprints (position/rotation/scale plus rasterized
+    /// bounds), the unioned region extents, the board-to-surface origin
+    /// offset and the applied flag - diagnosis for touches not reaching
+    /// widgets they visibly hit. `applied: false` for headless daemons
+    /// and while passthrough is off.
+    #[tool(
+        description = "Get the touch-passthrough input region as last applied to the daemon-embedded GUI surface (--gui mode): per-card footprints, unioned extents, board-to-surface offset and applied flag; reports applied=false for headless daemons."
+    )]
+    async fn input_region_diagnostics(&self) -> Result<CallToolResult, ErrorData> {
+        let snapshot = self.handle.snapshot();
+        Ok(CallToolResult::success(vec![ContentBlock::text(
+            json_pretty(&snapshot.input_region_diagnostics)?,
+        )]))
     }
 }

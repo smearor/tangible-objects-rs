@@ -3,17 +3,24 @@
 //! a registered dead zone is hit (`SetTouchPassthrough` /
 //! `--touch-passthrough`).
 
+use cairo::RectangleInt;
 use floating_board::FloatingBoard;
+use gtk4::cairo::Region;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::Rect;
+use smearor_commons_geometry::ScaleFactor;
 use smearor_commons_geometry::Vec2;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 use tangible_objects_model::Calibration;
+use tangible_objects_model::CardFootprint;
+use tangible_objects_model::CardId;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
+use tangible_objects_model::InputRegionDiagnostics;
 use tracing::debug;
 use tracing::warn;
 
@@ -53,35 +60,56 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
             // The board must not reset the region on its next
             // allocation - the consumer owns it while passthrough runs.
             board_sync.set_input_region_managed(true);
-            if let Some(region) =
+            let mut diagnostics = InputRegionDiagnostics::default();
+            if let Some((region, origin)) =
                 passthrough_region(&board_sync, &dead_zones, calibration, rotation)
-                && let Some(surface) = board_sync.native().and_then(|n| n.surface())
             {
-                surface.set_input_region(Some(&region));
-                applied = true;
+                diagnostics.origin = origin;
+                diagnostics.rectangles = region.num_rectangles() as usize;
+                diagnostics.extents = region_extents(&region);
+                if let Some(surface) = board_sync.native().and_then(|n| n.surface()) {
+                    surface.set_input_region(Some(&region));
+                    diagnostics.applied = true;
+                    applied = true;
+                }
             }
             // Debug: dump each card's footprint vs its visible geometry -
             // a card missing from the union is completely input-dead.
+            // The same data is published to interfaces via
+            // `input_region_diagnostics`.
             for card in board_sync.cards() {
                 let geometry = card.geometry();
                 let footprint = card.footprint();
-                let extents = gtk4::cairo::RectangleInt::new(0, 0, 0, 0);
-                footprint.extents(&extents);
+                let extents = region_extents(&footprint);
                 debug!(
                     card = %card.id(),
                     position = ?geometry.position,
                     rotation = ?geometry.rotation,
                     scale = ?geometry.scale,
-                    footprint = ?(extents.x(), extents.y(), extents.width(), extents.height()),
+                    footprint = ?extents.map(|e| (e.min.x, e.min.y, e.size.x, e.size.y)),
                     visible = %card.is_visible(),
                     "passthrough card footprint"
                 );
+                diagnostics.cards.push(CardFootprint {
+                    card_id: CardId::new(card.id().to_string()),
+                    position: geometry.position.into(),
+                    rotation: geometry.rotation,
+                    scale: ScaleFactor::new(geometry.scale.into()),
+                    visible: card.is_visible(),
+                    footprint: extents,
+                });
+            }
+            if let Ok(mut s) = state_passthrough.lock() {
+                s.input_region_diagnostics = diagnostics;
             }
         } else if applied {
             applied = false;
             board_sync.set_input_region_managed(false);
             if let Some(surface) = board_sync.native().and_then(|n| n.surface()) {
                 surface.set_input_region(None);
+            }
+            if let Ok(mut s) = state_passthrough.lock() {
+                s.input_region_diagnostics = InputRegionDiagnostics::default();
             }
         }
         ControlFlow::Continue
@@ -90,22 +118,41 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
 
 /// The passthrough input region in surface coordinates: the rotated
 /// footprints of every card on the board, unioned with the rasterized
-/// screen circles of all registered dead zones.
+/// screen circles of all registered dead zones. Returns the region
+/// plus the board-to-surface origin offset it was translated by.
 fn passthrough_region(
     board: &FloatingBoard,
     dead_zones: &[DeadZone],
     calibration: Option<Calibration>,
     rotation: DisplayRotation,
-) -> Option<gtk4::cairo::Region> {
+) -> Option<(Region, Vec2<Pixels>)> {
     let native = board.native()?;
     let region = board.cards_region();
     union_dead_zones(&region, board, dead_zones, calibration, rotation);
     if region.is_empty() {
-        return Some(region);
+        return Some((region, Vec2::ZERO));
     }
     let origin = board.compute_point(&native, &gtk4::graphene::Point::new(0.0, 0.0))?;
     region.translate(origin.x().round() as i32, origin.y().round() as i32);
-    Some(region)
+    Some((
+        region,
+        Vec2::<Pixels>::new(f64::from(origin.x()), f64::from(origin.y())),
+    ))
+}
+
+/// Integer extents of a cairo region - `None` when the region is
+/// empty. Shared by the unioned input region and every card
+/// footprint in the diagnostics payload.
+fn region_extents(region: &Region) -> Option<Rect<Pixels, i32>> {
+    if region.is_empty() {
+        return None;
+    }
+    let extents = RectangleInt::new(0, 0, 0, 0);
+    region.extents(&extents);
+    Some(Rect::new(
+        Vec2::new(extents.x(), extents.y()),
+        Vec2::new(extents.width(), extents.height()),
+    ))
 }
 
 /// Unions every dead zone's screen circle into `region` (board
@@ -113,7 +160,7 @@ fn passthrough_region(
 /// mapping draws on, so the existing board→surface translation
 /// applies to both).
 fn union_dead_zones(
-    region: &gtk4::cairo::Region,
+    region: &Region,
     board: &FloatingBoard,
     dead_zones: &[DeadZone],
     calibration: Option<Calibration>,
@@ -167,7 +214,7 @@ fn dead_zone_radius_px(
 /// row per scanline. Each row uses the chord at its center-nearest edge
 /// (the widest the circle reaches inside that row), so the union covers
 /// every point the zone's `contains` would hit.
-fn circle_rects(center: Vec2<Pixels>, radius: f64) -> Vec<gtk4::cairo::RectangleInt> {
+fn circle_rects(center: Vec2<Pixels>, radius: f64) -> Vec<RectangleInt> {
     let top = (center.y - radius).floor() as i32;
     let bottom = (center.y + radius).ceil() as i32;
     (top..bottom)
@@ -183,7 +230,7 @@ fn circle_rects(center: Vec2<Pixels>, radius: f64) -> Vec<gtk4::cairo::Rectangle
             let half = (radius * radius - nearest * nearest).sqrt().max(0.5);
             let left = (center.x - half).floor() as i32;
             let right = (center.x + half).ceil() as i32;
-            Some(gtk4::cairo::RectangleInt::new(left, y, right - left, 1))
+            Some(RectangleInt::new(left, y, right - left, 1))
         })
         .collect()
 }

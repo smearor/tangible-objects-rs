@@ -243,6 +243,7 @@ pub fn evdev_thread(
                 s.grid_visible = runtime.grid_visible();
                 s.positions_visible = runtime.positions_visible();
                 s.touch_passthrough = runtime.touch_passthrough();
+                runtime.set_input_region_diagnostics(s.input_region_diagnostics.clone());
                 s.filter_mode = runtime.filter_mode();
                 s.completion = engine.completion();
                 s.legacy_mode = runtime.legacy_mode();

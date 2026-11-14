@@ -20,6 +20,7 @@ use tangible_objects_model::FieldCount;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FilterMode;
+use tangible_objects_model::InputRegionDiagnostics;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::ProfileInfo;
 use tangible_objects_model::SessionMetrics;
@@ -129,6 +130,11 @@ pub struct SharedState {
     /// Whether touches pass through to the desktop except on GUI
     /// elements (`SetTouchPassthrough`/`--touch-passthrough`).
     pub touch_passthrough: bool,
+    /// The passthrough input region as last applied to the surface -
+    /// written by the region-sync timer, forwarded into the engine
+    /// snapshot so interfaces (`input_region_diagnostics`) can compare
+    /// footprints against rendered cards.
+    pub input_region_diagnostics: InputRegionDiagnostics,
     /// Selected suppression policy (`SetFilterMode` command +
     /// `--filter-mode` start value) - display state.
     pub filter_mode: FilterMode,
@@ -238,6 +244,7 @@ impl SharedState {
             grid_visible: options.grid_visible,
             positions_visible: options.positions_visible,
             touch_passthrough: options.touch_passthrough,
+            input_region_diagnostics: InputRegionDiagnostics::default(),
             filter_mode: options.filter_mode,
             completion: CompletionConfig::default(),
             legacy_mode: LegacyMode::default(),
