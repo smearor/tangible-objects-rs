@@ -296,3 +296,50 @@ mod tests {
         assert!(circle_rects(Vec2::<Pixels>::new(10.0, 10.0), 0.0).is_empty());
     }
 }
+
+#[cfg(test)]
+mod repro {
+    use gtk4::cairo::RectangleInt;
+    use gtk4::cairo::Region;
+
+    #[test]
+    fn union_then_extents() {
+        let union = Region::create();
+        let sub = Region::create();
+        let _ = sub.union_rectangle(&RectangleInt::new(2000, 300, 100, 50));
+        let _ = union.union(&sub);
+        let e = RectangleInt::new(0, 0, 0, 0);
+        union.extents(&e);
+        eprintln!(
+            "union(): empty={} num={} extents={},{},{}x{}",
+            union.is_empty(),
+            union.num_rectangles(),
+            e.x(),
+            e.y(),
+            e.width(),
+            e.height()
+        );
+        let _ = union.union_rectangle(&RectangleInt::new(10, 10, 5, 5));
+        union.extents(&e);
+        eprintln!("+rect: extents={},{},{}x{}", e.x(), e.y(), e.width(), e.height());
+    }
+
+    #[test]
+    fn degenerate_union_rects() {
+        for w in [0, -5, 3] {
+            let r = Region::create();
+            let _ = r.union_rectangle(&RectangleInt::new(2000, 300, w, 1));
+            let e = RectangleInt::new(0, 0, 0, 0);
+            r.extents(&e);
+            eprintln!(
+                "w={w}: empty={} num={} extents={},{},{}x{}",
+                r.is_empty(),
+                r.num_rectangles(),
+                e.x(),
+                e.y(),
+                e.width(),
+                e.height()
+            );
+        }
+    }
+}
