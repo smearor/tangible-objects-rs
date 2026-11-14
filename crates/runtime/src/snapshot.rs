@@ -1,5 +1,5 @@
 #[cfg(feature = "gui")]
-use tangible_objects_model::AlphaPercent;
+use smearor_commons_color::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;

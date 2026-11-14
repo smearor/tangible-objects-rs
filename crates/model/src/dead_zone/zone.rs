@@ -1,3 +1,4 @@
+use smearor_commons_geometry::Circle;
 use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Vec2;
 use std::path::Path;
@@ -42,7 +43,7 @@ impl DeadZone {
 
     /// Whether `pos` falls inside the zone's suppression radius.
     pub fn contains(&self, pos: &Vec2<Millimeters>) -> bool {
-        self.center.distance(pos) <= self.radius
+        Circle::new(self.center, self.radius.as_f64()).contains(pos)
     }
 
     /// Loads a single dead-zone `.toml` file.

@@ -1,7 +1,7 @@
+use smearor_commons_color::AlphaPercent;
 use smearor_commons_geometry::Millimeters;
 use std::path::PathBuf;
 use tangible_objects_engine::LegacyMode;
-use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::DisplayRotation;

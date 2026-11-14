@@ -4,7 +4,6 @@
 //! geometry, device calibration, geometric figure patterns, TOML profiles and
 //! tracked tangible state. No I/O beyond profile file loading/saving.
 
-mod alpha_percent;
 mod analysis_mode;
 mod best_score;
 mod calibration;
@@ -49,7 +48,6 @@ mod tangible;
 mod tangible_render_mode;
 mod touch_point;
 
-pub use alpha_percent::AlphaPercent;
 pub use analysis_mode::AnalysisMode;
 pub use best_score::BestScore;
 pub use calibration::Calibration;

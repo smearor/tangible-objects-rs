@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use gtk4::Box as GtkBox;
+use gtk4::{Align, Box as GtkBox, ColorDialog, ColorDialogButton};
 use gtk4::Grid;
 use gtk4::Label;
 use gtk4::Orientation;
@@ -16,6 +16,7 @@ use gtk4::Switch;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
+use smearor_commons_color::Color;
 use tangible_objects_model::FigureColor;
 use tangible_objects_model::PatternId;
 use tangible_objects_runtime::ControlCommand;
@@ -88,11 +89,11 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             }
             for (index, profile) in s.profiles.iter().enumerate() {
                 let name = Label::new(Some(profile.name.as_str()));
-                name.set_halign(gtk4::Align::Start);
+                name.set_halign(Align::Start);
                 let owner = Label::new(None);
-                owner.set_halign(gtk4::Align::Start);
+                owner.set_halign(Align::Start);
                 let enabled = Switch::new();
-                enabled.set_halign(gtk4::Align::Start);
+                enabled.set_halign(Align::Start);
                 let pattern_id = profile.pattern_id;
                 let state_enabled = state_tick.clone();
                 enabled.connect_state_set(move |_, active| {
@@ -105,28 +106,23 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     );
                     gtk4::glib::Propagation::Proceed
                 });
-                let color = gtk4::ColorDialogButton::new(Some(gtk4::ColorDialog::new()));
-                let (r, g, b) = crate::draw::figure_color(profile.pattern_id);
-                color.set_rgba(&gtk4::gdk::RGBA::new(r as f32, g as f32, b as f32, 1.0));
-                color.set_halign(gtk4::Align::Start);
+                let color = ColorDialogButton::new(Some(ColorDialog::new()));
+                let accent = crate::draw::figure_color(profile.pattern_id);
+                color.set_rgba(&accent.into());
+                color.set_halign(Align::Start);
                 let pattern_id_color = profile.pattern_id;
                 let state_color = state_tick.clone();
                 color.connect_notify_local(Some("rgba"), move |button, _| {
-                    let rgba = button.rgba();
                     send_command(
                         &state_color,
                         ControlCommand::SetProfileColor {
                             id: pattern_id_color,
-                            color: FigureColor::new(
-                                rgba.red() as f64,
-                                rgba.green() as f64,
-                                rgba.blue() as f64,
-                            ),
+                            color: FigureColor::from(Color::<f64>::from(button.rgba())),
                         },
                     );
                 });
                 let position = Label::new(None);
-                position.set_halign(gtk4::Align::Start);
+                position.set_halign(Align::Start);
                 let row = index as i32 + 1;
                 grid.attach(&name, 0, row, 1, 1);
                 grid.attach(&owner, 1, row, 1, 1);
@@ -145,21 +141,20 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         for (profile, row) in s.profiles.iter().zip(rows.iter()) {
             // Reflect the live color (declared `color=` or a
             // `SetProfileColor` from elsewhere).
-            let (r, g, b) = s
+            let expected = s
                 .pattern_styles
                 .iter()
                 .find(|style| style.pattern_id == profile.pattern_id)
                 .and_then(|style| style.color)
-                .map(|color| color.rgb())
+                .map(|color| color.0)
                 .unwrap_or_else(|| crate::draw::figure_color(profile.pattern_id));
             let current = row.color.rgba();
             let epsilon = 1.0 / 255.0;
-            if (current.red() as f64 - r).abs() > epsilon
-                || (current.green() as f64 - g).abs() > epsilon
-                || (current.blue() as f64 - b).abs() > epsilon
+            if (current.red() as f64 - expected.r).abs() > epsilon
+                || (current.green() as f64 - expected.g).abs() > epsilon
+                || (current.blue() as f64 - expected.b).abs() > epsilon
             {
-                row.color
-                    .set_rgba(&gtk4::gdk::RGBA::new(r as f32, g as f32, b as f32, 1.0));
+                row.color.set_rgba(&expected.into());
             }
             row.owner.set_label(
                 profile

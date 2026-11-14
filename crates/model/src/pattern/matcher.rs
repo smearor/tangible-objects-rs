@@ -470,7 +470,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(
+        let patterns = [TangiblePattern::from_points(
             1,
             "triangle",
             (&reference).into(),
@@ -498,7 +498,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(
+        let patterns = [TangiblePattern::from_points(
             1,
             "triangle",
             (&reference).into(),
@@ -520,7 +520,7 @@ mod tests {
     fn combinations_within_prunes_far_spans() {
         // Points at 0 / 50 / 500 mm: with a 60 mm span limit only the
         // {0,1} pair can ever satisfy a small-figure fingerprint.
-        let positions = vec![
+        let positions = [
             Vec2::new(0.0, 0.0),
             Vec2::new(50.0, 0.0),
             Vec2::new(500.0, 0.0),
@@ -535,7 +535,7 @@ mod tests {
     fn combinations_within_degenerates_to_full_enumeration() {
         // A span limit beyond every pairwise distance keeps all
         // combinations - the worst case degrades to full enumeration.
-        let positions = vec![
+        let positions = [
             Vec2::new(0.0, 0.0),
             Vec2::new(50.0, 0.0),
             Vec2::new(500.0, 0.0),
@@ -550,7 +550,7 @@ mod tests {
     /// the footprint - pruning can never reject a matching candidate.
     #[test]
     fn pruned_combinations_provably_exceed_footprint() {
-        let positions = vec![
+        let positions = [
             Vec2::new(0.0, 0.0),
             Vec2::new(50.0, 0.0),
             Vec2::new(80.0, 40.0),
@@ -608,7 +608,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(
+        let patterns = [TangiblePattern::from_points(
             1,
             "triangle",
             (&reference).into(),
@@ -634,7 +634,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(
+        let patterns = [TangiblePattern::from_points(
             1,
             "triangle",
             (&reference).into(),
@@ -686,7 +686,7 @@ mod tests {
             Vec2::new(50.0, 0.0),
             Vec2::new(0.0, 50.0),
         ];
-        let patterns = vec![TangiblePattern::from_points(
+        let patterns = [TangiblePattern::from_points(
             1,
             "triangle",
             (&reference).into(),
@@ -727,7 +727,7 @@ mod tests {
         ];
         let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
-        let patterns = vec![pattern];
+        let patterns = [pattern];
         // One pin missing - three square contacts plus a distractor touch
         // (partial matching requires at least num_points active touches).
         let touches = vec![
@@ -774,7 +774,7 @@ mod tests {
             x_max: Millimeters::new(200.0),
             y_max: Millimeters::new(1000.0),
         }];
-        let patterns = vec![pattern];
+        let patterns = [pattern];
 
         let inside = vec![
             touch_point(0, 100.0, 100.0),
@@ -815,7 +815,7 @@ mod tests {
             x_max: Millimeters::new(200.0),
             y_max: Millimeters::new(1000.0),
         }];
-        let patterns = vec![pattern];
+        let patterns = [pattern];
 
         // Two points inside, one point outside - the candidate is
         // rejected as a whole (conservative rule).
@@ -854,7 +854,7 @@ mod tests {
         ];
         let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
-        let patterns = vec![pattern];
+        let patterns = [pattern];
         // True missing-pin case: only num_points - 1 touches exist (a pin
         // lost contact entirely - e.g. Figur8 with one pin swallowed).
         let touches = vec![
@@ -889,7 +889,7 @@ mod tests {
         ];
         let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
-        let patterns = vec![pattern];
+        let patterns = [pattern];
         // Three matched pins at translated positions + a fourth touch near
         // the predicted missing pin (translated (40,40) → (140,140)).
         let touches = vec![
@@ -936,7 +936,7 @@ mod tests {
         ];
         let mut pattern = TangiblePattern::from_points(1, "square", (&square).into(), 5.0);
         pattern.spawn_on_partial = true;
-        let patterns = vec![pattern];
+        let patterns = [pattern];
         // Fourth touch 30mm from the predicted position - outside the
         // claim radius (tolerance 5 × factor 2 = 10mm).
         let touches = vec![

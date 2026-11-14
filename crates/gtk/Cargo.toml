@@ -18,9 +18,11 @@ i18n-embed.workspace = true
 i18n-embed-fl.workspace = true
 libc.workspace = true
 rust-embed.workspace = true
+serde.workspace = true
 toml.workspace = true
 tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
+smearor-commons-color = { workspace = true, features = ["cairo", "gtk4"] }
 smearor-commons-geometry.workspace = true
 tracing.workspace = true
 tangible-objects-runtime = { workspace = true, features = ["gui"] }

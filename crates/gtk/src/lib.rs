@@ -30,6 +30,7 @@ mod parameters_card;
 mod passthrough;
 mod pattern_style;
 mod profiles_card;
+mod scene_palette;
 mod shared_state;
 mod touches_card;
 mod training_card;
@@ -52,6 +53,7 @@ use gtk4::glib::Propagation;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
 use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::Size;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
 use tracing::info;
@@ -125,7 +127,7 @@ pub fn run_gui(
 
         let state_draw = state_app.clone();
         drawing_area.set_draw_func(move |_, cr, w, h| {
-            draw::draw_scene(cr, w, h, &state_draw);
+            draw::draw_scene(cr, Size::new(w, h), &state_draw);
         });
 
         // Layout: the drawing area fills the window; all controls live

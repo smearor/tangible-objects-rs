@@ -5,12 +5,12 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::watch;
 
+#[cfg(feature = "gui")]
+use smearor_commons_color::AlphaPercent;
 use smearor_commons_geometry::Millimeters;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
 use tangible_objects_engine::LegacyMode;
-#[cfg(feature = "gui")]
-use tangible_objects_model::AlphaPercent;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;

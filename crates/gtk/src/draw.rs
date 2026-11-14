@@ -6,8 +6,12 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use i18n_embed_fl::fl;
+use smearor_commons_color::Alpha;
+use smearor_commons_color::Color;
 use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeadZone;
@@ -26,24 +30,18 @@ use crate::evdev_thread::STABLE_THRESHOLD;
 use crate::gui_mode::GuiMode;
 use crate::language_loader;
 use crate::pattern_style::PatternStyle;
+use crate::scene_palette::FIGURE_ACCENTS;
+use crate::scene_palette::SceneColor;
 use crate::shared_state::SharedState;
 
 /// Per-figure accent color - stable hash over the pattern ID.
-pub(crate) fn figure_color(id: PatternId) -> (f64, f64, f64) {
-    match id.as_u32() % 6 {
-        0 => (0.2, 0.6, 1.0),
-        1 => (0.2, 0.9, 0.3),
-        2 => (1.0, 0.5, 0.2),
-        3 => (1.0, 0.3, 0.5),
-        4 => (0.8, 0.3, 1.0),
-        _ => (1.0, 0.9, 0.2),
-    }
+pub(crate) fn figure_color(id: PatternId) -> Color<f64> {
+    FIGURE_ACCENTS[id.as_u32() as usize % FIGURE_ACCENTS.len()]
 }
 
 /// Draws the full frame: background, overlays, mode scene.
-pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mutex<SharedState>>) {
-    let w = width as f64;
-    let h = height as f64;
+pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<SharedState>>) {
+    let canvas = size.with_unit::<Pixels>().to_f64();
 
     let s = match state.lock() {
         Ok(s) => s,
@@ -58,7 +56,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
 
     // Show device error.
     if let Some(err) = &s.device_error {
-        cr.set_source_rgb(1.0, 0.3, 0.3);
+        SceneColor::Error.color().apply(cr);
         cr.set_font_size(24.0);
         cr.move_to(20.0, 40.0);
         let _ = cr.show_text(err);
@@ -67,10 +65,10 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
 
     // User-facing message pushed via an interface (ShowMessage).
     if let Some(msg) = &s.message {
-        cr.set_source_rgb(1.0, 0.9, 0.2);
+        SceneColor::Message.color().apply(cr);
         cr.set_font_size(42.0);
         if let Ok(ext) = cr.text_extents(msg) {
-            cr.move_to((w - ext.width()) / 2.0, 64.0);
+            cr.move_to((canvas.x - ext.width()) / 2.0, 64.0);
         } else {
             cr.move_to(20.0, 64.0);
         }
@@ -80,7 +78,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     let cal = match s.calibration {
         Some(c) => c,
         None => {
-            cr.set_source_rgb(0.8, 0.8, 0.8);
+            SceneColor::Notice.color().apply(cr);
             cr.set_font_size(20.0);
             cr.move_to(20.0, 40.0);
             let _ = cr.show_text(&fl!(language_loader(), "no-calibration"));
@@ -94,9 +92,8 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
 
     // Map touch points from mm to screen pixels.
     let rotation = s.rotation;
-    let to_screen = |pos: &Vec2<Millimeters>| -> Vec2<Pixels> {
-        cal.mm_to_screen(*pos, Vec2::new(w, h), rotation)
-    };
+    let to_screen =
+        |pos: &Vec2<Millimeters>| -> Vec2<Pixels> { cal.mm_to_screen(*pos, canvas, rotation) };
 
     if s.spells_visible {
         draw_spells(cr, &s.trajectories, s.last_spell.as_ref(), &to_screen);
@@ -115,7 +112,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
     }
 
     if mode == GuiMode::Training {
-        draw_training(cr, w, h, touches.into(), &to_screen, &s);
+        draw_training(cr, touches.into(), &to_screen, &s);
     } else {
         draw_live(
             cr,
@@ -126,7 +123,7 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
                 styles: &s.pattern_styles,
                 profile_bounds: s.profile_bounds_visible,
                 render_mode: s.render_mode,
-                canvas: (w, h),
+                canvas,
             },
             &to_screen,
         );
@@ -139,12 +136,12 @@ pub fn draw_scene(cr: &cairo::Context, width: i32, height: i32, state: &Arc<Mute
             matches,
             (&s.tracked).into(),
             &s.field_sets,
-            (w, h),
+            canvas,
             &to_screen,
         );
     }
     if s.ruler_visible {
-        draw_ruler(cr, w, h, &cal, &to_screen, rotation);
+        draw_ruler(cr, canvas, &cal, &to_screen, rotation);
     }
 }
 
@@ -165,7 +162,7 @@ fn draw_spells(
         for window in traj.windows(2) {
             let a = to_screen(&window[0]);
             let b = to_screen(&window[1]);
-            cr.set_source_rgba(color.0, color.1, color.2, 0.7);
+            color.apply_alpha(cr, 0.7);
             cr.move_to(a.x, a.y);
             cr.line_to(b.x, b.y);
             let _ = cr.stroke();
@@ -173,7 +170,7 @@ fn draw_spells(
         // Head marker.
         if let Some(last) = traj.last() {
             let p = to_screen(last);
-            cr.set_source_rgba(color.0, color.1, color.2, 0.9);
+            color.apply_alpha(cr, 0.9);
             cr.arc(p.x, p.y, 6.0, 0.0, 2.0 * std::f64::consts::PI);
             let _ = cr.fill();
         }
@@ -185,12 +182,12 @@ fn draw_spells(
         return;
     };
     let age = at.elapsed().as_secs_f64();
-    let alpha = (1.5 - age).clamp(0.0, 1.0);
-    if alpha <= 0.0 {
+    let alpha = Alpha::new(1.5 - age);
+    if alpha.is_transparent() {
         return;
     }
     let center = to_screen(&matched.center);
-    cr.set_source_rgba(1.0, 1.0, 1.0, 0.25 * alpha);
+    SceneColor::White.color().apply_alpha(cr, alpha * 0.25);
     cr.arc(
         center.x,
         center.y,
@@ -201,7 +198,7 @@ fn draw_spells(
     let _ = cr.stroke();
     cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
     cr.set_font_size(36.0);
-    cr.set_source_rgba(1.0, 1.0, 1.0, alpha);
+    SceneColor::White.color().apply_alpha(cr, alpha);
     if let Ok(ext) = cr.text_extents(matched.name.as_str()) {
         cr.move_to(center.x - ext.width() / 2.0, center.y);
         let _ = cr.show_text(matched.name.as_str());
@@ -231,17 +228,17 @@ fn draw_dead_zones(
 
         let hit = touches.iter().any(|touch| zone.contains(&touch.pos));
         if hit {
-            cr.set_source_rgba(1.0, 0.3, 0.25, 0.45);
+            SceneColor::DeadZone.color().apply_alpha(cr, 0.45);
             cr.arc(center.x, center.y, radius, 0.0, 2.0 * std::f64::consts::PI);
             let _ = cr.fill();
         }
-        cr.set_source_rgba(1.0, 0.3, 0.25, 0.9);
+        SceneColor::DeadZone.color().apply_alpha(cr, 0.9);
         cr.set_line_width(2.5);
         cr.arc(center.x, center.y, radius, 0.0, 2.0 * std::f64::consts::PI);
         let _ = cr.stroke();
 
         cr.set_font_size(16.0);
-        cr.set_source_rgba(1.0, 0.55, 0.5, 0.9);
+        SceneColor::DeadZoneLabel.color().apply_alpha(cr, 0.9);
         let name = zone.name.as_str();
         let label_y = center.y + radius + 18.0;
         match cr.text_extents(name) {
@@ -271,7 +268,7 @@ fn draw_edge_margin(
     let inner_tl = to_screen(&Vec2::<Millimeters>::new(m, m));
     let inner_br = to_screen(&Vec2::<Millimeters>::new(w_mm - m, h_mm - m));
 
-    cr.set_source_rgba(1.0, 0.35, 0.2, 0.10);
+    SceneColor::EdgeMargin.color().apply_alpha(cr, 0.10);
     for rect in [
         (origin.x, origin.y, extent.x, inner_tl.y),     // top band
         (origin.x, inner_br.y, extent.x, extent.y),     // bottom band
@@ -286,7 +283,7 @@ fn draw_edge_margin(
 
     cr.set_dash(&[8.0, 5.0], 0.0);
     cr.set_line_width(2.0);
-    cr.set_source_rgba(1.0, 0.35, 0.2, 0.65);
+    SceneColor::EdgeMargin.color().apply_alpha(cr, 0.65);
     cr.rectangle(
         inner_tl.x,
         inner_tl.y,
@@ -307,7 +304,11 @@ fn draw_fields(
     for set in sets {
         // Disabled sets stay registered but inert - drawn faint so
         // the overlay still shows their extent.
-        let alpha = if set.enabled { 1.0 } else { 0.3 };
+        let alpha = if set.enabled {
+            Alpha::OPAQUE
+        } else {
+            Alpha::new(0.3)
+        };
         for field in &set.fields {
             let region = field_screen_region(set, field);
             let tl = to_screen(&Vec2::<Millimeters>::new(
@@ -319,18 +320,18 @@ fn draw_fields(
                 region.y_max.as_f64(),
             ));
 
-            cr.set_source_rgba(0.2, 0.8, 1.0, 0.08 * alpha);
+            SceneColor::Field.color().apply_alpha(cr, alpha * 0.08);
             cr.rectangle(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
             let _ = cr.fill();
             cr.set_dash(&[6.0, 4.0], 0.0);
             cr.set_line_width(1.5);
-            cr.set_source_rgba(0.2, 0.8, 1.0, 0.6 * alpha);
+            SceneColor::Field.color().apply_alpha(cr, alpha * 0.6);
             cr.rectangle(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
             let _ = cr.stroke();
             cr.set_dash(&[], 0.0);
 
             cr.set_font_size(11.0);
-            cr.set_source_rgba(0.55, 0.9, 1.0, 0.85 * alpha);
+            SceneColor::FieldLabel.color().apply_alpha(cr, alpha * 0.85);
             cr.move_to(tl.x + 4.0, tl.y + 14.0);
             let _ = cr.show_text(field.name.as_str());
         }
@@ -372,7 +373,7 @@ fn draw_grid(
     let origin = to_screen(&Vec2::<Millimeters>::new(0.0, 0.0));
     let extent = to_screen(&Vec2::<Millimeters>::new(w_mm, h_mm));
 
-    cr.set_source_rgba(0.8, 0.8, 0.8, 0.12);
+    SceneColor::Grid.color().apply_alpha(cr, 0.12);
     cr.set_line_width(1.0);
     let mut mm = 0.0;
     while mm <= w_mm {
@@ -395,7 +396,7 @@ fn draw_grid(
 
     // Border of the usable surface, so the lattice visibly bounds the
     // calibrated area instead of dissolving into the canvas edge.
-    cr.set_source_rgba(0.8, 0.8, 0.8, 0.25);
+    SceneColor::Grid.color().apply_alpha(cr, 0.25);
     cr.set_line_width(1.5);
     cr.rectangle(
         origin.x.min(extent.x),
@@ -412,8 +413,7 @@ fn draw_grid(
 /// the grid overlay, so every grid line lands on a ruler tick.
 fn draw_ruler(
     cr: &cairo::Context,
-    w: f64,
-    h: f64,
+    canvas: Vec2<Pixels>,
     cal: &Calibration,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
     rotation: DisplayRotation,
@@ -421,19 +421,19 @@ fn draw_ruler(
     const RULER_W: f64 = 56.0;
     const RULER_H: f64 = 36.0;
 
-    cr.set_source_rgba(0.04, 0.04, 0.06, 0.5);
-    cr.rectangle(0.0, 0.0, RULER_W, h);
-    cr.rectangle(w - RULER_W, 0.0, RULER_W, h);
-    cr.rectangle(0.0, 0.0, w, RULER_H);
-    cr.rectangle(0.0, h - RULER_H, w, RULER_H);
+    SceneColor::RulerBg.color().apply_alpha(cr, 0.5);
+    cr.rectangle(0.0, 0.0, RULER_W, canvas.y);
+    cr.rectangle(canvas.x - RULER_W, 0.0, RULER_W, canvas.y);
+    cr.rectangle(0.0, 0.0, canvas.x, RULER_H);
+    cr.rectangle(0.0, canvas.y - RULER_H, canvas.x, RULER_H);
     let _ = cr.fill();
 
     cr.set_font_size(10.0);
-    cr.set_source_rgba(0.9, 0.9, 0.9, 0.85);
+    SceneColor::Ruler.color().apply_alpha(cr, 0.85);
 
     // Left edge (x min): pixel ticks every 100 px.
     let mut y = 0.0;
-    while y <= h {
+    while y <= canvas.y {
         cr.move_to(RULER_W - 8.0, y);
         cr.line_to(RULER_W, y);
         let _ = cr.stroke();
@@ -444,7 +444,7 @@ fn draw_ruler(
 
     // Top edge (y min): pixel ticks every 100 px.
     let mut x = 0.0;
-    while x <= w {
+    while x <= canvas.x {
         cr.move_to(x, RULER_H - 8.0);
         cr.line_to(x, RULER_H);
         let _ = cr.stroke();
@@ -478,11 +478,11 @@ fn draw_ruler(
             Vec2::<Millimeters>::new(mm, 0.0)
         };
         let x = to_screen(&probe).x;
-        if (0.0..=w).contains(&x) {
-            cr.move_to(x, h - 8.0);
-            cr.line_to(x, h);
+        if (0.0..=canvas.x).contains(&x) {
+            cr.move_to(x, canvas.y - 8.0);
+            cr.line_to(x, canvas.y);
             let _ = cr.stroke();
-            cr.move_to(x + 3.0, h - 4.0);
+            cr.move_to(x + 3.0, canvas.y - 4.0);
             let _ = cr.show_text(&format!("{mm} mm"));
         }
         mm += GRID_STEP_MM;
@@ -498,12 +498,12 @@ fn draw_ruler(
             Vec2::<Millimeters>::new(0.0, mm)
         };
         let y = to_screen(&probe).y;
-        if (0.0..=h).contains(&y) {
-            cr.move_to(w - 8.0, y);
-            cr.line_to(w, y);
+        if (0.0..=canvas.y).contains(&y) {
+            cr.move_to(canvas.x - 8.0, y);
+            cr.line_to(canvas.x, y);
             let _ = cr.stroke();
             let _ = cr.save();
-            cr.translate(w - 12.0, y + 4.0);
+            cr.translate(canvas.x - 12.0, y + 4.0);
             cr.rotate(-std::f64::consts::FRAC_PI_2);
             let _ = cr.show_text(&format!("{mm} mm"));
             let _ = cr.restore();
@@ -516,16 +516,16 @@ fn draw_ruler(
 /// edge nearest the label (station-label pattern: the text-up vector
 /// points toward the canvas center... readable by the player on the
 /// label's side).
-fn radial_angle(x: f64, y: f64, cx: f64, cy: f64) -> f64 {
-    (y - cy).atan2(x - cx) - std::f64::consts::FRAC_PI_2
+fn radial_angle(pos: Vec2<Pixels>, center: Vec2<Pixels>) -> RotationRad {
+    (pos - center).direction() - RotationRad::QUARTER_TURN
 }
 
 /// Draws `text` centered at `(x, y)`, rotated for the nearest canvas
 /// edge.
-fn draw_radial_text(cr: &cairo::Context, text: &str, x: f64, y: f64, canvas: (f64, f64)) {
+fn draw_radial_text(cr: &cairo::Context, text: &str, pos: Vec2<Pixels>, canvas: Vec2<Pixels>) {
     let _ = cr.save();
-    cr.translate(x, y);
-    cr.rotate(radial_angle(x, y, canvas.0 / 2.0, canvas.1 / 2.0));
+    cr.translate(pos.x, pos.y);
+    cr.rotate(radial_angle(pos, canvas.half()).as_f64());
     if let Ok(ext) = cr.text_extents(text) {
         cr.move_to(-ext.width() / 2.0, ext.height() / 2.0);
     } else {
@@ -537,14 +537,12 @@ fn draw_radial_text(cr: &cairo::Context, text: &str, x: f64, y: f64, canvas: (f6
 
 /// The outward unit direction from `origin` to `pos` - `(0, -1)` when
 /// they coincide (label still drifts to the nearest edge).
-fn outward_dir(pos: (f64, f64), origin: (f64, f64)) -> (f64, f64) {
-    let dx = pos.0 - origin.0;
-    let dy = pos.1 - origin.1;
-    let len = (dx * dx + dy * dy).sqrt();
-    if len < 1e-6 {
-        (0.0, -1.0)
+fn outward_dir(pos: Vec2<Pixels>, origin: Vec2<Pixels>) -> Vec2<Pixels> {
+    let delta = pos - origin;
+    if delta.magnitude_f64() < 1e-6 {
+        Vec2::new(0.0, -1.0)
     } else {
-        (dx / len, dy / len)
+        delta.normalized()
     }
 }
 
@@ -555,11 +553,7 @@ fn pose_point(
     center: &Vec2<Millimeters>,
     rad: f64,
 ) -> Vec2<Millimeters> {
-    let (sin, cos) = rad.sin_cos();
-    Vec2::<Millimeters>::new(
-        center.x + point.x * cos - point.y * sin,
-        center.y + point.x * sin + point.y * cos,
-    )
+    *center + point.rotated(RotationRad::new(rad))
 }
 
 /// The screen-space radius a physical shape's outline circle takes
@@ -569,10 +563,10 @@ fn shape_radius_px(
     center: &Vec2<Millimeters>,
     radius: Millimeters,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
-    screen_center: &(f64, f64),
 ) -> f64 {
-    let rx = to_screen(&(*center + Vec2::new(radius.as_f64(), 0.0))).x - screen_center.0;
-    let ry = to_screen(&(*center + Vec2::new(0.0, radius.as_f64()))).y - screen_center.1;
+    let screen_center = to_screen(center);
+    let rx = to_screen(&(*center + Vec2::new(radius.as_f64(), 0.0))).x - screen_center.x;
+    let ry = to_screen(&(*center + Vec2::new(0.0, radius.as_f64()))).y - screen_center.y;
     (rx.abs() + ry.abs()) / 2.0
 }
 
@@ -583,16 +577,15 @@ fn draw_physical_shape(
     m: &PatternMatch,
     shape: &PhysicalShape,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
-    color: (f64, f64, f64),
-    alpha: f64,
+    color: Color<f64>,
+    alpha: Alpha,
 ) {
-    let (r, g, b) = color;
     let screen_center = to_screen(&m.center);
     let (scx, scy) = (screen_center.x, screen_center.y);
     let rad = m.rotation_rad.as_f64();
     match shape {
         PhysicalShape::Circle { radius } => {
-            let r_px = shape_radius_px(&m.center, *radius, to_screen, &(scx, scy));
+            let r_px = shape_radius_px(&m.center, *radius, to_screen);
             cr.arc(scx, scy, r_px, 0.0, 2.0 * std::f64::consts::PI);
         }
         PhysicalShape::Rectangle {
@@ -640,21 +633,21 @@ fn draw_physical_shape(
             cr.close_path();
         }
     }
-    cr.set_source_rgba(r, g, b, 0.12 * alpha);
+    color.apply_alpha(cr, alpha * 0.12);
     let _ = cr.fill_preserve();
-    cr.set_source_rgba(r, g, b, 0.75 * alpha);
+    color.apply_alpha(cr, alpha * 0.75);
     cr.set_line_width(2.0);
     let _ = cr.stroke();
 }
 
 /// The declared profile color for `pattern_id`, falling back to the
 /// hash palette.
-fn match_color(styles: &[PatternStyle], pattern_id: PatternId) -> (f64, f64, f64) {
+fn match_color(styles: &[PatternStyle], pattern_id: PatternId) -> Color<f64> {
     styles
         .iter()
         .find(|style| style.pattern_id == pattern_id)
         .and_then(|style| style.color)
-        .map(|color| color.rgb())
+        .map(|color| color.0)
         .unwrap_or_else(|| figure_color(pattern_id))
 }
 
@@ -668,7 +661,7 @@ fn draw_positions(
     matches: &[PatternMatch],
     tracked: TrackedSet<'_>,
     field_sets: &[FieldSet],
-    canvas: (f64, f64),
+    canvas: Vec2<Pixels>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
 ) {
     cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Normal);
@@ -690,11 +683,11 @@ fn draw_positions(
             })
             .fold(0.0_f64, f64::max);
         for &idx in &m.touch_indices {
-            anchor_of.insert(idx, Vec2::<Pixels>::new(center.x, center.y));
+            anchor_of.insert(idx, center);
             extent_of.insert(idx, extent);
         }
     }
-    let canvas_center = Vec2::<Pixels>::new(canvas.0 / 2.0, canvas.1 / 2.0);
+    let canvas_center = canvas.half();
 
     for (i, touch) in touches.iter().enumerate() {
         let anchor = anchor_of.get(&i).copied().unwrap_or(canvas_center);
@@ -728,21 +721,20 @@ fn draw_position_label(
     pos: &Vec2<Millimeters>,
     anchor: &Vec2<Pixels>,
     offset: f64,
-    canvas: (f64, f64),
+    canvas: Vec2<Pixels>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
 ) {
     let p = to_screen(pos);
-    let dir = outward_dir((p.x, p.y), (anchor.x, anchor.y));
-    let lx = p.x + dir.0 * offset;
-    let ly = p.y + dir.1 * offset;
+    let dir = outward_dir(p, *anchor);
+    let label = p + dir * offset;
 
-    cr.set_source_rgba(0.85, 0.85, 0.85, 0.4);
+    SceneColor::Label.color().apply_alpha(cr, 0.4);
     cr.set_line_width(0.8);
     cr.move_to(p.x, p.y);
-    cr.line_to(lx, ly);
+    cr.line_to(label.x, label.y);
     let _ = cr.stroke();
 
-    cr.set_source_rgba(0.85, 0.85, 0.85, 0.85);
+    SceneColor::Label.color().apply_alpha(cr, 0.85);
     draw_radial_text(
         cr,
         &format!(
@@ -752,8 +744,7 @@ fn draw_position_label(
             p.x.round() as i64,
             p.y.round() as i64
         ),
-        lx,
-        ly,
+        label,
         canvas,
     );
 }
@@ -761,15 +752,13 @@ fn draw_position_label(
 /// Training view: complete-graph point set + stability status.
 fn draw_training(
     cr: &cairo::Context,
-    _w: f64,
-    _h: f64,
     touches: TouchSet<'_>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
     s: &SharedState,
 ) {
     let count = touches.len();
     if count == 0 {
-        cr.set_source_rgb(0.6, 0.6, 0.6);
+        SceneColor::EmptyState.color().apply(cr);
         cr.set_font_size(22.0);
         cr.move_to(20.0, 40.0);
         let _ = cr.show_text(&fl!(language_loader(), "place-figure"));
@@ -777,9 +766,13 @@ fn draw_training(
     }
 
     // Draw all pairwise connections (complete graph).
-    let line_alpha = if s.stable { 0.6 } else { 0.25 };
+    let line_alpha = if s.stable {
+        Alpha::new(0.6)
+    } else {
+        Alpha::new(0.25)
+    };
     cr.set_line_width(2.0);
-    cr.set_source_rgba(0.4, 0.7, 1.0, line_alpha);
+    SceneColor::TouchLine.color().apply_alpha(cr, line_alpha);
     for i in 0..count {
         for j in (i + 1)..count {
             let p1 = to_screen(&touches[i].pos);
@@ -792,25 +785,25 @@ fn draw_training(
 
     // Touch points as circles.
     let point_color = if s.stable {
-        (0.3, 0.9, 0.4)
+        SceneColor::TouchStable.color()
     } else {
-        (0.5, 0.7, 1.0)
+        SceneColor::TouchUnstable.color()
     };
     for tp in touches {
         let p = to_screen(&tp.pos);
-        cr.set_source_rgb(point_color.0, point_color.1, point_color.2);
+        point_color.apply(cr);
         cr.arc(p.x, p.y, 12.0, 0.0, 2.0 * std::f64::consts::PI);
         let _ = cr.fill();
 
         // Ring.
-        cr.set_source_rgb(1.0, 1.0, 1.0);
+        SceneColor::White.color().apply(cr);
         cr.set_line_width(2.0);
         cr.arc(p.x, p.y, 12.0, 0.0, 2.0 * std::f64::consts::PI);
         let _ = cr.stroke();
     }
 
     // Status text top left.
-    cr.set_source_rgb(1.0, 1.0, 1.0);
+    SceneColor::White.color().apply(cr);
     cr.set_font_size(20.0);
     cr.move_to(20.0, 30.0);
     let status_text = if count < 3 {
@@ -830,7 +823,7 @@ fn draw_training(
 
     // Coordinates next to the points.
     cr.set_font_size(12.0);
-    cr.set_source_rgb(0.7, 0.7, 0.7);
+    SceneColor::CoordText.color().apply(cr);
     for (i, tp) in touches.iter().enumerate() {
         let p = to_screen(&tp.pos);
         cr.move_to(p.x + 16.0, p.y - 12.0);
@@ -855,8 +848,8 @@ struct LiveStyle<'a> {
     profile_bounds: bool,
     /// Which figure layers to draw.
     render_mode: TangibleRenderMode,
-    /// Canvas `(width, height)` in pixels.
-    canvas: (f64, f64),
+    /// Canvas extent in pixels.
+    canvas: Vec2<Pixels>,
 }
 
 fn draw_live(
@@ -897,10 +890,10 @@ fn draw_live(
             if !x_min.is_finite() {
                 continue;
             }
-            let (r, g, b) = figure_color(m.pattern_id);
+            let color = figure_color(m.pattern_id);
             cr.set_dash(&[4.0, 4.0], 0.0);
             cr.set_line_width(1.5);
-            cr.set_source_rgba(r, g, b, 0.6);
+            color.apply_alpha(cr, 0.6);
             cr.rectangle(
                 x_min - 24.0,
                 y_min - 24.0,
@@ -923,14 +916,18 @@ fn draw_live(
 
     // Draw figures (shape + lines + name).
     for m in matches {
-        let (r, g, b) = match_color(styles, m.pattern_id);
+        let color = match_color(styles, m.pattern_id);
         // Pending (unconfirmed partial spawn) - dim the whole figure.
         let pending = tracked.iter().any(|t| {
             t.pending
                 && t.pattern_id == m.pattern_id
                 && t.center.distance(&m.center).as_f64() < 50.0
         });
-        let alpha = if pending { 0.25 } else { 1.0 };
+        let alpha = if pending {
+            Alpha::new(0.25)
+        } else {
+            Alpha::OPAQUE
+        };
         let n = m.touch_indices.len();
         if n < 2 {
             continue;
@@ -943,12 +940,12 @@ fn draw_live(
                 .find(|style| style.pattern_id == m.pattern_id)
                 .and_then(|style| style.shape.as_ref())
         {
-            draw_physical_shape(cr, m, shape, to_screen, (r, g, b), alpha);
+            draw_physical_shape(cr, m, shape, to_screen, color, alpha);
         }
 
         if draw_points {
             // Complete graph.
-            cr.set_source_rgba(r, g, b, 0.5 * alpha);
+            color.apply_alpha(cr, alpha * 0.5);
             cr.set_line_width(2.5);
             for i in 0..n {
                 for j in (i + 1)..n {
@@ -963,10 +960,10 @@ fn draw_live(
             // Touch points.
             for &idx in &m.touch_indices {
                 let p = to_screen(&touches[idx].pos);
-                cr.set_source_rgba(r, g, b, alpha);
+                color.apply_alpha(cr, alpha);
                 cr.arc(p.x, p.y, 14.0, 0.0, 2.0 * std::f64::consts::PI);
                 let _ = cr.fill();
-                cr.set_source_rgb(1.0, 1.0, 1.0);
+                SceneColor::White.color().apply(cr);
                 cr.set_line_width(2.0);
                 cr.arc(p.x, p.y, 14.0, 0.0, 2.0 * std::f64::consts::PI);
                 let _ = cr.stroke();
@@ -986,34 +983,29 @@ fn draw_live(
             .fold(0.0_f64, f64::max);
 
         // 0° marker: a wedge along the pattern's orientation axis.
-        let rad = m.rotation_rad.as_f64();
-        let tip_mm =
-            Vec2::<Millimeters>::new(m.center.x + rad.cos() * 1.0, m.center.y + rad.sin() * 1.0);
+        let tip_mm = m.center + Vec2::<Millimeters>::from_polar(1.0, m.rotation_rad);
         let tip = to_screen(&tip_mm);
-        let dir_len = ((tip.x - center.x).powi(2) + (tip.y - center.y).powi(2)).sqrt();
-        if dir_len > 1e-6 {
-            let dir = ((tip.x - center.x) / dir_len, (tip.y - center.y) / dir_len);
-            let mark = center;
-            let mx = mark.x + dir.0 * extent * 0.5;
-            let my = mark.y + dir.1 * extent * 0.5;
-            cr.set_source_rgba(r, g, b, 0.9 * alpha);
+        let delta = tip - center;
+        if delta.magnitude_f64() > 1e-6 {
+            let dir = delta.normalized();
+            let mark_end = center + dir * (extent * 0.5);
+            color.apply_alpha(cr, alpha * 0.9);
             cr.set_line_width(3.0);
-            cr.move_to(mark.x, mark.y);
-            cr.line_to(mx, my);
+            cr.move_to(center.x, center.y);
+            cr.line_to(mark_end.x, mark_end.y);
             let _ = cr.stroke();
-            cr.arc(mx, my, 4.0, 0.0, 2.0 * std::f64::consts::PI);
+            cr.arc(mark_end.x, mark_end.y, 4.0, 0.0, 2.0 * std::f64::consts::PI);
             let _ = cr.fill();
         }
 
         // Name: radial label outside the figure extent, rotated for
         // the nearest canvas edge.
-        let dir = outward_dir((center.x, center.y), (canvas.0 / 2.0, canvas.1 / 2.0));
-        let lx = center.x + dir.0 * (extent + 46.0);
-        let ly = center.y + dir.1 * (extent + 46.0);
-        cr.set_source_rgba(1.0, 1.0, 1.0, alpha);
+        let dir = outward_dir(center, canvas.half());
+        let label = center + dir * (extent + 46.0);
+        SceneColor::White.color().apply_alpha(cr, alpha);
         cr.select_font_face("Sans", cairo::FontSlant::Normal, cairo::FontWeight::Bold);
         cr.set_font_size(22.0);
-        draw_radial_text(cr, m.pattern_name.as_str(), lx, ly, canvas);
+        draw_radial_text(cr, m.pattern_name.as_str(), label, canvas);
     }
 
     // Unmatched touch points (gray).
@@ -1022,7 +1014,7 @@ fn draw_live(
             continue;
         }
         let p = to_screen(&tp.pos);
-        cr.set_source_rgb(0.4, 0.4, 0.4);
+        SceneColor::TouchDim.color().apply(cr);
         cr.arc(p.x, p.y, 8.0, 0.0, 2.0 * std::f64::consts::PI);
         let _ = cr.fill();
     }

@@ -3,6 +3,7 @@ use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::Vec2;
 
 /// A rectangular detection region in millimeters.
@@ -34,23 +35,24 @@ pub struct Region {
 }
 
 impl Region {
+    /// The region as a generic [`Rect`] - the technical rectangle
+    /// behind the wire-shape bounds.
+    pub fn rect(&self) -> Rect<Millimeters> {
+        Rect::new(
+            self.min(),
+            Vec2::new(self.width().as_f64(), self.height().as_f64()),
+        )
+    }
+
     /// The region's four corners in map mm, counter-clockwise
     /// from the top-left.
     pub fn corners(&self) -> [Vec2<Millimeters>; 4] {
-        [
-            Vec2::new(self.x_min.as_f64(), self.y_min.as_f64()),
-            Vec2::new(self.x_max.as_f64(), self.y_min.as_f64()),
-            Vec2::new(self.x_max.as_f64(), self.y_max.as_f64()),
-            Vec2::new(self.x_min.as_f64(), self.y_max.as_f64()),
-        ]
+        self.rect().corners().into_array()
     }
 
     /// Whether `point` lies inside this region (bounds inclusive).
     pub fn contains(&self, point: &Vec2<Millimeters>) -> bool {
-        point.x >= self.x_min.as_f64()
-            && point.x <= self.x_max.as_f64()
-            && point.y >= self.y_min.as_f64()
-            && point.y <= self.y_max.as_f64()
+        self.rect().contains(point)
     }
 
     /// Lower-left corner (`x_min`, `y_min`).
@@ -75,50 +77,50 @@ impl Region {
 
     /// Center point of the region.
     pub fn center(&self) -> Vec2<Millimeters> {
-        Vec2::from_mm(
-            (self.x_min + self.x_max) / 2.0,
-            (self.y_min + self.y_max) / 2.0,
-        )
+        self.rect().center()
     }
 
     /// Whether the region is degenerate: inverted, zero-sized or
     /// non-finite. A degenerate region contains no points.
     pub fn is_degenerate(&self) -> bool {
-        let finite = [self.x_min, self.y_min, self.x_max, self.y_max]
-            .iter()
-            .all(|v| v.as_f64().is_finite());
-        !finite || self.width() <= Millimeters::default() || self.height() <= Millimeters::default()
+        self.rect().is_degenerate()
     }
 
     /// Whether this region overlaps `other` - two rectangles overlap
     /// when neither lies completely beside or above the other.
     pub fn overlaps(&self, other: &Region) -> bool {
-        self.x_min < other.x_max
-            && self.x_max > other.x_min
-            && self.y_min < other.y_max
-            && self.y_max > other.y_min
+        self.rect().overlaps(&other.rect())
     }
 
     /// The rectangular intersection of two overlapping regions -
     /// `None` when they are disjoint. Used by the field-set overlap
     /// diagnostics to say *where* fields collide, not just that.
     pub fn intersection(&self, other: &Region) -> Option<Region> {
-        self.overlaps(other).then(|| Region {
-            x_min: self.x_min.max(other.x_min),
-            y_min: self.y_min.max(other.y_min),
-            x_max: self.x_max.min(other.x_max),
-            y_max: self.y_max.min(other.y_max),
-        })
+        self.rect().intersection(&other.rect()).map(Region::from)
     }
 
     /// The region shrunk by `margin` on every side - negative or
     /// degenerate results are clamped to an empty region.
     pub fn inset(&self, margin: Millimeters) -> Region {
-        Region {
-            x_min: self.x_min + margin,
-            y_min: self.y_min + margin,
-            x_max: self.x_max - margin,
-            y_max: self.y_max - margin,
+        self.rect().inset(margin).into()
+    }
+}
+
+impl From<Region> for Rect<Millimeters> {
+    /// The technical rectangle view of the region.
+    fn from(region: Region) -> Self {
+        region.rect()
+    }
+}
+
+impl From<Rect<Millimeters>> for Region {
+    /// The wire-shape region covering `rect`.
+    fn from(rect: Rect<Millimeters>) -> Self {
+        Self {
+            x_min: Millimeters::new(rect.min.x),
+            y_min: Millimeters::new(rect.min.y),
+            x_max: Millimeters::new(rect.right()),
+            y_max: Millimeters::new(rect.bottom()),
         }
     }
 }

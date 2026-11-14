@@ -23,7 +23,7 @@ impl Trajectory {
         let mut count = 0.0;
         for stroke in strokes {
             for point in stroke {
-                sum = sum + *point;
+                sum += *point;
                 count += 1.0;
             }
         }
