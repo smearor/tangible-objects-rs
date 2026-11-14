@@ -2,18 +2,24 @@
 //! enabled state, current surface position) as a movable card on the
 //! `FloatingBoard` (concepts/planned/GUI.md §3).
 
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
+use std::time::Instant;
 
-use gtk4::{Align, Box as GtkBox, ColorDialog, ColorDialogButton};
+use gtk4::Align;
+use gtk4::Box as GtkBox;
+use gtk4::ColorDialog;
+use gtk4::ColorDialogButton;
 use gtk4::Grid;
 use gtk4::Label;
 use gtk4::Orientation;
 use gtk4::Switch;
 use gtk4::glib::ControlFlow;
+use gtk4::glib::SignalHandlerId;
 use gtk4::prelude::*;
 use i18n_embed_fl::fl;
 use smearor_commons_color::Color;
@@ -34,6 +40,14 @@ struct ProfileRow {
     owner: Label,
     /// Enable switch - sends `SetProfileEnabled`.
     enabled: Switch,
+    /// `state-set` connection - the sync blocks it while writing
+    /// the switch so `set_active` cannot echo `SetProfileEnabled`
+    /// back to the device loop.
+    enabled_signal: SignalHandlerId,
+    /// Toggle the user requested (`SetProfileEnabled` was sent) but
+    /// `s.profiles` has not confirmed yet - the sync leaves the
+    /// switch alone while it pends so it cannot snap back.
+    enabled_pending: Rc<Cell<Option<(bool, Instant)>>>,
     /// Color preview + picker - sends `SetProfileColor`.
     color: gtk4::ColorDialogButton,
     /// Current surface position cell.
@@ -96,16 +110,21 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                 enabled.set_halign(Align::Start);
                 let pattern_id = profile.pattern_id;
                 let state_enabled = state_tick.clone();
-                enabled.connect_state_set(move |_, active| {
-                    send_command(
-                        &state_enabled,
-                        ControlCommand::SetProfileEnabled {
-                            id: pattern_id,
-                            enabled: active,
-                        },
-                    );
-                    gtk4::glib::Propagation::Proceed
-                });
+                let enabled_pending = Rc::new(Cell::new(None));
+                let enabled_signal = {
+                    let enabled_pending = enabled_pending.clone();
+                    enabled.connect_state_set(move |_, active| {
+                        enabled_pending.set(Some((active, Instant::now())));
+                        send_command(
+                            &state_enabled,
+                            ControlCommand::SetProfileEnabled {
+                                id: pattern_id,
+                                enabled: active,
+                            },
+                        );
+                        gtk4::glib::Propagation::Proceed
+                    })
+                };
                 let color = ColorDialogButton::new(Some(ColorDialog::new()));
                 let accent = crate::draw::figure_color(profile.pattern_id);
                 color.set_rgba(&accent.into());
@@ -133,6 +152,8 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     id: profile.pattern_id,
                     owner,
                     enabled,
+                    enabled_signal,
+                    enabled_pending,
                     color,
                     position,
                 });
@@ -163,9 +184,26 @@ pub fn create_profiles_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     .map(|owner| owner.as_str())
                     .unwrap_or("–"),
             );
-            // set_active emits no state-set signal - the sync does
-            // not echo commands back to the device loop.
-            row.enabled.set_active(profile.enabled);
+            // `set_active` emits `state-set` too and cancels an
+            // in-flight toggle animation even on an unchanged value
+            // (`gtk_switch_end_toggle_animation` runs before the
+            // value check) - a write inside the user's ~100 ms toggle
+            // window would eat the `state-set` before the command
+            // ever sends. Skip writes while a user toggle is
+            // unconfirmed and block the handler around real syncs.
+            let confirmed = match row.enabled_pending.get() {
+                Some((requested, _)) if requested == profile.enabled => true,
+                Some((_, at)) if at.elapsed() < Duration::from_millis(500) => false,
+                _ => true,
+            };
+            if confirmed {
+                row.enabled_pending.set(None);
+                if row.enabled.is_active() != profile.enabled {
+                    row.enabled.block_signal(&row.enabled_signal);
+                    row.enabled.set_active(profile.enabled);
+                    row.enabled.unblock_signal(&row.enabled_signal);
+                }
+            }
             let position = s
                 .tracked
                 .iter()
