@@ -164,6 +164,7 @@ pub fn run_gui(
                 anchor_margin: Pixels::new(100.0),
                 bounds_mode: BoundsMode::Contained,
                 foldable: true,
+                resizable: true,
                 closable: true,
                 close_action: floating_board::CardCloseAction::Hide,
                 ..Default::default()
@@ -244,6 +245,7 @@ pub fn run_gui(
                     anchor_margin: Pixels::new(100.0),
                     bounds_mode: BoundsMode::Contained,
                     foldable: true,
+                    resizable: true,
                     // X hides the card (not remove) - the menu re-opens it.
                     closable: true,
                     close_action: floating_board::CardCloseAction::Hide,
@@ -264,6 +266,7 @@ pub fn run_gui(
                 anchor_margin: Pixels::new(100.0),
                 bounds_mode: BoundsMode::Contained,
                 foldable: true,
+                resizable: true,
                 ..Default::default()
             },
         );

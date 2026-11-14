@@ -17,7 +17,8 @@ use floating_board::CardPlacement;
 use floating_board::FloatingBoard;
 use smearor_commons_geometry::Pixels;
 
-use gtk4::{Align, Box as GtkBox};
+use gtk4::Align;
+use gtk4::Box as GtkBox;
 use gtk4::Button;
 use gtk4::Entry;
 use gtk4::Label;
@@ -230,6 +231,7 @@ fn add_training_card(
             anchor_margin: Pixels::new(100.0),
             bounds_mode: BoundsMode::Contained,
             foldable: true,
+            resizable: true,
             ..Default::default()
         },
     );

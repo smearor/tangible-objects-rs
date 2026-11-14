@@ -9,7 +9,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use gtk4::{Align, Box as GtkBox};
+use gtk4::Align;
+use gtk4::Box as GtkBox;
 use gtk4::Grid;
 use gtk4::Label;
 use gtk4::Orientation;
