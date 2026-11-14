@@ -54,6 +54,7 @@ use gtk4::prelude::*;
 use i18n_embed_fl::fl;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
+use smearor_commons_geometry::Vec2;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
 use tracing::info;
@@ -310,6 +311,25 @@ pub fn run_gui(
             .default_height(1200)
             .child(&board)
             .build();
+
+        // Input-region probe: a capture-phase legacy controller counts
+        // every touch down the surface receives. The diagnostics merge
+        // the counter so a dead card splits into "event never arrived"
+        // (applied region wrong) vs "arrived but eaten" (gesture claim).
+        let state_probe = state_app.clone();
+        let probe = gtk4::EventControllerLegacy::new();
+        probe.set_propagation_phase(gtk4::PropagationPhase::Capture);
+        probe.connect_event(move |_, event| {
+            if event.event_type() == gtk4::gdk::EventType::TouchBegin {
+                let (x, y) = event.position().unwrap_or_default();
+                if let Ok(mut s) = state_probe.lock() {
+                    s.touch_downs_seen += 1;
+                    s.last_touch_down = Some(Vec2::<Pixels>::new(x, y));
+                }
+            }
+            Propagation::Proceed
+        });
+        window.add_controller(probe);
 
         // `--touch-passthrough` puts the window into the layer-shell
         // Overlay layer: a toplevel loses stacking when the

@@ -31,6 +31,14 @@ pub struct InputRegionDiagnostics {
     /// First stored rectangle of the unioned region - where the
     /// rasterization actually landed when `extents` reads zero.
     pub first_rectangle: Option<Rect<Pixels, i32>>,
+    /// Total `TouchBegin` events observed at the window since startup.
+    /// A tap on a card that does not increment this never reached the
+    /// surface - the *applied* input region differs from the diagnosed
+    /// one. A tap that increments it but produces no widget reaction is
+    /// consumed inside the widget tree (gesture claiming).
+    pub touch_downs: u64,
+    /// Surface-space position of the most recent `TouchBegin`.
+    pub last_touch_down: Option<Vec2<Pixels>>,
     /// Per-card footprints in board-layer coordinates.
     pub cards: Vec<CardFootprint>,
 }
