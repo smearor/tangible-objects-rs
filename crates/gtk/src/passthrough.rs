@@ -274,6 +274,22 @@ mod tests {
         }
     }
 
+    /// cairo `Region::extents` must write the union bounds back into
+    /// the passed `RectangleInt` - the diagnostics rely on it.
+    #[test]
+    fn cairo_extents_write_back() {
+        let region = gtk4::cairo::Region::create();
+        region
+            .union_rectangle(&gtk4::cairo::RectangleInt::new(10, 20, 30, 40))
+            .expect("union");
+        let extents = gtk4::cairo::RectangleInt::new(0, 0, 0, 0);
+        region.extents(&extents);
+        assert_eq!(
+            (extents.x(), extents.y(), extents.width(), extents.height()),
+            (10, 20, 30, 40)
+        );
+    }
+
     /// A degenerate radius produces no strips instead of a phantom row.
     #[test]
     fn circle_rects_empty_for_zero_radius() {
