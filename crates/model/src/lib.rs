@@ -133,7 +133,6 @@ pub use pattern::PinCount;
 pub use pattern::RefIndex;
 pub use pattern::RefIndices;
 pub use pattern::RefPoints;
-pub use pattern::RigidTransform;
 pub use pattern::TangiblePattern;
 pub use physical_shape::PhysicalShape;
 pub use point_buf::PointBuf;
