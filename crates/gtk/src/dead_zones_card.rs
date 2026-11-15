@@ -43,6 +43,10 @@ struct DeadZoneRow {
     radius: Label,
     /// Hit indicator - a touch currently inside the zone.
     hit: Label,
+    /// Multitouch slot of the contact inside the zone.
+    slot: Label,
+    /// Tracking id of the contact inside the zone.
+    id: Label,
 }
 
 /// Builds the dead-zones card content: one row per registered zone
@@ -61,6 +65,8 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         fl!(language_loader(), "dead-zone-position"),
         fl!(language_loader(), "dead-zone-radius"),
         fl!(language_loader(), "dead-zone-hit"),
+        fl!(language_loader(), "touch-slot"),
+        fl!(language_loader(), "touch-id"),
         fl!(language_loader(), "dead-zone-remove"),
     ];
     for (col, label) in headers.iter().enumerate() {
@@ -166,7 +172,7 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                 let label = Label::new(Some(&empty_label));
                 label.set_halign(Align::Start);
                 label.set_opacity(0.5);
-                grid_tick.attach(&label, 0, 1, 5, 1);
+                grid_tick.attach(&label, 0, 1, 7, 1);
                 empty_shown.set(true);
             } else {
                 for (row_index, name) in names.iter().enumerate() {
@@ -178,6 +184,10 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     radius.set_halign(Align::Start);
                     let hit = Label::new(Some(""));
                     hit.set_halign(Align::Start);
+                    let slot = Label::new(Some(""));
+                    slot.set_halign(Align::Start);
+                    let id = Label::new(Some(""));
+                    id.set_halign(Align::Start);
                     let remove = Button::from_icon_name("user-trash-symbolic");
                     let zone_name = (*name).clone();
                     let state_remove = state_tick.clone();
@@ -197,12 +207,16 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                     grid_tick.attach(&position, 1, grid_row, 1, 1);
                     grid_tick.attach(&radius, 2, grid_row, 1, 1);
                     grid_tick.attach(&hit, 3, grid_row, 1, 1);
-                    grid_tick.attach(&remove, 4, grid_row, 1, 1);
+                    grid_tick.attach(&slot, 4, grid_row, 1, 1);
+                    grid_tick.attach(&id, 5, grid_row, 1, 1);
+                    grid_tick.attach(&remove, 6, grid_row, 1, 1);
                     rows.push(DeadZoneRow {
                         name: (*name).clone(),
                         position,
                         radius,
                         hit,
+                        slot,
+                        id,
                     });
                 }
             }
@@ -212,12 +226,25 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                 .set_label(&format!("{:.0},{:.0} mm", zone.center.x, zone.center.y));
             row.radius
                 .set_label(&format!("{:.0} mm", zone.radius.as_f64()));
-            row.hit.set_label(
-                if s.unfiltered_touches.iter().any(|t| zone.contains(&t.pos)) {
-                    "●"
-                } else {
-                    ""
-                },
+            let hits: Vec<_> = s
+                .unfiltered_touches
+                .iter()
+                .filter(|t| zone.contains(&t.pos))
+                .collect();
+            row.hit.set_label(if hits.is_empty() { "" } else { "●" });
+            row.slot.set_label(
+                &hits
+                    .iter()
+                    .map(|t| t.slot.as_u32().to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
+            row.id.set_label(
+                &hits
+                    .iter()
+                    .map(|t| t.tracking_id.as_i32().to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
             );
         }
         ControlFlow::Continue
