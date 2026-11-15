@@ -73,6 +73,6 @@ cairo-rs = "0.22"
 
 #[patch."https://github.com/smearor/smearor-wrot-rotation.git"]
 #smearor-wrot-rotation = { path = "../smearor-wrot-rotation" }
-#
+
 #[patch."https://github.com/smearor/floating-board-rs.git"]
 #floating-board = { path = "../floating-board-rs" }
