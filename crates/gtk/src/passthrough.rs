@@ -129,6 +129,25 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             let geometry = card.geometry();
             let footprint = card.footprint();
             let extents = region_extents(&footprint);
+            let rendered = rendered_bounds(board, &card);
+            let placed = placed_position(&card);
+            let mut chain = Vec::new();
+            if let Some(bounds) = rendered {
+                let center = Vec2::new(bounds.min.x + bounds.size.x / 2.0, bounds.min.y + bounds.size.y / 2.0);
+                let drift = center - Vec2::from(geometry.position);
+                if card.is_visible() && (drift.x.abs() > 1.0 || drift.y.abs() > 1.0) {
+                    chain = ancestor_chain(board, &card);
+                    warn!(
+                        card = %card.id(),
+                        position = ?Vec2::<Pixels>::from(geometry.position),
+                        placed = ?placed.map(|p| (p.x, p.y)),
+                        rendered = ?(bounds.min.x, bounds.min.y, bounds.size.x, bounds.size.y),
+                        drift = ?(drift.x, drift.y),
+                        chain = ?chain,
+                        "rendered card drifted from its model position - input region cannot cover it"
+                    );
+                }
+            }
             debug!(
                 card = %card.id(),
                 position = ?geometry.position,
@@ -148,12 +167,65 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
                 footprint: extents,
                 natural: natural.with_unit::<Pixels>(),
                 allocated: card.allocated_size().with_unit::<Pixels>(),
+                rendered,
+                placed,
+                chain,
                 footprint_status: footprint.status().err().map(|e| e.to_string()),
                 footprint_rectangles: footprint.num_rectangles() as usize,
                 first_rectangle: first_rectangle(&footprint),
             }
         })
         .collect()
+}
+
+/// The card's rendered bounds in board coordinates - the axis-aligned
+/// box `compute_bounds` reports for the actual widget with every
+/// rotation and scale of its transform stack applied. This is the
+/// ground truth of where the card draws; the model footprint
+/// (`entry_footprint`) only matches it when the layout kept the card
+/// centered on its stored position.
+fn rendered_bounds(board: &FloatingBoard, card: &floating_board::Card) -> Option<Rect<Pixels>> {
+    let bounds = card.compute_bounds(board)?;
+    Some(Rect::new(
+        Vec2::new(f64::from(bounds.x()), f64::from(bounds.y())),
+        Vec2::new(f64::from(bounds.width()), f64::from(bounds.height())),
+    ))
+}
+
+/// Every ancestor of the card up to the board with its widget type,
+/// its `(0,0)` origin mapped to board coordinates and its GTK
+/// allocation - the layer-by-layer view that pinpoints which level
+/// of the card → rotation → scaling → layer chain introduces a
+/// render-vs-placement offset.
+fn ancestor_chain(board: &FloatingBoard, card: &floating_board::Card) -> Vec<String> {
+    let mut chain = Vec::new();
+    let mut widget: Option<gtk4::Widget> = Some(card.clone().upcast());
+    while let Some(current) = widget {
+        let origin = current
+            .compute_point(board, &gtk4::graphene::Point::new(0.0, 0.0))
+            .map(|point| (point.x(), point.y()));
+        let bounds = current.compute_bounds(&current).map(|rect| (rect.width(), rect.height()));
+        chain.push(format!("{}: origin={:?} alloc={:?}", current.type_().name(), origin, bounds));
+        widget = current.parent();
+    }
+    chain
+}
+
+/// The transform stack's stored position on the card layer - the
+/// `(x, y)` `gtk4::Fixed` was last asked to place it at. The widget
+/// chain is card → rotation → scaling → layer, so the scaling
+/// widget's parent is the layer and `child_position` reports the
+/// stored `put` spot. `None` when the widget tree is not attached
+/// yet. Comparing `placed` with `rendered.min` shows whether the
+/// layer actually moved the stack where `apply_position` put it;
+/// comparing `placed + size/2` with `position` shows whether the
+/// board's model and its placement agree.
+fn placed_position(card: &floating_board::Card) -> Option<Vec2<Pixels>> {
+    let scaling = card.parent()?.parent()?;
+    let layer = scaling.parent()?;
+    let fixed = layer.downcast::<gtk4::Fixed>().ok()?;
+    let (x, y) = fixed.child_position(&scaling);
+    Some(Vec2::new(f64::from(x), f64::from(y)))
 }
 
 /// The passthrough input region in surface coordinates: the rotated
@@ -247,14 +319,22 @@ fn log_region_change(region: &Region, footprints: &[CardFootprint], last_hash: &
         .iter()
         .filter(|footprint| footprint.visible)
         .filter_map(|footprint| {
-            footprint.first_rectangle.as_ref().map(|rect| {
+            footprint.footprint.as_ref().map(|rect| {
                 let center_x = rect.min.x + rect.size.x / 2;
                 let center_y = rect.min.y + rect.size.y / 2;
-                format!(
-                    "{}={}",
-                    footprint.card_id,
-                    region.contains_point(center_x, center_y)
-                )
+                let model = region.contains_point(center_x, center_y);
+                let rendered = footprint
+                    .rendered
+                    .as_ref()
+                    .map(|bounds| {
+                        region.contains_point(
+                            (bounds.min.x + bounds.size.x / 2.0).round() as i32,
+                            (bounds.min.y + bounds.size.y / 2.0).round() as i32,
+                        )
+                    })
+                    .map(|covered| if covered { 't' } else { 'F' })
+                    .unwrap_or('?');
+                format!("{}={}/{}", footprint.card_id, if model { 't' } else { 'F' }, rendered)
             })
         })
         .collect::<Vec<_>>()

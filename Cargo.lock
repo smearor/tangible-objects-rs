@@ -1052,7 +1052,7 @@ checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 [[package]]
 name = "floating-board"
 version = "0.1.0"
-source = "git+https://github.com/smearor/floating-board-rs.git#50d94fa6425d1c611fc5e67ffa30f891d5341e4a"
+source = "git+https://github.com/smearor/floating-board-rs.git#cdf416473fce335cdda404e01c7fe278a8569eb2"
 dependencies = [
  "fluent-bundle",
  "glib",
@@ -3409,7 +3409,7 @@ dependencies = [
 [[package]]
 name = "smearor-wrot-rotation"
 version = "0.3.0"
-source = "git+https://github.com/smearor/smearor-wrot-rotation.git#96eed8d6c3ac1c197849b9473f3b36a3a3b3b55d"
+source = "git+https://github.com/smearor/smearor-wrot-rotation.git#eba92ecfcbcdd9be6a4a91d4fdd4c9c6acf37a42"
 dependencies = [
  "glib",
  "gtk4",

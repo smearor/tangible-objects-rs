@@ -37,6 +37,24 @@ pub struct CardFootprint {
     /// The card widget's last GTK allocation - the ground truth of
     /// what is actually rendered on screen.
     pub allocated: Vec2<Pixels, i32>,
+    /// The card's rendered bounds on the board (`compute_bounds`
+    /// axis-aligned box in board-layer pixels, transform stack
+    /// included). Its center must match `position`; a drift means the
+    /// layout moved the card without updating the model - the input
+    /// region then covers a spot where nothing renders and the
+    /// visible card is input-dead.
+    pub rendered: Option<Rect<Pixels>>,
+    /// The transform stack's stored `gtk4::Fixed` position (the
+    /// top-left `put`/`move` spot the layout last assigned) in
+    /// board-layer pixels. Must equal `rendered.min`; a mismatch
+    /// means the layer never re-allocated the stack where
+    /// `apply_position` put it.
+    pub placed: Option<Vec2<Pixels>>,
+    /// Ancestor dump for drift forensics - every widget from the
+    /// card up to the board with its board-space origin and
+    /// allocation, populated only while the card drifts from its
+    /// model position.
+    pub chain: Vec<String>,
     /// Cairo status of the footprint region; `Some` when the region
     /// is in an error state and its contents are unusable.
     pub footprint_status: Option<String>,
