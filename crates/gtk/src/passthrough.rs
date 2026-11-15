@@ -128,14 +128,14 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             let geometry = card.geometry();
             let footprint = card.footprint();
             let extents = region_extents(&footprint);
-            let rendered = rendered_bounds(board, &card);
-            let placed = placed_position(&card);
+            let rendered = rendered_bounds(board, card);
+            let placed = placed_position(card);
             let mut chain = Vec::new();
             if let Some(bounds) = rendered {
                 let center = Vec2::new(bounds.min.x + bounds.size.x / 2.0, bounds.min.y + bounds.size.y / 2.0);
                 let drift = center - Vec2::from(geometry.position);
                 if card.is_visible() && (drift.x.abs() > 1.0 || drift.y.abs() > 1.0) {
-                    chain = ancestor_chain(board, &card);
+                    chain = ancestor_chain(board, card);
                     debug!(
                         card = %card.id(),
                         position = ?Vec2::<Pixels>::from(geometry.position),
@@ -227,7 +227,7 @@ fn placed_position(card: &floating_board::Card) -> Option<Vec2<Pixels>> {
     let layer = scaling.parent()?;
     let fixed = layer.downcast::<gtk4::Fixed>().ok()?;
     let (x, y) = fixed.child_position(&scaling);
-    Some(Vec2::new(f64::from(x), f64::from(y)))
+    Some(Vec2::new(x, y))
 }
 
 /// The passthrough input region in surface coordinates: the rotated
