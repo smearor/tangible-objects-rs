@@ -236,11 +236,16 @@ fn draw_dead_zones(
         let hit = touches.iter().any(|touch| zone.contains(&touch.pos));
         if hit {
             SceneColor::DeadZone.color().apply_alpha(cr, 0.45);
+            // `arc` joins the path's current point with a line - the
+            // label text leaves one behind, so each zone needs a fresh
+            // subpath or the zones get connected by a stray line.
+            cr.new_sub_path();
             cr.arc(center.x, center.y, radius, 0.0, 2.0 * std::f64::consts::PI);
             let _ = cr.fill();
         }
         SceneColor::DeadZone.color().apply_alpha(cr, 0.9);
         cr.set_line_width(2.5);
+        cr.new_sub_path();
         cr.arc(center.x, center.y, radius, 0.0, 2.0 * std::f64::consts::PI);
         let _ = cr.stroke();
 
