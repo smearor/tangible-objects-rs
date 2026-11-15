@@ -411,29 +411,36 @@
 <a href=#411 id=411 data-nosnippet>411</a>                // and draw figure lines across objects.
 <a href=#412 id=412 data-nosnippet>412</a>                </span><span class="kw">let </span>touches = <span class="kw">match </span><span class="kw-2">&amp;</span>frame {
 <a href=#413 id=413 data-nosnippet>413</a>                    <span class="prelude-val">Some</span>(engine_frame) =&gt; engine_frame.touches.clone(),
-<a href=#414 id=414 data-nosnippet>414</a>                    <span class="prelude-val">None </span>=&gt; touch_state.active_touches(),
-<a href=#415 id=415 data-nosnippet>415</a>                };
-<a href=#416 id=416 data-nosnippet>416</a>                <span class="kw">let </span>count = touches.len();
-<a href=#417 id=417 data-nosnippet>417</a>                <span class="kw">let </span>matches = frame.map(|f| f.matches).unwrap_or_default();
-<a href=#418 id=418 data-nosnippet>418</a>
-<a href=#419 id=419 data-nosnippet>419</a>                <span class="comment">// Stability check (for training mode).
-<a href=#420 id=420 data-nosnippet>420</a>                </span><span class="kw">if </span>stable_count == <span class="prelude-val">Some</span>(count) &amp;&amp; count &gt;= <span class="number">3 </span>{
-<a href=#421 id=421 data-nosnippet>421</a>                    stable_frames += <span class="number">1</span>;
-<a href=#422 id=422 data-nosnippet>422</a>                } <span class="kw">else </span>{
-<a href=#423 id=423 data-nosnippet>423</a>                    stable_count = <span class="prelude-val">Some</span>(count);
-<a href=#424 id=424 data-nosnippet>424</a>                    stable_frames = <span class="number">0</span>;
-<a href=#425 id=425 data-nosnippet>425</a>                }
-<a href=#426 id=426 data-nosnippet>426</a>
-<a href=#427 id=427 data-nosnippet>427</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = state.lock() {
-<a href=#428 id=428 data-nosnippet>428</a>                    s.touches = touches;
-<a href=#429 id=429 data-nosnippet>429</a>                    s.unfiltered_touches = touch_state.active_touches();
-<a href=#430 id=430 data-nosnippet>430</a>                    s.tracked = engine.tracked().to_vec();
-<a href=#431 id=431 data-nosnippet>431</a>                    s.matches = matches;
-<a href=#432 id=432 data-nosnippet>432</a>                    s.stable_frames = stable_frames;
-<a href=#433 id=433 data-nosnippet>433</a>                    s.stable = stable_frames &gt;= STABLE_THRESHOLD &amp;&amp; count &gt;= <span class="number">3</span>;
-<a href=#434 id=434 data-nosnippet>434</a>                }
-<a href=#435 id=435 data-nosnippet>435</a>            }
-<a href=#436 id=436 data-nosnippet>436</a>        }
-<a href=#437 id=437 data-nosnippet>437</a>    }
-<a href=#438 id=438 data-nosnippet>438</a>}
+<a href=#414 id=414 data-nosnippet>414</a>                    <span class="comment">// Non-live modes bypass `engine.process` - apply the
+<a href=#415 id=415 data-nosnippet>415</a>                    // ingest filters separately so dead zones and edge
+<a href=#416 id=416 data-nosnippet>416</a>                    // ghosts stay out of training captures.
+<a href=#417 id=417 data-nosnippet>417</a>                    </span><span class="prelude-val">None </span>=&gt; {
+<a href=#418 id=418 data-nosnippet>418</a>                        <span class="kw">let </span><span class="kw-2">mut </span>touches = touch_state.active_touches();
+<a href=#419 id=419 data-nosnippet>419</a>                        engine.filter_touches(<span class="kw-2">&amp;mut </span>touches);
+<a href=#420 id=420 data-nosnippet>420</a>                        touches
+<a href=#421 id=421 data-nosnippet>421</a>                    }
+<a href=#422 id=422 data-nosnippet>422</a>                };
+<a href=#423 id=423 data-nosnippet>423</a>                <span class="kw">let </span>count = touches.len();
+<a href=#424 id=424 data-nosnippet>424</a>                <span class="kw">let </span>matches = frame.map(|f| f.matches).unwrap_or_default();
+<a href=#425 id=425 data-nosnippet>425</a>
+<a href=#426 id=426 data-nosnippet>426</a>                <span class="comment">// Stability check (for training mode).
+<a href=#427 id=427 data-nosnippet>427</a>                </span><span class="kw">if </span>stable_count == <span class="prelude-val">Some</span>(count) &amp;&amp; count &gt;= <span class="number">3 </span>{
+<a href=#428 id=428 data-nosnippet>428</a>                    stable_frames += <span class="number">1</span>;
+<a href=#429 id=429 data-nosnippet>429</a>                } <span class="kw">else </span>{
+<a href=#430 id=430 data-nosnippet>430</a>                    stable_count = <span class="prelude-val">Some</span>(count);
+<a href=#431 id=431 data-nosnippet>431</a>                    stable_frames = <span class="number">0</span>;
+<a href=#432 id=432 data-nosnippet>432</a>                }
+<a href=#433 id=433 data-nosnippet>433</a>
+<a href=#434 id=434 data-nosnippet>434</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = state.lock() {
+<a href=#435 id=435 data-nosnippet>435</a>                    s.touches = touches;
+<a href=#436 id=436 data-nosnippet>436</a>                    s.unfiltered_touches = touch_state.active_touches();
+<a href=#437 id=437 data-nosnippet>437</a>                    s.tracked = engine.tracked().to_vec();
+<a href=#438 id=438 data-nosnippet>438</a>                    s.matches = matches;
+<a href=#439 id=439 data-nosnippet>439</a>                    s.stable_frames = stable_frames;
+<a href=#440 id=440 data-nosnippet>440</a>                    s.stable = stable_frames &gt;= STABLE_THRESHOLD &amp;&amp; count &gt;= <span class="number">3</span>;
+<a href=#441 id=441 data-nosnippet>441</a>                }
+<a href=#442 id=442 data-nosnippet>442</a>            }
+<a href=#443 id=443 data-nosnippet>443</a>        }
+<a href=#444 id=444 data-nosnippet>444</a>    }
+<a href=#445 id=445 data-nosnippet>445</a>}
 </code></pre></div></section></main></body></html>

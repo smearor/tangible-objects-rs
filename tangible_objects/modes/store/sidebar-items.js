@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["persist_registration","runtime_store_dir","save_profile_states","unpersist"]};
+window.SIDEBAR_ITEMS = {"fn":["persist_registration","runtime_store_dir","save_dead_zones","save_profile_states","unpersist"]};

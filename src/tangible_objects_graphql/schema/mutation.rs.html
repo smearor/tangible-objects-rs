@@ -474,10 +474,13 @@
 <a href=#474 id=474 data-nosnippet>474</a>    <span class="doccomment">/// Removes a dead zone by name.
 <a href=#475 id=475 data-nosnippet>475</a>    </span><span class="kw">async fn </span>unregister_dead_zone(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="lifetime">'_</span>&gt;, name: DeadZoneName) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
 <a href=#476 id=476 data-nosnippet>476</a>        ctx.data::&lt;EngineHandle&gt;()<span class="question-mark">?
-<a href=#477 id=477 data-nosnippet>477</a>            </span>.send_command(ControlCommand::UnregisterDeadZone { name })
-<a href=#478 id=478 data-nosnippet>478</a>            .<span class="kw">await
-<a href=#479 id=479 data-nosnippet>479</a>            </span>.map_err(|<span class="kw">_</span>| Error::new(<span class="string">"control channel closed: device loop is not running"</span>))<span class="question-mark">?</span>;
-<a href=#480 id=480 data-nosnippet>480</a>        <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-<a href=#481 id=481 data-nosnippet>481</a>    }
-<a href=#482 id=482 data-nosnippet>482</a>}
+<a href=#477 id=477 data-nosnippet>477</a>            </span>.send_command(ControlCommand::UnregisterDeadZone {
+<a href=#478 id=478 data-nosnippet>478</a>                name,
+<a href=#479 id=479 data-nosnippet>479</a>                unpersist: <span class="bool-val">true</span>,
+<a href=#480 id=480 data-nosnippet>480</a>            })
+<a href=#481 id=481 data-nosnippet>481</a>            .<span class="kw">await
+<a href=#482 id=482 data-nosnippet>482</a>            </span>.map_err(|<span class="kw">_</span>| Error::new(<span class="string">"control channel closed: device loop is not running"</span>))<span class="question-mark">?</span>;
+<a href=#483 id=483 data-nosnippet>483</a>        <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+<a href=#484 id=484 data-nosnippet>484</a>    }
+<a href=#485 id=485 data-nosnippet>485</a>}
 </code></pre></div></section></main></body></html>
