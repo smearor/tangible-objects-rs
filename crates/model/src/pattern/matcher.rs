@@ -46,6 +46,21 @@ impl<'a> PatternSet<'a> {
             &mut NoDiagnostics,
             &TakenIndices::default(),
             &CompletionConfig::default(),
+            false,
+        )
+        .0
+    }
+
+    /// Like [`Self::find_matches`], additionally matching patterns that
+    /// are currently disabled - used by the training-card duplicate
+    /// check, where a disabled profile is still a trained figure.
+    pub fn find_matches_including_disabled(self, touches: TouchSet<'_>) -> Vec<PatternMatch> {
+        self.find_matches_inner(
+            touches,
+            &mut NoDiagnostics,
+            &TakenIndices::default(),
+            &CompletionConfig::default(),
+            true,
         )
         .0
     }
@@ -59,7 +74,7 @@ impl<'a> PatternSet<'a> {
         exclude: &TakenIndices,
         completion: &CompletionConfig,
     ) -> Vec<PatternMatch> {
-        self.find_matches_inner(touches, &mut NoDiagnostics, exclude, completion)
+        self.find_matches_inner(touches, &mut NoDiagnostics, exclude, completion, false)
             .0
     }
 
@@ -76,7 +91,7 @@ impl<'a> PatternSet<'a> {
         exclude: &TakenIndices,
         completion: &CompletionConfig,
     ) -> Vec<PatternMatch> {
-        self.find_matches_inner(touches, diagnostics, exclude, completion)
+        self.find_matches_inner(touches, diagnostics, exclude, completion, false)
             .0
     }
 
@@ -91,7 +106,7 @@ impl<'a> PatternSet<'a> {
         tested: &mut usize,
     ) -> Vec<PatternMatch> {
         let (matches, count) =
-            self.find_matches_inner(touches, &mut NoDiagnostics, exclude, completion);
+            self.find_matches_inner(touches, &mut NoDiagnostics, exclude, completion, false);
         *tested += count;
         matches
     }
@@ -102,6 +117,7 @@ impl<'a> PatternSet<'a> {
         diagnostics: &mut impl CandidateDiagnostics,
         exclude: &TakenIndices,
         completion: &CompletionConfig,
+        include_disabled: bool,
     ) -> (Vec<PatternMatch>, usize) {
         let mut matches = Vec::new();
         let mut tested = 0usize;
@@ -109,9 +125,12 @@ impl<'a> PatternSet<'a> {
 
         // Sort by pattern ID for a deterministic evaluation order.
         // Disabled patterns stay registered but do not match
-        // (`SetProfileEnabled`).
-        let mut sorted_patterns: Vec<&TangiblePattern> =
-            self.iter().filter(|pattern| pattern.enabled).collect();
+        // (`SetProfileEnabled`) - unless the caller explicitly asks
+        // for them (training duplicate check).
+        let mut sorted_patterns: Vec<&TangiblePattern> = self
+            .iter()
+            .filter(|pattern| pattern.enabled || include_disabled)
+            .collect();
         sorted_patterns.sort_by_key(|p| p.id);
 
         for pattern in sorted_patterns {
@@ -955,5 +974,35 @@ mod tests {
         assert_eq!(matches.len(), 1);
         assert!(matches[0].is_partial());
         assert!(matches[0].claimed_indices.is_empty());
+    }
+
+    #[test]
+    fn find_matches_including_disabled_matches_disabled_pattern() {
+        let reference = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let mut pattern = TangiblePattern::from_points(1, "triangle", (&reference).into(), 5.0);
+        pattern.enabled = false;
+        let patterns = [pattern];
+
+        let touches = vec![
+            touch_point(0, 100.0, 100.0),
+            touch_point(1, 150.0, 100.0),
+            touch_point(2, 100.0, 150.0),
+        ];
+
+        // The regular matcher skips disabled patterns entirely.
+        assert!(
+            PatternSet::from(&patterns[..])
+                .find_matches((&touches).into())
+                .is_empty()
+        );
+
+        let matches = PatternSet::from(&patterns[..])
+            .find_matches_including_disabled((&touches).into());
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].pattern_name.as_str(), "triangle");
     }
 }

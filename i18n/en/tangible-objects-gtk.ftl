@@ -9,6 +9,7 @@ device-error = Device could not be opened: { $error }
 no-calibration = No calibration available - GUI needs resolution info to work
 place-figure = Place the figure on the touch surface...
 wait-for-points = Waiting for ≥3 points... ({ $count })
+train-duplicate = ALREADY TRAINED: { $name }
 stable-hint = STABLE - enter a name and click save
 stable-status = STABLE: { $count } points - enter a name and save
 stabilizing = Stabilizing... { $stable }/{ $threshold }

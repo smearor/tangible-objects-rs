@@ -674,6 +674,16 @@ impl Engine {
         self.patterns().find_matches(touches)
     }
 
+    /// Like [`Self::find_matches`], additionally matching disabled
+    /// profiles - the training-card duplicate check treats a disabled
+    /// profile as a trained figure, too.
+    pub fn find_matches_including_disabled(
+        &self,
+        touches: TouchSet<'_>,
+    ) -> Vec<PatternMatch> {
+        self.patterns().find_matches_including_disabled(touches)
+    }
+
     /// Feeds one raw event into the engine.
     ///
     /// Returns `Some` with the frame's matches, touches and domain events on

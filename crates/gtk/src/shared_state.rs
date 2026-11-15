@@ -25,6 +25,7 @@ use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::InputRegionDiagnostics;
 use tangible_objects_model::PatternMatch;
+use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileInfo;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::SpellMatched;
@@ -64,6 +65,10 @@ pub struct SharedState {
     pub stable_frames: u32,
     /// Contact set stable long enough for profile capture.
     pub stable: bool,
+    /// Name of the registered profile the current contact set already
+    /// matches - `Some` only in non-live modes, so the training card
+    /// can warn about double captures.
+    pub training_match: Option<PatternName>,
     /// Live vs. training visualization.
     pub mode: GuiMode,
     /// Device-open failure shown instead of the surface.
@@ -238,6 +243,7 @@ impl SharedState {
             metrics: SessionMetrics::default(),
             stable_frames: 0,
             stable: false,
+            training_match: None,
             mode: GuiMode::Live,
             device_error: None,
             device_info: None,

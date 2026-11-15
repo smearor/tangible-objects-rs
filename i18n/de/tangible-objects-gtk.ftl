@@ -9,6 +9,7 @@ device-error = Gerät konnte nicht geöffnet werden: { $error }
 no-calibration = Keine Kalibrierung verfügbar - GUI ohne Auflösungsinfo nicht nutzbar
 place-figure = Lege die Figur auf die Touchfläche...
 wait-for-points = Warte auf ≥3 Punkte... ({ $count })
+train-duplicate = BEREITS TRAINIERT: { $name }
 stable-hint = STABIL - Name eingeben und Speichern klicken
 stable-status = STABIL: { $count } Punkte - Name eingeben und speichern
 stabilizing = Stabilisiere... { $stable }/{ $threshold }

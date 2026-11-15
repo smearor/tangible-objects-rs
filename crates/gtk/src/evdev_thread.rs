@@ -426,6 +426,18 @@ pub fn evdev_thread(
                 // points - a tap on a card must not break the stability
                 // window (e.g. tapping "save profile" mid-capture).
                 s.filter_card_touches(&mut touches);
+                // Training mode: flag contact sets that already match a
+                // registered profile - the card warns before a figure
+                // gets trained twice. `frame.is_none()` is the non-live
+                // branch; live frames report real matches instead.
+                s.training_match = if frame.is_none() {
+                    engine
+                        .find_matches_including_disabled((&touches).into())
+                        .first()
+                        .map(|matched| matched.pattern_name.clone())
+                } else {
+                    None
+                };
                 let count = touches.len();
                 let matches = frame.map(|f| f.matches).unwrap_or_default();
 
