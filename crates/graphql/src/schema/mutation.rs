@@ -474,7 +474,10 @@ impl MutationRoot {
     /// Removes a dead zone by name.
     async fn unregister_dead_zone(&self, ctx: &Context<'_>, name: DeadZoneName) -> Result<bool> {
         ctx.data::<EngineHandle>()?
-            .send_command(ControlCommand::UnregisterDeadZone { name })
+            .send_command(ControlCommand::UnregisterDeadZone {
+                name,
+                unpersist: true,
+            })
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

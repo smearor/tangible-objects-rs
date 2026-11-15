@@ -151,7 +151,17 @@ pub enum ControlCommand {
     UnregisterDeadZone {
         /// Dead zone to remove.
         name: DeadZoneName,
+        /// Also delete the zone's `dead_zones.d` store entry. Interface
+        /// callers pass `true` (remove means gone for good); the GUI
+        /// card passes `false` so removals stay session-scoped until
+        /// its Save button commits them via [`Self::PersistDeadZones`].
+        unpersist: bool,
     },
+    /// Reconcile `dead_zones.d` with the live dead-zone set: writes a
+    /// store file per registered zone and removes store entries whose
+    /// zone is no longer registered - the dead-zones card's Save
+    /// button, committing session adds and removals in one shot.
+    PersistDeadZones,
     /// Remove a registered spell by name (`Registration::Spell`
     /// undo, SPELLS.md).
     UnregisterSpell {

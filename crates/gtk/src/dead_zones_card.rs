@@ -48,7 +48,9 @@ struct DeadZoneRow {
 /// Builds the dead-zones card content: one row per registered zone
 /// (`Name | Position | Radius | Hit | Remove`) plus the `Add` button -
 /// armed only while exactly one touch is live, registering a
-/// `DEAD_ZONE_RADIUS_MM` zone at that contact's position.
+/// `DEAD_ZONE_RADIUS_MM` zone at that contact's position. Adds and
+/// removals stay session-scoped; the Save button commits both to
+/// `dead_zones.d`.
 pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
     let grid = Grid::new();
     grid.set_column_spacing(12);
@@ -68,6 +70,14 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         grid.attach(&header, col as i32, 0, 1, 1);
     }
 
+    // Adds and removals are session-scoped; the Save button commits
+    // the whole current set via `PersistDeadZones` (writes store files
+    // for live zones, deletes entries for removed ones).
+    let save_btn = Button::with_label(&fl!(language_loader(), "dead-zone-save"));
+    let state_save = state.clone();
+    save_btn.connect_clicked(move |_| {
+        send_command(&state_save, ControlCommand::PersistDeadZones);
+    });
     let add_btn = Button::with_label(&fl!(language_loader(), "dead-zone-add"));
     let state_add = state.clone();
     add_btn.connect_clicked(move |_| {
@@ -147,6 +157,9 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
                             &state_remove,
                             ControlCommand::UnregisterDeadZone {
                                 name: zone_name.clone(),
+                                // Session-scoped removal - the store
+                                // file survives until Save commits it.
+                                unpersist: false,
                             },
                         );
                     });
@@ -183,7 +196,10 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
 
     let body = GtkBox::new(Orientation::Vertical, 6);
     body.append(&grid);
-    body.append(&add_btn);
+    let actions = GtkBox::new(Orientation::Horizontal, 6);
+    actions.append(&add_btn);
+    actions.append(&save_btn);
+    body.append(&actions);
     body
 }
 

@@ -21,6 +21,7 @@ use tracing::warn;
 
 use super::interfaces::Interfaces;
 use super::store::persist_registration;
+use super::store::save_dead_zones;
 use super::store::save_profile_states;
 use super::store::unpersist;
 
@@ -309,15 +310,24 @@ pub(crate) fn apply_registration(
                 warn!(%name, "field set not found");
             }
         }
-        ControlCommand::UnregisterDeadZone { name } => {
+        ControlCommand::UnregisterDeadZone {
+            name,
+            unpersist: also_unpersist,
+        } => {
             if engine.remove_dead_zone(&name) {
                 runtime.set_dead_zones(engine.dead_zones().to_vec());
-                unpersist("dead_zones.d", name.as_str());
+                if also_unpersist {
+                    unpersist("dead_zones.d", name.as_str());
+                }
                 runtime.emit_lifecycle(LifecycleEvent::DeadZoneUnregistered { name: name.clone() });
                 info!(%name, "dead zone removed");
             } else {
                 warn!(%name, "dead zone not found");
             }
+        }
+        ControlCommand::PersistDeadZones => {
+            let written = save_dead_zones(engine);
+            info!(written, "dead zones persisted");
         }
         ControlCommand::UnregisterSpell { name } => {
             if engine.remove_spell(&name) {

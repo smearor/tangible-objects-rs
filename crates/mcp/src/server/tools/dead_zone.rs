@@ -82,6 +82,7 @@ impl EngineMcp {
         self.handle
             .send_command(ControlCommand::UnregisterDeadZone {
                 name: args.name.clone(),
+                unpersist: true,
             })
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;

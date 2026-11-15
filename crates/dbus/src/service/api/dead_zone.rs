@@ -70,7 +70,10 @@ pub(crate) async fn unregister_dead_zone(
 ) -> fdo::Result<()> {
     service
         .handle
-        .send_command(ControlCommand::UnregisterDeadZone { name })
+        .send_command(ControlCommand::UnregisterDeadZone {
+            name,
+            unpersist: true,
+        })
         .await
         .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))
 }

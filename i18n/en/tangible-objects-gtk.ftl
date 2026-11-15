@@ -109,3 +109,4 @@ render-mode-geometry = Render: shape
 render-mode-both = Render: both
 col-color = Color
 toggle-spells = Spells
+dead-zone-save = Save

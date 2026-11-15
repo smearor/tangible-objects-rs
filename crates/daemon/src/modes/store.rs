@@ -69,6 +69,51 @@ pub(crate) fn persist_registration(registration: &Registration) {
     }
 }
 
+/// Reconciles `dead_zones.d` with the engine's live dead-zone set -
+/// the dead-zones card's Save button: every registered zone gets a
+/// store file, entries for zones no longer registered are removed.
+/// Session adds and removals commit together in one shot.
+/// Returns the number of files written.
+pub(crate) fn save_dead_zones(engine: &Engine) -> usize {
+    let Some(store) = runtime_store_dir("dead_zones.d") else {
+        return 0;
+    };
+    let zones = engine.dead_zones();
+    let mut written = 0usize;
+    for zone in zones {
+        let name = zone.name.as_str();
+        match std::fs::create_dir_all(&store).and_then(|_| {
+            std::fs::write(
+                store.join(format!("{name}.toml")),
+                toml::to_string_pretty(zone).unwrap_or_default(),
+            )
+        }) {
+            Ok(()) => {
+                written += 1;
+                info!(name, "dead zone persisted");
+            }
+            Err(e) => warn!(error = %e, name, "persist failed"),
+        }
+    }
+    if let Ok(entries) = std::fs::read_dir(&store) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let stale = path.extension().is_some_and(|ext| ext == "toml")
+                && path
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .is_some_and(|stem| !zones.iter().any(|zone| zone.name.as_str() == stem));
+            if stale {
+                match std::fs::remove_file(&path) {
+                    Ok(()) => info!(path = %path.display(), "dead zone store entry removed"),
+                    Err(e) => warn!(error = %e, path = %path.display(), "unpersist failed"),
+                }
+            }
+        }
+    }
+    written
+}
+
 /// Rewrites each loaded profile's `enabled`/`color` from the live
 /// engine state - the profiles card's Save button persists the
 /// runtime overrides (`SetProfileEnabled`/`SetProfileColor`) back to
