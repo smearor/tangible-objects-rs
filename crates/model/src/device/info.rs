@@ -4,7 +4,9 @@ use crate::RawAxisValue;
 use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
+use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::UnitsPerMm;
+use smearor_commons_geometry::Vec2;
 
 /// Static information about the input device attached to this daemon -
 /// the identity needed to interpret or convert its raw event stream.
@@ -59,5 +61,37 @@ impl DeviceInfo {
                 ..Default::default()
             },
         }
+    }
+
+    /// Physical size of the calibrated touch surface in millimeters -
+    /// the extent `SurfaceFit` maps onto the display. `None` when the
+    /// daemon did not report a complete calibration (resolution and
+    /// range on both axes).
+    pub fn surface_mm(&self) -> Option<Vec2<Millimeters>> {
+        let width = Millimeters::new((self.x_max? - self.x_min?) / self.x_res?);
+        let height = Millimeters::new((self.y_max? - self.y_min?) / self.y_res?);
+        Some(Vec2::from_mm(width, height))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DeviceInfo;
+    use smearor_commons_geometry::Vec2;
+
+    #[test]
+    fn surface_mm_uses_resolution_and_bounds() {
+        let info = DeviceInfo {
+            x_res: Some(2.5.into()),
+            y_res: Some(2.5.into()),
+            x_min: Some(0.0.into()),
+            x_max: Some(3500.0.into()),
+            y_min: Some(0.0.into()),
+            y_max: Some(2000.0.into()),
+            ..Default::default()
+        };
+        let surface = info.surface_mm().expect("surface");
+        assert_eq!(surface, Vec2::from_mm(1400.0.into(), 800.0.into()));
+        assert!(DeviceInfo::default().surface_mm().is_none());
     }
 }
