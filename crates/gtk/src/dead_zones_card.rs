@@ -113,11 +113,40 @@ pub fn create_dead_zones_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
     let add_btn_tick = add_btn.clone();
     let empty_label = fl!(language_loader(), "dead-zones-empty");
     let empty_shown = Rc::new(std::cell::Cell::new(false));
+    // Overlay auto-show: opening the card switches the dead-zone
+    // overlay on; closing restores the previous state. `auto_vis`:
+    // 0 = untouched, 1 = enable sent (pending sync), 2 = confirmed ours.
+    let was_open = std::cell::Cell::new(false);
+    let auto_vis = std::cell::Cell::new(0u8);
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
         let s = match state_tick.lock() {
             Ok(s) => s,
             Err(_) => return ControlFlow::Continue,
         };
+        let open = grid_tick.is_visible();
+        if open && !was_open.get() && !s.dead_zones_visible {
+            if let Some(handle) = &s.command_handle {
+                handle
+                    .try_send_command(ControlCommand::SetDeadZonesVisible(true))
+                    .ok();
+            }
+            auto_vis.set(1);
+        } else if !open && was_open.get() && auto_vis.get() > 0 {
+            if let Some(handle) = &s.command_handle {
+                handle
+                    .try_send_command(ControlCommand::SetDeadZonesVisible(false))
+                    .ok();
+            }
+            auto_vis.set(0);
+        }
+        if open && auto_vis.get() == 1 && s.dead_zones_visible {
+            auto_vis.set(2);
+        } else if auto_vis.get() == 2 && !s.dead_zones_visible {
+            // The user switched the overlay off while the card was
+            // open - we no longer own it, closing leaves it off anyway.
+            auto_vis.set(0);
+        }
+        was_open.set(open);
         add_btn_tick.set_sensitive(single_touch(&s).is_some());
         let mut rows = rows_tick.borrow_mut();
         let names: Vec<&DeadZoneName> = s.dead_zones.iter().map(|zone| &zone.name).collect();
