@@ -129,7 +129,7 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             let geometry = card.geometry();
             let footprint = card.footprint();
             let extents = region_extents(&footprint);
-            let rendered = rendered_bounds(board, card);
+            let rendered = card.rendered_bounds();
             let placed = card.placed_position();
             let mut chain = Vec::new();
             if let Some(bounds) = rendered {
@@ -176,20 +176,6 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             }
         })
         .collect()
-}
-
-/// The card's rendered bounds in board coordinates - the axis-aligned
-/// box `compute_bounds` reports for the actual widget with every
-/// rotation and scale of its transform stack applied. This is the
-/// ground truth of where the card draws; the model footprint
-/// (`entry_footprint`) only matches it when the layout kept the card
-/// centered on its stored position.
-fn rendered_bounds(board: &FloatingBoard, card: &floating_board::Card) -> Option<Rect<Pixels>> {
-    let bounds = card.compute_bounds(board)?;
-    Some(Rect::new(
-        Vec2::new(f64::from(bounds.x()), f64::from(bounds.y())),
-        Vec2::new(f64::from(bounds.width()), f64::from(bounds.height())),
-    ))
 }
 
 /// Every ancestor of the card up to the board with its widget type,
