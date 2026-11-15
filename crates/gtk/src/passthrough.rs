@@ -200,11 +200,14 @@ fn ancestor_chain(board: &FloatingBoard, card: &floating_board::Card) -> Vec<Str
     let mut chain = Vec::new();
     let mut widget: Option<gtk4::Widget> = Some(card.clone().upcast());
     while let Some(current) = widget {
-        let origin = current
-            .compute_point(board, &gtk4::graphene::Point::new(0.0, 0.0))
-            .map(|point| (point.x(), point.y()));
-        let bounds = current.compute_bounds(&current).map(|rect| (rect.width(), rect.height()));
-        chain.push(format!("{}: origin={:?} alloc={:?}", current.type_().name(), origin, bounds));
+        let origin = current.compute_point(board, &gtk4::graphene::Point::new(0.0, 0.0));
+        let bounds = current.compute_bounds(&current);
+        chain.push(format!(
+            "{}: origin={:?} alloc={:?}",
+            current.type_().name(),
+            origin,
+            bounds
+        ));
         widget = current.parent();
     }
     chain
@@ -333,7 +336,12 @@ fn log_region_change(region: &Region, footprints: &[CardFootprint], last_hash: &
                     })
                     .map(|covered| if covered { 't' } else { 'F' })
                     .unwrap_or('?');
-                format!("{}={}/{}", footprint.card_id, if model { 't' } else { 'F' }, rendered)
+                format!(
+                    "{}={}/{}",
+                    footprint.card_id,
+                    if model { 't' } else { 'F' },
+                    rendered
+                )
             })
         })
         .collect::<Vec<_>>()
