@@ -542,6 +542,15 @@ impl Engine {
         &self.dead_zones
     }
 
+    /// Applies the ingest filters (edge margin, dead zones) to a touch
+    /// list without updating frame counters - the non-live display
+    /// path bypasses [`Engine::process`], so it filters separately to
+    /// keep suppressed contacts out of training captures.
+    pub fn filter_touches(&self, touches: &mut Vec<TouchPoint>) {
+        touches.retain(|touch| !self.is_edge_ghost(touch));
+        touches.retain(|touch| !self.dead_zones.contains(&touch.pos));
+    }
+
     /// Touches dropped by dead-zone filtering on the last processed
     /// frame.
     pub fn dead_zone_filtered(&self) -> ContactCount {

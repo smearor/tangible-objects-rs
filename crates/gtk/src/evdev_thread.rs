@@ -411,7 +411,14 @@ pub fn evdev_thread(
                 // and draw figure lines across objects.
                 let touches = match &frame {
                     Some(engine_frame) => engine_frame.touches.clone(),
-                    None => touch_state.active_touches(),
+                    // Non-live modes bypass `engine.process` - apply the
+                    // ingest filters separately so dead zones and edge
+                    // ghosts stay out of training captures.
+                    None => {
+                        let mut touches = touch_state.active_touches();
+                        engine.filter_touches(&mut touches);
+                        touches
+                    }
                 };
                 let count = touches.len();
                 let matches = frame.map(|f| f.matches).unwrap_or_default();
