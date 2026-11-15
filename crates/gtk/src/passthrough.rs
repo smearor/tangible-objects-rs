@@ -133,7 +133,7 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             let placed = card.placed_position();
             let mut chain = Vec::new();
             if let Some(bounds) = rendered {
-                let center = Vec2::new(bounds.min.x + bounds.size.x / 2.0, bounds.min.y + bounds.size.y / 2.0);
+                let center = bounds.center();
                 let drift = center - Vec2::from(geometry.position);
                 if card.is_visible() && (drift.x.abs() > 1.0 || drift.y.abs() > 1.0) {
                     chain = ancestor_chain(board, card);
@@ -293,16 +293,14 @@ fn log_region_change(region: &Region, footprints: &[CardFootprint], last_hash: &
         .filter(|footprint| footprint.visible)
         .filter_map(|footprint| {
             footprint.footprint.as_ref().map(|rect| {
-                let center_x = rect.min.x + rect.size.x / 2;
-                let center_y = rect.min.y + rect.size.y / 2;
-                let model = region.contains_point(center_x, center_y);
+                let model = region.contains_point(rect.center().x, rect.center().y);
                 let rendered = footprint
                     .rendered
                     .as_ref()
                     .map(|bounds| {
                         region.contains_point(
-                            (bounds.min.x + bounds.size.x / 2.0).round() as i32,
-                            (bounds.min.y + bounds.size.y / 2.0).round() as i32,
+                            bounds.center().x.round() as i32,
+                            bounds.center().y.round() as i32,
                         )
                     })
                     .map(|covered| if covered { 't' } else { 'F' })
