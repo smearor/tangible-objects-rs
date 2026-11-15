@@ -8,7 +8,7 @@
     device_profiles: <a class="enum" href="https://doc.rust-lang.org/1.100.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="https://doc.rust-lang.org/1.100.0/std/path/struct.Path.html" title="struct std::path::Path">Path</a>&gt;,
 ) -&gt; Result&lt;<a class="primitive" href="https://doc.rust-lang.org/1.100.0/std/primitive.unit.html">()</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Recording mode: like [<code>run_live</code>], additionally writing every frame to
 <code>&lt;base&gt;.jsonl</code> and every raw event to <code>&lt;base&gt;.evtest</code> (TRAINING.md).</p>
-<p>Matching runs through [<code>Engine::process_with_diagnostics</code>], so every
+<p>Matching runs through <a href="../../../tangible_objects_engine/engine/detection/struct.Engine.html#method.process_with_diagnostics" title="method tangible_objects_engine::engine::detection::Engine::process_with_diagnostics"><code>Engine::process_with_diagnostics</code></a>, so every
 tested candidate lands in the frame record. Enter stops the recording
 cleanly (drains and flushes both writers); Ctrl+C also ends it but may
 lose the buffered tail. <code>SetRecordLabel</code>/<code>StopRecording</code> control commands
