@@ -341,6 +341,7 @@ pub fn run_gui(
         // the counter so a dead card splits into "event never arrived"
         // (applied region wrong) vs "arrived but eaten" (gesture claim).
         let state_probe = state_app.clone();
+        let window_probe = window.downgrade();
         let probe = EventControllerLegacy::new();
         probe.set_propagation_phase(PropagationPhase::Capture);
         probe.connect_event(move |_, event| {
@@ -351,6 +352,32 @@ pub fn run_gui(
                     let (x, y) = event.position().unwrap_or_default();
                     s.last_event_position = Some(Vec2::<Pixels>::new(x, y));
                 }
+            }
+            if matches!(event_type, EventType::TouchBegin | EventType::ButtonPress)
+                && let Some(window) = window_probe.upgrade()
+            {
+                let (x, y) = event.position().unwrap_or_default();
+                let picked = window.pick(x, y, gtk4::PickFlags::DEFAULT | gtk4::PickFlags::INSENSITIVE);
+                let mut ancestry = Vec::new();
+                let mut current = picked.clone();
+                while let Some(widget) = current {
+                    ancestry.push(format!(
+                        "{}(mapped:{},sensitive:{},can_target:{})",
+                        widget.type_().name(),
+                        widget.is_mapped(),
+                        widget.is_sensitive(),
+                        widget.can_target()
+                    ));
+                    current = widget.parent();
+                }
+                info!(
+                    event = ?event_type,
+                    x,
+                    y,
+                    picked = ?picked.map(|w| w.type_().name().to_string()),
+                    ancestry = %ancestry.join(" <- "),
+                    "pick diagnostic"
+                );
             }
             Propagation::Proceed
         });
