@@ -107,6 +107,9 @@ pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<Shared
     let rotation = s.rotation;
     let to_screen =
         |pos: &Vec2<Millimeters>| -> Vec2<Pixels> { cal.mm_to_screen(*pos, canvas, rotation) };
+    let to_radius = |pos: Vec2<Millimeters>, radius: Millimeters| -> Pixels {
+        cal.mm_radius_to_screen(pos, radius, canvas, rotation)
+    };
 
     if s.spells_visible {
         draw_spells(cr, &s.trajectories, s.last_spell.as_ref(), &to_screen);
@@ -146,6 +149,7 @@ pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<Shared
                 canvas,
             },
             &to_screen,
+            &to_radius,
         );
     }
 
@@ -581,20 +585,6 @@ fn pose_point(
     *center + point.rotated(RotationRad::new(rad))
 }
 
-/// The screen-space radius a physical shape's outline circle takes
-/// (mean of the two axes so the circle stays circular under
-/// anisotropic calibration).
-fn shape_radius_px(
-    center: &Vec2<Millimeters>,
-    radius: Millimeters,
-    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
-) -> f64 {
-    let screen_center = to_screen(center);
-    let rx = to_screen(&(*center + Vec2::new(radius.as_f64(), 0.0))).x - screen_center.x;
-    let ry = to_screen(&(*center + Vec2::new(0.0, radius.as_f64()))).y - screen_center.y;
-    (rx.abs() + ry.abs()) / 2.0
-}
-
 /// Traces the declared physical outline of a match (pattern-space
 /// shape rotated by the match's `rotation_rad` onto the surface).
 fn draw_physical_shape(
@@ -602,6 +592,7 @@ fn draw_physical_shape(
     m: &PatternMatch,
     shape: &PhysicalShape,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+    to_radius: &impl Fn(Vec2<Millimeters>, Millimeters) -> Pixels,
     color: Color<f64>,
     alpha: Alpha,
 ) {
@@ -610,7 +601,7 @@ fn draw_physical_shape(
     let rad = m.rotation_rad.as_f64();
     match shape {
         PhysicalShape::Circle { radius } => {
-            let r_px = shape_radius_px(&m.center, *radius, to_screen);
+            let r_px = to_radius(m.center, *radius).as_f64();
             cr.arc(scx, scy, r_px, 0.0, 2.0 * std::f64::consts::PI);
         }
         PhysicalShape::Rectangle {
@@ -703,7 +694,7 @@ fn draw_positions(
             .touch_indices
             .iter()
             .filter_map(|&idx| match_pos(touches, to_screen, idx))
-            .map(|p| ((p.x - center.x).powi(2) + (p.y - center.y).powi(2)).sqrt())
+            .map(|p| p.distance_f64(&center))
             .fold(0.0_f64, f64::max);
         for &idx in &m.touch_indices {
             anchor_of.insert(idx, center);
@@ -882,6 +873,7 @@ fn draw_live(
     tracked: TrackedSet<'_>,
     live: &LiveStyle<'_>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+    to_radius: &impl Fn(Vec2<Millimeters>, Millimeters) -> Pixels,
 ) {
     let styles = live.styles;
     let profile_bounds = live.profile_bounds;
@@ -965,7 +957,7 @@ fn draw_live(
                 .find(|style| style.pattern_id == m.pattern_id)
                 .and_then(|style| style.shape.as_ref())
         {
-            draw_physical_shape(cr, m, shape, to_screen, color, alpha);
+            draw_physical_shape(cr, m, shape, to_screen, to_radius, color, alpha);
         }
 
         if draw_points {
@@ -1008,7 +1000,7 @@ fn draw_live(
             .touch_indices
             .iter()
             .filter_map(|&idx| match_pos(touches, to_screen, idx))
-            .map(|p| ((p.x - center.x).powi(2) + (p.y - center.y).powi(2)).sqrt())
+            .map(|p| p.distance_f64(&center))
             .fold(0.0_f64, f64::max);
 
         // 0° marker: a wedge along the pattern's orientation axis.

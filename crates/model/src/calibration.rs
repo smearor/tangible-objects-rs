@@ -131,6 +131,28 @@ impl Calibration {
             pos - Vec2::<Millimeters>::new(self.x_min / self.x_res, self.y_min / self.y_res);
         self.surface_fit(area, rotation).map(local)
     }
+
+    /// A millimeter radius expressed in screen pixels - the mean of
+    /// both axis probe distances, so the result is invariant under
+    /// display rotation (axis-aligned component projections collapse
+    /// at quarter turns).
+    pub fn mm_radius_to_screen(
+        &self,
+        center: Vec2<Millimeters>,
+        radius: Millimeters,
+        area: Vec2<Pixels>,
+        rotation: DisplayRotation,
+    ) -> Pixels {
+        let screen_center = self.mm_to_screen(center, area, rotation);
+        let r = radius.as_f64();
+        let rx = self
+            .mm_to_screen(center + Vec2::new(r, 0.0), area, rotation)
+            .distance(&screen_center);
+        let ry = self
+            .mm_to_screen(center + Vec2::new(0.0, r), area, rotation)
+            .distance(&screen_center);
+        (rx + ry) / 2.0
+    }
 }
 
 #[cfg(test)]

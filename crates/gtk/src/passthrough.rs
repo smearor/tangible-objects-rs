@@ -336,7 +336,7 @@ fn union_dead_zones(
     }
     for zone in dead_zones {
         let center = calibration.mm_to_screen(zone.center, canvas, rotation);
-        let radius = dead_zone_radius_px(zone, &calibration, canvas, rotation);
+        let radius = calibration.mm_radius_to_screen(zone.center, zone.radius, canvas, rotation);
         if radius.as_f64() <= 0.0 {
             continue;
         }
@@ -349,26 +349,6 @@ fn union_dead_zones(
             Err(error) => warn!(%error, zone = %zone.name, "failed to rasterize dead-zone region"),
         }
     }
-}
-
-/// The zone's suppression radius in screen pixels - mean of both
-/// axes, matching the overlay draw (`draw_dead_zones`) so the input
-/// region covers the drawn circle.
-fn dead_zone_radius_px(
-    zone: &DeadZone,
-    calibration: &Calibration,
-    canvas: Vec2<Pixels>,
-    rotation: DisplayRotation,
-) -> Pixels {
-    let center = calibration.mm_to_screen(zone.center, canvas, rotation);
-    let radius = zone.radius.as_f64();
-    let rx = calibration
-        .mm_to_screen(zone.center + Vec2::new(radius, 0.0), canvas, rotation)
-        .distance(&center);
-    let ry = calibration
-        .mm_to_screen(zone.center + Vec2::new(0.0, radius), canvas, rotation)
-        .distance(&center);
-    (rx + ry) / 2.0
 }
 
 #[cfg(test)]
