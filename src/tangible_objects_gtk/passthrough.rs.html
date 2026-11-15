@@ -336,7 +336,7 @@
 <a href=#336 id=336 data-nosnippet>336</a>    }
 <a href=#337 id=337 data-nosnippet>337</a>    <span class="kw">for </span>zone <span class="kw">in </span>dead_zones {
 <a href=#338 id=338 data-nosnippet>338</a>        <span class="kw">let </span>center = calibration.mm_to_screen(zone.center, canvas, rotation);
-<a href=#339 id=339 data-nosnippet>339</a>        <span class="kw">let </span>radius = dead_zone_radius_px(zone, <span class="kw-2">&amp;</span>calibration, canvas, rotation);
+<a href=#339 id=339 data-nosnippet>339</a>        <span class="kw">let </span>radius = calibration.mm_radius_to_screen(zone.center, zone.radius, canvas, rotation);
 <a href=#340 id=340 data-nosnippet>340</a>        <span class="kw">if </span>radius.as_f64() &lt;= <span class="number">0.0 </span>{
 <a href=#341 id=341 data-nosnippet>341</a>            <span class="kw">continue</span>;
 <a href=#342 id=342 data-nosnippet>342</a>        }
@@ -351,91 +351,71 @@
 <a href=#351 id=351 data-nosnippet>351</a>    }
 <a href=#352 id=352 data-nosnippet>352</a>}
 <a href=#353 id=353 data-nosnippet>353</a>
-<a href=#354 id=354 data-nosnippet>354</a><span class="doccomment">/// The zone's suppression radius in screen pixels - mean of both
-<a href=#355 id=355 data-nosnippet>355</a>/// axes, matching the overlay draw (`draw_dead_zones`) so the input
-<a href=#356 id=356 data-nosnippet>356</a>/// region covers the drawn circle.
-<a href=#357 id=357 data-nosnippet>357</a></span><span class="kw">fn </span>dead_zone_radius_px(
-<a href=#358 id=358 data-nosnippet>358</a>    zone: <span class="kw-2">&amp;</span>DeadZone,
-<a href=#359 id=359 data-nosnippet>359</a>    calibration: <span class="kw-2">&amp;</span>Calibration,
-<a href=#360 id=360 data-nosnippet>360</a>    canvas: Vec2&lt;Pixels&gt;,
-<a href=#361 id=361 data-nosnippet>361</a>    rotation: DisplayRotation,
-<a href=#362 id=362 data-nosnippet>362</a>) -&gt; Pixels {
-<a href=#363 id=363 data-nosnippet>363</a>    <span class="kw">let </span>center = calibration.mm_to_screen(zone.center, canvas, rotation);
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="kw">let </span>radius = zone.radius.as_f64();
-<a href=#365 id=365 data-nosnippet>365</a>    <span class="kw">let </span>rx = calibration
-<a href=#366 id=366 data-nosnippet>366</a>        .mm_to_screen(zone.center + Vec2::new(radius, <span class="number">0.0</span>), canvas, rotation)
-<a href=#367 id=367 data-nosnippet>367</a>        .distance(<span class="kw-2">&amp;</span>center);
-<a href=#368 id=368 data-nosnippet>368</a>    <span class="kw">let </span>ry = calibration
-<a href=#369 id=369 data-nosnippet>369</a>        .mm_to_screen(zone.center + Vec2::new(<span class="number">0.0</span>, radius), canvas, rotation)
-<a href=#370 id=370 data-nosnippet>370</a>        .distance(<span class="kw-2">&amp;</span>center);
-<a href=#371 id=371 data-nosnippet>371</a>    (rx + ry) / <span class="number">2.0
-<a href=#372 id=372 data-nosnippet>372</a></span>}
-<a href=#373 id=373 data-nosnippet>373</a>
-<a href=#374 id=374 data-nosnippet>374</a><span class="attr">#[cfg(test)]
-<a href=#375 id=375 data-nosnippet>375</a></span><span class="kw">mod </span>tests {
-<a href=#376 id=376 data-nosnippet>376</a>    <span class="kw">use </span>cairo::RectangleInt;
-<a href=#377 id=377 data-nosnippet>377</a>    <span class="kw">use </span>smearor_commons_geometry::Circle;
-<a href=#378 id=378 data-nosnippet>378</a>    <span class="kw">use </span>smearor_commons_geometry::Pixels;
-<a href=#379 id=379 data-nosnippet>379</a>    <span class="kw">use </span>smearor_commons_geometry::Vec2;
-<a href=#380 id=380 data-nosnippet>380</a>
-<a href=#381 id=381 data-nosnippet>381</a>    <span class="doccomment">/// Every disk point lies inside a generated strip; each strip is a
-<a href=#382 id=382 data-nosnippet>382</a>    /// 1-px row inside the circle's bounding box.
-<a href=#383 id=383 data-nosnippet>383</a>    </span><span class="attr">#[test]
-<a href=#384 id=384 data-nosnippet>384</a>    </span><span class="kw">fn </span>circle_rects_cover_the_disk() {
-<a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">let </span>center = Vec2::&lt;Pixels&gt;::new(<span class="number">100.4</span>, <span class="number">80.6</span>);
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">let </span>radius = <span class="number">30.0</span>;
-<a href=#387 id=387 data-nosnippet>387</a>        <span class="kw">let </span>strips: Vec&lt;RectangleInt&gt; = Circle::new(center, radius)
-<a href=#388 id=388 data-nosnippet>388</a>            .region_rects()
-<a href=#389 id=389 data-nosnippet>389</a>            .into_iter()
-<a href=#390 id=390 data-nosnippet>390</a>            .map(RectangleInt::from)
-<a href=#391 id=391 data-nosnippet>391</a>            .collect();
-<a href=#392 id=392 data-nosnippet>392</a>        <span class="macro">assert!</span>(!strips.is_empty());
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="macro">assert!</span>(strips.iter().all(|strip| strip.height() == <span class="number">1</span>));
-<a href=#394 id=394 data-nosnippet>394</a>        <span class="macro">assert!</span>(strips.iter().all(|strip| {
-<a href=#395 id=395 data-nosnippet>395</a>            strip.y() &gt;= (center.y - radius).floor() <span class="kw">as </span>i32
-<a href=#396 id=396 data-nosnippet>396</a>                &amp;&amp; strip.y() &lt; (center.y + radius).ceil() <span class="kw">as </span>i32
-<a href=#397 id=397 data-nosnippet>397</a>        }));
-<a href=#398 id=398 data-nosnippet>398</a>
-<a href=#399 id=399 data-nosnippet>399</a>        <span class="kw">let </span><span class="kw-2">mut </span>y = center.y - radius;
-<a href=#400 id=400 data-nosnippet>400</a>        <span class="kw">while </span>y &lt;= center.y + radius {
-<a href=#401 id=401 data-nosnippet>401</a>            <span class="kw">let </span><span class="kw-2">mut </span>x = center.x - radius;
-<a href=#402 id=402 data-nosnippet>402</a>            <span class="kw">while </span>x &lt;= center.x + radius {
-<a href=#403 id=403 data-nosnippet>403</a>                <span class="kw">if </span>(x - center.x).powi(<span class="number">2</span>) + (y - center.y).powi(<span class="number">2</span>) &lt;= radius * radius {
-<a href=#404 id=404 data-nosnippet>404</a>                    <span class="kw">let </span>covered = strips.iter().any(|strip| {
-<a href=#405 id=405 data-nosnippet>405</a>                        x &gt;= f64::from(strip.x())
-<a href=#406 id=406 data-nosnippet>406</a>                            &amp;&amp; x &lt; f64::from(strip.x() + strip.width())
-<a href=#407 id=407 data-nosnippet>407</a>                            &amp;&amp; y &gt;= f64::from(strip.y())
-<a href=#408 id=408 data-nosnippet>408</a>                            &amp;&amp; y &lt; f64::from(strip.y() + <span class="number">1</span>)
-<a href=#409 id=409 data-nosnippet>409</a>                    });
-<a href=#410 id=410 data-nosnippet>410</a>                    <span class="macro">assert!</span>(covered, <span class="string">"disk point ({x}, {y}) not covered"</span>);
-<a href=#411 id=411 data-nosnippet>411</a>                }
-<a href=#412 id=412 data-nosnippet>412</a>                x += <span class="number">0.25</span>;
-<a href=#413 id=413 data-nosnippet>413</a>            }
-<a href=#414 id=414 data-nosnippet>414</a>            y += <span class="number">0.25</span>;
-<a href=#415 id=415 data-nosnippet>415</a>        }
-<a href=#416 id=416 data-nosnippet>416</a>    }
-<a href=#417 id=417 data-nosnippet>417</a>
-<a href=#418 id=418 data-nosnippet>418</a>    <span class="doccomment">/// cairo `Region::extents` must write the union bounds back into
-<a href=#419 id=419 data-nosnippet>419</a>    /// the passed `RectangleInt` - the diagnostics rely on it.
-<a href=#420 id=420 data-nosnippet>420</a>    </span><span class="attr">#[test]
-<a href=#421 id=421 data-nosnippet>421</a>    </span><span class="kw">fn </span>cairo_extents_write_back() {
-<a href=#422 id=422 data-nosnippet>422</a>        <span class="kw">let </span>region = gtk4::cairo::Region::create();
-<a href=#423 id=423 data-nosnippet>423</a>        region
-<a href=#424 id=424 data-nosnippet>424</a>            .union_rectangle(<span class="kw-2">&amp;</span>gtk4::cairo::RectangleInt::new(<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>, <span class="number">40</span>))
-<a href=#425 id=425 data-nosnippet>425</a>            .expect(<span class="string">"union"</span>);
-<a href=#426 id=426 data-nosnippet>426</a>        <span class="kw">let </span>extents = gtk4::cairo::RectangleInt::new(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);
-<a href=#427 id=427 data-nosnippet>427</a>        region.extents(<span class="kw-2">&amp;</span>extents);
-<a href=#428 id=428 data-nosnippet>428</a>        <span class="macro">assert_eq!</span>(
-<a href=#429 id=429 data-nosnippet>429</a>            (extents.x(), extents.y(), extents.width(), extents.height()),
-<a href=#430 id=430 data-nosnippet>430</a>            (<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>, <span class="number">40</span>)
-<a href=#431 id=431 data-nosnippet>431</a>        );
-<a href=#432 id=432 data-nosnippet>432</a>    }
-<a href=#433 id=433 data-nosnippet>433</a>
-<a href=#434 id=434 data-nosnippet>434</a>    <span class="doccomment">/// A degenerate radius produces no strips instead of a phantom row.
-<a href=#435 id=435 data-nosnippet>435</a>    </span><span class="attr">#[test]
-<a href=#436 id=436 data-nosnippet>436</a>    </span><span class="kw">fn </span>circle_rects_empty_for_zero_radius() {
-<a href=#437 id=437 data-nosnippet>437</a>        <span class="kw">let </span>circle = Circle::new(Vec2::&lt;Pixels&gt;::new(<span class="number">10.0</span>, <span class="number">10.0</span>), <span class="number">0.0</span>);
-<a href=#438 id=438 data-nosnippet>438</a>        <span class="macro">assert!</span>(circle.region_rects().is_empty());
-<a href=#439 id=439 data-nosnippet>439</a>    }
-<a href=#440 id=440 data-nosnippet>440</a>}
+<a href=#354 id=354 data-nosnippet>354</a><span class="attr">#[cfg(test)]
+<a href=#355 id=355 data-nosnippet>355</a></span><span class="kw">mod </span>tests {
+<a href=#356 id=356 data-nosnippet>356</a>    <span class="kw">use </span>cairo::RectangleInt;
+<a href=#357 id=357 data-nosnippet>357</a>    <span class="kw">use </span>smearor_commons_geometry::Circle;
+<a href=#358 id=358 data-nosnippet>358</a>    <span class="kw">use </span>smearor_commons_geometry::Pixels;
+<a href=#359 id=359 data-nosnippet>359</a>    <span class="kw">use </span>smearor_commons_geometry::Vec2;
+<a href=#360 id=360 data-nosnippet>360</a>
+<a href=#361 id=361 data-nosnippet>361</a>    <span class="doccomment">/// Every disk point lies inside a generated strip; each strip is a
+<a href=#362 id=362 data-nosnippet>362</a>    /// 1-px row inside the circle's bounding box.
+<a href=#363 id=363 data-nosnippet>363</a>    </span><span class="attr">#[test]
+<a href=#364 id=364 data-nosnippet>364</a>    </span><span class="kw">fn </span>circle_rects_cover_the_disk() {
+<a href=#365 id=365 data-nosnippet>365</a>        <span class="kw">let </span>center = Vec2::&lt;Pixels&gt;::new(<span class="number">100.4</span>, <span class="number">80.6</span>);
+<a href=#366 id=366 data-nosnippet>366</a>        <span class="kw">let </span>radius = <span class="number">30.0</span>;
+<a href=#367 id=367 data-nosnippet>367</a>        <span class="kw">let </span>strips: Vec&lt;RectangleInt&gt; = Circle::new(center, radius)
+<a href=#368 id=368 data-nosnippet>368</a>            .region_rects()
+<a href=#369 id=369 data-nosnippet>369</a>            .into_iter()
+<a href=#370 id=370 data-nosnippet>370</a>            .map(RectangleInt::from)
+<a href=#371 id=371 data-nosnippet>371</a>            .collect();
+<a href=#372 id=372 data-nosnippet>372</a>        <span class="macro">assert!</span>(!strips.is_empty());
+<a href=#373 id=373 data-nosnippet>373</a>        <span class="macro">assert!</span>(strips.iter().all(|strip| strip.height() == <span class="number">1</span>));
+<a href=#374 id=374 data-nosnippet>374</a>        <span class="macro">assert!</span>(strips.iter().all(|strip| {
+<a href=#375 id=375 data-nosnippet>375</a>            strip.y() &gt;= (center.y - radius).floor() <span class="kw">as </span>i32
+<a href=#376 id=376 data-nosnippet>376</a>                &amp;&amp; strip.y() &lt; (center.y + radius).ceil() <span class="kw">as </span>i32
+<a href=#377 id=377 data-nosnippet>377</a>        }));
+<a href=#378 id=378 data-nosnippet>378</a>
+<a href=#379 id=379 data-nosnippet>379</a>        <span class="kw">let </span><span class="kw-2">mut </span>y = center.y - radius;
+<a href=#380 id=380 data-nosnippet>380</a>        <span class="kw">while </span>y &lt;= center.y + radius {
+<a href=#381 id=381 data-nosnippet>381</a>            <span class="kw">let </span><span class="kw-2">mut </span>x = center.x - radius;
+<a href=#382 id=382 data-nosnippet>382</a>            <span class="kw">while </span>x &lt;= center.x + radius {
+<a href=#383 id=383 data-nosnippet>383</a>                <span class="kw">if </span>(x - center.x).powi(<span class="number">2</span>) + (y - center.y).powi(<span class="number">2</span>) &lt;= radius * radius {
+<a href=#384 id=384 data-nosnippet>384</a>                    <span class="kw">let </span>covered = strips.iter().any(|strip| {
+<a href=#385 id=385 data-nosnippet>385</a>                        x &gt;= f64::from(strip.x())
+<a href=#386 id=386 data-nosnippet>386</a>                            &amp;&amp; x &lt; f64::from(strip.x() + strip.width())
+<a href=#387 id=387 data-nosnippet>387</a>                            &amp;&amp; y &gt;= f64::from(strip.y())
+<a href=#388 id=388 data-nosnippet>388</a>                            &amp;&amp; y &lt; f64::from(strip.y() + <span class="number">1</span>)
+<a href=#389 id=389 data-nosnippet>389</a>                    });
+<a href=#390 id=390 data-nosnippet>390</a>                    <span class="macro">assert!</span>(covered, <span class="string">"disk point ({x}, {y}) not covered"</span>);
+<a href=#391 id=391 data-nosnippet>391</a>                }
+<a href=#392 id=392 data-nosnippet>392</a>                x += <span class="number">0.25</span>;
+<a href=#393 id=393 data-nosnippet>393</a>            }
+<a href=#394 id=394 data-nosnippet>394</a>            y += <span class="number">0.25</span>;
+<a href=#395 id=395 data-nosnippet>395</a>        }
+<a href=#396 id=396 data-nosnippet>396</a>    }
+<a href=#397 id=397 data-nosnippet>397</a>
+<a href=#398 id=398 data-nosnippet>398</a>    <span class="doccomment">/// cairo `Region::extents` must write the union bounds back into
+<a href=#399 id=399 data-nosnippet>399</a>    /// the passed `RectangleInt` - the diagnostics rely on it.
+<a href=#400 id=400 data-nosnippet>400</a>    </span><span class="attr">#[test]
+<a href=#401 id=401 data-nosnippet>401</a>    </span><span class="kw">fn </span>cairo_extents_write_back() {
+<a href=#402 id=402 data-nosnippet>402</a>        <span class="kw">let </span>region = gtk4::cairo::Region::create();
+<a href=#403 id=403 data-nosnippet>403</a>        region
+<a href=#404 id=404 data-nosnippet>404</a>            .union_rectangle(<span class="kw-2">&amp;</span>gtk4::cairo::RectangleInt::new(<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>, <span class="number">40</span>))
+<a href=#405 id=405 data-nosnippet>405</a>            .expect(<span class="string">"union"</span>);
+<a href=#406 id=406 data-nosnippet>406</a>        <span class="kw">let </span>extents = gtk4::cairo::RectangleInt::new(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);
+<a href=#407 id=407 data-nosnippet>407</a>        region.extents(<span class="kw-2">&amp;</span>extents);
+<a href=#408 id=408 data-nosnippet>408</a>        <span class="macro">assert_eq!</span>(
+<a href=#409 id=409 data-nosnippet>409</a>            (extents.x(), extents.y(), extents.width(), extents.height()),
+<a href=#410 id=410 data-nosnippet>410</a>            (<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>, <span class="number">40</span>)
+<a href=#411 id=411 data-nosnippet>411</a>        );
+<a href=#412 id=412 data-nosnippet>412</a>    }
+<a href=#413 id=413 data-nosnippet>413</a>
+<a href=#414 id=414 data-nosnippet>414</a>    <span class="doccomment">/// A degenerate radius produces no strips instead of a phantom row.
+<a href=#415 id=415 data-nosnippet>415</a>    </span><span class="attr">#[test]
+<a href=#416 id=416 data-nosnippet>416</a>    </span><span class="kw">fn </span>circle_rects_empty_for_zero_radius() {
+<a href=#417 id=417 data-nosnippet>417</a>        <span class="kw">let </span>circle = Circle::new(Vec2::&lt;Pixels&gt;::new(<span class="number">10.0</span>, <span class="number">10.0</span>), <span class="number">0.0</span>);
+<a href=#418 id=418 data-nosnippet>418</a>        <span class="macro">assert!</span>(circle.region_rects().is_empty());
+<a href=#419 id=419 data-nosnippet>419</a>    }
+<a href=#420 id=420 data-nosnippet>420</a>}
 </code></pre></div></section></main></body></html>
