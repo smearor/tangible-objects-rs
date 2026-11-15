@@ -25,7 +25,6 @@ use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::InputRegionDiagnostics;
 use tracing::debug;
-use tracing::info;
 use tracing::warn;
 
 use crate::shared_state::SharedState;
