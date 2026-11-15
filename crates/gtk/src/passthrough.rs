@@ -13,6 +13,8 @@ use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::ScaleFactor;
 use smearor_commons_geometry::Vec2;
 use smearor_commons_geometry::WidgetSizeExt;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -23,6 +25,7 @@ use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
 use tangible_objects_model::InputRegionDiagnostics;
 use tracing::debug;
+use tracing::info;
 use tracing::warn;
 
 use crate::shared_state::SharedState;
@@ -42,6 +45,7 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
     let board_sync = board.clone();
     let state_passthrough = state.clone();
     let mut applied = false;
+    let mut last_region_hash = 0u64;
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
         // Read the flag and the zone inputs under lock, drop it before
         // the GTK surface calls - `set_input_region` may dispatch into
@@ -82,6 +86,7 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                 diagnostics.extents = region_extents(&region);
                 diagnostics.status = region.status().err().map(|e| e.to_string());
                 diagnostics.first_rectangle = first_rectangle(&region);
+                log_region_change(&region, &footprints, &mut last_region_hash);
                 if let Some(surface) = board_sync.native().and_then(|n| n.surface()) {
                     surface.set_input_region(Some(&region));
                     diagnostics.applied = true;
@@ -201,6 +206,66 @@ fn first_rectangle(region: &Region) -> Option<Rect<Pixels, i32>> {
         Vec2::new(rect.x(), rect.y()),
         Vec2::new(rect.width(), rect.height()),
     ))
+}
+
+/// Logs the full rectangle list whenever the unioned region changes -
+/// the MCP diagnostics only expose count/first-rect, which is not
+/// enough to tell which rectangles `set_input_region` actually got.
+/// Also probes `contains_point` at every visible card's footprint
+/// center so a corrupted union (rectangles stored but not covering
+/// their area) shows up immediately.
+fn log_region_change(region: &Region, footprints: &[CardFootprint], last_hash: &mut u64) {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for index in 0..region.num_rectangles() {
+        let rect = region.rectangle(index);
+        rect.x().hash(&mut hasher);
+        rect.y().hash(&mut hasher);
+        rect.width().hash(&mut hasher);
+        rect.height().hash(&mut hasher);
+    }
+    let hash = hasher.finish();
+    if hash == *last_hash {
+        return;
+    }
+    *last_hash = hash;
+    let rectangles = (0..region.num_rectangles())
+        .map(|index| {
+            let rect = region.rectangle(index);
+            format!(
+                "{}+{} {}x{}",
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let extents = RectangleInt::new(0, 0, 0, 0);
+    region.extents(&extents);
+    let coverage = footprints
+        .iter()
+        .filter(|footprint| footprint.visible)
+        .filter_map(|footprint| {
+            footprint.first_rectangle.as_ref().map(|rect| {
+                let center_x = rect.min.x + rect.size.x / 2;
+                let center_y = rect.min.y + rect.size.y / 2;
+                format!(
+                    "{}={}",
+                    footprint.card_id,
+                    region.contains_point(center_x, center_y)
+                )
+            })
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    info!(
+        status = ?region.status(),
+        extents = ?(extents.x(), extents.y(), extents.width(), extents.height()),
+        %coverage,
+        %rectangles,
+        "passthrough input region"
+    );
 }
 
 /// Unions every dead zone's screen circle into `region` (board

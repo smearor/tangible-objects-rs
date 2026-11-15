@@ -357,7 +357,11 @@ pub fn run_gui(
                 && let Some(window) = window_probe.upgrade()
             {
                 let (x, y) = event.position().unwrap_or_default();
-                let picked = window.pick(x, y, gtk4::PickFlags::DEFAULT | gtk4::PickFlags::INSENSITIVE);
+                let picked = window.pick(
+                    x,
+                    y,
+                    gtk4::PickFlags::DEFAULT | gtk4::PickFlags::INSENSITIVE,
+                );
                 let mut ancestry = Vec::new();
                 let mut current = picked.clone();
                 while let Some(widget) = current {
