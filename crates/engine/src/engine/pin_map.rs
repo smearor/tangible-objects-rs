@@ -90,7 +90,7 @@ impl PinMap {
             .unzip();
         self.refs
             .similarity_transform((&measured).into(), mapping.as_combination())
-            .map(|transform| transform.angle)
+            .map(|transform| transform.rotation)
     }
 }
 

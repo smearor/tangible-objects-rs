@@ -8,7 +8,6 @@ use super::PinCount;
 use super::RefIndex;
 use super::RefIndices;
 use super::RefPoints;
-use super::RigidTransform;
 use crate::AffinityFactor;
 use crate::Claim;
 use crate::ClaimPool;
@@ -29,6 +28,7 @@ use crate::Region;
 use crate::StageName;
 use crate::TouchSet;
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::RigidTransform;
 use smearor_commons_geometry::Vec2;
 use std::collections::HashSet;
 
@@ -446,7 +446,7 @@ impl TangiblePattern {
         // Try every correspondence consistent with the distance
         // multisets (symmetric figures admit several) and keep the
         // transform with the smallest residual.
-        let mut best: Option<(RigidTransform, Millimeters)> = None;
+        let mut best: Option<(RigidTransform<Millimeters>, Millimeters)> = None;
         for mapping in kept_ref_points.correspondences(measured, self.tolerance) {
             let Some(transform) =
                 kept_ref_points.similarity_transform(measured, mapping.as_combination())
@@ -454,8 +454,8 @@ impl TangiblePattern {
                 continue;
             };
             let residual = Millimeters::new(
-                transform
-                    .residual(&kept_ref_points, measured, mapping.as_combination())
+                kept_ref_points
+                    .residual(&transform, measured, mapping.as_combination())
                     .sqrt(),
             );
             if best.as_ref().is_none_or(|(_, r)| residual < *r) {

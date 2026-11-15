@@ -1,5 +1,5 @@
 use smearor_commons_geometry::Millimeters;
-use smearor_commons_geometry::RotationRad;
+use smearor_commons_geometry::RigidTransform;
 use smearor_commons_geometry::Vec2;
 use std::ops::Deref;
 
@@ -15,7 +15,6 @@ use crate::CombinationBuf;
 use crate::PatternTolerance;
 use crate::PointSet;
 use crate::RefIndices;
-use crate::RigidTransform;
 
 /// Maximum number of correspondence mappings enumerated for a solve -
 /// symmetric footprints admit factorially many; the deterministic
@@ -96,7 +95,7 @@ impl RefPoints {
         &self,
         measured: PointSet<'_>,
         mapping: Combination<'_>,
-    ) -> Option<RigidTransform> {
+    ) -> Option<RigidTransform<Millimeters>> {
         if self.len() < 2
             || measured.len() < 2
             || mapping.len() != measured.len()
@@ -106,23 +105,40 @@ impl RefPoints {
         }
         let ref_center = Vec2::centroid(self);
         let meas_center = Vec2::centroid(measured.as_slice());
-        let mut cross = 0.0;
-        let mut dot = 0.0;
-        for (mi, m) in measured.iter().enumerate() {
-            let r = self[mapping[mi]];
-            let dr = r - ref_center;
-            let dm = *m - meas_center;
-            cross += dr.cross::<f64>(&dm);
-            dot += dr.dot::<f64>(&dm);
-        }
-        if dot.abs() + cross.abs() < 1e-9 {
+        // A coincident side underdetermines the rotation - refuse
+        // rather than substitute an arbitrary angle.
+        if self.iter().all(|p| p.distance_f64(&ref_center) < 1e-9)
+            || measured.iter().all(|p| p.distance_f64(&meas_center) < 1e-9)
+        {
             return None;
         }
-        Some(RigidTransform {
-            angle: RotationRad::new(cross.atan2(dot)),
-            ref_center,
-            meas_center,
-        })
+        // `fit` wants baseline[j] in correspondence with current[j];
+        // permute `self` so slot j holds the ref point of measured[j].
+        let baseline: Vec<Vec2<Millimeters>> = mapping.iter().map(|index| self[*index]).collect();
+        RigidTransform::fit(&baseline, measured.as_slice())
+    }
+
+    /// Sum of squared residuals - `Σ d²` over every ref position's
+    /// transformed distance to its mapped measured point. The ranking
+    /// measure of correspondence enumeration: the lower, the better
+    /// the mapping explains the measurement.
+    pub fn residual(
+        &self,
+        transform: &RigidTransform<Millimeters>,
+        measured: PointSet<'_>,
+        mapping: Combination<'_>,
+    ) -> f64 {
+        self.iter()
+            .enumerate()
+            .map(|(ri, r)| {
+                let measured_index = mapping.iter().position(|&mapped| mapped == ri).unwrap_or(0);
+                transform
+                    .apply(*r)
+                    .distance(&measured[measured_index])
+                    .as_f64()
+            })
+            .map(|d| d * d)
+            .sum()
     }
 
     /// Fits the correspondence of `measured` to `self[kept]` and
@@ -144,8 +160,8 @@ impl RefPoints {
                 continue;
             };
             best.consider(
-                (transform.angle, mapping.clone()),
-                transform.residual(&kept_points, measured, mapping.as_combination()),
+                (transform.rotation, mapping.clone()),
+                kept_points.residual(&transform, measured, mapping.as_combination()),
             );
         }
         best.into_value().map(|(angle, mapping)| {
@@ -372,7 +388,7 @@ mod tests {
             .similarity_transform(measured, (&mapping).into())
             .expect("identity must solve");
         assert!(
-            transform.angle.as_f64().abs() < 1e-9,
+            transform.rotation.as_f64().abs() < 1e-9,
             "identity must not rotate"
         );
         for point in refs.iter() {
@@ -417,6 +433,52 @@ mod tests {
         assert!(
             refs.fit_rotation(&kept, (&measured).into(), PatternTolerance::from(5.0))
                 .is_none()
+        );
+    }
+
+    /// A perfect fit leaves no squared residual at all.
+    #[test]
+    fn residual_zero_on_perfect_fit() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(60.0, 5.0),
+            Vec2::new(70.0, 50.0),
+            Vec2::new(10.0, 45.0),
+        ]
+        .into();
+        let mapping: Vec<usize> = (0..4).collect();
+        let measured: PointSet<'_> = (&refs[..]).into();
+        let transform = refs
+            .similarity_transform(measured, (&mapping).into())
+            .expect("identity must solve");
+        let measured: PointSet<'_> = (&refs[..]).into();
+        assert_eq!(refs.residual(&transform, measured, (&mapping).into()), 0.0);
+    }
+
+    /// A shifted measurement produces a positive residual - the
+    /// transform cannot explain the displacement.
+    #[test]
+    fn residual_positive_on_shifted_measurement() {
+        let refs: RefPoints = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(60.0, 5.0),
+            Vec2::new(70.0, 50.0),
+            Vec2::new(10.0, 45.0),
+        ]
+        .into();
+        let mapping: Vec<usize> = (0..4).collect();
+        let measured: PointSet<'_> = (&refs[..]).into();
+        let transform = refs
+            .similarity_transform(measured, (&mapping).into())
+            .expect("identity must solve");
+        let shifted: Vec<Vec2<Millimeters>> = refs
+            .iter()
+            .map(|p| Vec2::new(p.x + 1.0, p.y + 1.0))
+            .collect();
+        let measured: PointSet<'_> = (&shifted).into();
+        assert!(
+            refs.residual(&transform, measured, (&mapping).into()) > 0.0,
+            "a displaced measurement must leave residual error"
         );
     }
 }

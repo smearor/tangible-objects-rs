@@ -200,7 +200,6 @@ fn ancestor_chain(board: &FloatingBoard, card: &floating_board::Card) -> Vec<Str
     chain
 }
 
-
 /// The passthrough input region in surface coordinates: the rotated
 /// footprints of every card on the board, unioned with the rasterized
 /// screen circles of all registered dead zones. Returns the region
@@ -234,10 +233,7 @@ fn region_extents(region: &Region) -> Option<Rect<Pixels, i32>> {
     }
     let extents = RectangleInt::new(0, 0, 0, 0);
     region.extents(&extents);
-    Some(Rect::new(
-        Vec2::new(extents.x(), extents.y()),
-        Vec2::new(extents.width(), extents.height()),
-    ))
+    Some(Rect::from(extents))
 }
 
 /// The region's first stored rectangle - a direct coordinate probe
@@ -246,11 +242,7 @@ fn first_rectangle(region: &Region) -> Option<Rect<Pixels, i32>> {
     if region.is_empty() || region.num_rectangles() <= 0 {
         return None;
     }
-    let rect = region.rectangle(0);
-    Some(Rect::new(
-        Vec2::new(rect.x(), rect.y()),
-        Vec2::new(rect.width(), rect.height()),
-    ))
+    Some(Rect::from(region.rectangle(0)))
 }
 
 /// Logs the full rectangle list whenever the unioned region changes -
@@ -348,10 +340,13 @@ fn union_dead_zones(
         if radius.as_f64() <= 0.0 {
             continue;
         }
-        for rect in Circle::new(center, radius.as_f64()).region_rects() {
-            if let Err(error) = region.union_rectangle(&RectangleInt::from(rect)) {
-                warn!(%error, zone = %zone.name, "failed to union dead-zone strip");
+        match Circle::new(center, radius.as_f64()).region() {
+            Ok(zone_region) => {
+                if let Err(error) = region.union(&zone_region) {
+                    warn!(%error, zone = %zone.name, "failed to union dead-zone region");
+                }
             }
+            Err(error) => warn!(%error, zone = %zone.name, "failed to rasterize dead-zone region"),
         }
     }
 }
