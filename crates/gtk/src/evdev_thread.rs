@@ -425,7 +425,12 @@ pub fn evdev_thread(
                 // Card-area contacts are GUI interactions, not surface
                 // points - a tap on a card must not break the stability
                 // window (e.g. tapping "save profile" mid-capture).
-                s.filter_card_touches(&mut touches);
+                // Non-live frames only: in live mode `match`es index
+                // into the engine's own touch list, so shrinking it
+                // here would desync the two and panic in draw.
+                if frame.is_none() {
+                    s.filter_card_touches(&mut touches);
+                }
                 // Training mode: flag contact sets that already match a
                 // registered profile - the card warns before a figure
                 // gets trained twice. `frame.is_none()` is the non-live

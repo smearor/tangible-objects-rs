@@ -39,6 +39,18 @@ pub(crate) fn figure_color(id: PatternId) -> Color<f64> {
     FIGURE_ACCENTS[id.as_u32() as usize % FIGURE_ACCENTS.len()]
 }
 
+/// Screen position of the `idx`-th contact - `None` when the index
+/// falls outside the touch list. Match indices reference the engine
+/// frame's own list; a desync between `s.touches` and `s.matches`
+/// must never panic inside the GTK draw callback.
+fn match_pos(
+    touches: TouchSet<'_>,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+    idx: usize,
+) -> Option<Vec2<Pixels>> {
+    touches.as_slice().get(idx).map(|t| to_screen(&t.pos))
+}
+
 /// Draws the full frame: background, overlays, mode scene.
 pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<SharedState>>) {
     let canvas = size.with_unit::<Pixels>().to_f64();
@@ -690,10 +702,8 @@ fn draw_positions(
         let extent = m
             .touch_indices
             .iter()
-            .map(|&idx| {
-                let p = to_screen(&touches[idx].pos);
-                ((p.x - center.x).powi(2) + (p.y - center.y).powi(2)).sqrt()
-            })
+            .filter_map(|&idx| match_pos(touches, to_screen, idx))
+            .map(|p| ((p.x - center.x).powi(2) + (p.y - center.y).powi(2)).sqrt())
             .fold(0.0_f64, f64::max);
         for &idx in &m.touch_indices {
             anchor_of.insert(idx, center);
@@ -894,7 +904,9 @@ fn draw_live(
             let mut x_max = f64::NEG_INFINITY;
             let mut y_max = f64::NEG_INFINITY;
             for &idx in &m.touch_indices {
-                let p = to_screen(&touches[idx].pos);
+                let Some(p) = match_pos(touches, to_screen, idx) else {
+                    continue;
+                };
                 x_min = x_min.min(p.x);
                 y_min = y_min.min(p.y);
                 x_max = x_max.max(p.x);
@@ -962,8 +974,12 @@ fn draw_live(
             cr.set_line_width(2.5);
             for i in 0..n {
                 for j in (i + 1)..n {
-                    let p1 = to_screen(&touches[m.touch_indices[i]].pos);
-                    let p2 = to_screen(&touches[m.touch_indices[j]].pos);
+                    let (Some(p1), Some(p2)) = (
+                        match_pos(touches, to_screen, m.touch_indices[i]),
+                        match_pos(touches, to_screen, m.touch_indices[j]),
+                    ) else {
+                        continue;
+                    };
                     cr.move_to(p1.x, p1.y);
                     cr.line_to(p2.x, p2.y);
                     let _ = cr.stroke();
@@ -972,7 +988,9 @@ fn draw_live(
 
             // Touch points.
             for &idx in &m.touch_indices {
-                let p = to_screen(&touches[idx].pos);
+                let Some(p) = match_pos(touches, to_screen, idx) else {
+                    continue;
+                };
                 color.apply_alpha(cr, alpha);
                 cr.arc(p.x, p.y, 14.0, 0.0, 2.0 * std::f64::consts::PI);
                 let _ = cr.fill();
@@ -989,10 +1007,8 @@ fn draw_live(
         let extent = m
             .touch_indices
             .iter()
-            .map(|&idx| {
-                let p = to_screen(&touches[idx].pos);
-                ((p.x - center.x).powi(2) + (p.y - center.y).powi(2)).sqrt()
-            })
+            .filter_map(|&idx| match_pos(touches, to_screen, idx))
+            .map(|p| ((p.x - center.x).powi(2) + (p.y - center.y).powi(2)).sqrt())
             .fold(0.0_f64, f64::max);
 
         // 0° marker: a wedge along the pattern's orientation axis.
