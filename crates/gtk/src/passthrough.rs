@@ -8,6 +8,7 @@ use floating_board::FloatingBoard;
 use gtk4::cairo::Region;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
+use smearor_commons_geometry::Circle;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::ScaleFactor;
@@ -363,8 +364,8 @@ fn union_dead_zones(
         if radius <= 0.0 {
             continue;
         }
-        for strip in circle_rects(center, radius) {
-            if let Err(error) = region.union_rectangle(&strip) {
+        for rect in Circle::new(center, radius).region_rects() {
+            if let Err(error) = region.union_rectangle(&RectangleInt::from(rect)) {
                 warn!(%error, zone = %zone.name, "failed to union dead-zone strip");
             }
         }
@@ -393,35 +394,10 @@ fn dead_zone_radius_px(
     (rx + ry) / 2.0
 }
 
-/// Rasterizes a screen circle into 1-px-high [`gtk4::cairo::RectangleInt`]
-/// strips - cairo regions are rectangle unions, so the disk becomes one
-/// row per scanline. Each row uses the chord at its center-nearest edge
-/// (the widest the circle reaches inside that row), so the union covers
-/// every point the zone's `contains` would hit.
-fn circle_rects(center: Vec2<Pixels>, radius: f64) -> Vec<RectangleInt> {
-    let top = (center.y - radius).floor() as i32;
-    let bottom = (center.y + radius).ceil() as i32;
-    (top..bottom)
-        .filter_map(|y| {
-            // Distance from the center to the row's nearest edge - zero
-            // when the row straddles the center line.
-            let nearest = (f64::from(y) - center.y)
-                .max(center.y - f64::from(y + 1))
-                .max(0.0);
-            if nearest > radius {
-                return None;
-            }
-            let half = (radius * radius - nearest * nearest).sqrt().max(0.5);
-            let left = (center.x - half).floor() as i32;
-            let right = (center.x + half).ceil() as i32;
-            Some(RectangleInt::new(left, y, right - left, 1))
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use super::circle_rects;
+    use cairo::RectangleInt;
+    use smearor_commons_geometry::Circle;
     use smearor_commons_geometry::Pixels;
     use smearor_commons_geometry::Vec2;
 
@@ -431,7 +407,11 @@ mod tests {
     fn circle_rects_cover_the_disk() {
         let center = Vec2::<Pixels>::new(100.4, 80.6);
         let radius = 30.0;
-        let strips = circle_rects(center, radius);
+        let strips: Vec<RectangleInt> = Circle::new(center, radius)
+            .region_rects()
+            .into_iter()
+            .map(RectangleInt::from)
+            .collect();
         assert!(!strips.is_empty());
         assert!(strips.iter().all(|strip| strip.height() == 1));
         assert!(strips.iter().all(|strip| {
@@ -477,6 +457,7 @@ mod tests {
     /// A degenerate radius produces no strips instead of a phantom row.
     #[test]
     fn circle_rects_empty_for_zero_radius() {
-        assert!(circle_rects(Vec2::<Pixels>::new(10.0, 10.0), 0.0).is_empty());
+        let circle = Circle::new(Vec2::<Pixels>::new(10.0, 10.0), 0.0);
+        assert!(circle.region_rects().is_empty());
     }
 }
