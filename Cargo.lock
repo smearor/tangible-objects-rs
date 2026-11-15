@@ -1052,12 +1052,13 @@ checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 [[package]]
 name = "floating-board"
 version = "0.1.0"
-source = "git+https://github.com/smearor/floating-board-rs.git#217b36638bdab2d7883ec663478e9bdd2fc9e5aa"
+source = "git+https://github.com/smearor/floating-board-rs.git#86f798af357fb6836ab6d2158ba1bf5682fe8b5e"
 dependencies = [
  "fluent-bundle",
  "glib",
  "gtk4",
  "serde",
+ "smearor-commons-color",
  "smearor-commons-geometry",
  "smearor-wrot-rotation",
  "thiserror 2.0.21",

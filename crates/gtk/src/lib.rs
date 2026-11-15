@@ -80,6 +80,11 @@ pub use gui_options::GuiOptions;
 pub use i18n::language_loader;
 pub use shared_state::SharedState;
 
+/// Content padding shared by every card - the wider chrome frame
+/// makes the resize/rotate grips and the quad-finger gestures easier
+/// to hit on a touchscreen.
+pub(crate) const CARD_CONTENT_PADDING: Pixels = Pixels::new(20.0);
+
 /// Fullscreen GTK visualization with control bar and evdev-driven
 /// drawing. `patterns` is pre-loaded by the daemon (`load_patterns`);
 /// `visible` carries the initial window state (`--gui` shows by
@@ -177,8 +182,10 @@ pub fn run_gui(
                 position: CardAnchor::TopRight,
                 anchor_margin: Pixels::new(100.0),
                 bounds_mode: BoundsMode::Contained,
+                content_padding: CARD_CONTENT_PADDING,
                 foldable: true,
                 resizable: true,
+                rotate_grip: true,
                 closable: true,
                 close_action: CardCloseAction::Hide,
                 ..Default::default()
@@ -258,8 +265,10 @@ pub fn run_gui(
                     position: anchor,
                     anchor_margin: Pixels::new(100.0),
                     bounds_mode: BoundsMode::Contained,
+                    content_padding: CARD_CONTENT_PADDING,
                     foldable: true,
                     resizable: true,
+                    rotate_grip: true,
                     // X hides the card (not remove) - the menu re-opens it.
                     closable: true,
                     close_action: CardCloseAction::Hide,
@@ -279,8 +288,10 @@ pub fn run_gui(
                 position: CardAnchor::TopLeft,
                 anchor_margin: Pixels::new(100.0),
                 bounds_mode: BoundsMode::Contained,
+                content_padding: CARD_CONTENT_PADDING,
                 foldable: true,
                 resizable: true,
+                rotate_grip: true,
                 ..Default::default()
             },
         );

@@ -11,10 +11,13 @@ use std::time::Duration;
 
 use floating_board::BoundsMode;
 use floating_board::CardAnchor;
+use floating_board::CardColor;
 use floating_board::CardConfig;
 use floating_board::CardId;
+use floating_board::CardPalette;
 use floating_board::CardPlacement;
 use floating_board::FloatingBoard;
+use smearor_commons_color::Color;
 use smearor_commons_geometry::Pixels;
 
 use gtk4::Align;
@@ -150,6 +153,12 @@ pub fn create_training_card(
             GuiMode::Training => {
                 if let Some(err) = &s.device_error {
                     status.set_label(err);
+                } else if let Some(name) = &s.training_match {
+                    status.set_label(&fl!(
+                        language_loader(),
+                        "train-duplicate",
+                        name = name.as_str()
+                    ));
                 } else if count < 3 {
                     status.set_label(&fl!(
                         language_loader(),
@@ -178,6 +187,15 @@ pub fn create_training_card(
 /// Board id of the training card - the mode watcher adds/removes it,
 /// so it stays out of the static card set.
 const TRAINING_CARD_ID: &str = "training";
+
+/// The training card's color scheme: a muted green header signals
+/// capture mode - consistent with the `TouchStable` scene color that
+/// marks the stable contact set the card waits for.
+fn training_palette() -> CardPalette {
+    let mut palette = CardPalette::new();
+    palette.insert(CardColor::Header, Color::<f64>::new(0.1, 0.3, 0.15));
+    palette
+}
 
 /// Poll cadence for mode changes (same 100 ms as the other card
 /// syncs).
@@ -255,8 +273,11 @@ fn add_training_card(
             position: CardAnchor::BottomLeft,
             anchor_margin: Pixels::new(100.0),
             bounds_mode: BoundsMode::Contained,
+            content_padding: crate::CARD_CONTENT_PADDING,
             foldable: true,
             resizable: true,
+            rotate_grip: true,
+            palette: Some(training_palette()),
             ..Default::default()
         },
     );
