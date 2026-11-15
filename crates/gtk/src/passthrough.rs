@@ -129,24 +129,24 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             let geometry = card.geometry();
             let footprint = card.footprint();
             let extents = region_extents(&footprint);
-            let rendered = card.rendered_bounds();
-            let placed = card.placed_position();
+            let alignment = board.card_alignment(card);
+            let rendered = alignment.rendered;
+            let placed = alignment.placed;
             let mut chain = Vec::new();
-            if let Some(bounds) = rendered {
-                let center = bounds.center();
-                let drift = center - Vec2::from(geometry.position);
-                if card.is_visible() && (drift.x.abs() > 1.0 || drift.y.abs() > 1.0) {
-                    chain = ancestor_chain(board, card);
-                    debug!(
-                        card = %card.id(),
-                        position = ?Vec2::<Pixels>::from(geometry.position),
-                        placed = ?placed.map(|p| (p.x, p.y)),
-                        rendered = ?(bounds.min.x, bounds.min.y, bounds.size.x, bounds.size.y),
-                        drift = ?(drift.x, drift.y),
-                        chain = ?chain,
-                        "rendered card drifted from its model position - input region cannot cover it"
-                    );
-                }
+            if card.is_visible()
+                && let Some(drift) = alignment.drift
+                && (drift.x.abs() > 1.0 || drift.y.abs() > 1.0)
+            {
+                chain = card.ancestor_chain();
+                debug!(
+                    card = %card.id(),
+                    position = ?alignment.position,
+                    placed = ?placed.map(|p| (p.x, p.y)),
+                    rendered = ?rendered.map(|r| (r.min.x, r.min.y, r.size.x, r.size.y)),
+                    drift = ?(drift.x, drift.y),
+                    chain = ?chain,
+                    "rendered card drifted from its model position - input region cannot cover it"
+                );
             }
             debug!(
                 card = %card.id(),
@@ -176,28 +176,6 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             }
         })
         .collect()
-}
-
-/// Every ancestor of the card up to the board with its widget type,
-/// its `(0,0)` origin mapped to board coordinates and its GTK
-/// allocation - the layer-by-layer view that pinpoints which level
-/// of the card → rotation → scaling → layer chain introduces a
-/// render-vs-placement offset.
-fn ancestor_chain(board: &FloatingBoard, card: &floating_board::Card) -> Vec<String> {
-    let mut chain = Vec::new();
-    let mut widget: Option<gtk4::Widget> = Some(card.clone().upcast());
-    while let Some(current) = widget {
-        let origin = current.compute_point(board, &gtk4::graphene::Point::new(0.0, 0.0));
-        let bounds = current.compute_bounds(&current);
-        chain.push(format!(
-            "{}: origin={:?} alloc={:?}",
-            current.type_().name(),
-            origin,
-            bounds
-        ));
-        widget = current.parent();
-    }
-    chain
 }
 
 /// The passthrough input region in surface coordinates: the rotated
