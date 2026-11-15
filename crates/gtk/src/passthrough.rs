@@ -129,7 +129,7 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
             let footprint = card.footprint();
             let extents = region_extents(&footprint);
             let rendered = rendered_bounds(board, card);
-            let placed = placed_position(card);
+            let placed = card.placed_position();
             let mut chain = Vec::new();
             if let Some(bounds) = rendered {
                 let center = Vec2::new(bounds.min.x + bounds.size.x / 2.0, bounds.min.y + bounds.size.y / 2.0);
@@ -213,22 +213,6 @@ fn ancestor_chain(board: &FloatingBoard, card: &floating_board::Card) -> Vec<Str
     chain
 }
 
-/// The transform stack's stored position on the card layer - the
-/// `(x, y)` `gtk4::Fixed` was last asked to place it at. The widget
-/// chain is card → rotation → scaling → layer, so the scaling
-/// widget's parent is the layer and `child_position` reports the
-/// stored `put` spot. `None` when the widget tree is not attached
-/// yet. Comparing `placed` with `rendered.min` shows whether the
-/// layer actually moved the stack where `apply_position` put it;
-/// comparing `placed + size/2` with `position` shows whether the
-/// board's model and its placement agree.
-fn placed_position(card: &floating_board::Card) -> Option<Vec2<Pixels>> {
-    let scaling = card.parent()?.parent()?;
-    let layer = scaling.parent()?;
-    let fixed = layer.downcast::<gtk4::Fixed>().ok()?;
-    let (x, y) = fixed.child_position(&scaling);
-    Some(Vec2::new(x, y))
-}
 
 /// The passthrough input region in surface coordinates: the rotated
 /// footprints of every card on the board, unioned with the rasterized
