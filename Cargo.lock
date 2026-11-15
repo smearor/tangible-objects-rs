@@ -1052,7 +1052,7 @@ checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 [[package]]
 name = "floating-board"
 version = "0.1.0"
-source = "git+https://github.com/smearor/floating-board-rs.git#e10ca20b80ae98a8616a72a8bc8938be573a7a4a"
+source = "git+https://github.com/smearor/floating-board-rs.git#8849773780ad74e15cca0d075ec834c153529431"
 dependencies = [
  "fluent-bundle",
  "glib",
@@ -3374,7 +3374,7 @@ checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 [[package]]
 name = "smearor-commons-animation"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#118ca158a484b6e2c20be89b315d999ce0c4f9a4"
+source = "git+https://github.com/smearor/smearor-commons.git#d9f6f6c6afb6011b9695a05b5f3d8b449d11ffa5"
 dependencies = [
  "gtk4",
  "serde",
@@ -3384,7 +3384,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#118ca158a484b6e2c20be89b315d999ce0c4f9a4"
+source = "git+https://github.com/smearor/smearor-commons.git#d9f6f6c6afb6011b9695a05b5f3d8b449d11ffa5"
 dependencies = [
  "cairo-rs",
  "gtk4",
@@ -3395,7 +3395,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-geometry"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#118ca158a484b6e2c20be89b315d999ce0c4f9a4"
+source = "git+https://github.com/smearor/smearor-commons.git#d9f6f6c6afb6011b9695a05b5f3d8b449d11ffa5"
 dependencies = [
  "async-graphql",
  "cairo-rs",
@@ -3409,7 +3409,7 @@ dependencies = [
 [[package]]
 name = "smearor-wrot-rotation"
 version = "0.3.0"
-source = "git+https://github.com/smearor/smearor-wrot-rotation.git#884004e9a724d27a781dd50861d18c98a5f67a28"
+source = "git+https://github.com/smearor/smearor-wrot-rotation.git#cad37bd1d2767efd8fc231d453da7625db34126b"
 dependencies = [
  "glib",
  "gtk4",
