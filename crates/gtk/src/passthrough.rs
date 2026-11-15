@@ -137,7 +137,7 @@ fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
                 let drift = center - Vec2::from(geometry.position);
                 if card.is_visible() && (drift.x.abs() > 1.0 || drift.y.abs() > 1.0) {
                     chain = ancestor_chain(board, &card);
-                    warn!(
+                    debug!(
                         card = %card.id(),
                         position = ?Vec2::<Pixels>::from(geometry.position),
                         placed = ?placed.map(|p| (p.x, p.y)),
@@ -339,7 +339,7 @@ fn log_region_change(region: &Region, footprints: &[CardFootprint], last_hash: &
         })
         .collect::<Vec<_>>()
         .join(" ");
-    info!(
+    debug!(
         status = ?region.status(),
         extents = ?(extents.x(), extents.y(), extents.width(), extents.height()),
         %coverage,
