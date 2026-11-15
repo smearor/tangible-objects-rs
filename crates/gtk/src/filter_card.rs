@@ -1,5 +1,7 @@
-//! The filter card - the `FilterMode` button group as a movable card
-//! on the `FloatingBoard` (concepts/planned/GUI.md §3).
+//! The filter card - the input-routing controls: the `FilterMode`
+//! button group (evdev proxy suppression) plus the touch-passthrough
+//! toggle (Wayland input region) as a movable card on the
+//! `FloatingBoard` (concepts/planned/GUI.md §3).
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -7,6 +9,7 @@ use std::time::Duration;
 
 use gtk4::Box as GtkBox;
 use gtk4::Orientation;
+use gtk4::Separator;
 use gtk4::ToggleButton;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
@@ -20,7 +23,9 @@ use crate::shared_state::send_command;
 
 /// Builds the filter-card content: a linked `FilterMode` button set -
 /// one checked at a time, commands flow through the control channel
-/// (honored by the proxy in `--filter`; display state otherwise).
+/// (honored by the proxy in `--filter`; display state otherwise) -
+/// and the touch-passthrough toggle, the Wayland-level counterpart
+/// of the filter modes.
 pub fn create_filter_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
     let mode_row = GtkBox::new(Orientation::Vertical, 0);
     mode_row.add_css_class("linked");
@@ -65,23 +70,49 @@ pub fn create_filter_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         mode_buttons.push((btn, mode));
     }
 
+    // Touch passthrough - the Wayland-side counterpart of the filter
+    // modes: while they decide which contacts the evdev proxy forwards
+    // to the system, this one decides which screen regions forward
+    // touches to the application underneath.
+    let passthrough_btn = ToggleButton::with_label(&fl!(language_loader(), "toggle-passthrough"));
+    let initial_passthrough = state
+        .lock()
+        .map(|s| s.touch_passthrough)
+        .unwrap_or_default();
+    passthrough_btn.set_active(initial_passthrough);
+    let state_passthrough = state.clone();
+    passthrough_btn.connect_toggled(move |b| {
+        send_command(
+            &state_passthrough,
+            ControlCommand::SetTouchPassthrough(b.is_active()),
+        );
+    });
+
     let state_sync = state.clone();
+    let passthrough_btn_sync = passthrough_btn.clone();
     let mut applied_mode = current_mode;
+    let mut applied_passthrough = initial_passthrough;
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
-        let mode = match state_sync.lock() {
-            Ok(s) => s.filter_mode,
+        let s = match state_sync.lock() {
+            Ok(s) => s,
             Err(_) => return ControlFlow::Continue,
         };
-        if mode != applied_mode {
-            applied_mode = mode;
+        if s.filter_mode != applied_mode {
+            applied_mode = s.filter_mode;
             for (btn, button_mode) in &mode_buttons {
-                btn.set_active(*button_mode == mode);
+                btn.set_active(*button_mode == applied_mode);
             }
+        }
+        if s.touch_passthrough != applied_passthrough {
+            applied_passthrough = s.touch_passthrough;
+            passthrough_btn_sync.set_active(applied_passthrough);
         }
         ControlFlow::Continue
     });
 
-    let body = GtkBox::new(Orientation::Vertical, 0);
+    let body = GtkBox::new(Orientation::Vertical, 4);
     body.append(&mode_row);
+    body.append(&Separator::new(Orientation::Horizontal));
+    body.append(&passthrough_btn);
     body
 }

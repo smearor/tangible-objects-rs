@@ -677,10 +677,7 @@ impl Engine {
     /// Like [`Self::find_matches`], additionally matching disabled
     /// profiles - the training-card duplicate check treats a disabled
     /// profile as a trained figure, too.
-    pub fn find_matches_including_disabled(
-        &self,
-        touches: TouchSet<'_>,
-    ) -> Vec<PatternMatch> {
+    pub fn find_matches_including_disabled(&self, touches: TouchSet<'_>) -> Vec<PatternMatch> {
         self.patterns().find_matches_including_disabled(touches)
     }
 

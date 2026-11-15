@@ -1000,8 +1000,8 @@ mod tests {
                 .is_empty()
         );
 
-        let matches = PatternSet::from(&patterns[..])
-            .find_matches_including_disabled((&touches).into());
+        let matches =
+            PatternSet::from(&patterns[..]).find_matches_including_disabled((&touches).into());
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].pattern_name.as_str(), "triangle");
     }

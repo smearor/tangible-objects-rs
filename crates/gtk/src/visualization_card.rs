@@ -1,6 +1,6 @@
 //! The visualization card - the canvas overlay toggles (edge margin,
-//! fields, ruler, grid, touch passthrough) as a movable card on the
-//! `FloatingBoard` (concepts/planned/GUI.md §3).
+//! fields, dead zones, spells, ruler, grid, positions) as a movable
+//! card on the `FloatingBoard` (concepts/planned/GUI.md §3).
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -84,11 +84,6 @@ pub fn create_visualization_card(
         &fl!(language_loader(), "toggle-positions"),
         |s| s.positions_visible,
         ControlCommand::SetPositionsVisible,
-    );
-    add_overlay_toggle(
-        &fl!(language_loader(), "toggle-passthrough"),
-        |s| s.touch_passthrough,
-        ControlCommand::SetTouchPassthrough,
     );
 
     // Render-mode cycler - GUI-local: touch points, physical shape,
