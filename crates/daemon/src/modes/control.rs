@@ -350,8 +350,31 @@ pub(crate) fn apply_registration(
         ControlCommand::SetProfileColor { id, color } => {
             let _ = engine.set_pattern_color(id, color);
         }
-        ControlCommand::SaveProfiles { profiles_dir } => {
-            let written = save_profile_states(engine, profiles_dir.as_deref());
+        ControlCommand::SaveProfiles {
+            profiles_dir,
+            renames,
+        } => {
+            // Renames first: the file pass matches patterns by their
+            // (already renamed) name and moves each file to
+            // `<new-name>.toml`, so the old names must be remembered.
+            let mut moved = Vec::new();
+            for (id, name) in renames {
+                let old_name = engine
+                    .patterns()
+                    .iter()
+                    .find(|pattern| pattern.id == id)
+                    .map(|pattern| pattern.name.clone());
+                match engine.rename_pattern(id, name.clone()) {
+                    Ok(()) => {
+                        runtime.rename_profile(id, name.clone());
+                        if let Some(old_name) = old_name {
+                            moved.push((old_name, name));
+                        }
+                    }
+                    Err(reason) => warn!(%reason, %id, "profile rename rejected"),
+                }
+            }
+            let written = save_profile_states(engine, profiles_dir.as_deref(), &moved);
             runtime.set_message(Some(format!("{written} profile(s) saved")));
             info!(%written, "profile states persisted");
         }

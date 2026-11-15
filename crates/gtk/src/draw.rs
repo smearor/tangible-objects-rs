@@ -43,10 +43,11 @@ pub(crate) fn figure_color(id: PatternId) -> Color<f64> {
 pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<SharedState>>) {
     let canvas = size.with_unit::<Pixels>().to_f64();
 
-    let s = match state.lock() {
+    let mut s = match state.lock() {
         Ok(s) => s,
         Err(_) => return,
     };
+    s.canvas_size = canvas;
 
     // The canvas background is the drawing area's own CSS
     // `background-color` (`.surface-bg`, alpha via `BackgroundAlpha`)

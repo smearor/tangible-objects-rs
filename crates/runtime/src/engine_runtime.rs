@@ -288,6 +288,16 @@ impl EngineRuntime {
         }
     }
 
+    /// Updates the published name of a profile - the drain calls it
+    /// after an in-place `rename_pattern` applied to the engine.
+    pub fn rename_profile(&mut self, id: PatternId, name: PatternName) {
+        if let Ok(mut profiles) = self.profiles.write()
+            && let Some(info) = profiles.iter_mut().find(|info| info.pattern_id == id)
+        {
+            info.name = name;
+        }
+    }
+
     /// Removes the published profile entry for `id`.
     pub fn remove_profile(&mut self, id: PatternId) {
         if let Ok(mut profiles) = self.profiles.write() {

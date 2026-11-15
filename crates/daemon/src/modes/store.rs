@@ -5,6 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use tangible_objects_engine::Engine;
+use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
 use tracing::info;
@@ -117,9 +118,16 @@ pub(crate) fn save_dead_zones(engine: &Engine) -> usize {
 /// Rewrites each loaded profile's `enabled`/`color` from the live
 /// engine state - the profiles card's Save button persists the
 /// runtime overrides (`SetProfileEnabled`/`SetProfileColor`) back to
-/// disk. Session-only patterns without a profile file are skipped.
+/// disk. `renames` carries the card's name-entry edits as
+/// `(old name, new name)` pairs: both the file's `name` field and the
+/// file itself move to `<new-name>.toml`. Session-only patterns
+/// without a profile file are skipped.
 /// Returns the number of rewritten files.
-pub(crate) fn save_profile_states(engine: &Engine, profiles_dir: Option<&Path>) -> usize {
+pub(crate) fn save_profile_states(
+    engine: &Engine,
+    profiles_dir: Option<&Path>,
+    renames: &[(PatternName, PatternName)],
+) -> usize {
     let dir = profiles_dir.unwrap_or_else(|| Path::new("profiles"));
     let mut loaded = ProfileFile::load_dir(dir);
     if let Some(store) = runtime_store_dir("profiles.d") {
@@ -133,20 +141,36 @@ pub(crate) fn save_profile_states(engine: &Engine, profiles_dir: Option<&Path>) 
     let patterns = engine.patterns();
     let mut written = 0usize;
     for (path, mut profile) in loaded.profiles {
+        // Apply the rename before the name-keyed pattern lookup - the
+        // engine was already renamed, so the live name matches the new
+        // file name.
+        let moved = renames
+            .iter()
+            .find(|(old, _)| *old == profile.name)
+            .map(|(_, new)| {
+                profile.name = new.clone();
+                path.with_file_name(format!("{}.toml", new.as_str()))
+            });
+        let target = moved.clone().unwrap_or_else(|| path.clone());
         let Some(pattern) = patterns.iter().find(|pattern| pattern.name == profile.name) else {
             continue;
         };
-        if profile.enabled == pattern.enabled && profile.color == pattern.color {
+        if moved.is_none() && profile.enabled == pattern.enabled && profile.color == pattern.color {
             continue;
         }
         profile.enabled = pattern.enabled;
         profile.color = pattern.color;
-        match profile.save(&path) {
+        match profile.save(&target) {
             Ok(()) => {
                 written += 1;
-                info!(path = %path.display(), enabled = pattern.enabled, "profile state saved");
+                if moved.is_some()
+                    && let Err(error) = std::fs::remove_file(&path)
+                {
+                    warn!(%error, path = %path.display(), "stale profile file removal failed");
+                }
+                info!(path = %target.display(), enabled = pattern.enabled, "profile state saved");
             }
-            Err(error) => warn!(%error, path = %path.display(), "profile save failed"),
+            Err(error) => warn!(%error, path = %target.display(), "profile save failed"),
         }
     }
     written
@@ -168,6 +192,7 @@ mod tests {
     use tangible_objects_engine::Engine;
     use tangible_objects_model::FigureColor;
     use tangible_objects_model::PatternId;
+    use tangible_objects_model::PatternName;
     use tangible_objects_model::ProfileFile;
 
     use super::save_profile_states;
@@ -199,11 +224,11 @@ mod tests {
         let mut engine = Engine::new(vec![file.to_pattern(PatternId::new(1))]);
         let color = FigureColor::new(1.0, 0.0, 0.0);
 
-        assert_eq!(save_profile_states(&engine, Some(&dir)), 0);
+        assert_eq!(save_profile_states(&engine, Some(&dir), &[]), 0);
         engine.set_pattern_enabled(PatternId::new(1), true);
         engine.set_pattern_color(PatternId::new(1), color);
 
-        assert_eq!(save_profile_states(&engine, Some(&dir)), 1);
+        assert_eq!(save_profile_states(&engine, Some(&dir), &[]), 1);
         let loaded = ProfileFile::load_dir(&dir)
             .profiles
             .pop()
@@ -226,8 +251,31 @@ mod tests {
             ProfileFile::from_points("ghost", &points, 5.0).to_pattern(PatternId::new(1)),
         ]);
 
-        assert_eq!(save_profile_states(&engine, Some(&dir)), 0);
+        assert_eq!(save_profile_states(&engine, Some(&dir), &[]), 0);
         assert!(ProfileFile::load_dir(&dir).profiles.is_empty());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn save_profile_states_renames_file_and_name_field() {
+        let dir = temp_dir("rename");
+        let points = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(50.0, 0.0),
+            Vec2::new(0.0, 50.0),
+        ];
+        let file = ProfileFile::from_points("fig", &points, 5.0);
+        file.save(&dir.join("fig.toml")).expect("seed profile");
+        let mut engine = Engine::new(vec![file.to_pattern(PatternId::new(1))]);
+        engine
+            .rename_pattern(PatternId::new(1), PatternName::new("figure-two"))
+            .expect("rename applies");
+        let renames = vec![(PatternName::new("fig"), PatternName::new("figure-two"))];
+
+        assert_eq!(save_profile_states(&engine, Some(&dir), &renames), 1);
+        assert!(!dir.join("fig.toml").exists());
+        let loaded = ProfileFile::load(&dir.join("figure-two.toml")).expect("renamed file loads");
+        assert_eq!(loaded.name.as_str(), "figure-two");
         std::fs::remove_dir_all(&dir).ok();
     }
 }

@@ -253,6 +253,10 @@ pub enum ControlCommand {
         /// Profile source directory to scan (`--profiles`); `None`
         /// falls back to the default `profiles/` directory.
         profiles_dir: Option<PathBuf>,
+        /// Renames the profiles card's name entries collected - applied
+        /// to the engine before the file rewrite so each file lands at
+        /// `<new-name>.toml`. Patterns keep their `PatternId`.
+        renames: Vec<(PatternId, PatternName)>,
     },
 }
 

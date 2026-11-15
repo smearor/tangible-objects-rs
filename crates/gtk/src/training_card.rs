@@ -28,8 +28,12 @@ use gtk4::prelude::*;
 use i18n_embed_fl::fl;
 use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Vec2;
+use tangible_objects_model::Lifetime;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::Registration;
+use tangible_objects_runtime::ControlCommand;
+use tokio::sync::oneshot;
 use tracing::error;
 use tracing::info;
 
@@ -37,6 +41,7 @@ use crate::evdev_thread::STABLE_THRESHOLD;
 use crate::gui_mode::GuiMode;
 use crate::language_loader;
 use crate::shared_state::SharedState;
+use crate::shared_state::send_command;
 
 /// Tolerance the saved profile takes (scalar mm).
 const DEFAULT_TOLERANCE: PatternTolerance = PatternTolerance::new(3.0);
@@ -92,7 +97,22 @@ pub fn create_training_card(
         let filepath = PathBuf::from(&filename);
 
         match profile.save(&filepath) {
-            Ok(()) => info!(path = %filepath.display(), "profile saved"),
+            Ok(()) => {
+                info!(path = %filepath.display(), "profile saved");
+                // The file itself is the persistence - register the
+                // pattern for this session so it matches and shows up
+                // on the profiles card without a restart.
+                let (reply, _ignored) = oneshot::channel();
+                send_command(
+                    &state_save,
+                    ControlCommand::Register {
+                        registration: Box::new(Registration::Pattern(profile)),
+                        owner: None,
+                        lifetime: Lifetime::Session,
+                        reply,
+                    },
+                );
+            }
             Err(e) => error!(error = %e, "profile save failed"),
         }
     });
@@ -108,6 +128,11 @@ pub fn create_training_card(
     let name_entry_status = name_entry.clone();
     let save_btn_status = save_btn.clone();
     let mut applied_mode = state_status.lock().map(|s| s.mode).unwrap_or(GuiMode::Live);
+    // The card is built while training mode is already active -
+    // `applied_mode` starts at Training then, so the entry's initial
+    // `set_sensitive` below must run unconditionally on the first
+    // tick, not only on a mode transition.
+    name_entry_status.set_sensitive(applied_mode == GuiMode::Training);
     gtk4::glib::timeout_add_local(Duration::from_millis(100), move || {
         let s = match state_status.lock() {
             Ok(s) => s,

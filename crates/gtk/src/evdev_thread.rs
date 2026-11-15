@@ -404,12 +404,14 @@ pub fn evdev_thread(
                 }
             }
 
-            if raw.is_syn_report() {
+            if raw.is_syn_report()
+                && let Ok(mut s) = state.lock()
+            {
                 // In live mode the frame's own touch list is authoritative:
                 // `touch_indices` in matches index into it (slot-sorted).
                 // The GUI's touch_state (HashMap order) would misalign them
                 // and draw figure lines across objects.
-                let touches = match &frame {
+                let mut touches = match &frame {
                     Some(engine_frame) => engine_frame.touches.clone(),
                     // Non-live modes bypass `engine.process` - apply the
                     // ingest filters separately so dead zones and edge
@@ -420,6 +422,10 @@ pub fn evdev_thread(
                         touches
                     }
                 };
+                // Card-area contacts are GUI interactions, not surface
+                // points - a tap on a card must not break the stability
+                // window (e.g. tapping "save profile" mid-capture).
+                s.filter_card_touches(&mut touches);
                 let count = touches.len();
                 let matches = frame.map(|f| f.matches).unwrap_or_default();
 
@@ -431,14 +437,12 @@ pub fn evdev_thread(
                     stable_frames = 0;
                 }
 
-                if let Ok(mut s) = state.lock() {
-                    s.touches = touches;
-                    s.unfiltered_touches = touch_state.active_touches();
-                    s.tracked = engine.tracked().to_vec();
-                    s.matches = matches;
-                    s.stable_frames = stable_frames;
-                    s.stable = stable_frames >= STABLE_THRESHOLD && count >= 3;
-                }
+                s.touches = touches;
+                s.unfiltered_touches = touch_state.active_touches();
+                s.tracked = engine.tracked().to_vec();
+                s.matches = matches;
+                s.stable_frames = stable_frames;
+                s.stable = stable_frames >= STABLE_THRESHOLD && count >= 3;
             }
         }
     }

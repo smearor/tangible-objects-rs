@@ -14,6 +14,7 @@ use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Vec2;
 use tangible_objects_model::Calibration;
+use tangible_objects_model::CardFootprint;
 use tangible_objects_model::ContactCount;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeviceInfo;
@@ -76,6 +77,16 @@ pub struct SharedState {
     /// Display rotation the mm→px mapping applies (`--display-rotation`)
     /// - the evdev stream always speaks the panel's native frame.
     pub rotation: DisplayRotation,
+    /// Canvas size in pixels - the draw callback writes it every
+    /// frame; `filter_card_touches` needs it to map mm contacts onto
+    /// card footprints.
+    pub canvas_size: Vec2<Pixels>,
+    /// Visible card hit areas in board-layer pixels - the passthrough
+    /// tick collects them whether the input-region sync runs or not.
+    /// Touches landing inside a card are GUI interactions and get
+    /// filtered out of `touches` (a card tap must not disturb the
+    /// training stability window).
+    pub card_footprints: Vec<CardFootprint>,
     /// Canvas background opacity (`--background-alpha`, the alpha
     /// toggle and `SetBackgroundAlpha` commands).
     pub background_alpha: BackgroundAlpha,
@@ -233,6 +244,8 @@ impl SharedState {
             message: None,
             visible: options.visible,
             rotation: options.rotation,
+            canvas_size: Vec2::ZERO,
+            card_footprints: Vec::new(),
             background_alpha: options.background_alpha,
             background_alpha_request: None,
             dead_zones: Vec::new(),
@@ -271,6 +284,38 @@ impl SharedState {
             command_handle: None,
         }))
     }
+
+    /// Drops contacts that land inside a visible card's footprint -
+    /// card taps are GUI interactions, not surface figure points:
+    /// they must not disturb the training stability window or draw a
+    /// surface dot. No-op without calibration, canvas size or cards.
+    pub fn filter_card_touches(&self, touches: &mut Vec<TouchPoint>) {
+        let Some(cal) = self.calibration else {
+            return;
+        };
+        if self.card_footprints.is_empty() || self.canvas_size.x <= 0.0 {
+            return;
+        }
+        let canvas = self.canvas_size;
+        let rotation = self.rotation;
+        touches.retain(|touch| {
+            let px = cal.mm_to_screen(touch.pos, canvas, rotation);
+            !self
+                .card_footprints
+                .iter()
+                .filter(|card| card.visible)
+                .any(|card| point_in_card(px, card))
+        });
+    }
+}
+
+/// Whether `px` lies inside the card's rotated footprint rect - the
+/// point is transformed into the card's local frame (relative to its
+/// center, un-rotated) and tested against the scaled natural size.
+fn point_in_card(px: Vec2<Pixels>, card: &CardFootprint) -> bool {
+    let size = card.natural.to_f64() * f64::from(card.scale);
+    let local = (px - card.position).rotated(-card.rotation.to_rotation_rad());
+    local.x.abs() <= size.x / 2.0 && local.y.abs() <= size.y / 2.0
 }
 
 /// Whether the shared state is in live mode.

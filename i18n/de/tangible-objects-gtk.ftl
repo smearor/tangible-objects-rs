@@ -55,6 +55,7 @@ card-training-title = Training
 col-name = Name
 col-owner = Besitzer
 col-enabled = Aktiv
+col-points = Punkte
 col-position = Position
 col-fields = Felder
 profiles-save = Speichern

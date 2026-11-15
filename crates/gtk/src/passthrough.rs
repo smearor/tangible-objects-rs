@@ -60,6 +60,11 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                     )
                 })
                 .unwrap_or_default();
+        // Card hit areas are collected every tick regardless of the
+        // flag - the device loop filters contacts that land on a card
+        // out of the touch set (a card tap must not disturb training
+        // stability or draw a surface dot).
+        let footprints = card_footprints(&board_sync);
         if enabled {
             // The board must not reset the region on its next
             // allocation - the consumer owns it while passthrough runs.
@@ -83,53 +88,67 @@ pub fn wire_passthrough(board: &FloatingBoard, state: &Arc<Mutex<SharedState>>) 
                     applied = true;
                 }
             }
-            // Debug: dump each card's footprint vs its visible geometry -
-            // a card missing from the union is completely input-dead.
-            // The same data is published to interfaces via
-            // `input_region_diagnostics`.
-            for card in board_sync.cards() {
-                let geometry = card.geometry();
-                let footprint = card.footprint();
-                let extents = region_extents(&footprint);
-                debug!(
-                    card = %card.id(),
-                    position = ?geometry.position,
-                    rotation = ?geometry.rotation,
-                    scale = ?geometry.scale,
-                    footprint = ?extents.map(|e| (e.min.x, e.min.y, e.size.x, e.size.y)),
-                    visible = %card.is_visible(),
-                    "passthrough card footprint"
-                );
-                let (_, natural) = card.measure_size();
-                diagnostics.cards.push(CardFootprint {
-                    card_id: CardId::new(card.id().to_string()),
-                    position: geometry.position.into(),
-                    rotation: geometry.rotation,
-                    scale: ScaleFactor::new(geometry.scale.into()),
-                    visible: card.is_visible(),
-                    footprint: extents,
-                    natural: natural.with_unit::<Pixels>(),
-                    allocated: card.allocated_size().with_unit::<Pixels>(),
-                    footprint_status: footprint.status().err().map(|e| e.to_string()),
-                    footprint_rectangles: footprint.num_rectangles() as usize,
-                    first_rectangle: first_rectangle(&footprint),
-                });
-            }
+            diagnostics.cards = footprints.clone();
             if let Ok(mut s) = state_passthrough.lock() {
                 s.input_region_diagnostics = diagnostics;
             }
-        } else if applied {
-            applied = false;
-            board_sync.set_input_region_managed(false);
-            if let Some(surface) = board_sync.native().and_then(|n| n.surface()) {
-                surface.set_input_region(None);
+        } else {
+            if applied {
+                applied = false;
+                board_sync.set_input_region_managed(false);
+                if let Some(surface) = board_sync.native().and_then(|n| n.surface()) {
+                    surface.set_input_region(None);
+                }
             }
             if let Ok(mut s) = state_passthrough.lock() {
                 s.input_region_diagnostics = InputRegionDiagnostics::default();
             }
         }
+        if let Ok(mut s) = state_passthrough.lock() {
+            s.card_footprints = footprints;
+        }
         ControlFlow::Continue
     });
+}
+
+/// Per-card hit areas in board-layer pixels - every card on the
+/// board with its position, rotation, scale and the rasterized
+/// footprint bounds. Consumed by the input-region diagnostics and by
+/// the device loop's card-touch filter, so it is collected on every
+/// tick whether passthrough is enabled or not.
+fn card_footprints(board: &FloatingBoard) -> Vec<CardFootprint> {
+    board
+        .cards()
+        .iter()
+        .map(|card| {
+            let geometry = card.geometry();
+            let footprint = card.footprint();
+            let extents = region_extents(&footprint);
+            debug!(
+                card = %card.id(),
+                position = ?geometry.position,
+                rotation = ?geometry.rotation,
+                scale = ?geometry.scale,
+                footprint = ?extents.map(|e| (e.min.x, e.min.y, e.size.x, e.size.y)),
+                visible = %card.is_visible(),
+                "passthrough card footprint"
+            );
+            let (_, natural) = card.measure_size();
+            CardFootprint {
+                card_id: CardId::new(card.id().to_string()),
+                position: geometry.position.into(),
+                rotation: geometry.rotation,
+                scale: ScaleFactor::new(geometry.scale.into()),
+                visible: card.is_visible(),
+                footprint: extents,
+                natural: natural.with_unit::<Pixels>(),
+                allocated: card.allocated_size().with_unit::<Pixels>(),
+                footprint_status: footprint.status().err().map(|e| e.to_string()),
+                footprint_rectangles: footprint.num_rectangles() as usize,
+                first_rectangle: first_rectangle(&footprint),
+            }
+        })
+        .collect()
 }
 
 /// The passthrough input region in surface coordinates: the rotated

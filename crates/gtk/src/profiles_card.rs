@@ -27,6 +27,7 @@ use i18n_embed_fl::fl;
 use smearor_commons_color::Color;
 use tangible_objects_model::FigureColor;
 use tangible_objects_model::PatternId;
+use tangible_objects_model::PatternName;
 use tangible_objects_runtime::ControlCommand;
 
 use crate::language_loader;
@@ -38,6 +39,11 @@ use crate::shared_state::send_command;
 struct ProfileRow {
     /// The profile this row displays.
     id: PatternId,
+    /// Editable name cell - the Save button commits changed texts
+    /// as renames.
+    name: gtk4::Entry,
+    /// Pin count cell - the figure's contact count.
+    points: Label,
     /// Registering application cell.
     owner: Label,
     /// Enable switch - sends `SetProfileEnabled`.
@@ -69,6 +75,7 @@ pub fn create_profiles_card(
     grid.set_row_spacing(4);
     for (column, header) in [
         fl!(language_loader(), "col-name"),
+        fl!(language_loader(), "col-points"),
         fl!(language_loader(), "col-owner"),
         fl!(language_loader(), "col-enabled"),
         fl!(language_loader(), "col-color"),
@@ -107,8 +114,11 @@ pub fn create_profiles_card(
                 grid.remove_row(1);
             }
             for (index, profile) in s.profiles.iter().enumerate() {
-                let name = Label::new(Some(profile.name.as_str()));
-                name.set_halign(Align::Start);
+                let name = gtk4::Entry::new();
+                name.set_text(profile.name.as_str());
+                name.set_width_chars(14);
+                let points = Label::new(None);
+                points.set_halign(Align::Start);
                 let owner = Label::new(None);
                 owner.set_halign(Align::Start);
                 let enabled = Switch::new();
@@ -149,12 +159,15 @@ pub fn create_profiles_card(
                 position.set_halign(Align::Start);
                 let row = index as i32 + 1;
                 grid.attach(&name, 0, row, 1, 1);
-                grid.attach(&owner, 1, row, 1, 1);
-                grid.attach(&enabled, 2, row, 1, 1);
-                grid.attach(&color, 3, row, 1, 1);
-                grid.attach(&position, 4, row, 1, 1);
+                grid.attach(&points, 1, row, 1, 1);
+                grid.attach(&owner, 2, row, 1, 1);
+                grid.attach(&enabled, 3, row, 1, 1);
+                grid.attach(&color, 4, row, 1, 1);
+                grid.attach(&position, 5, row, 1, 1);
                 rows.push(ProfileRow {
                     id: profile.pattern_id,
+                    name,
+                    points,
                     owner,
                     enabled,
                     enabled_signal,
@@ -165,6 +178,12 @@ pub fn create_profiles_card(
             }
         }
         for (profile, row) in s.profiles.iter().zip(rows.iter()) {
+            // Sync the entry only while the user is not editing it -
+            // a rewrite under an active cursor would drop keystrokes.
+            if row.name.text() != profile.name.as_str() && !row.name.has_focus() {
+                row.name.set_text(profile.name.as_str());
+            }
+            row.points.set_label(&profile.num_points.to_string());
             // Reflect the live color (declared `color=` or a
             // `SetProfileColor` from elsewhere).
             let expected = s
@@ -222,15 +241,43 @@ pub fn create_profiles_card(
 
     // Persists the runtime `enabled`/`color` overrides of every row
     // back into the profile files (`SaveProfiles` drains through the
-    // device loop like the switches' commands do).
+    // device loop like the switches' commands do). Name entries that
+    // differ from the live name travel as renames - files move to
+    // `<new-name>.toml` and the pattern keeps its `PatternId`.
     let save = Button::with_label(&fl!(language_loader(), "profiles-save"));
     save.set_halign(Align::End);
     let state_save = state.clone();
+    let rows_save = rows.clone();
     save.connect_clicked(move |_| {
+        let renames = {
+            let Ok(s) = state_save.lock() else {
+                return;
+            };
+            rows_save
+                .borrow()
+                .iter()
+                .filter_map(|row| {
+                    s.profiles
+                        .iter()
+                        .find(|profile| profile.pattern_id == row.id)
+                        .filter(|profile| {
+                            let text = row.name.text();
+                            !text.is_empty() && text != profile.name.as_str()
+                        })
+                        .map(|profile| {
+                            (
+                                profile.pattern_id,
+                                PatternName::new(row.name.text().as_str()),
+                            )
+                        })
+                })
+                .collect()
+        };
         send_command(
             &state_save,
             ControlCommand::SaveProfiles {
                 profiles_dir: profiles_dir.clone(),
+                renames,
             },
         );
     });

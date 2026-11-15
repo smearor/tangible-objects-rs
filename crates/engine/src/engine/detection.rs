@@ -338,6 +338,24 @@ impl Engine {
         Ok(())
     }
 
+    /// Renames a registered pattern in place - ID, geometry and
+    /// tracked incumbents are untouched. Names are display labels;
+    /// patterns are keyed by [`PatternId`], so duplicate names do not
+    /// collide.
+    pub fn rename_pattern(
+        &mut self,
+        id: PatternId,
+        name: PatternName,
+    ) -> Result<(), RegistrationError> {
+        match self.patterns.by_id_mut(id) {
+            Some(pattern) => {
+                pattern.name = name;
+                Ok(())
+            }
+            None => Err(RegistrationError::PatternNotFound(id)),
+        }
+    }
+
     /// Fingerprint check of `profile` against all patterns except
     /// `except` (used by add/update).
     fn check_pattern_collision(
