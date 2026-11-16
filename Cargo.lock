@@ -1052,14 +1052,16 @@ checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
 [[package]]
 name = "floating-board"
 version = "0.1.0"
-source = "git+https://github.com/smearor/floating-board-rs.git#c2870c71fb1c923c68e5d8d95cf8893fd052c8c3"
+source = "git+https://github.com/smearor/floating-board-rs.git#bed9259bb8fae509b7f63e0e7cce5769590a8312"
 dependencies = [
  "fluent-bundle",
  "glib",
  "gtk4",
  "serde",
+ "smearor-commons-animation",
  "smearor-commons-color",
  "smearor-commons-geometry",
+ "smearor-commons-layout",
  "smearor-wrot-rotation",
  "thiserror 2.0.21",
  "tracing",
@@ -3374,7 +3376,7 @@ checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 [[package]]
 name = "smearor-commons-animation"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#08b07db4dad28854a1585f92f5f1bbe604ca8667"
+source = "git+https://github.com/smearor/smearor-commons.git#c36e853da3702d6baeca2875aa4255c4d874bf39"
 dependencies = [
  "gtk4",
  "serde",
@@ -3384,7 +3386,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#08b07db4dad28854a1585f92f5f1bbe604ca8667"
+source = "git+https://github.com/smearor/smearor-commons.git#c36e853da3702d6baeca2875aa4255c4d874bf39"
 dependencies = [
  "cairo-rs",
  "gtk4",
@@ -3395,7 +3397,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-geometry"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#08b07db4dad28854a1585f92f5f1bbe604ca8667"
+source = "git+https://github.com/smearor/smearor-commons.git#c36e853da3702d6baeca2875aa4255c4d874bf39"
 dependencies = [
  "async-graphql",
  "cairo-rs",
@@ -3407,9 +3409,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "smearor-commons-layout"
+version = "0.1.0"
+source = "git+https://github.com/smearor/smearor-commons.git#c36e853da3702d6baeca2875aa4255c4d874bf39"
+dependencies = [
+ "serde",
+ "smearor-commons-geometry",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "smearor-wrot-rotation"
 version = "0.3.0"
-source = "git+https://github.com/smearor/smearor-wrot-rotation.git#abf87bda35e0efde457938e3c4640513142d2c8b"
+source = "git+https://github.com/smearor/smearor-wrot-rotation.git#63403009c0959684a550b7c6008578f549557296"
 dependencies = [
  "glib",
  "gtk4",
