@@ -21,10 +21,10 @@
 <a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span><span class="kw">crate</span>::tool_args::UnregisterPatternArgs;
 <a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span><span class="kw">crate</span>::tool_args::UpdateProfileArgs;
 <a href=#23 id=23 data-nosnippet>23</a>
-<a href=#24 id=24 data-nosnippet>24</a><span class="doccomment">/// Profile building shared by `register_pattern`/`update_profile` -
-<a href=#25 id=25 data-nosnippet>25</a>/// validates the flat pin list into `Vec2&lt;Millimeters&gt;` pairs and
-<a href=#26 id=26 data-nosnippet>26</a>/// fills the spawn/stage options.
-<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">fn </span>build_profile(
+<a href=#24 id=24 data-nosnippet>24</a><span class="doccomment">/// Profile building shared by `register_pattern`/`update_profile`/
+<a href=#25 id=25 data-nosnippet>25</a>/// `find_profile` - validates the flat pin list into
+<a href=#26 id=26 data-nosnippet>26</a>/// `Vec2&lt;Millimeters&gt;` pairs and fills the spawn/stage options.
+<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_profile(
 <a href=#28 id=28 data-nosnippet>28</a>    name: <span class="kw-2">&amp;</span>str,
 <a href=#29 id=29 data-nosnippet>29</a>    points: <span class="kw-2">&amp;</span>[f64],
 <a href=#30 id=30 data-nosnippet>30</a>    tolerance: PatternTolerance,

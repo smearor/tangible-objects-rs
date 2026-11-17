@@ -358,140 +358,185 @@
 <a href=#358 id=358 data-nosnippet>358</a>        .<span class="kw">await
 <a href=#359 id=359 data-nosnippet>359</a>    </span>}
 <a href=#360 id=360 data-nosnippet>360</a>
-<a href=#361 id=361 data-nosnippet>361</a>    <span class="doccomment">/// Replaces a registered pattern's geometry while keeping its ID.
-<a href=#362 id=362 data-nosnippet>362</a>    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-<a href=#363 id=363 data-nosnippet>363</a>    </span><span class="kw">async fn </span>update_profile(
-<a href=#364 id=364 data-nosnippet>364</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#365 id=365 data-nosnippet>365</a>        id: PatternId,
-<a href=#366 id=366 data-nosnippet>366</a>        name: PatternName,
-<a href=#367 id=367 data-nosnippet>367</a>        points: Vec&lt;f64&gt;,
-<a href=#368 id=368 data-nosnippet>368</a>        tolerance: PatternTolerance,
-<a href=#369 id=369 data-nosnippet>369</a>        spawn_on_partial: bool,
-<a href=#370 id=370 data-nosnippet>370</a>        spawn_stability: FrameCount,
-<a href=#371 id=371 data-nosnippet>371</a>        stage: StageName,
-<a href=#372 id=372 data-nosnippet>372</a>    ) -&gt; fdo::Result&lt;()&gt; {
-<a href=#373 id=373 data-nosnippet>373</a>        api::pattern::update_profile(
-<a href=#374 id=374 data-nosnippet>374</a>            <span class="self">self</span>,
-<a href=#375 id=375 data-nosnippet>375</a>            id,
-<a href=#376 id=376 data-nosnippet>376</a>            name,
-<a href=#377 id=377 data-nosnippet>377</a>            points,
-<a href=#378 id=378 data-nosnippet>378</a>            tolerance,
-<a href=#379 id=379 data-nosnippet>379</a>            spawn_on_partial,
-<a href=#380 id=380 data-nosnippet>380</a>            spawn_stability,
-<a href=#381 id=381 data-nosnippet>381</a>            stage,
-<a href=#382 id=382 data-nosnippet>382</a>        )
-<a href=#383 id=383 data-nosnippet>383</a>        .<span class="kw">await
-<a href=#384 id=384 data-nosnippet>384</a>    </span>}
-<a href=#385 id=385 data-nosnippet>385</a>
-<a href=#386 id=386 data-nosnippet>386</a>    <span class="doccomment">/// Removes a dynamically registered pattern by ID.
-<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">async fn </span>unregister_pattern(<span class="kw-2">&amp;</span><span class="self">self</span>, id: PatternId) -&gt; fdo::Result&lt;()&gt; {
-<a href=#388 id=388 data-nosnippet>388</a>        api::pattern::unregister_pattern(<span class="self">self</span>, id).<span class="kw">await
+<a href=#361 id=361 data-nosnippet>361</a>    <span class="doccomment">/// Compares a candidate profile (`points` flat `[x0, y0, ...]` mm)
+<a href=#362 id=362 data-nosnippet>362</a>    /// against the registered patterns - `(found, pattern_id, identical,
+<a href=#363 id=363 data-nosnippet>363</a>    /// owner)`: `found` means `register_pattern` would collide,
+<a href=#364 id=364 data-nosnippet>364</a>    /// `identical` flags exact fingerprint equality, `owner` names the
+<a href=#365 id=365 data-nosnippet>365</a>    /// claiming application (`""` = owner-less, claimable).
+<a href=#366 id=366 data-nosnippet>366</a>    </span><span class="kw">async fn </span>find_profile(
+<a href=#367 id=367 data-nosnippet>367</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#368 id=368 data-nosnippet>368</a>        name: PatternName,
+<a href=#369 id=369 data-nosnippet>369</a>        points: Vec&lt;f64&gt;,
+<a href=#370 id=370 data-nosnippet>370</a>        tolerance: PatternTolerance,
+<a href=#371 id=371 data-nosnippet>371</a>    ) -&gt; fdo::Result&lt;(bool, u32, bool, String)&gt; {
+<a href=#372 id=372 data-nosnippet>372</a>        api::pattern::find_profile(<span class="self">self</span>, name, points, tolerance).<span class="kw">await
+<a href=#373 id=373 data-nosnippet>373</a>    </span>}
+<a href=#374 id=374 data-nosnippet>374</a>
+<a href=#375 id=375 data-nosnippet>375</a>    <span class="doccomment">/// Claims an owner-less profile for `owner` - an empty `owner`
+<a href=#376 id=376 data-nosnippet>376</a>    /// defaults to the caller's unique bus name like
+<a href=#377 id=377 data-nosnippet>377</a>    /// `register_pattern`. The profile is addressed by ID -
+<a href=#378 id=378 data-nosnippet>378</a>    /// `find_profile`'s result carries it; profile names are not
+<a href=#379 id=379 data-nosnippet>379</a>    /// unique. `enable` activates the profile in the same operation.
+<a href=#380 id=380 data-nosnippet>380</a>    /// Returns the claimed pattern ID.
+<a href=#381 id=381 data-nosnippet>381</a>    </span><span class="kw">async fn </span>claim_profile(
+<a href=#382 id=382 data-nosnippet>382</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#383 id=383 data-nosnippet>383</a>        id: PatternId,
+<a href=#384 id=384 data-nosnippet>384</a>        owner: Owner,
+<a href=#385 id=385 data-nosnippet>385</a>        enable: bool,
+<a href=#386 id=386 data-nosnippet>386</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#387 id=387 data-nosnippet>387</a>    ) -&gt; fdo::Result&lt;u32&gt; {
+<a href=#388 id=388 data-nosnippet>388</a>        api::pattern::claim_profile(<span class="self">self</span>, id, owner, enable, <span class="kw-2">&amp;</span>header).<span class="kw">await
 <a href=#389 id=389 data-nosnippet>389</a>    </span>}
 <a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>    <span class="doccomment">/// Registers an occupancy field set from a TOML string (same shape as
-<a href=#392 id=392 data-nosnippet>392</a>    /// `--fields` files).
-<a href=#393 id=393 data-nosnippet>393</a>    </span><span class="kw">async fn </span>register_field_set(
-<a href=#394 id=394 data-nosnippet>394</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#395 id=395 data-nosnippet>395</a>        toml_str: <span class="kw-2">&amp;</span>str,
-<a href=#396 id=396 data-nosnippet>396</a>        owner: Owner,
-<a href=#397 id=397 data-nosnippet>397</a>        persistent: bool,
-<a href=#398 id=398 data-nosnippet>398</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#399 id=399 data-nosnippet>399</a>    ) -&gt; fdo::Result&lt;()&gt; {
-<a href=#400 id=400 data-nosnippet>400</a>        api::field_set::register_field_set(<span class="self">self</span>, toml_str, owner, persistent, <span class="kw-2">&amp;</span>header).<span class="kw">await
-<a href=#401 id=401 data-nosnippet>401</a>    </span>}
-<a href=#402 id=402 data-nosnippet>402</a>
-<a href=#403 id=403 data-nosnippet>403</a>    <span class="doccomment">/// Removes a field set by name.
-<a href=#404 id=404 data-nosnippet>404</a>    </span><span class="kw">async fn </span>unregister_field_set(<span class="kw-2">&amp;</span><span class="self">self</span>, name: FieldSetName) -&gt; fdo::Result&lt;()&gt; {
-<a href=#405 id=405 data-nosnippet>405</a>        api::field_set::unregister_field_set(<span class="self">self</span>, name).<span class="kw">await
-<a href=#406 id=406 data-nosnippet>406</a>    </span>}
-<a href=#407 id=407 data-nosnippet>407</a>
-<a href=#408 id=408 data-nosnippet>408</a>    <span class="doccomment">/// Registers a spell gesture from a TOML string (same shape as
-<a href=#409 id=409 data-nosnippet>409</a>    /// `spells.d` files: `name`, `fingers`, `corridor`, `[[strokes]]`
-<a href=#410 id=410 data-nosnippet>410</a>    /// plus the `[arming]` section, SPELLS.md).
-<a href=#411 id=411 data-nosnippet>411</a>    </span><span class="kw">async fn </span>register_spell(
-<a href=#412 id=412 data-nosnippet>412</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#413 id=413 data-nosnippet>413</a>        toml_str: <span class="kw-2">&amp;</span>str,
-<a href=#414 id=414 data-nosnippet>414</a>        owner: Owner,
-<a href=#415 id=415 data-nosnippet>415</a>        persistent: bool,
-<a href=#416 id=416 data-nosnippet>416</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#391 id=391 data-nosnippet>391</a>    <span class="doccomment">/// Releases `owner`'s claim on a profile - an empty `owner`
+<a href=#392 id=392 data-nosnippet>392</a>    /// defaults to the caller's unique bus name. `disable`
+<a href=#393 id=393 data-nosnippet>393</a>    /// deactivates the profile in the same operation. Returns the
+<a href=#394 id=394 data-nosnippet>394</a>    /// released pattern ID; the profile stays registered and keeps
+<a href=#395 id=395 data-nosnippet>395</a>    /// matching.
+<a href=#396 id=396 data-nosnippet>396</a>    </span><span class="kw">async fn </span>release_profile(
+<a href=#397 id=397 data-nosnippet>397</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#398 id=398 data-nosnippet>398</a>        id: PatternId,
+<a href=#399 id=399 data-nosnippet>399</a>        owner: Owner,
+<a href=#400 id=400 data-nosnippet>400</a>        disable: bool,
+<a href=#401 id=401 data-nosnippet>401</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#402 id=402 data-nosnippet>402</a>    ) -&gt; fdo::Result&lt;u32&gt; {
+<a href=#403 id=403 data-nosnippet>403</a>        api::pattern::release_profile(<span class="self">self</span>, id, owner, disable, <span class="kw-2">&amp;</span>header).<span class="kw">await
+<a href=#404 id=404 data-nosnippet>404</a>    </span>}
+<a href=#405 id=405 data-nosnippet>405</a>
+<a href=#406 id=406 data-nosnippet>406</a>    <span class="doccomment">/// Replaces a registered pattern's geometry while keeping its ID.
+<a href=#407 id=407 data-nosnippet>407</a>    </span><span class="attr">#[allow(clippy::too_many_arguments)]
+<a href=#408 id=408 data-nosnippet>408</a>    </span><span class="kw">async fn </span>update_profile(
+<a href=#409 id=409 data-nosnippet>409</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#410 id=410 data-nosnippet>410</a>        id: PatternId,
+<a href=#411 id=411 data-nosnippet>411</a>        name: PatternName,
+<a href=#412 id=412 data-nosnippet>412</a>        points: Vec&lt;f64&gt;,
+<a href=#413 id=413 data-nosnippet>413</a>        tolerance: PatternTolerance,
+<a href=#414 id=414 data-nosnippet>414</a>        spawn_on_partial: bool,
+<a href=#415 id=415 data-nosnippet>415</a>        spawn_stability: FrameCount,
+<a href=#416 id=416 data-nosnippet>416</a>        stage: StageName,
 <a href=#417 id=417 data-nosnippet>417</a>    ) -&gt; fdo::Result&lt;()&gt; {
-<a href=#418 id=418 data-nosnippet>418</a>        api::spell::register_spell(<span class="self">self</span>, toml_str, owner, persistent, <span class="kw-2">&amp;</span>header).<span class="kw">await
-<a href=#419 id=419 data-nosnippet>419</a>    </span>}
-<a href=#420 id=420 data-nosnippet>420</a>
-<a href=#421 id=421 data-nosnippet>421</a>    <span class="doccomment">/// Removes a registered spell by name.
-<a href=#422 id=422 data-nosnippet>422</a>    </span><span class="kw">async fn </span>unregister_spell(<span class="kw-2">&amp;</span><span class="self">self</span>, name: SpellName) -&gt; fdo::Result&lt;()&gt; {
-<a href=#423 id=423 data-nosnippet>423</a>        api::spell::unregister_spell(<span class="self">self</span>, name).<span class="kw">await
-<a href=#424 id=424 data-nosnippet>424</a>    </span>}
-<a href=#425 id=425 data-nosnippet>425</a>
-<a href=#426 id=426 data-nosnippet>426</a>    <span class="doccomment">/// Blacklists a circular spot on the surface (`x`/`y` mm): contacts
-<a href=#427 id=427 data-nosnippet>427</a>    /// inside `radius` mm are dropped at ingest - ghost contacts never
-<a href=#428 id=428 data-nosnippet>428</a>    /// reach tracking or matching. `radius &lt;= 0` picks the 10 mm
-<a href=#429 id=429 data-nosnippet>429</a>    /// default; `persistent` stores the zone in the runtime store.
-<a href=#430 id=430 data-nosnippet>430</a>    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-<a href=#431 id=431 data-nosnippet>431</a>    </span><span class="kw">async fn </span>register_dead_zone(
-<a href=#432 id=432 data-nosnippet>432</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#433 id=433 data-nosnippet>433</a>        name: DeadZoneName,
-<a href=#434 id=434 data-nosnippet>434</a>        x: f64,
-<a href=#435 id=435 data-nosnippet>435</a>        y: f64,
-<a href=#436 id=436 data-nosnippet>436</a>        radius: f64,
-<a href=#437 id=437 data-nosnippet>437</a>        owner: Owner,
-<a href=#438 id=438 data-nosnippet>438</a>        persistent: bool,
-<a href=#439 id=439 data-nosnippet>439</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#440 id=440 data-nosnippet>440</a>    ) -&gt; fdo::Result&lt;()&gt; {
-<a href=#441 id=441 data-nosnippet>441</a>        api::dead_zone::register_dead_zone(<span class="self">self</span>, name, x, y, radius, owner, persistent, <span class="kw-2">&amp;</span>header)
-<a href=#442 id=442 data-nosnippet>442</a>            .<span class="kw">await
-<a href=#443 id=443 data-nosnippet>443</a>    </span>}
-<a href=#444 id=444 data-nosnippet>444</a>
-<a href=#445 id=445 data-nosnippet>445</a>    <span class="doccomment">/// Removes a dead zone by name.
-<a href=#446 id=446 data-nosnippet>446</a>    </span><span class="kw">async fn </span>unregister_dead_zone(<span class="kw-2">&amp;</span><span class="self">self</span>, name: DeadZoneName) -&gt; fdo::Result&lt;()&gt; {
-<a href=#447 id=447 data-nosnippet>447</a>        api::dead_zone::unregister_dead_zone(<span class="self">self</span>, name).<span class="kw">await
-<a href=#448 id=448 data-nosnippet>448</a>    </span>}
-<a href=#449 id=449 data-nosnippet>449</a>
-<a href=#450 id=450 data-nosnippet>450</a>    <span class="doccomment">/// Removes every pattern and field set owned by `owner` - app
-<a href=#451 id=451 data-nosnippet>451</a>    /// cleanup hook; automatic cleanup also fires when a D-Bus caller's
-<a href=#452 id=452 data-nosnippet>452</a>    /// unique name vanishes.
-<a href=#453 id=453 data-nosnippet>453</a>    </span><span class="kw">async fn </span>unregister_owner(<span class="kw-2">&amp;</span><span class="self">self</span>, owner: Owner) -&gt; fdo::Result&lt;()&gt; {
-<a href=#454 id=454 data-nosnippet>454</a>        api::owner::unregister_owner(<span class="self">self</span>, owner).<span class="kw">await
-<a href=#455 id=455 data-nosnippet>455</a>    </span>}
-<a href=#456 id=456 data-nosnippet>456</a>
-<a href=#457 id=457 data-nosnippet>457</a>    <span class="doccomment">/// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
-<a href=#458 id=458 data-nosnippet>458</a>    </span><span class="attr">#[zbus(signal)]
-<a href=#459 id=459 data-nosnippet>459</a>    </span><span class="kw">pub async fn </span>object_moved(
-<a href=#460 id=460 data-nosnippet>460</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#461 id=461 data-nosnippet>461</a>        set_id: TangibleSetId,
-<a href=#462 id=462 data-nosnippet>462</a>        tangible: <span class="kw-2">&amp;</span>TrackedTangible,
-<a href=#463 id=463 data-nosnippet>463</a>    ) -&gt; zbus::Result&lt;()&gt;;
-<a href=#464 id=464 data-nosnippet>464</a>
-<a href=#465 id=465 data-nosnippet>465</a>    <span class="doccomment">/// A field became occupied (debounced placed transition).
-<a href=#466 id=466 data-nosnippet>466</a>    </span><span class="attr">#[zbus(signal)]
-<a href=#467 id=467 data-nosnippet>467</a>    </span><span class="kw">pub async fn </span>field_placed(
-<a href=#468 id=468 data-nosnippet>468</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#469 id=469 data-nosnippet>469</a>        set: <span class="kw-2">&amp;</span>str,
-<a href=#470 id=470 data-nosnippet>470</a>        field: <span class="kw-2">&amp;</span>str,
-<a href=#471 id=471 data-nosnippet>471</a>    ) -&gt; zbus::Result&lt;()&gt;;
-<a href=#472 id=472 data-nosnippet>472</a>
-<a href=#473 id=473 data-nosnippet>473</a>    <span class="doccomment">/// A field became empty (debounced lifted transition).
-<a href=#474 id=474 data-nosnippet>474</a>    </span><span class="attr">#[zbus(signal)]
-<a href=#475 id=475 data-nosnippet>475</a>    </span><span class="kw">pub async fn </span>field_lifted(
-<a href=#476 id=476 data-nosnippet>476</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#477 id=477 data-nosnippet>477</a>        set: <span class="kw-2">&amp;</span>str,
-<a href=#478 id=478 data-nosnippet>478</a>        field: <span class="kw-2">&amp;</span>str,
-<a href=#479 id=479 data-nosnippet>479</a>    ) -&gt; zbus::Result&lt;()&gt;;
-<a href=#480 id=480 data-nosnippet>480</a>
-<a href=#481 id=481 data-nosnippet>481</a>    <span class="doccomment">/// A field's debounced contact count changed.
-<a href=#482 id=482 data-nosnippet>482</a>    </span><span class="attr">#[zbus(signal)]
-<a href=#483 id=483 data-nosnippet>483</a>    </span><span class="kw">pub async fn </span>field_count_changed(
-<a href=#484 id=484 data-nosnippet>484</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#485 id=485 data-nosnippet>485</a>        set: <span class="kw-2">&amp;</span>str,
-<a href=#486 id=486 data-nosnippet>486</a>        field: <span class="kw-2">&amp;</span>str,
-<a href=#487 id=487 data-nosnippet>487</a>        count: u32,
-<a href=#488 id=488 data-nosnippet>488</a>    ) -&gt; zbus::Result&lt;()&gt;;
+<a href=#418 id=418 data-nosnippet>418</a>        api::pattern::update_profile(
+<a href=#419 id=419 data-nosnippet>419</a>            <span class="self">self</span>,
+<a href=#420 id=420 data-nosnippet>420</a>            id,
+<a href=#421 id=421 data-nosnippet>421</a>            name,
+<a href=#422 id=422 data-nosnippet>422</a>            points,
+<a href=#423 id=423 data-nosnippet>423</a>            tolerance,
+<a href=#424 id=424 data-nosnippet>424</a>            spawn_on_partial,
+<a href=#425 id=425 data-nosnippet>425</a>            spawn_stability,
+<a href=#426 id=426 data-nosnippet>426</a>            stage,
+<a href=#427 id=427 data-nosnippet>427</a>        )
+<a href=#428 id=428 data-nosnippet>428</a>        .<span class="kw">await
+<a href=#429 id=429 data-nosnippet>429</a>    </span>}
+<a href=#430 id=430 data-nosnippet>430</a>
+<a href=#431 id=431 data-nosnippet>431</a>    <span class="doccomment">/// Removes a dynamically registered pattern by ID.
+<a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">async fn </span>unregister_pattern(<span class="kw-2">&amp;</span><span class="self">self</span>, id: PatternId) -&gt; fdo::Result&lt;()&gt; {
+<a href=#433 id=433 data-nosnippet>433</a>        api::pattern::unregister_pattern(<span class="self">self</span>, id).<span class="kw">await
+<a href=#434 id=434 data-nosnippet>434</a>    </span>}
+<a href=#435 id=435 data-nosnippet>435</a>
+<a href=#436 id=436 data-nosnippet>436</a>    <span class="doccomment">/// Registers an occupancy field set from a TOML string (same shape as
+<a href=#437 id=437 data-nosnippet>437</a>    /// `--fields` files).
+<a href=#438 id=438 data-nosnippet>438</a>    </span><span class="kw">async fn </span>register_field_set(
+<a href=#439 id=439 data-nosnippet>439</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#440 id=440 data-nosnippet>440</a>        toml_str: <span class="kw-2">&amp;</span>str,
+<a href=#441 id=441 data-nosnippet>441</a>        owner: Owner,
+<a href=#442 id=442 data-nosnippet>442</a>        persistent: bool,
+<a href=#443 id=443 data-nosnippet>443</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#444 id=444 data-nosnippet>444</a>    ) -&gt; fdo::Result&lt;()&gt; {
+<a href=#445 id=445 data-nosnippet>445</a>        api::field_set::register_field_set(<span class="self">self</span>, toml_str, owner, persistent, <span class="kw-2">&amp;</span>header).<span class="kw">await
+<a href=#446 id=446 data-nosnippet>446</a>    </span>}
+<a href=#447 id=447 data-nosnippet>447</a>
+<a href=#448 id=448 data-nosnippet>448</a>    <span class="doccomment">/// Removes a field set by name.
+<a href=#449 id=449 data-nosnippet>449</a>    </span><span class="kw">async fn </span>unregister_field_set(<span class="kw-2">&amp;</span><span class="self">self</span>, name: FieldSetName) -&gt; fdo::Result&lt;()&gt; {
+<a href=#450 id=450 data-nosnippet>450</a>        api::field_set::unregister_field_set(<span class="self">self</span>, name).<span class="kw">await
+<a href=#451 id=451 data-nosnippet>451</a>    </span>}
+<a href=#452 id=452 data-nosnippet>452</a>
+<a href=#453 id=453 data-nosnippet>453</a>    <span class="doccomment">/// Registers a spell gesture from a TOML string (same shape as
+<a href=#454 id=454 data-nosnippet>454</a>    /// `spells.d` files: `name`, `fingers`, `corridor`, `[[strokes]]`
+<a href=#455 id=455 data-nosnippet>455</a>    /// plus the `[arming]` section, SPELLS.md).
+<a href=#456 id=456 data-nosnippet>456</a>    </span><span class="kw">async fn </span>register_spell(
+<a href=#457 id=457 data-nosnippet>457</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#458 id=458 data-nosnippet>458</a>        toml_str: <span class="kw-2">&amp;</span>str,
+<a href=#459 id=459 data-nosnippet>459</a>        owner: Owner,
+<a href=#460 id=460 data-nosnippet>460</a>        persistent: bool,
+<a href=#461 id=461 data-nosnippet>461</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#462 id=462 data-nosnippet>462</a>    ) -&gt; fdo::Result&lt;()&gt; {
+<a href=#463 id=463 data-nosnippet>463</a>        api::spell::register_spell(<span class="self">self</span>, toml_str, owner, persistent, <span class="kw-2">&amp;</span>header).<span class="kw">await
+<a href=#464 id=464 data-nosnippet>464</a>    </span>}
+<a href=#465 id=465 data-nosnippet>465</a>
+<a href=#466 id=466 data-nosnippet>466</a>    <span class="doccomment">/// Removes a registered spell by name.
+<a href=#467 id=467 data-nosnippet>467</a>    </span><span class="kw">async fn </span>unregister_spell(<span class="kw-2">&amp;</span><span class="self">self</span>, name: SpellName) -&gt; fdo::Result&lt;()&gt; {
+<a href=#468 id=468 data-nosnippet>468</a>        api::spell::unregister_spell(<span class="self">self</span>, name).<span class="kw">await
+<a href=#469 id=469 data-nosnippet>469</a>    </span>}
+<a href=#470 id=470 data-nosnippet>470</a>
+<a href=#471 id=471 data-nosnippet>471</a>    <span class="doccomment">/// Blacklists a circular spot on the surface (`x`/`y` mm): contacts
+<a href=#472 id=472 data-nosnippet>472</a>    /// inside `radius` mm are dropped at ingest - ghost contacts never
+<a href=#473 id=473 data-nosnippet>473</a>    /// reach tracking or matching. `radius &lt;= 0` picks the 10 mm
+<a href=#474 id=474 data-nosnippet>474</a>    /// default; `persistent` stores the zone in the runtime store.
+<a href=#475 id=475 data-nosnippet>475</a>    </span><span class="attr">#[allow(clippy::too_many_arguments)]
+<a href=#476 id=476 data-nosnippet>476</a>    </span><span class="kw">async fn </span>register_dead_zone(
+<a href=#477 id=477 data-nosnippet>477</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#478 id=478 data-nosnippet>478</a>        name: DeadZoneName,
+<a href=#479 id=479 data-nosnippet>479</a>        x: f64,
+<a href=#480 id=480 data-nosnippet>480</a>        y: f64,
+<a href=#481 id=481 data-nosnippet>481</a>        radius: f64,
+<a href=#482 id=482 data-nosnippet>482</a>        owner: Owner,
+<a href=#483 id=483 data-nosnippet>483</a>        persistent: bool,
+<a href=#484 id=484 data-nosnippet>484</a>        <span class="attr">#[zbus(header)] </span>header: Header&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#485 id=485 data-nosnippet>485</a>    ) -&gt; fdo::Result&lt;()&gt; {
+<a href=#486 id=486 data-nosnippet>486</a>        api::dead_zone::register_dead_zone(<span class="self">self</span>, name, x, y, radius, owner, persistent, <span class="kw-2">&amp;</span>header)
+<a href=#487 id=487 data-nosnippet>487</a>            .<span class="kw">await
+<a href=#488 id=488 data-nosnippet>488</a>    </span>}
 <a href=#489 id=489 data-nosnippet>489</a>
-<a href=#490 id=490 data-nosnippet>490</a>    <span class="doccomment">/// A lifecycle event occurred (profile/stage/field-set
-<a href=#491 id=491 data-nosnippet>491</a>    /// registration, completion/filter-mode changes, recording
-<a href=#492 id=492 data-nosnippet>492</a>    /// start/stop) - payload is the JSON-serialized `LifecycleEvent`
-<a href=#493 id=493 data-nosnippet>493</a>    /// (same event class the GraphQL `eventStream` exposes).
-<a href=#494 id=494 data-nosnippet>494</a>    </span><span class="attr">#[zbus(signal)]
-<a href=#495 id=495 data-nosnippet>495</a>    </span><span class="kw">pub async fn </span>lifecycle_event(emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;, event: <span class="kw-2">&amp;</span>str) -&gt; zbus::Result&lt;()&gt;;
-<a href=#496 id=496 data-nosnippet>496</a>}
+<a href=#490 id=490 data-nosnippet>490</a>    <span class="doccomment">/// Removes a dead zone by name.
+<a href=#491 id=491 data-nosnippet>491</a>    </span><span class="kw">async fn </span>unregister_dead_zone(<span class="kw-2">&amp;</span><span class="self">self</span>, name: DeadZoneName) -&gt; fdo::Result&lt;()&gt; {
+<a href=#492 id=492 data-nosnippet>492</a>        api::dead_zone::unregister_dead_zone(<span class="self">self</span>, name).<span class="kw">await
+<a href=#493 id=493 data-nosnippet>493</a>    </span>}
+<a href=#494 id=494 data-nosnippet>494</a>
+<a href=#495 id=495 data-nosnippet>495</a>    <span class="doccomment">/// Removes every pattern and field set owned by `owner` - app
+<a href=#496 id=496 data-nosnippet>496</a>    /// cleanup hook; automatic cleanup also fires when a D-Bus caller's
+<a href=#497 id=497 data-nosnippet>497</a>    /// unique name vanishes.
+<a href=#498 id=498 data-nosnippet>498</a>    </span><span class="kw">async fn </span>unregister_owner(<span class="kw-2">&amp;</span><span class="self">self</span>, owner: Owner) -&gt; fdo::Result&lt;()&gt; {
+<a href=#499 id=499 data-nosnippet>499</a>        api::owner::unregister_owner(<span class="self">self</span>, owner).<span class="kw">await
+<a href=#500 id=500 data-nosnippet>500</a>    </span>}
+<a href=#501 id=501 data-nosnippet>501</a>
+<a href=#502 id=502 data-nosnippet>502</a>    <span class="doccomment">/// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
+<a href=#503 id=503 data-nosnippet>503</a>    </span><span class="attr">#[zbus(signal)]
+<a href=#504 id=504 data-nosnippet>504</a>    </span><span class="kw">pub async fn </span>object_moved(
+<a href=#505 id=505 data-nosnippet>505</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#506 id=506 data-nosnippet>506</a>        set_id: TangibleSetId,
+<a href=#507 id=507 data-nosnippet>507</a>        tangible: <span class="kw-2">&amp;</span>TrackedTangible,
+<a href=#508 id=508 data-nosnippet>508</a>    ) -&gt; zbus::Result&lt;()&gt;;
+<a href=#509 id=509 data-nosnippet>509</a>
+<a href=#510 id=510 data-nosnippet>510</a>    <span class="doccomment">/// A field became occupied (debounced placed transition).
+<a href=#511 id=511 data-nosnippet>511</a>    </span><span class="attr">#[zbus(signal)]
+<a href=#512 id=512 data-nosnippet>512</a>    </span><span class="kw">pub async fn </span>field_placed(
+<a href=#513 id=513 data-nosnippet>513</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#514 id=514 data-nosnippet>514</a>        set: <span class="kw-2">&amp;</span>str,
+<a href=#515 id=515 data-nosnippet>515</a>        field: <span class="kw-2">&amp;</span>str,
+<a href=#516 id=516 data-nosnippet>516</a>    ) -&gt; zbus::Result&lt;()&gt;;
+<a href=#517 id=517 data-nosnippet>517</a>
+<a href=#518 id=518 data-nosnippet>518</a>    <span class="doccomment">/// A field became empty (debounced lifted transition).
+<a href=#519 id=519 data-nosnippet>519</a>    </span><span class="attr">#[zbus(signal)]
+<a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">pub async fn </span>field_lifted(
+<a href=#521 id=521 data-nosnippet>521</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#522 id=522 data-nosnippet>522</a>        set: <span class="kw-2">&amp;</span>str,
+<a href=#523 id=523 data-nosnippet>523</a>        field: <span class="kw-2">&amp;</span>str,
+<a href=#524 id=524 data-nosnippet>524</a>    ) -&gt; zbus::Result&lt;()&gt;;
+<a href=#525 id=525 data-nosnippet>525</a>
+<a href=#526 id=526 data-nosnippet>526</a>    <span class="doccomment">/// A field's debounced contact count changed.
+<a href=#527 id=527 data-nosnippet>527</a>    </span><span class="attr">#[zbus(signal)]
+<a href=#528 id=528 data-nosnippet>528</a>    </span><span class="kw">pub async fn </span>field_count_changed(
+<a href=#529 id=529 data-nosnippet>529</a>        emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#530 id=530 data-nosnippet>530</a>        set: <span class="kw-2">&amp;</span>str,
+<a href=#531 id=531 data-nosnippet>531</a>        field: <span class="kw-2">&amp;</span>str,
+<a href=#532 id=532 data-nosnippet>532</a>        count: u32,
+<a href=#533 id=533 data-nosnippet>533</a>    ) -&gt; zbus::Result&lt;()&gt;;
+<a href=#534 id=534 data-nosnippet>534</a>
+<a href=#535 id=535 data-nosnippet>535</a>    <span class="doccomment">/// A lifecycle event occurred (profile/stage/field-set
+<a href=#536 id=536 data-nosnippet>536</a>    /// registration, completion/filter-mode changes, recording
+<a href=#537 id=537 data-nosnippet>537</a>    /// start/stop) - payload is the JSON-serialized `LifecycleEvent`
+<a href=#538 id=538 data-nosnippet>538</a>    /// (same event class the GraphQL `eventStream` exposes).
+<a href=#539 id=539 data-nosnippet>539</a>    </span><span class="attr">#[zbus(signal)]
+<a href=#540 id=540 data-nosnippet>540</a>    </span><span class="kw">pub async fn </span>lifecycle_event(emitter: <span class="kw-2">&amp;</span>SignalEmitter&lt;<span class="lifetime">'_</span>&gt;, event: <span class="kw-2">&amp;</span>str) -&gt; zbus::Result&lt;()&gt;;
+<a href=#541 id=541 data-nosnippet>541</a>}
 </code></pre></div></section></main></body></html>

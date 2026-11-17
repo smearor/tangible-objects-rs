@@ -52,12 +52,16 @@
 <a href=#52 id=52 data-nosnippet>52</a>            RegistrationError::SpellZoneOverlapsField(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
 <a href=#53 id=53 data-nosnippet>53</a>                (RejectionKind::SpellZoneOverlapsField, <span class="prelude-val">None</span>)
 <a href=#54 id=54 data-nosnippet>54</a>            }
-<a href=#55 id=55 data-nosnippet>55</a>        };
-<a href=#56 id=56 data-nosnippet>56</a>        <span class="self">Self </span>{
-<a href=#57 id=57 data-nosnippet>57</a>            reason: error.to_string(),
-<a href=#58 id=58 data-nosnippet>58</a>            kind,
-<a href=#59 id=59 data-nosnippet>59</a>            overlap,
-<a href=#60 id=60 data-nosnippet>60</a>        }
-<a href=#61 id=61 data-nosnippet>61</a>    }
-<a href=#62 id=62 data-nosnippet>62</a>}
+<a href=#55 id=55 data-nosnippet>55</a>            RegistrationError::ProfileAlreadyOwned(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+<a href=#56 id=56 data-nosnippet>56</a>                (RejectionKind::ProfileAlreadyOwned, <span class="prelude-val">None</span>)
+<a href=#57 id=57 data-nosnippet>57</a>            }
+<a href=#58 id=58 data-nosnippet>58</a>            RegistrationError::ProfileNotOwnedBy(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; (RejectionKind::ProfileNotOwnedBy, <span class="prelude-val">None</span>),
+<a href=#59 id=59 data-nosnippet>59</a>        };
+<a href=#60 id=60 data-nosnippet>60</a>        <span class="self">Self </span>{
+<a href=#61 id=61 data-nosnippet>61</a>            reason: error.to_string(),
+<a href=#62 id=62 data-nosnippet>62</a>            kind,
+<a href=#63 id=63 data-nosnippet>63</a>            overlap,
+<a href=#64 id=64 data-nosnippet>64</a>        }
+<a href=#65 id=65 data-nosnippet>65</a>    }
+<a href=#66 id=66 data-nosnippet>66</a>}
 </code></pre></div></section></main></body></html>
