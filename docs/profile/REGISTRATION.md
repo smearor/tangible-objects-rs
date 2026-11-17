@@ -56,6 +56,8 @@ instead of an opaque error:
 | `FIELDS_OVERLAP` | Two fields of the set intersect | `FieldOverlap { first, second, region }` - the offending pair plus intersection region |
 | `DUPLICATE_FIELD_SET` | A field set with this name is registered already | - |
 | `DUPLICATE_DEAD_ZONE` | A dead zone with this name is registered already | - |
+| `PROFILE_ALREADY_OWNED` | The profile is claimed by a different application | - |
+| `PROFILE_NOT_OWNED_BY` | The profile is not claimed by the releasing owner | - |
 
 The same rejections surface on D-Bus as `fdo::Error` carrying the
 `RegistrationError` message.
@@ -73,6 +75,29 @@ The same rejections surface on D-Bus as `fdo::Error` carrying the
 - **`owner`**: free-form string; on D-Bus an empty owner defaults to the
   caller's unique bus name (read from the message header).
 - **`lifetime`**: `session` (default) or `persistent`.
+
+## Adopting existing profiles
+
+A statically loaded or previously released profile has no owner. An
+application that would register a profile the daemon already has -
+the registration rejects with `FINGERPRINT_COLLISION` - can instead
+look it up, verify it is identical and *claim* it:
+
+- `profileLookup`/`find_profile` compares a candidate profile's
+  fingerprint against the registered patterns - the same collision
+  check `registerPattern` rejects on. `matching` reports the colliding
+  pattern's `patternId`, `name`, `owner` and the `identical` flag
+  (elementwise-equal distance fingerprints, not just within-tolerance).
+- `claimProfile`/`claim_profile` binds an owner-less profile to the
+  calling application: it stays registered and keeps matching, but
+  `unregister_owner`/disconnect cleanup releases it back to owner-less state instead of unregistering it - claimed profiles predate their owner and must survive it. Profiles are
+  addressed by `patternId` - `profileLookup`'s match carries it -
+  since profile names are not unique. Re-claiming by the same owner is
+  idempotent; a profile owned by a different application rejects
+  (`PROFILE_ALREADY_OWNED`).
+- `releaseProfile`/`release_profile` gives the claim up again - the
+  profile returns to owner-less state (`PROFILE_NOT_OWNED_BY` when the
+  caller does not hold the claim).
 
 ## Lifetimes & cleanup
 
@@ -94,6 +119,9 @@ The same rejections surface on D-Bus as `fdo::Error` carrying the
 | register pattern | `registerPattern(input, owner, lifetime)` → `RegisterPatternResult` | `register_pattern` | `register_pattern(name, points, tol, owner, persistent, spawn_on_partial, spawn_stability, stage)` |
 | register field set | `registerFieldSet(input, owner, lifetime)` → `RegisterFieldSetResult` | `register_field_set` | `register_field_set(toml, owner, persistent)` |
 | update profile | `updateProfile(id, input)` | `update_profile` | `update_profile(id, name, points, tol, spawn_on_partial, spawn_stability, stage)` |
+| lookup profile | `profileLookup(input)` → `ProfileLookup` | `find_profile` | `find_profile(name, points, tol)` → `(found, id, identical, owner)` |
+| claim profile | `claimProfile(id, owner)` → `ClaimProfileResult` | `claim_profile` | `claim_profile(id, owner)` |
+| release profile | `releaseProfile(id, owner)` → `ReleaseProfileResult` | `release_profile` | `release_profile(id, owner)` |
 | unregister pattern | `unregisterPattern(id)` | `unregister_pattern` | `unregister_pattern(id)` |
 | unregister field set | `unregisterFieldSet(name)` | `unregister_field_set` | `unregister_field_set(name)` |
 | register dead zone | `registerDeadZone(input, owner, lifetime)` → `RegisterDeadZoneResult` | `register_dead_zone` | `register_dead_zone(name, x, y, radius, owner, persistent)` |

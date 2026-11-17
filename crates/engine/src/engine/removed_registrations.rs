@@ -14,6 +14,10 @@ pub struct RemovedRegistrations {
     /// Removed patterns `(id, name)` - the name is needed to
     /// unpersist `profiles.d`.
     pub patterns: Vec<(PatternId, PatternName)>,
+    /// Patterns the owner *claimed* rather than registered - they are
+    /// not removed, only released back to owner-less state; the
+    /// caller updates the published profile owner.
+    pub released_patterns: Vec<(PatternId, PatternName)>,
     /// Removed field sets by name.
     pub field_sets: Vec<FieldSetName>,
     /// Removed dead zones by name.

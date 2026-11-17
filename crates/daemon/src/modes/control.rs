@@ -258,6 +258,35 @@ pub(crate) fn apply_registration(
             }
             let _ = reply.send(result);
         }
+        ControlCommand::LookupProfile { profile, reply } => {
+            let _ = reply.send(engine.lookup_profile(&profile));
+        }
+        ControlCommand::ClaimProfile { id, owner, reply } => {
+            match engine.claim_pattern(id, owner.clone()) {
+                Ok(claimed) => {
+                    info!(%claimed.pattern_id, %claimed.name, ?owner, "profile claimed");
+                    runtime.set_profile_owner(id, Some(owner));
+                    let _ = reply.send(Ok(claimed));
+                }
+                Err(reason) => {
+                    warn!(%reason, "profile claim rejected");
+                    let _ = reply.send(Err(reason));
+                }
+            }
+        }
+        ControlCommand::ReleaseProfile { id, owner, reply } => {
+            match engine.release_pattern(id, &owner) {
+                Ok(released) => {
+                    info!(%released.pattern_id, %released.name, ?owner, "profile released");
+                    runtime.set_profile_owner(id, None);
+                    let _ = reply.send(Ok(released));
+                }
+                Err(reason) => {
+                    warn!(%reason, "profile release rejected");
+                    let _ = reply.send(Err(reason));
+                }
+            }
+        }
         ControlCommand::UpdateProfile { id, profile } => {
             match engine.update_pattern(id, &profile) {
                 Ok(()) => {
@@ -393,6 +422,10 @@ pub(crate) fn apply_registration(
                 unpersist("profiles.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::ProfileUnregistered { pattern_id: *id });
             }
+            for (id, name) in &removed.released_patterns {
+                info!(%id, %name, %owner, "claimed profile released on owner cleanup");
+                runtime.set_profile_owner(*id, None);
+            }
             for name in &removed.field_sets {
                 unpersist("fields.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::FieldSetUnregistered { name: name.clone() });
@@ -409,8 +442,9 @@ pub(crate) fn apply_registration(
             runtime.set_dead_zones(engine.dead_zones().to_vec());
             runtime.set_spells(engine.spells().to_vec());
             info!(
-                %owner, profiles = removed.patterns.len(), field_sets = removed.field_sets.len(),
-                dead_zones = removed.dead_zones.len(), spells = removed.spells.len(),
+                %owner, profiles = removed.patterns.len(), released = removed.released_patterns.len(),
+                field_sets = removed.field_sets.len(), dead_zones = removed.dead_zones.len(),
+                spells = removed.spells.len(),
                 "owner cleaned up"
             );
         }

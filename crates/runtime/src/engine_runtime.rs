@@ -20,6 +20,7 @@ use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
 use tangible_objects_model::InputRegionDiagnostics;
+use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
@@ -285,6 +286,16 @@ impl EngineRuntime {
             && let Some(info) = profiles.iter_mut().find(|info| info.pattern_id == id)
         {
             info.enabled = enabled;
+        }
+    }
+
+    /// Updates the published owner of a profile - the drain calls it
+    /// after `ClaimProfile`/`ReleaseProfile` applied to the engine.
+    pub fn set_profile_owner(&mut self, id: PatternId, owner: Option<Owner>) {
+        if let Ok(mut profiles) = self.profiles.write()
+            && let Some(info) = profiles.iter_mut().find(|info| info.pattern_id == id)
+        {
+            info.owner = owner;
         }
     }
 

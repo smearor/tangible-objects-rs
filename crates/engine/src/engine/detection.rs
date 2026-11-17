@@ -24,7 +24,11 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternSet;
+use tangible_objects_model::ProfileClaimed;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::ProfileLookup;
+use tangible_objects_model::ProfileLookupMatch;
+use tangible_objects_model::ProfileReleased;
 use tangible_objects_model::RawEvent;
 use tangible_objects_model::Region;
 use tangible_objects_model::RegistrationError;
@@ -92,6 +96,11 @@ pub struct Engine {
     next_pattern_id: PatternId,
     /// Owner (registering application) per dynamically added pattern.
     pattern_owners: HashMap<PatternId, Option<Owner>>,
+    /// Patterns an application *claimed* rather than registered
+    /// (`claim_pattern`). Claimed profiles predate their owner -
+    /// statically loaded or released - so owner cleanup releases
+    /// them back to owner-less instead of unregistering them.
+    claimed_patterns: HashSet<PatternId>,
     /// Owner per dynamically added field set, keyed by set name.
     field_set_owners: HashMap<FieldSetName, Option<Owner>>,
     /// Blacklisted surface positions - contacts inside are dropped at
@@ -157,6 +166,7 @@ impl Engine {
             completion: CompletionConfig::default(),
             next_pattern_id,
             pattern_owners: HashMap::new(),
+            claimed_patterns: HashSet::new(),
             field_set_owners: HashMap::new(),
             dead_zones: DeadZones::default(),
             dead_zone_owners: HashMap::new(),
@@ -378,6 +388,7 @@ impl Engine {
     /// reused. Returns `true` when a pattern was removed.
     pub fn remove_pattern(&mut self, id: PatternId) -> bool {
         self.pattern_owners.remove(&id);
+        self.claimed_patterns.remove(&id);
         let before = self.patterns.len();
         self.patterns.retain(|pattern| pattern.id != id);
         if self.patterns.len() != before {
@@ -396,6 +407,105 @@ impl Engine {
     /// The pattern with `id`, if registered.
     pub fn pattern(&self, id: PatternId) -> Option<&TangiblePattern> {
         self.patterns.by_id(id)
+    }
+
+    /// Compares `profile` against the registered patterns - the
+    /// `profileLookup`/`find_profile` check applications run before
+    /// registering to tell "already loaded" from "free to register".
+    ///
+    /// Reports the first pattern whose fingerprint the candidate fits
+    /// within its tolerances (the same collision [`Self::add_pattern`]
+    /// rejects on, evaluated on the distance fingerprints so profiles
+    /// without stored points compare too), plus whether the
+    /// fingerprints are elementwise identical.
+    pub fn lookup_profile(&self, profile: &ProfileFile) -> ProfileLookup {
+        let candidate = profile.to_pattern(PatternId::new(0));
+        let matching = self
+            .patterns
+            .iter()
+            .find(|existing| {
+                candidate.num_points == existing.num_points
+                    && candidate.sorted_distances.len() == existing.sorted_distances.len()
+                    && candidate
+                        .sorted_distances
+                        .deviations(&existing.sorted_distances)
+                        .iter()
+                        .enumerate()
+                        .all(|(i, deviation)| {
+                            deviation.as_millimeters() <= existing.tolerance_at(i).as_millimeters()
+                        })
+            })
+            .map(|existing| ProfileLookupMatch {
+                pattern_id: existing.id,
+                name: existing.name.clone(),
+                owner: self.pattern_owner(existing.id).cloned(),
+                identical: candidate.sorted_distances == existing.sorted_distances,
+            });
+        ProfileLookup { matching }
+    }
+
+    /// Claims the owner-less profile `id` for `owner` (`ClaimProfile`
+    /// command) - the application adopts a statically loaded or
+    /// released profile; owner cleanup releases it back to owner-less
+    /// instead of unregistering it. Re-claiming by the
+    /// same owner is idempotent; a profile owned by a different
+    /// application is rejected. Callers address the profile by ID -
+    /// `lookup_profile`'s match carries it - since profile names are
+    /// not unique.
+    pub fn claim_pattern(
+        &mut self,
+        id: PatternId,
+        owner: Owner,
+    ) -> Result<ProfileClaimed, RegistrationError> {
+        let Some(name) = self.patterns.by_id(id).map(|pattern| pattern.name.clone()) else {
+            return Err(RegistrationError::PatternNotFound(id));
+        };
+        match self.pattern_owner(id) {
+            None => {
+                self.pattern_owners.insert(id, Some(owner));
+                self.claimed_patterns.insert(id);
+            }
+            Some(current) if *current == owner => {
+                return Ok(ProfileClaimed {
+                    pattern_id: id,
+                    name,
+                });
+            }
+            Some(current) => {
+                return Err(RegistrationError::ProfileAlreadyOwned(
+                    name,
+                    current.clone(),
+                ));
+            }
+        }
+        Ok(ProfileClaimed {
+            pattern_id: id,
+            name,
+        })
+    }
+
+    /// Releases `owner`'s claim on profile `id` (`ReleaseProfile`
+    /// command) - the pattern stays registered and keeps matching,
+    /// only the owner binding is cleared.
+    pub fn release_pattern(
+        &mut self,
+        id: PatternId,
+        owner: &Owner,
+    ) -> Result<ProfileReleased, RegistrationError> {
+        let Some(name) = self.patterns.by_id(id).map(|pattern| pattern.name.clone()) else {
+            return Err(RegistrationError::PatternNotFound(id));
+        };
+        match self.pattern_owner(id) {
+            Some(current) if current == owner => {
+                self.pattern_owners.insert(id, None);
+                self.claimed_patterns.remove(&id);
+                Ok(ProfileReleased {
+                    pattern_id: id,
+                    name,
+                })
+            }
+            _ => Err(RegistrationError::ProfileNotOwnedBy(name, owner.clone())),
+        }
     }
 
     /// Enables or disables a pattern at runtime (`SetProfileEnabled`
@@ -447,11 +557,13 @@ impl Engine {
     }
 
     /// Removes every pattern, field set and dead zone owned by `owner`
-    /// (disconnect cleanup). Returns `(id, name)` pairs for patterns
-    /// and names for field sets and dead zones - names let the caller
-    /// remove persisted files too.
+    /// (disconnect cleanup). Patterns the owner *claimed* rather than
+    /// registered are released back to owner-less - they predate their
+    /// owner and must survive it. Returns `(id, name)` pairs for
+    /// removed and released patterns plus names for field sets and
+    /// dead zones - names let the caller remove persisted files too.
     pub fn remove_by_owner(&mut self, owner: &Owner) -> RemovedRegistrations {
-        let patterns: Vec<(PatternId, PatternName)> = self
+        let (released_patterns, patterns): (Vec<_>, Vec<_>) = self
             .pattern_owners
             .iter()
             .filter(|(_, o)| o.as_ref() == Some(owner))
@@ -460,7 +572,11 @@ impl Engine {
                     .by_id(*id)
                     .map(|pattern| (*id, pattern.name.clone()))
             })
-            .collect();
+            .partition(|(id, _)| self.claimed_patterns.contains(id));
+        for (id, _) in &released_patterns {
+            self.pattern_owners.insert(*id, None);
+            self.claimed_patterns.remove(id);
+        }
         for (id, _) in &patterns {
             self.remove_pattern(*id);
         }
@@ -493,6 +609,7 @@ impl Engine {
         }
         RemovedRegistrations {
             patterns,
+            released_patterns,
             field_sets: set_names,
             dead_zones: zone_names,
             spells: spell_names,
@@ -962,6 +1079,7 @@ mod tests {
     use tangible_objects_model::PatternId;
     use tangible_objects_model::ProfileFile;
     use tangible_objects_model::RawEvent;
+    use tangible_objects_model::RegistrationError;
     use tangible_objects_model::TangiblePattern;
     use tangible_objects_model::TouchPointSlot;
 
@@ -1146,6 +1264,142 @@ mod tests {
         );
         let id = engine.add_pattern(&fresh, None).expect("register pattern");
         assert_eq!(id, PatternId::new(2)); // triangle took id 1
+    }
+
+    #[test]
+    fn lookup_profile_reports_identical_collision_and_free() {
+        let engine = Engine::new(vec![triangle_pattern()]);
+
+        // Identical geometry - the same profile under a new name.
+        let same = ProfileFile::from_points(
+            "clone",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(50.0, 0.0),
+                Vec2::new(0.0, 50.0),
+            ],
+            5.0,
+        );
+        let matched = engine
+            .lookup_profile(&same)
+            .matching
+            .expect("identical profile must collide");
+        assert_eq!(matched.pattern_id, PatternId::new(1));
+        assert_eq!(matched.name.as_str(), "triangle");
+        assert!(matched.owner.is_none());
+        assert!(matched.identical);
+
+        // Within tolerance but not the same fingerprint - a collision
+        // `register` would also reject, flagged non-identical.
+        let near = ProfileFile::from_points(
+            "near",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(50.5, 0.0),
+                Vec2::new(0.0, 50.0),
+            ],
+            5.0,
+        );
+        let matched = engine
+            .lookup_profile(&near)
+            .matching
+            .expect("near-identical profile must collide");
+        assert!(!matched.identical);
+
+        // Outside tolerance - registering would not collide.
+        let free = ProfileFile::from_points(
+            "big",
+            &[
+                Vec2::new(0.0, 0.0),
+                Vec2::new(80.0, 0.0),
+                Vec2::new(0.0, 80.0),
+            ],
+            5.0,
+        );
+        assert!(engine.lookup_profile(&free).matching.is_none());
+    }
+
+    #[test]
+    fn claim_pattern_owns_unowned_profile() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        // Statically loaded profiles have no owner - claimable.
+        let claimed = engine
+            .claim_pattern(PatternId::new(1), "app".into())
+            .expect("claim unowned profile");
+        assert_eq!(claimed.pattern_id, PatternId::new(1));
+        assert_eq!(claimed.name.as_str(), "triangle");
+        assert_eq!(
+            engine.pattern_owner(claimed.pattern_id).map(Owner::as_str),
+            Some("app")
+        );
+        // Re-claiming by the same owner is idempotent.
+        engine
+            .claim_pattern(PatternId::new(1), "app".into())
+            .expect("re-claim by same owner");
+        // A different owner is rejected.
+        assert!(matches!(
+            engine.claim_pattern(PatternId::new(1), "other".into()),
+            Err(RegistrationError::ProfileAlreadyOwned(_, _))
+        ));
+        // Owner cleanup releases claimed profiles back to owner-less
+        // instead of unregistering them - they predate their owner.
+        let removed = engine.remove_by_owner(&"app".into());
+        assert!(removed.patterns.is_empty());
+        assert_eq!(removed.released_patterns.len(), 1);
+        assert!(engine.pattern_owner(PatternId::new(1)).is_none());
+        assert!(engine.patterns().iter().any(|p| p.id == PatternId::new(1)));
+    }
+
+    #[test]
+    fn claim_pattern_rejects_unknown_id() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        assert!(matches!(
+            engine.claim_pattern(PatternId::new(99), "app".into()),
+            Err(RegistrationError::PatternNotFound(_))
+        ));
+    }
+
+    #[test]
+    fn release_pattern_clears_the_owner() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        engine
+            .claim_pattern(PatternId::new(1), "app".into())
+            .expect("claim");
+        let released = engine
+            .release_pattern(PatternId::new(1), &"app".into())
+            .expect("release");
+        assert_eq!(released.pattern_id, PatternId::new(1));
+        assert_eq!(released.name.as_str(), "triangle");
+        assert!(engine.pattern_owner(released.pattern_id).is_none());
+        // Releasing again fails - owner-less now.
+        assert!(matches!(
+            engine.release_pattern(PatternId::new(1), &"app".into()),
+            Err(RegistrationError::ProfileNotOwnedBy(_, _))
+        ));
+        // The profile stays registered and matchable.
+        assert!(
+            engine
+                .patterns()
+                .iter()
+                .any(|p| p.id == released.pattern_id)
+        );
+    }
+
+    #[test]
+    fn release_pattern_rejects_foreign_owner() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        engine
+            .claim_pattern(PatternId::new(1), "app".into())
+            .expect("claim");
+        assert!(matches!(
+            engine.release_pattern(PatternId::new(1), &"other".into()),
+            Err(RegistrationError::ProfileNotOwnedBy(_, _))
+        ));
+        // The owner is untouched.
+        assert_eq!(
+            engine.pattern_owner(PatternId::new(1)).map(Owner::as_str),
+            Some("app")
+        );
     }
 
     #[test]

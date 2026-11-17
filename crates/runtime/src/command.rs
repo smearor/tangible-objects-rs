@@ -13,7 +13,10 @@ use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
+use tangible_objects_model::ProfileClaimed;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::ProfileLookup;
+use tangible_objects_model::ProfileReleased;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
@@ -126,6 +129,44 @@ pub enum ControlCommand {
         /// rejection on failure - so interface callers answer with the
         /// real result instead of a fire-and-forget "queued".
         reply: oneshot::Sender<Result<RegistrationApplied, RegistrationError>>,
+    },
+    /// Compares a candidate profile's fingerprint against the
+    /// registered patterns - the `profileLookup`/`find_profile`
+    /// check applications run before `Register` to tell "already
+    /// have it" from "free to register". Runs the same collision
+    /// check `Register` rejects on and reports whether the match is
+    /// elementwise-identical.
+    LookupProfile {
+        /// Candidate profile - boxed like `Register`.
+        profile: Box<ProfileFile>,
+        /// Receives the comparison outcome.
+        reply: oneshot::Sender<ProfileLookup>,
+    },
+    /// Claims an owner-less profile for `owner` (`claimProfile`) - an
+    /// application adopts a statically loaded or released profile so
+    /// `UnregisterOwner`/disconnect cleanup releases it back to owner-less instead of unregistering it. Re-claiming an
+    /// already-owned profile succeeds only for the same owner.
+    /// Profiles are addressed by ID - `LookupProfile`'s match carries
+    /// it - since profile names are not unique.
+    ClaimProfile {
+        /// ID of the profile to claim.
+        id: PatternId,
+        /// Owning application taking over the profile.
+        owner: Owner,
+        /// Receives the claimed profile or the typed rejection.
+        reply: oneshot::Sender<Result<ProfileClaimed, RegistrationError>>,
+    },
+    /// Releases a claimed profile back to owner-less state
+    /// (`releaseProfile`) - the profile stays registered and keeps
+    /// matching, it just leaves the owner's cleanup scope.
+    ReleaseProfile {
+        /// ID of the profile to release.
+        id: PatternId,
+        /// Owner giving up its claim - only the current owner may
+        /// release.
+        owner: Owner,
+        /// Receives the released profile or the typed rejection.
+        reply: oneshot::Sender<Result<ProfileReleased, RegistrationError>>,
     },
     /// Replace a registered pattern's geometry/name while keeping its
     /// ID (`UpdateProfile`). Applies to new matches; tracked tangibles
@@ -283,5 +324,44 @@ impl ControlCommand {
             },
             rx,
         )
+    }
+
+    /// Builds a `LookupProfile` command plus the receiver its caller
+    /// awaits for the comparison outcome.
+    pub fn lookup_profile(profile: ProfileFile) -> (Self, oneshot::Receiver<ProfileLookup>) {
+        let (reply, rx) = oneshot::channel();
+        (
+            Self::LookupProfile {
+                profile: Box::new(profile),
+                reply,
+            },
+            rx,
+        )
+    }
+
+    /// Builds a `ClaimProfile` command plus the receiver its caller
+    /// awaits for the claimed profile or the typed rejection.
+    pub fn claim_profile(
+        id: PatternId,
+        owner: Owner,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<ProfileClaimed, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (Self::ClaimProfile { id, owner, reply }, rx)
+    }
+
+    /// Builds a `ReleaseProfile` command plus the receiver its caller
+    /// awaits for the released profile or the typed rejection.
+    pub fn release_profile(
+        id: PatternId,
+        owner: Owner,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<ProfileReleased, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (Self::ReleaseProfile { id, owner, reply }, rx)
     }
 }

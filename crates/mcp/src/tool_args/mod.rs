@@ -2,6 +2,8 @@
 //! `JsonSchema` for the rmcp parameter surface.
 
 mod analyze;
+mod claim_profile;
+mod find_profile;
 mod get_pose;
 mod list_profiles;
 mod record_label;
@@ -10,6 +12,7 @@ mod register_dead_zone;
 mod register_field_set;
 mod register_pattern;
 mod register_spell;
+mod release_profile;
 mod set_background_alpha;
 mod set_completion;
 mod set_dead_zones_visible;
@@ -35,6 +38,8 @@ mod unregister_spell;
 mod update_profile;
 
 pub use analyze::AnalyzeArgs;
+pub use claim_profile::ClaimProfileArgs;
+pub use find_profile::FindProfileArgs;
 pub use get_pose::GetPoseArgs;
 pub use list_profiles::ListProfilesArgs;
 pub use record_label::SetRecordLabelArgs;
@@ -43,6 +48,7 @@ pub use register_dead_zone::RegisterDeadZoneArgs;
 pub use register_field_set::RegisterFieldSetArgs;
 pub use register_pattern::RegisterPatternArgs;
 pub use register_spell::RegisterSpellArgs;
+pub use release_profile::ReleaseProfileArgs;
 pub use set_background_alpha::SetBackgroundAlphaArgs;
 pub use set_completion::SetCompletionArgs;
 pub use set_dead_zones_visible::SetDeadZonesVisibleArgs;

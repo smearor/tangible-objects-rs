@@ -52,6 +52,10 @@ impl From<RegistrationError> for RegistrationRejected {
             RegistrationError::SpellZoneOverlapsField(_, _) => {
                 (RejectionKind::SpellZoneOverlapsField, None)
             }
+            RegistrationError::ProfileAlreadyOwned(_, _) => {
+                (RejectionKind::ProfileAlreadyOwned, None)
+            }
+            RegistrationError::ProfileNotOwnedBy(_, _) => (RejectionKind::ProfileNotOwnedBy, None),
         };
         Self {
             reason: error.to_string(),

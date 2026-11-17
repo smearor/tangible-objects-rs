@@ -36,4 +36,8 @@ pub enum RejectionKind {
     /// The spell's exclusive zone overlaps a field (SPELLS.md's
     /// zone/field exclusion).
     SpellZoneOverlapsField,
+    /// The profile already has a different owner.
+    ProfileAlreadyOwned,
+    /// The profile is not owned by the releasing application.
+    ProfileNotOwnedBy,
 }

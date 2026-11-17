@@ -1,17 +1,26 @@
-//! `register_pattern()`, `update_profile()`, `unregister_pattern()`
-//! and `unregister_owner()` methods of [`GraphQLClient`].
+//! `register_pattern()`, `update_profile()`, `unregister_pattern()`,
+//! `claim_profile()`, `release_profile()` and `unregister_owner()`
+//! methods of [`GraphQLClient`].
 
+use tangible_objects_model::ClaimProfileResult;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RegisterPatternResult;
+use tangible_objects_model::ReleaseProfileResult;
 
 use crate::ClientError;
 use crate::GraphQLClient;
+use crate::mutations::pattern::claim::mutation::ClaimProfile;
+use crate::mutations::pattern::claim::result::ClaimProfileResultFragment;
+use crate::mutations::pattern::claim::variables::ClaimProfileVariables;
 use crate::mutations::pattern::register::mutation::RegisterPattern;
 use crate::mutations::pattern::register::result::RegisterPatternResultFragment;
 use crate::mutations::pattern::register::variables::RegisterPatternVariables;
+use crate::mutations::pattern::release::mutation::ReleaseProfile;
+use crate::mutations::pattern::release::result::ReleaseProfileResultFragment;
+use crate::mutations::pattern::release::variables::ReleaseProfileVariables;
 use crate::mutations::pattern::unregister::mutation::UnregisterPattern;
 use crate::mutations::pattern::unregister::variables::UnregisterPatternVariables;
 use crate::mutations::pattern::unregister_owner::mutation::UnregisterOwner;
@@ -57,6 +66,52 @@ impl GraphQLClient {
             },
         )
         .await
+    }
+
+    /// Claims an owner-less profile for `owner` (`claimProfile`) - the
+    /// application adopts a statically loaded or released profile so
+    /// `unregister_owner`/disconnect cleanup releases it back to owner-less instead of unregistering it. The profile is
+    /// addressed by ID - `lookup_profile`'s match carries it; profile
+    /// names are not unique. The result union carries the claimed
+    /// profile or the typed rejection (`PATTERN_NOT_FOUND`,
+    /// `PROFILE_ALREADY_OWNED`).
+    pub async fn claim_profile(
+        &self,
+        id: PatternId,
+        owner: &Owner,
+    ) -> Result<ClaimProfileResult, ClientError> {
+        let fragment: ClaimProfileResultFragment = self
+            .call_mutation::<ClaimProfile, _, _>(
+                "claimProfile",
+                ClaimProfileVariables {
+                    id,
+                    owner: owner.clone(),
+                },
+            )
+            .await?;
+        fragment.into_result()
+    }
+
+    /// Releases `owner`'s claim on a profile (`releaseProfile`) - the
+    /// profile stays registered and keeps matching; it only leaves the
+    /// owner's cleanup scope. The result union carries the released
+    /// profile or the typed rejection (`PATTERN_NOT_FOUND`,
+    /// `PROFILE_NOT_OWNED_BY`).
+    pub async fn release_profile(
+        &self,
+        id: PatternId,
+        owner: &Owner,
+    ) -> Result<ReleaseProfileResult, ClientError> {
+        let fragment: ReleaseProfileResultFragment = self
+            .call_mutation::<ReleaseProfile, _, _>(
+                "releaseProfile",
+                ReleaseProfileVariables {
+                    id,
+                    owner: owner.clone(),
+                },
+            )
+            .await?;
+        fragment.into_result()
     }
 
     /// Removes a registered pattern (`unregisterPattern`).

@@ -99,6 +99,103 @@ pub(crate) async fn register_pattern(
     }
 }
 
+/// Compares a candidate profile against the registered patterns - the
+/// `find_profile` check applications run before registering:
+/// `(found, pattern_id, identical, owner)` tells the caller whether
+/// the profile is already loaded and the same (`identical` flags exact
+/// fingerprint equality), plus who owns it (`""` = owner-less,
+/// claimable via `claim_profile`).
+pub(crate) async fn find_profile(
+    service: &EngineService,
+    name: PatternName,
+    points: Vec<f64>,
+    tolerance: PatternTolerance,
+) -> fdo::Result<(bool, u32, bool, String)> {
+    let profile = build_profile(
+        &name,
+        &points,
+        tolerance,
+        false,
+        FrameCount::new(0),
+        &"".into(),
+    )?;
+    let (command, rx) = ControlCommand::lookup_profile(profile);
+    service
+        .handle
+        .send_command(command)
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))?;
+    match rx.await {
+        Ok(lookup) => Ok(match lookup.matching {
+            Some(matching) => (
+                true,
+                matching.pattern_id.as_u32(),
+                matching.identical,
+                matching
+                    .owner
+                    .map(|owner| owner.as_str().to_string())
+                    .unwrap_or_default(),
+            ),
+            None => (false, 0, false, String::new()),
+        }),
+        Err(_) => Err(fdo::Error::Failed(
+            "device loop closed the profile lookup reply".to_string(),
+        )),
+    }
+}
+
+/// Claims an owner-less profile for `owner` - an empty `owner`
+/// defaults to the caller's unique bus name like `register_pattern`.
+/// The profile is addressed by ID - `find_profile`'s result carries
+/// it; profile names are not unique. Returns the claimed pattern ID;
+/// a profile owned by a different application is rejected.
+pub(crate) async fn claim_profile(
+    service: &EngineService,
+    id: PatternId,
+    owner: Owner,
+    header: &Header<'_>,
+) -> fdo::Result<u32> {
+    let (command, rx) = ControlCommand::claim_profile(id, service.session_owner(owner, header));
+    service
+        .handle
+        .send_command(command)
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))?;
+    match rx.await {
+        Ok(result) => result
+            .map(|claimed| claimed.pattern_id.as_u32())
+            .map_err(|reason| fdo::Error::Failed(format!("rejected: {reason}"))),
+        Err(_) => Err(fdo::Error::Failed(
+            "device loop closed the claim reply".to_string(),
+        )),
+    }
+}
+
+/// Releases `owner`'s claim on a profile - an empty `owner` defaults
+/// to the caller's unique bus name. Returns the released pattern ID;
+/// the profile stays registered and keeps matching.
+pub(crate) async fn release_profile(
+    service: &EngineService,
+    id: PatternId,
+    owner: Owner,
+    header: &Header<'_>,
+) -> fdo::Result<u32> {
+    let (command, rx) = ControlCommand::release_profile(id, service.session_owner(owner, header));
+    service
+        .handle
+        .send_command(command)
+        .await
+        .map_err(|_| fdo::Error::Failed("device loop is not running".to_string()))?;
+    match rx.await {
+        Ok(result) => result
+            .map(|released| released.pattern_id.as_u32())
+            .map_err(|reason| fdo::Error::Failed(format!("rejected: {reason}"))),
+        Err(_) => Err(fdo::Error::Failed(
+            "device loop closed the release reply".to_string(),
+        )),
+    }
+}
+
 /// Replaces a registered pattern's geometry while keeping its ID.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn update_profile(

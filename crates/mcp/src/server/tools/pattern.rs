@@ -21,10 +21,10 @@ use crate::tool_args::RegisterPatternArgs;
 use crate::tool_args::UnregisterPatternArgs;
 use crate::tool_args::UpdateProfileArgs;
 
-/// Profile building shared by `register_pattern`/`update_profile` -
-/// validates the flat pin list into `Vec2<Millimeters>` pairs and
-/// fills the spawn/stage options.
-fn build_profile(
+/// Profile building shared by `register_pattern`/`update_profile`/
+/// `find_profile` - validates the flat pin list into
+/// `Vec2<Millimeters>` pairs and fills the spawn/stage options.
+pub(crate) fn build_profile(
     name: &str,
     points: &[f64],
     tolerance: PatternTolerance,

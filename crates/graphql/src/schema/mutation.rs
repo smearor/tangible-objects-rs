@@ -4,6 +4,7 @@ use async_graphql::Context;
 use async_graphql::Error;
 use async_graphql::Object;
 use async_graphql::Result;
+use tangible_objects_model::ClaimProfileResult;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeadZoneName;
@@ -27,6 +28,7 @@ use tangible_objects_model::RegisterPatternResult;
 use tangible_objects_model::RegisterSpellResult;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
+use tangible_objects_model::ReleaseProfileResult;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::SpellRegistered;
@@ -328,6 +330,53 @@ impl MutationRoot {
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)
+    }
+
+    /// Claims an owner-less profile for `owner` - the application
+    /// adopts a statically loaded or released profile so
+    /// `unregisterOwner`/disconnect cleanup releases it back to owner-less instead of unregistering it. The profile is
+    /// addressed by ID - `profileLookup`'s match carries it - since
+    /// profile names are not unique. Re-claiming by the same owner is
+    /// idempotent; a profile owned by someone else is rejected
+    /// (`PROFILE_ALREADY_OWNED`).
+    async fn claim_profile(
+        &self,
+        ctx: &Context<'_>,
+        id: PatternId,
+        owner: Owner,
+    ) -> Result<ClaimProfileResult> {
+        let (command, rx) = ControlCommand::claim_profile(id, owner);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(claimed)) => Ok(ClaimProfileResult::Claimed(claimed)),
+            Ok(Err(error)) => Ok(ClaimProfileResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the claim reply")),
+        }
+    }
+
+    /// Releases `owner`'s claim on a profile - the profile stays
+    /// registered and keeps matching; it only leaves the owner's
+    /// cleanup scope. Rejected when `owner` does not hold the claim
+    /// (`PROFILE_NOT_OWNED_BY`).
+    async fn release_profile(
+        &self,
+        ctx: &Context<'_>,
+        id: PatternId,
+        owner: Owner,
+    ) -> Result<ReleaseProfileResult> {
+        let (command, rx) = ControlCommand::release_profile(id, owner);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(released)) => Ok(ReleaseProfileResult::Released(released)),
+            Ok(Err(error)) => Ok(ReleaseProfileResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the release reply")),
+        }
     }
 
     /// Removes a dynamically registered pattern by ID.

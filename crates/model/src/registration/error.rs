@@ -1,6 +1,7 @@
 use crate::DeadZoneName;
 use crate::FieldName;
 use crate::FieldSetName;
+use crate::Owner;
 use crate::PatternId;
 use crate::PatternName;
 use crate::Region;
@@ -42,4 +43,13 @@ pub enum RegistrationError {
     /// responses.
     #[error("spell '{0}' exclusive zone overlaps field '{1}'")]
     SpellZoneOverlapsField(SpellName, FieldName),
+    /// The profile already has a different owner - only owner-less
+    /// profiles are claimable (`claimProfile`). Carries the profile
+    /// name for logging; the claim itself addresses the profile by ID.
+    #[error("profile '{0}' is already owned by '{1}'")]
+    ProfileAlreadyOwned(PatternName, Owner),
+    /// The profile is not owned by the releasing application - either
+    /// owner-less or claimed by a different owner (`releaseProfile`).
+    #[error("profile '{0}' is not owned by '{1}'")]
+    ProfileNotOwnedBy(PatternName, Owner),
 }

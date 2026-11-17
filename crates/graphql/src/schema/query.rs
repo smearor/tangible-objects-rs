@@ -14,14 +14,18 @@ use tangible_objects_model::FilterMode;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::ProfileLookup;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedTangible;
+use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::DeviceInfo;
 use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::ProfileInfo;
 use tangible_objects_runtime::RecordingStatus;
+
+use crate::schema::input::RegisterPatternInput;
 
 /// Read access to the detection state.
 pub struct QueryRoot;
@@ -70,6 +74,29 @@ impl QueryRoot {
             })
             .filter(|info| !(static_only.unwrap_or(false) && info.owner.is_some()))
             .collect())
+    }
+
+    /// Compares a candidate profile's fingerprint against the
+    /// registered patterns - "does the daemon already have this
+    /// profile, and is it the same one". Runs the same collision check
+    /// `registerPattern` rejects on; `matching.identical` flags exact
+    /// fingerprint equality and `matching.owner` shows whether the
+    /// profile is claimable.
+    async fn profile_lookup(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterPatternInput,
+    ) -> Result<ProfileLookup> {
+        let profile = ProfileFile::try_from(&input)?;
+        let (command, rx) = ControlCommand::lookup_profile(profile);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| {
+                async_graphql::Error::new("control channel closed: device loop is not running")
+            })?;
+        rx.await
+            .map_err(|_| async_graphql::Error::new("device loop closed the profile lookup reply"))
     }
 
     /// Attached input device - name and axis calibration. Needed by remote

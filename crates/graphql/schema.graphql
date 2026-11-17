@@ -21,6 +21,17 @@ enum AnalysisMode {
 }
 
 """
+`claimProfile` result union - the applied outcome either claimed
+the profile for the owner (carrying its pattern ID) or carries the
+typed rejection (`PATTERN_NOT_FOUND`, `PROFILE_ALREADY_OWNED`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union ClaimProfileResult = ProfileClaimed | RegistrationRejected
+
+"""
 Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
 
 A partial match predicts the missing pins' expected positions from the
@@ -214,6 +225,9 @@ rendered contacts match what the user sees on the rotated screen.
 The direction is **clockwise as seen by the viewer**: `Deg90` is the
 panel's native landscape top edge displayed on the viewer's right.
 When the desktop is rotated the other way, use `Deg270`.
+
+The geometry lives on [`QuarterTurn`]; this enum carries the
+cynic/serde wire shape for the display domain.
 """
 enum DisplayRotation {
 	"""
@@ -677,6 +691,23 @@ type MutationRoot {
 	"""
 	updateProfile(id: PatternId!, input: RegisterPatternInput!): Boolean!
 	"""
+	Claims an owner-less profile for `owner` - the application
+	adopts a statically loaded or released profile so
+	`unregisterOwner`/disconnect cleanup releases it back to owner-less instead of unregistering it. The profile is
+	addressed by ID - `profileLookup`'s match carries it - since
+	profile names are not unique. Re-claiming by the same owner is
+	idempotent; a profile owned by someone else is rejected
+	(`PROFILE_ALREADY_OWNED`).
+	"""
+	claimProfile(id: PatternId!, owner: Owner!): ClaimProfileResult!
+	"""
+	Releases `owner`'s claim on a profile - the profile stays
+	registered and keeps matching; it only leaves the owner's
+	cleanup scope. Rejected when `owner` does not hold the claim
+	(`PROFILE_NOT_OWNED_BY`).
+	"""
+	releaseProfile(id: PatternId!, owner: Owner!): ReleaseProfileResult!
+	"""
 	Removes a dynamically registered pattern by ID.
 	"""
 	unregisterPattern(id: PatternId!): Boolean!
@@ -741,25 +772,36 @@ scalar PatternTolerance
 scalar PinCount
 
 """
-A 2D point or vector tagged with its coordinate unit `U`.
-
-The phantom unit distinguishes positions in millimeters
-(`Vec2<Millimeters>`), raw device units (`Vec2<RawAxisValue>`) and screen
-pixels (`Vec2<Pixels>`) so they cannot be mixed up. Components stay plain
-`f64`; the unit only labels which coordinate space the point lives in.
-Serializes as a flat `{"x": .., "y": ..}` map; the unit marker is skipped.
-With the `async-graphql` feature, `Vec2<Millimeters>` is exposed as the
-GraphQL object type `Point`.
+`Vec2<Millimeters>` is exposed as the GraphQL object type `Point`.
+A `SimpleObject` derive cannot express the doubly-generic struct
+(it would require `T: OutputType` on every instantiation), so the
+concrete object is declared as resolvers on the `f64` millimeter
+instantiation only.
 """
 type Point {
 	"""
-	X coordinate in the unit `U`.
+	X coordinate in millimeters.
 	"""
 	x: Float!
 	"""
-	Y coordinate in the unit `U`.
+	Y coordinate in millimeters.
 	"""
 	y: Float!
+}
+
+"""
+`claimProfile` applied - carries the claimed pattern's ID so the
+client can adopt it (track/unregister) directly.
+"""
+type ProfileClaimed {
+	"""
+	ID of the claimed pattern.
+	"""
+	patternId: PatternId!
+	"""
+	Name of the claimed profile.
+	"""
+	name: PatternName!
 }
 
 """
@@ -808,6 +850,69 @@ type ProfileInfo {
 	enabled: Boolean!
 }
 
+"""
+`profileLookup` result - how a candidate profile compares against
+the registered patterns.
+
+Runs the same fingerprint collision check `registerPattern`
+rejects on: `matching` reports the first registered pattern whose
+fingerprint the candidate fits within tolerance.
+"""
+type ProfileLookup {
+	"""
+	The colliding registered pattern; `None` means
+	`registerPattern` with the same input would not hit a
+	`FINGERPRINT_COLLISION` rejection.
+	"""
+	matching: ProfileLookupMatch
+}
+
+"""
+A registered pattern matching a `profileLookup` candidate's
+fingerprint - the answer to "does the daemon already have this
+profile, and is it the same one".
+"""
+type ProfileLookupMatch {
+	"""
+	ID of the matching registered pattern.
+	"""
+	patternId: PatternId!
+	"""
+	Name of the matching registered pattern - compare against the
+	candidate's name; fingerprints alone do not prove name equality.
+	"""
+	name: PatternName!
+	"""
+	Owning application of the registered pattern; `None` for
+	statically loaded or released profiles - `claimProfile`
+	targets exactly this state.
+	"""
+	owner: Owner
+	"""
+	Exact fingerprint equality: the registered pattern's sorted
+	distance fingerprint equals the candidate's elementwise.
+	`false` means the candidate merely collides within the
+	registered pattern's tolerance - a different profile geometry.
+	"""
+	identical: Boolean!
+}
+
+"""
+`releaseProfile` applied - the profile returned to owner-less
+state; carries the pattern's ID for symmetric handling with
+[`crate::ProfileClaimed`].
+"""
+type ProfileReleased {
+	"""
+	ID of the released pattern.
+	"""
+	patternId: PatternId!
+	"""
+	Name of the released profile.
+	"""
+	name: PatternName!
+}
+
 type QueryRoot {
 	"""
 	All currently tracked tangibles.
@@ -827,6 +932,15 @@ type QueryRoot {
 	filters to profiles without an owner (loaded at startup).
 	"""
 	profiles(owner: Owner, staticOnly: Boolean): [ProfileInfo!]!
+	"""
+	Compares a candidate profile's fingerprint against the
+	registered patterns - "does the daemon already have this
+	profile, and is it the same one". Runs the same collision check
+	`registerPattern` rejects on; `matching.identical` flags exact
+	fingerprint equality and `matching.owner` shows whether the
+	profile is claimable.
+	"""
+	profileLookup(input: RegisterPatternInput!): ProfileLookup!
 	"""
 	Attached input device - name and axis calibration. Needed by remote
 	clients before converting this host's raw recordings (TRAINING.md
@@ -1177,7 +1291,26 @@ enum RejectionKind {
 	zone/field exclusion).
 	"""
 	SPELL_ZONE_OVERLAPS_FIELD
+	"""
+	The profile already has a different owner.
+	"""
+	PROFILE_ALREADY_OWNED
+	"""
+	The profile is not owned by the releasing application.
+	"""
+	PROFILE_NOT_OWNED_BY
 }
+
+"""
+`releaseProfile` result union - the applied outcome either
+released the profile back to owner-less state or carries the typed
+rejection (`PATTERN_NOT_FOUND`, `PROFILE_NOT_OWNED_BY`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union ReleaseProfileResult = ProfileReleased | RegistrationRejected
 
 scalar RotationRad
 

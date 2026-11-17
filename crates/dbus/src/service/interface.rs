@@ -358,6 +358,46 @@ impl EngineService {
         .await
     }
 
+    /// Compares a candidate profile (`points` flat `[x0, y0, ...]` mm)
+    /// against the registered patterns - `(found, pattern_id, identical,
+    /// owner)`: `found` means `register_pattern` would collide,
+    /// `identical` flags exact fingerprint equality, `owner` names the
+    /// claiming application (`""` = owner-less, claimable).
+    async fn find_profile(
+        &self,
+        name: PatternName,
+        points: Vec<f64>,
+        tolerance: PatternTolerance,
+    ) -> fdo::Result<(bool, u32, bool, String)> {
+        api::pattern::find_profile(self, name, points, tolerance).await
+    }
+
+    /// Claims an owner-less profile for `owner` - an empty `owner`
+    /// defaults to the caller's unique bus name like
+    /// `register_pattern`. The profile is addressed by ID -
+    /// `find_profile`'s result carries it; profile names are not
+    /// unique. Returns the claimed pattern ID.
+    async fn claim_profile(
+        &self,
+        id: PatternId,
+        owner: Owner,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<u32> {
+        api::pattern::claim_profile(self, id, owner, &header).await
+    }
+
+    /// Releases `owner`'s claim on a profile - an empty `owner`
+    /// defaults to the caller's unique bus name. Returns the released
+    /// pattern ID; the profile stays registered and keeps matching.
+    async fn release_profile(
+        &self,
+        id: PatternId,
+        owner: Owner,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<u32> {
+        api::pattern::release_profile(self, id, owner, &header).await
+    }
+
     /// Replaces a registered pattern's geometry while keeping its ID.
     #[allow(clippy::too_many_arguments)]
     async fn update_profile(

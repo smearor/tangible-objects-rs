@@ -9,6 +9,7 @@ pub(crate) mod device;
 pub(crate) mod field_sets;
 pub(crate) mod message;
 pub(crate) mod metrics;
+pub(crate) mod profile_lookup;
 pub(crate) mod profiles;
 pub(crate) mod recording;
 pub(crate) mod sets;
