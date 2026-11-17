@@ -70,6 +70,7 @@ use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
 use tangible_objects_model::DetectionConfig;
 use tangible_objects_model::PatternBuf;
+use tracing::debug;
 use tracing::info;
 use tracing::warn;
 
@@ -374,7 +375,7 @@ pub fn run_gui(
                     ));
                     current = widget.parent();
                 }
-                info!(
+                debug!(
                     event = ?event_type,
                     x,
                     y,
