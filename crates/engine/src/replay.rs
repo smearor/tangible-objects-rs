@@ -24,6 +24,10 @@ pub struct EvtestReplay {
     calibration: Option<Calibration>,
     /// Device name from the `Input device name:` header line, if any.
     device_name: Option<String>,
+    /// Device vendor from the `Input device ID:` header line, if any.
+    vendor: Option<u16>,
+    /// Device product from the `Input device ID:` header line, if any.
+    product: Option<u16>,
 }
 
 impl EvtestReplay {
@@ -34,6 +38,8 @@ impl EvtestReplay {
             reader: BufReader::new(file),
             calibration: None,
             device_name: None,
+            vendor: None,
+            product: None,
         };
         replay.parse_header();
         Ok(replay)
@@ -72,6 +78,12 @@ impl EvtestReplay {
                 .and_then(|rest| rest.strip_suffix("\"\n"))
             {
                 self.device_name = Some(name.to_string());
+            }
+
+            // `Input device ID: bus 0x3 vendor 0x457 product 0x11dc ...`
+            if line.starts_with("Input device ID:") {
+                self.vendor = parse_hex_field(&line, "vendor");
+                self.product = parse_hex_field(&line, "product");
             }
 
             if line.contains("Event code") && line.contains("ABS_MT_POSITION_X") {
@@ -132,6 +144,13 @@ impl EvtestReplay {
     /// Device name from the `Input device name:` header line, if present.
     pub fn device_name(&self) -> Option<&str> {
         self.device_name.as_deref()
+    }
+
+    /// Device `vendor:product` pair from the `Input device ID:` header
+    /// line - resolves the recording against the device registry the
+    /// same way the daemon resolves a live device.
+    pub fn device_ids(&self) -> Option<(u16, u16)> {
+        self.vendor.zip(self.product)
     }
 
     /// Returns the next parsed event, skipping non-event lines.
@@ -217,6 +236,16 @@ fn parse_value_line(line: &str, keyword: &str) -> Option<f64> {
     }
 }
 
+/// Hex field of an `Input device ID:` line - `vendor 0x457` /
+/// `product 0x11dc` style.
+fn parse_hex_field(line: &str, field: &str) -> Option<u16> {
+    line.split_whitespace()
+        .skip_while(|part| *part != field)
+        .nth(1)
+        .and_then(|value| value.strip_prefix("0x"))
+        .and_then(|hex| u16::from_str_radix(hex, 16).ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::parse_evtest_line;
@@ -276,23 +305,41 @@ mod tests {
         use crate::Engine;
         use tangible_objects_model::ProfileFile;
 
+        use tangible_objects_model::DeviceRegistry;
+
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let patterns = ProfileFile::load_dir(&root.join("profiles")).into_patterns();
+        // Profiles whose figures no longer exist physically live under
+        // `tests/fixtures/profiles` - merged here so fixture replays keep
+        // their detection coverage without polluting the production
+        // `profiles/` directory.
+        let mut dir = ProfileFile::load_dir(&root.join("profiles"));
+        dir.profiles
+            .extend(ProfileFile::load_dir(&root.join("tests/fixtures/profiles")).profiles);
+        let patterns = dir.into_patterns();
         assert!(!patterns.is_empty(), "regression profiles missing");
+        let registry = DeviceRegistry::builtin();
 
         // (fixture, expected total frames, expected frames with tracked tangibles)
         let cases: [(&str, u64, u64); 5] = [
             ("figure-tracking.txt", 0, 0),
             ("figure-tracking-2.txt", 0, 0),
             ("figure-tracking-3.txt", 692, 0),
-            ("figure-tracking-4.txt", 595, 583),
+            ("figure-tracking-4.txt", 595, 566),
             ("figure-tracking-5.txt", 572, 524),
         ];
         for (name, want_frames, want_detected) in cases {
             let mut replay = EvtestReplay::open(&root.join("tests").join("fixtures").join(name))
                 .unwrap_or_else(|e| panic!("open {name}: {e}"));
             let mut engine = Engine::new(patterns.clone());
-            if let Some(calibration) = replay.calibration() {
+            // The device profile's measured resolution wins over the
+            // firmware-reported header values - same resolution the
+            // daemon applies to the live device.
+            let calibration = replay
+                .device_ids()
+                .and_then(|(vendor, product)| registry.find_by_ids(vendor, product))
+                .map(|profile| profile.calibration())
+                .or_else(|| replay.calibration());
+            if let Some(calibration) = calibration {
                 engine.set_calibration(calibration);
             }
             let mut frames = 0u64;
