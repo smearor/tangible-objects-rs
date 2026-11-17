@@ -13,4 +13,7 @@ pub(crate) struct ClaimProfileVariables {
     pub id: PatternId,
     /// Claiming application.
     pub owner: Owner,
+    /// Activate the profile in the same operation - `None`/`false`
+    /// keeps its current enabled state.
+    pub enable: Option<bool>,
 }

@@ -26,4 +26,7 @@ pub struct ProfileReleased {
     pub pattern_id: PatternId,
     /// Name of the released profile.
     pub name: PatternName,
+    /// Enabled state after the release - `false` when the release's
+    /// `disable` argument deactivated the profile.
+    pub enabled: bool,
 }

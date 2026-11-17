@@ -12,4 +12,7 @@ pub(crate) struct ReleaseProfileVariables {
     pub id: PatternId,
     /// Owner giving up its claim.
     pub owner: Owner,
+    /// Deactivate the profile in the same operation - `None`/`false`
+    /// keeps its current enabled state.
+    pub disable: Option<bool>,
 }

@@ -101,6 +101,12 @@ pub struct Engine {
     /// statically loaded or released - so owner cleanup releases
     /// them back to owner-less instead of unregistering them.
     claimed_patterns: HashSet<PatternId>,
+    /// Claimed patterns that were *disabled* before the claim and got
+    /// enabled by it (`claim_pattern(..., enable: true)`). Owner
+    /// cleanup reverts that activation so an "inactive by default"
+    /// profile returns to its default state when the claiming
+    /// application goes away.
+    claim_enabled: HashSet<PatternId>,
     /// Owner per dynamically added field set, keyed by set name.
     field_set_owners: HashMap<FieldSetName, Option<Owner>>,
     /// Blacklisted surface positions - contacts inside are dropped at
@@ -167,6 +173,7 @@ impl Engine {
             next_pattern_id,
             pattern_owners: HashMap::new(),
             claimed_patterns: HashSet::new(),
+            claim_enabled: HashSet::new(),
             field_set_owners: HashMap::new(),
             dead_zones: DeadZones::default(),
             dead_zone_owners: HashMap::new(),
@@ -389,6 +396,7 @@ impl Engine {
     pub fn remove_pattern(&mut self, id: PatternId) -> bool {
         self.pattern_owners.remove(&id);
         self.claimed_patterns.remove(&id);
+        self.claim_enabled.remove(&id);
         let before = self.patterns.len();
         self.patterns.retain(|pattern| pattern.id != id);
         if self.patterns.len() != before {
@@ -447,15 +455,18 @@ impl Engine {
     /// Claims the owner-less profile `id` for `owner` (`ClaimProfile`
     /// command) - the application adopts a statically loaded or
     /// released profile; owner cleanup releases it back to owner-less
-    /// instead of unregistering it. Re-claiming by the
-    /// same owner is idempotent; a profile owned by a different
-    /// application is rejected. Callers address the profile by ID -
+    /// instead of unregistering it. Re-claiming by the same owner is
+    /// idempotent; a profile owned by a different application is
+    /// rejected. Callers address the profile by ID -
     /// `lookup_profile`'s match carries it - since profile names are
-    /// not unique.
+    /// not unique. `enable` activates a disabled profile in the same
+    /// operation; owner cleanup reverts that activation so an
+    /// "inactive by default" profile returns to its default state.
     pub fn claim_pattern(
         &mut self,
         id: PatternId,
         owner: Owner,
+        enable: bool,
     ) -> Result<ProfileClaimed, RegistrationError> {
         let Some(name) = self.patterns.by_id(id).map(|pattern| pattern.name.clone()) else {
             return Err(RegistrationError::PatternNotFound(id));
@@ -465,12 +476,7 @@ impl Engine {
                 self.pattern_owners.insert(id, Some(owner));
                 self.claimed_patterns.insert(id);
             }
-            Some(current) if *current == owner => {
-                return Ok(ProfileClaimed {
-                    pattern_id: id,
-                    name,
-                });
-            }
+            Some(current) if *current == owner => {}
             Some(current) => {
                 return Err(RegistrationError::ProfileAlreadyOwned(
                     name,
@@ -478,19 +484,35 @@ impl Engine {
                 ));
             }
         }
+        // Enabling via the claim is tracked so owner cleanup can
+        // revert it - only activations done here count, a profile
+        // that was already enabled keeps its state.
+        if enable
+            && let Some(pattern) = self.patterns.by_id_mut(id)
+            && !pattern.enabled
+        {
+            pattern.enabled = true;
+            self.claim_enabled.insert(id);
+            self.matching_dirty = true;
+        }
         Ok(ProfileClaimed {
             pattern_id: id,
             name,
+            enabled: self.patterns.by_id(id).is_some_and(|p| p.enabled),
         })
     }
 
     /// Releases `owner`'s claim on profile `id` (`ReleaseProfile`
     /// command) - the pattern stays registered and keeps matching,
-    /// only the owner binding is cleared.
+    /// only the owner binding is cleared. `disable` deactivates the
+    /// profile in the same operation - the counterpart of
+    /// `claim_pattern`'s `enable` for "needed only while the
+    /// application runs" profiles.
     pub fn release_pattern(
         &mut self,
         id: PatternId,
         owner: &Owner,
+        disable: bool,
     ) -> Result<ProfileReleased, RegistrationError> {
         let Some(name) = self.patterns.by_id(id).map(|pattern| pattern.name.clone()) else {
             return Err(RegistrationError::PatternNotFound(id));
@@ -499,9 +521,18 @@ impl Engine {
             Some(current) if current == owner => {
                 self.pattern_owners.insert(id, None);
                 self.claimed_patterns.remove(&id);
+                self.claim_enabled.remove(&id);
+                if disable
+                    && let Some(pattern) = self.patterns.by_id_mut(id)
+                    && pattern.enabled
+                {
+                    pattern.enabled = false;
+                    self.matching_dirty = true;
+                }
                 Ok(ProfileReleased {
                     pattern_id: id,
                     name,
+                    enabled: self.patterns.by_id(id).is_some_and(|p| p.enabled),
                 })
             }
             _ => Err(RegistrationError::ProfileNotOwnedBy(name, owner.clone())),
@@ -576,6 +607,15 @@ impl Engine {
         for (id, _) in &released_patterns {
             self.pattern_owners.insert(*id, None);
             self.claimed_patterns.remove(id);
+            // A profile the claim activated returns to its
+            // pre-claim (disabled) state - "inactive by default"
+            // profiles stay inactive once their owner is gone.
+            if self.claim_enabled.remove(id)
+                && let Some(pattern) = self.patterns.by_id_mut(*id)
+            {
+                pattern.enabled = false;
+                self.matching_dirty = true;
+            }
         }
         for (id, _) in &patterns {
             self.remove_pattern(*id);
@@ -1324,7 +1364,7 @@ mod tests {
         let mut engine = Engine::new(vec![triangle_pattern()]);
         // Statically loaded profiles have no owner - claimable.
         let claimed = engine
-            .claim_pattern(PatternId::new(1), "app".into())
+            .claim_pattern(PatternId::new(1), "app".into(), false)
             .expect("claim unowned profile");
         assert_eq!(claimed.pattern_id, PatternId::new(1));
         assert_eq!(claimed.name.as_str(), "triangle");
@@ -1334,11 +1374,11 @@ mod tests {
         );
         // Re-claiming by the same owner is idempotent.
         engine
-            .claim_pattern(PatternId::new(1), "app".into())
+            .claim_pattern(PatternId::new(1), "app".into(), false)
             .expect("re-claim by same owner");
         // A different owner is rejected.
         assert!(matches!(
-            engine.claim_pattern(PatternId::new(1), "other".into()),
+            engine.claim_pattern(PatternId::new(1), "other".into(), false),
             Err(RegistrationError::ProfileAlreadyOwned(_, _))
         ));
         // Owner cleanup releases claimed profiles back to owner-less
@@ -1354,7 +1394,7 @@ mod tests {
     fn claim_pattern_rejects_unknown_id() {
         let mut engine = Engine::new(vec![triangle_pattern()]);
         assert!(matches!(
-            engine.claim_pattern(PatternId::new(99), "app".into()),
+            engine.claim_pattern(PatternId::new(99), "app".into(), false),
             Err(RegistrationError::PatternNotFound(_))
         ));
     }
@@ -1363,17 +1403,17 @@ mod tests {
     fn release_pattern_clears_the_owner() {
         let mut engine = Engine::new(vec![triangle_pattern()]);
         engine
-            .claim_pattern(PatternId::new(1), "app".into())
+            .claim_pattern(PatternId::new(1), "app".into(), false)
             .expect("claim");
         let released = engine
-            .release_pattern(PatternId::new(1), &"app".into())
+            .release_pattern(PatternId::new(1), &"app".into(), false)
             .expect("release");
         assert_eq!(released.pattern_id, PatternId::new(1));
         assert_eq!(released.name.as_str(), "triangle");
         assert!(engine.pattern_owner(released.pattern_id).is_none());
         // Releasing again fails - owner-less now.
         assert!(matches!(
-            engine.release_pattern(PatternId::new(1), &"app".into()),
+            engine.release_pattern(PatternId::new(1), &"app".into(), false),
             Err(RegistrationError::ProfileNotOwnedBy(_, _))
         ));
         // The profile stays registered and matchable.
@@ -1389,10 +1429,10 @@ mod tests {
     fn release_pattern_rejects_foreign_owner() {
         let mut engine = Engine::new(vec![triangle_pattern()]);
         engine
-            .claim_pattern(PatternId::new(1), "app".into())
+            .claim_pattern(PatternId::new(1), "app".into(), false)
             .expect("claim");
         assert!(matches!(
-            engine.release_pattern(PatternId::new(1), &"other".into()),
+            engine.release_pattern(PatternId::new(1), &"other".into(), false),
             Err(RegistrationError::ProfileNotOwnedBy(_, _))
         ));
         // The owner is untouched.
@@ -1400,6 +1440,71 @@ mod tests {
             engine.pattern_owner(PatternId::new(1)).map(Owner::as_str),
             Some("app")
         );
+    }
+
+    #[test]
+    fn claim_and_release_toggle_enabled() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        // Inactive-by-default profile - qdo36's use case.
+        engine.set_pattern_enabled(PatternId::new(1), false);
+        let claimed = engine
+            .claim_pattern(PatternId::new(1), "app".into(), true)
+            .expect("claim+enable");
+        assert!(claimed.enabled);
+        assert!(engine.pattern(PatternId::new(1)).is_some_and(|p| p.enabled));
+        let released = engine
+            .release_pattern(PatternId::new(1), &"app".into(), true)
+            .expect("release+disable");
+        assert!(!released.enabled);
+        assert!(
+            engine
+                .pattern(PatternId::new(1))
+                .is_some_and(|p| !p.enabled)
+        );
+    }
+
+    #[test]
+    fn owner_cleanup_disables_claim_enabled_profile() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        engine.set_pattern_enabled(PatternId::new(1), false);
+        engine
+            .claim_pattern(PatternId::new(1), "app".into(), true)
+            .expect("claim+enable");
+        let removed = engine.remove_by_owner(&"app".into());
+        assert_eq!(removed.released_patterns.len(), 1);
+        // The claim's activation is reverted - the profile returns
+        // to its inactive default once the owner is gone.
+        let pattern = engine.pattern(PatternId::new(1)).expect("profile stays");
+        assert!(!pattern.enabled);
+        assert!(engine.pattern_owner(PatternId::new(1)).is_none());
+    }
+
+    #[test]
+    fn owner_cleanup_keeps_previously_enabled_profile_enabled() {
+        // Claiming an already-enabled profile with `enable` marks
+        // nothing to revert - cleanup leaves it enabled.
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        engine
+            .claim_pattern(PatternId::new(1), "app".into(), true)
+            .expect("claim+enable");
+        let removed = engine.remove_by_owner(&"app".into());
+        assert_eq!(removed.released_patterns.len(), 1);
+        assert!(engine.pattern(PatternId::new(1)).is_some_and(|p| p.enabled));
+    }
+
+    #[test]
+    fn release_without_disable_keeps_enabled_state() {
+        let mut engine = Engine::new(vec![triangle_pattern()]);
+        engine.set_pattern_enabled(PatternId::new(1), false);
+        engine
+            .claim_pattern(PatternId::new(1), "app".into(), true)
+            .expect("claim+enable");
+        let released = engine
+            .release_pattern(PatternId::new(1), &"app".into(), false)
+            .expect("release without disable");
+        // Explicitly not requested - the profile stays enabled.
+        assert!(released.enabled);
+        assert!(engine.pattern(PatternId::new(1)).is_some_and(|p| p.enabled));
     }
 
     #[test]

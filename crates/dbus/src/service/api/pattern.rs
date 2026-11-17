@@ -147,15 +147,19 @@ pub(crate) async fn find_profile(
 /// Claims an owner-less profile for `owner` - an empty `owner`
 /// defaults to the caller's unique bus name like `register_pattern`.
 /// The profile is addressed by ID - `find_profile`'s result carries
-/// it; profile names are not unique. Returns the claimed pattern ID;
-/// a profile owned by a different application is rejected.
+/// it; profile names are not unique. `enable` activates the profile
+/// in the same operation (cleanup reverts the activation). Returns
+/// the claimed pattern ID; a profile owned by a different
+/// application is rejected.
 pub(crate) async fn claim_profile(
     service: &EngineService,
     id: PatternId,
     owner: Owner,
+    enable: bool,
     header: &Header<'_>,
 ) -> fdo::Result<u32> {
-    let (command, rx) = ControlCommand::claim_profile(id, service.session_owner(owner, header));
+    let (command, rx) =
+        ControlCommand::claim_profile(id, service.session_owner(owner, header), enable);
     service
         .handle
         .send_command(command)
@@ -172,15 +176,19 @@ pub(crate) async fn claim_profile(
 }
 
 /// Releases `owner`'s claim on a profile - an empty `owner` defaults
-/// to the caller's unique bus name. Returns the released pattern ID;
-/// the profile stays registered and keeps matching.
+/// to the caller's unique bus name. `disable` deactivates the profile
+/// in the same operation - the counterpart of `claim_profile`'s
+/// `enable`. Returns the released pattern ID; the profile stays
+/// registered and keeps matching.
 pub(crate) async fn release_profile(
     service: &EngineService,
     id: PatternId,
     owner: Owner,
+    disable: bool,
     header: &Header<'_>,
 ) -> fdo::Result<u32> {
-    let (command, rx) = ControlCommand::release_profile(id, service.session_owner(owner, header));
+    let (command, rx) =
+        ControlCommand::release_profile(id, service.session_owner(owner, header), disable);
     service
         .handle
         .send_command(command)

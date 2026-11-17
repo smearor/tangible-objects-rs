@@ -18,6 +18,6 @@ pub(crate) struct ReleaseProfile {
     /// `releaseProfile` field - union decode (`__typename` picks the
     /// member).
     #[cynic(rename = "releaseProfile")]
-    #[arguments(id: $id, owner: $owner)]
+    #[arguments(id: $id, owner: $owner, disable: $disable)]
     release_profile: ReleaseProfileResultFragment,
 }

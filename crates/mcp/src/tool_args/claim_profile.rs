@@ -13,4 +13,7 @@ pub struct ClaimProfileArgs {
     pub pattern_id: PatternId,
     /// Claiming application.
     pub owner: Owner,
+    /// Activate the profile in the same operation (default: false).
+    #[serde(default)]
+    pub enable: bool,
 }

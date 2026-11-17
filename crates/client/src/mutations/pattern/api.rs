@@ -72,13 +72,15 @@ impl GraphQLClient {
     /// application adopts a statically loaded or released profile so
     /// `unregister_owner`/disconnect cleanup releases it back to owner-less instead of unregistering it. The profile is
     /// addressed by ID - `lookup_profile`'s match carries it; profile
-    /// names are not unique. The result union carries the claimed
-    /// profile or the typed rejection (`PATTERN_NOT_FOUND`,
-    /// `PROFILE_ALREADY_OWNED`).
+    /// names are not unique. `enable` activates the profile in the
+    /// same operation (cleanup reverts that activation). The result
+    /// union carries the claimed profile or the typed rejection
+    /// (`PATTERN_NOT_FOUND`, `PROFILE_ALREADY_OWNED`).
     pub async fn claim_profile(
         &self,
         id: PatternId,
         owner: &Owner,
+        enable: bool,
     ) -> Result<ClaimProfileResult, ClientError> {
         let fragment: ClaimProfileResultFragment = self
             .call_mutation::<ClaimProfile, _, _>(
@@ -86,6 +88,7 @@ impl GraphQLClient {
                 ClaimProfileVariables {
                     id,
                     owner: owner.clone(),
+                    enable: Some(enable),
                 },
             )
             .await?;
@@ -94,13 +97,15 @@ impl GraphQLClient {
 
     /// Releases `owner`'s claim on a profile (`releaseProfile`) - the
     /// profile stays registered and keeps matching; it only leaves the
-    /// owner's cleanup scope. The result union carries the released
-    /// profile or the typed rejection (`PATTERN_NOT_FOUND`,
-    /// `PROFILE_NOT_OWNED_BY`).
+    /// owner's cleanup scope. `disable` deactivates the profile in
+    /// the same operation - the counterpart of `claim_profile`'s
+    /// `enable`. The result union carries the released profile or the
+    /// typed rejection (`PATTERN_NOT_FOUND`, `PROFILE_NOT_OWNED_BY`).
     pub async fn release_profile(
         &self,
         id: PatternId,
         owner: &Owner,
+        disable: bool,
     ) -> Result<ReleaseProfileResult, ClientError> {
         let fragment: ReleaseProfileResultFragment = self
             .call_mutation::<ReleaseProfile, _, _>(
@@ -108,6 +113,7 @@ impl GraphQLClient {
                 ReleaseProfileVariables {
                     id,
                     owner: owner.clone(),
+                    disable: Some(disable),
                 },
             )
             .await?;

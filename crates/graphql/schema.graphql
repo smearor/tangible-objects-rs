@@ -695,18 +695,21 @@ type MutationRoot {
 	adopts a statically loaded or released profile so
 	`unregisterOwner`/disconnect cleanup releases it back to owner-less instead of unregistering it. The profile is
 	addressed by ID - `profileLookup`'s match carries it - since
-	profile names are not unique. Re-claiming by the same owner is
-	idempotent; a profile owned by someone else is rejected
-	(`PROFILE_ALREADY_OWNED`).
+	profile names are not unique. `enable` activates the profile
+	in the same operation (cleanup reverts that activation).
+	Re-claiming by the same owner is idempotent; a profile owned
+	by someone else is rejected (`PROFILE_ALREADY_OWNED`).
 	"""
-	claimProfile(id: PatternId!, owner: Owner!): ClaimProfileResult!
+	claimProfile(id: PatternId!, owner: Owner!, enable: Boolean): ClaimProfileResult!
 	"""
 	Releases `owner`'s claim on a profile - the profile stays
 	registered and keeps matching; it only leaves the owner's
-	cleanup scope. Rejected when `owner` does not hold the claim
+	cleanup scope. `disable` deactivates the profile in the same
+	operation - the counterpart of `claimProfile`'s `enable`.
+	Rejected when `owner` does not hold the claim
 	(`PROFILE_NOT_OWNED_BY`).
 	"""
-	releaseProfile(id: PatternId!, owner: Owner!): ReleaseProfileResult!
+	releaseProfile(id: PatternId!, owner: Owner!, disable: Boolean): ReleaseProfileResult!
 	"""
 	Removes a dynamically registered pattern by ID.
 	"""
@@ -802,6 +805,12 @@ type ProfileClaimed {
 	Name of the claimed profile.
 	"""
 	name: PatternName!
+	"""
+	Enabled state after the claim - `true` when the profile now
+	participates in matching (`claimProfile`'s `enable` argument
+	activates it, an already-enabled profile stays enabled).
+	"""
+	enabled: Boolean!
 }
 
 """
@@ -911,6 +920,11 @@ type ProfileReleased {
 	Name of the released profile.
 	"""
 	name: PatternName!
+	"""
+	Enabled state after the release - `false` when the release's
+	`disable` argument deactivated the profile.
+	"""
+	enabled: Boolean!
 }
 
 type QueryRoot {

@@ -94,10 +94,14 @@ look it up, verify it is identical and *claim* it:
   addressed by `patternId` - `profileLookup`'s match carries it -
   since profile names are not unique. Re-claiming by the same owner is
   idempotent; a profile owned by a different application rejects
-  (`PROFILE_ALREADY_OWNED`).
+  (`PROFILE_ALREADY_OWNED`). `enable` activates the profile in the
+  same operation - for "inactive by default" profiles the application
+  needs only while it runs; cleanup reverts that activation.
 - `releaseProfile`/`release_profile` gives the claim up again - the
   profile returns to owner-less state (`PROFILE_NOT_OWNED_BY` when the
-  caller does not hold the claim).
+  caller does not hold the claim). `disable` deactivates the profile
+  in the same operation - the counterpart of `claimProfile`'s
+  `enable`.
 
 ## Lifetimes & cleanup
 
@@ -120,8 +124,8 @@ look it up, verify it is identical and *claim* it:
 | register field set | `registerFieldSet(input, owner, lifetime)` → `RegisterFieldSetResult` | `register_field_set` | `register_field_set(toml, owner, persistent)` |
 | update profile | `updateProfile(id, input)` | `update_profile` | `update_profile(id, name, points, tol, spawn_on_partial, spawn_stability, stage)` |
 | lookup profile | `profileLookup(input)` → `ProfileLookup` | `find_profile` | `find_profile(name, points, tol)` → `(found, id, identical, owner)` |
-| claim profile | `claimProfile(id, owner)` → `ClaimProfileResult` | `claim_profile` | `claim_profile(id, owner)` |
-| release profile | `releaseProfile(id, owner)` → `ReleaseProfileResult` | `release_profile` | `release_profile(id, owner)` |
+| claim profile | `claimProfile(id, owner, enable)` → `ClaimProfileResult` | `claim_profile` | `claim_profile(id, owner, enable)` |
+| release profile | `releaseProfile(id, owner, disable)` → `ReleaseProfileResult` | `release_profile` | `release_profile(id, owner, disable)` |
 | unregister pattern | `unregisterPattern(id)` | `unregister_pattern` | `unregister_pattern(id)` |
 | unregister field set | `unregisterFieldSet(name)` | `unregister_field_set` | `unregister_field_set(name)` |
 | register dead zone | `registerDeadZone(input, owner, lifetime)` → `RegisterDeadZoneResult` | `register_dead_zone` | `register_dead_zone(name, x, y, radius, owner, persistent)` |

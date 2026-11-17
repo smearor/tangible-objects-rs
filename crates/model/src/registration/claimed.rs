@@ -25,4 +25,8 @@ pub struct ProfileClaimed {
     pub pattern_id: PatternId,
     /// Name of the claimed profile.
     pub name: PatternName,
+    /// Enabled state after the claim - `true` when the profile now
+    /// participates in matching (`claimProfile`'s `enable` argument
+    /// activates it, an already-enabled profile stays enabled).
+    pub enabled: bool,
 }

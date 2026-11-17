@@ -17,6 +17,6 @@ pub(crate) struct ClaimProfile {
     /// `claimProfile` field - union decode (`__typename` picks the
     /// member).
     #[cynic(rename = "claimProfile")]
-    #[arguments(id: $id, owner: $owner)]
+    #[arguments(id: $id, owner: $owner, enable: $enable)]
     claim_profile: ClaimProfileResultFragment,
 }

@@ -261,32 +261,40 @@ pub(crate) fn apply_registration(
         ControlCommand::LookupProfile { profile, reply } => {
             let _ = reply.send(engine.lookup_profile(&profile));
         }
-        ControlCommand::ClaimProfile { id, owner, reply } => {
-            match engine.claim_pattern(id, owner.clone()) {
-                Ok(claimed) => {
-                    info!(%claimed.pattern_id, %claimed.name, ?owner, "profile claimed");
-                    runtime.set_profile_owner(id, Some(owner));
-                    let _ = reply.send(Ok(claimed));
-                }
-                Err(reason) => {
-                    warn!(%reason, "profile claim rejected");
-                    let _ = reply.send(Err(reason));
-                }
+        ControlCommand::ClaimProfile {
+            id,
+            owner,
+            enable,
+            reply,
+        } => match engine.claim_pattern(id, owner.clone(), enable) {
+            Ok(claimed) => {
+                info!(%claimed.pattern_id, %claimed.name, ?owner, "profile claimed");
+                runtime.set_profile_owner(id, Some(owner));
+                runtime.set_profile_enabled(id, claimed.enabled);
+                let _ = reply.send(Ok(claimed));
             }
-        }
-        ControlCommand::ReleaseProfile { id, owner, reply } => {
-            match engine.release_pattern(id, &owner) {
-                Ok(released) => {
-                    info!(%released.pattern_id, %released.name, ?owner, "profile released");
-                    runtime.set_profile_owner(id, None);
-                    let _ = reply.send(Ok(released));
-                }
-                Err(reason) => {
-                    warn!(%reason, "profile release rejected");
-                    let _ = reply.send(Err(reason));
-                }
+            Err(reason) => {
+                warn!(%reason, "profile claim rejected");
+                let _ = reply.send(Err(reason));
             }
-        }
+        },
+        ControlCommand::ReleaseProfile {
+            id,
+            owner,
+            disable,
+            reply,
+        } => match engine.release_pattern(id, &owner, disable) {
+            Ok(released) => {
+                info!(%released.pattern_id, %released.name, ?owner, "profile released");
+                runtime.set_profile_owner(id, None);
+                runtime.set_profile_enabled(id, released.enabled);
+                let _ = reply.send(Ok(released));
+            }
+            Err(reason) => {
+                warn!(%reason, "profile release rejected");
+                let _ = reply.send(Err(reason));
+            }
+        },
         ControlCommand::UpdateProfile { id, profile } => {
             match engine.update_pattern(id, &profile) {
                 Ok(()) => {
@@ -425,6 +433,11 @@ pub(crate) fn apply_registration(
             for (id, name) in &removed.released_patterns {
                 info!(%id, %name, %owner, "claimed profile released on owner cleanup");
                 runtime.set_profile_owner(*id, None);
+                // Cleanup reverts claim-side activation - mirror the
+                // engine's resulting enabled state in the snapshot.
+                if let Some(pattern) = engine.pattern(*id) {
+                    runtime.set_profile_enabled(*id, pattern.enabled);
+                }
             }
             for name in &removed.field_sets {
                 unpersist("fields.d", name.as_str());

@@ -153,6 +153,10 @@ pub enum ControlCommand {
         id: PatternId,
         /// Owning application taking over the profile.
         owner: Owner,
+        /// Activate the profile in the same operation - for
+        /// "inactive by default" profiles the owner needs only
+        /// while it runs. Cleanup reverts the activation.
+        enable: bool,
         /// Receives the claimed profile or the typed rejection.
         reply: oneshot::Sender<Result<ProfileClaimed, RegistrationError>>,
     },
@@ -165,6 +169,9 @@ pub enum ControlCommand {
         /// Owner giving up its claim - only the current owner may
         /// release.
         owner: Owner,
+        /// Deactivate the profile in the same operation - the
+        /// counterpart of `ClaimProfile`'s `enable`.
+        disable: bool,
         /// Receives the released profile or the typed rejection.
         reply: oneshot::Sender<Result<ProfileReleased, RegistrationError>>,
     },
@@ -341,27 +348,47 @@ impl ControlCommand {
 
     /// Builds a `ClaimProfile` command plus the receiver its caller
     /// awaits for the claimed profile or the typed rejection.
+    /// `enable` activates the profile in the same operation.
     pub fn claim_profile(
         id: PatternId,
         owner: Owner,
+        enable: bool,
     ) -> (
         Self,
         oneshot::Receiver<Result<ProfileClaimed, RegistrationError>>,
     ) {
         let (reply, rx) = oneshot::channel();
-        (Self::ClaimProfile { id, owner, reply }, rx)
+        (
+            Self::ClaimProfile {
+                id,
+                owner,
+                enable,
+                reply,
+            },
+            rx,
+        )
     }
 
     /// Builds a `ReleaseProfile` command plus the receiver its caller
     /// awaits for the released profile or the typed rejection.
+    /// `disable` deactivates the profile in the same operation.
     pub fn release_profile(
         id: PatternId,
         owner: Owner,
+        disable: bool,
     ) -> (
         Self,
         oneshot::Receiver<Result<ProfileReleased, RegistrationError>>,
     ) {
         let (reply, rx) = oneshot::channel();
-        (Self::ReleaseProfile { id, owner, reply }, rx)
+        (
+            Self::ReleaseProfile {
+                id,
+                owner,
+                disable,
+                reply,
+            },
+            rx,
+        )
     }
 }

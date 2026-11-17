@@ -13,4 +13,7 @@ pub struct ReleaseProfileArgs {
     pub pattern_id: PatternId,
     /// Owner giving up its claim.
     pub owner: Owner,
+    /// Deactivate the profile in the same operation (default: false).
+    #[serde(default)]
+    pub disable: bool,
 }

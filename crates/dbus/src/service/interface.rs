@@ -376,26 +376,31 @@ impl EngineService {
     /// defaults to the caller's unique bus name like
     /// `register_pattern`. The profile is addressed by ID -
     /// `find_profile`'s result carries it; profile names are not
-    /// unique. Returns the claimed pattern ID.
+    /// unique. `enable` activates the profile in the same operation.
+    /// Returns the claimed pattern ID.
     async fn claim_profile(
         &self,
         id: PatternId,
         owner: Owner,
+        enable: bool,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<u32> {
-        api::pattern::claim_profile(self, id, owner, &header).await
+        api::pattern::claim_profile(self, id, owner, enable, &header).await
     }
 
     /// Releases `owner`'s claim on a profile - an empty `owner`
-    /// defaults to the caller's unique bus name. Returns the released
-    /// pattern ID; the profile stays registered and keeps matching.
+    /// defaults to the caller's unique bus name. `disable`
+    /// deactivates the profile in the same operation. Returns the
+    /// released pattern ID; the profile stays registered and keeps
+    /// matching.
     async fn release_profile(
         &self,
         id: PatternId,
         owner: Owner,
+        disable: bool,
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<u32> {
-        api::pattern::release_profile(self, id, owner, &header).await
+        api::pattern::release_profile(self, id, owner, disable, &header).await
     }
 
     /// Replaces a registered pattern's geometry while keeping its ID.

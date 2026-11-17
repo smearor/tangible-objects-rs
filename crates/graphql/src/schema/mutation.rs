@@ -336,16 +336,18 @@ impl MutationRoot {
     /// adopts a statically loaded or released profile so
     /// `unregisterOwner`/disconnect cleanup releases it back to owner-less instead of unregistering it. The profile is
     /// addressed by ID - `profileLookup`'s match carries it - since
-    /// profile names are not unique. Re-claiming by the same owner is
-    /// idempotent; a profile owned by someone else is rejected
-    /// (`PROFILE_ALREADY_OWNED`).
+    /// profile names are not unique. `enable` activates the profile
+    /// in the same operation (cleanup reverts that activation).
+    /// Re-claiming by the same owner is idempotent; a profile owned
+    /// by someone else is rejected (`PROFILE_ALREADY_OWNED`).
     async fn claim_profile(
         &self,
         ctx: &Context<'_>,
         id: PatternId,
         owner: Owner,
+        enable: Option<bool>,
     ) -> Result<ClaimProfileResult> {
-        let (command, rx) = ControlCommand::claim_profile(id, owner);
+        let (command, rx) = ControlCommand::claim_profile(id, owner, enable.unwrap_or(false));
         ctx.data::<EngineHandle>()?
             .send_command(command)
             .await
@@ -359,15 +361,18 @@ impl MutationRoot {
 
     /// Releases `owner`'s claim on a profile - the profile stays
     /// registered and keeps matching; it only leaves the owner's
-    /// cleanup scope. Rejected when `owner` does not hold the claim
+    /// cleanup scope. `disable` deactivates the profile in the same
+    /// operation - the counterpart of `claimProfile`'s `enable`.
+    /// Rejected when `owner` does not hold the claim
     /// (`PROFILE_NOT_OWNED_BY`).
     async fn release_profile(
         &self,
         ctx: &Context<'_>,
         id: PatternId,
         owner: Owner,
+        disable: Option<bool>,
     ) -> Result<ReleaseProfileResult> {
-        let (command, rx) = ControlCommand::release_profile(id, owner);
+        let (command, rx) = ControlCommand::release_profile(id, owner, disable.unwrap_or(false));
         ctx.data::<EngineHandle>()?
             .send_command(command)
             .await

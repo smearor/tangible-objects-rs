@@ -78,15 +78,15 @@ impl EngineMcp {
         &self,
         Parameters(args): Parameters<ClaimProfileArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (command, rx) = ControlCommand::claim_profile(args.pattern_id, args.owner);
+        let (command, rx) = ControlCommand::claim_profile(args.pattern_id, args.owner, args.enable);
         self.handle
             .send_command(command)
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         match rx.await {
             Ok(Ok(claimed)) => Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-                "claimed '{}' as pattern {}",
-                claimed.name, claimed.pattern_id
+                "claimed '{}' as pattern {} (enabled: {})",
+                claimed.name, claimed.pattern_id, claimed.enabled
             ))])),
             Ok(Err(reason)) => Ok(CallToolResult::error(vec![ContentBlock::text(format!(
                 "rejected: {reason}"
@@ -105,15 +105,16 @@ impl EngineMcp {
         &self,
         Parameters(args): Parameters<ReleaseProfileArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (command, rx) = ControlCommand::release_profile(args.pattern_id, args.owner);
+        let (command, rx) =
+            ControlCommand::release_profile(args.pattern_id, args.owner, args.disable);
         self.handle
             .send_command(command)
             .await
             .map_err(|_| ErrorData::internal_error("device loop is not running", None))?;
         match rx.await {
             Ok(Ok(released)) => Ok(CallToolResult::success(vec![ContentBlock::text(format!(
-                "released '{}' (pattern {})",
-                released.name, released.pattern_id
+                "released '{}' (pattern {}, enabled: {})",
+                released.name, released.pattern_id, released.enabled
             ))])),
             Ok(Err(reason)) => Ok(CallToolResult::error(vec![ContentBlock::text(format!(
                 "rejected: {reason}"
