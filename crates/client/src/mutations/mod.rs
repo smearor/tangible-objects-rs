@@ -12,5 +12,6 @@ pub(crate) mod metrics;
 pub(crate) mod pattern;
 pub(crate) mod recording;
 pub(crate) mod seats;
+pub(crate) mod spell;
 pub(crate) mod stage;
 pub(crate) mod training;
