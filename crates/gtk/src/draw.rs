@@ -150,14 +150,7 @@ pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<Shared
                     Vec2::new(cal.width_mm().as_f64(), cal.height_mm().as_f64()),
                 )
             });
-        draw_seats(
-            cr,
-            &s.seat_sessions,
-            (&s.tracked).into(),
-            &s.pattern_styles,
-            bounds,
-            &to_screen,
-        );
+        draw_seats(cr, &s.seat_sessions, &s.pattern_styles, bounds, &to_screen);
     }
 
     if mode == GuiMode::Training {
@@ -427,15 +420,16 @@ fn seat_edge_position(seat: &Seat, bounds: &Rect<Millimeters>) -> Vec2<Millimete
 }
 
 /// Seat overlay (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md): a ring plus a
-/// gaze indicator per declared seat. Anchored seats inherit their
-/// marker profile's color (`match_color` - the same chain the figure
-/// visuals use); virtual seats get the neutral `Seat` slot. `Absent`
-/// seats render dimmed at the edge point of their retained pose -
-/// the marker is gone, the claim is not.
+/// gaze indicator per declared seat at its *organizational* place -
+/// the edge point of `pose.seat`. The marker tangible renders as a
+/// normal figure in `draw_live`; duplicating it on the field would
+/// hide that the seat is an edge location. Anchored seats inherit
+/// their marker profile's color (`match_color` - the same chain the
+/// figure visuals use); virtual seats get the neutral `Seat` slot.
+/// `Absent` seats render dimmed at their retained pose's edge point.
 fn draw_seats(
     cr: &cairo::Context,
     sessions: &[SeatSession],
-    tracked: TrackedSet<'_>,
     styles: &[PatternStyle],
     bounds: Rect<Millimeters>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
@@ -449,17 +443,12 @@ fn draw_seats(
                 .marker
                 .map(|id| match_color(styles, id))
                 .unwrap_or_else(|| SceneColor::Seat.color());
-            let (center_mm, alpha) = match seat.state {
-                SeatMarkerState::Anchored => (
-                    seat.tangible
-                        .and_then(|id| tracked.iter().find(|t| t.id == id))
-                        .map(|t| t.center)
-                        .unwrap_or_else(|| seat_edge_position(&seat.pose.seat, &bounds)),
-                    0.9,
-                ),
-                SeatMarkerState::Absent => (seat_edge_position(&seat.pose.seat, &bounds), 0.3),
-                SeatMarkerState::Virtual => (seat_edge_position(&seat.pose.seat, &bounds), 0.7),
+            let alpha = match seat.state {
+                SeatMarkerState::Anchored => 0.9,
+                SeatMarkerState::Absent => 0.3,
+                SeatMarkerState::Virtual => 0.7,
             };
+            let center_mm = seat_edge_position(&seat.pose.seat, &bounds);
             let center = to_screen(&center_mm);
 
             color.apply_alpha(cr, alpha * 0.25);
