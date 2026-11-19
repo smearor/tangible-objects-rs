@@ -538,4 +538,10 @@ impl EngineService {
     /// (same event class the GraphQL `eventStream` exposes).
     #[zbus(signal)]
     pub async fn lifecycle_event(emitter: &SignalEmitter<'_>, event: &str) -> zbus::Result<()>;
+
+    /// A seat event occurred (seat added/moved/removed, marker
+    /// bound/absent) - payload is the JSON-serialized `SeatEvent`
+    /// (same event class the GraphQL `eventStream` exposes).
+    #[zbus(signal)]
+    pub async fn seat_event(emitter: &SignalEmitter<'_>, event: &str) -> zbus::Result<()>;
 }

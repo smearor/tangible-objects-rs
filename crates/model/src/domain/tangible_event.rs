@@ -9,7 +9,9 @@ use crate::FieldSetName;
 use crate::FrameCount;
 use crate::Owner;
 use crate::PatternId;
+use crate::SeatEvent;
 use crate::SetAction;
+use crate::TableTopSeat;
 use crate::TangibleSetId;
 use crate::TrackedTangible;
 #[cfg(feature = "cynic")]
@@ -41,6 +43,10 @@ pub struct TangibleEvent {
     pub kind: EventKind,
     /// Affected tangible for `TANGIBLE_*` and `OBJECT_*` events.
     pub tangible: Option<TrackedTangible>,
+    /// Affected seat for `SEAT_*` events - carries the full seat state
+    /// (id, name, session, owner, marker, bound tangible, pose,
+    /// anchor state).
+    pub seat: Option<TableTopSeat>,
     /// Affected set for `SET_*` and `OBJECT_*` events.
     pub set_id: Option<TangibleSetId>,
     /// Field-set name for `FIELD_*` events.
@@ -71,6 +77,7 @@ impl TangibleEvent {
         Self {
             kind,
             tangible: None,
+            seat: None,
             set_id: None,
             field_set: None,
             field: None,
@@ -175,6 +182,22 @@ impl From<&SetAction> for TangibleEvent {
     }
 }
 
+impl From<&SeatEvent> for TangibleEvent {
+    fn from(event: &SeatEvent) -> Self {
+        let (kind, seat) = match event {
+            SeatEvent::Added(seat) => (EventKind::SeatAdded, seat),
+            SeatEvent::Moved(seat) => (EventKind::SeatMoved, seat),
+            SeatEvent::Removed(seat) => (EventKind::SeatRemoved, seat),
+            SeatEvent::MarkerBound(seat) => (EventKind::SeatMarkerBound, seat),
+            SeatEvent::MarkerAbsent(seat) => (EventKind::SeatMarkerAbsent, seat),
+        };
+        Self {
+            seat: Some(seat.clone()),
+            ..Self::blank(kind)
+        }
+    }
+}
+
 impl From<&LifecycleEvent> for TangibleEvent {
     fn from(event: &LifecycleEvent) -> Self {
         let mut event_out = Self::blank(match event {
@@ -189,6 +212,8 @@ impl From<&LifecycleEvent> for TangibleEvent {
             LifecycleEvent::SpellMatched { .. } => EventKind::SpellMatched,
             LifecycleEvent::StageRegistered { .. } => EventKind::StageRegistered,
             LifecycleEvent::StageUnregistered { .. } => EventKind::StageUnregistered,
+            LifecycleEvent::SessionClaimed { .. } => EventKind::SessionClaimed,
+            LifecycleEvent::SessionReleased { .. } => EventKind::SessionReleased,
             LifecycleEvent::CompletionChanged(_) => EventKind::CompletionChanged,
             LifecycleEvent::FilterModeChanged(_) => EventKind::FilterModeChanged,
             LifecycleEvent::RecordingStarted => EventKind::RecordingStarted,
@@ -244,6 +269,11 @@ impl From<&LifecycleEvent> for TangibleEvent {
             | LifecycleEvent::StageUnregistered { name } => {
                 event_out.name = Some(name.to_string());
             }
+            LifecycleEvent::SessionClaimed { name, owner }
+            | LifecycleEvent::SessionReleased { name, owner } => {
+                event_out.name = Some(name.to_string());
+                event_out.owner = Some(owner.clone());
+            }
             LifecycleEvent::CompletionChanged(config) => {
                 event_out.detail = Some(format!(
                     "mode={} radius={} max_missing={} persist={}",
@@ -267,6 +297,7 @@ impl From<&DomainEvent> for TangibleEvent {
         match event {
             DomainEvent::Engine(engine_event) => engine_event.into(),
             DomainEvent::Set(action) => action.into(),
+            DomainEvent::Seat(seat_event) => seat_event.into(),
             DomainEvent::Lifecycle(lifecycle) => lifecycle.into(),
         }
     }

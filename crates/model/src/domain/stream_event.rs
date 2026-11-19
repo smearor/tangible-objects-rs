@@ -52,6 +52,20 @@ pub enum StreamEvent {
     ObjectRemoved,
     /// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
     ObjectMoved,
+    /// A seat was added to a seat session.
+    SeatAdded,
+    /// An anchored seat's derived pose changed (marker moved).
+    SeatMoved,
+    /// A seat was removed from its session.
+    SeatRemoved,
+    /// A marker tangible bound to a seat (first bind or rebind).
+    SeatMarkerBound,
+    /// A seat's marker tangible stopped being tracked.
+    SeatMarkerAbsent,
+    /// A seat session was claimed by an application.
+    SessionClaimed,
+    /// A seat session was released.
+    SessionReleased,
     /// A pattern was registered or replaced at runtime.
     ProfileRegistered,
     /// A registered pattern was removed.
@@ -97,6 +111,13 @@ impl StreamEvent {
             Self::ObjectAdded => EventKind::ObjectAdded,
             Self::ObjectRemoved => EventKind::ObjectRemoved,
             Self::ObjectMoved => EventKind::ObjectMoved,
+            Self::SeatAdded => EventKind::SeatAdded,
+            Self::SeatMoved => EventKind::SeatMoved,
+            Self::SeatRemoved => EventKind::SeatRemoved,
+            Self::SeatMarkerBound => EventKind::SeatMarkerBound,
+            Self::SeatMarkerAbsent => EventKind::SeatMarkerAbsent,
+            Self::SessionClaimed => EventKind::SessionClaimed,
+            Self::SessionReleased => EventKind::SessionReleased,
             Self::ProfileRegistered => EventKind::ProfileRegistered,
             Self::ProfileUnregistered => EventKind::ProfileUnregistered,
             Self::FieldSetRegistered => EventKind::FieldSetRegistered,
@@ -134,6 +155,13 @@ impl FromStr for StreamEvent {
             "OBJECT_ADDED" => Ok(Self::ObjectAdded),
             "OBJECT_REMOVED" => Ok(Self::ObjectRemoved),
             "OBJECT_MOVED" => Ok(Self::ObjectMoved),
+            "SEAT_ADDED" => Ok(Self::SeatAdded),
+            "SEAT_MOVED" => Ok(Self::SeatMoved),
+            "SEAT_REMOVED" => Ok(Self::SeatRemoved),
+            "SEAT_MARKER_BOUND" => Ok(Self::SeatMarkerBound),
+            "SEAT_MARKER_ABSENT" => Ok(Self::SeatMarkerAbsent),
+            "SESSION_CLAIMED" => Ok(Self::SessionClaimed),
+            "SESSION_RELEASED" => Ok(Self::SessionReleased),
             "PROFILE_REGISTERED" => Ok(Self::ProfileRegistered),
             "PROFILE_UNREGISTERED" => Ok(Self::ProfileUnregistered),
             "FIELD_SET_REGISTERED" => Ok(Self::FieldSetRegistered),

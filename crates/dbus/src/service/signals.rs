@@ -40,6 +40,16 @@ pub(crate) async fn emit_signal(emitter: &SignalEmitter<'_>, event: &DomainEvent
             .await
         }
         DomainEvent::Set(action) => emit_set_action(emitter, action).await,
+        // Seat events ride one generic signal carrying the
+        // JSON-serialized `SeatEvent` - the `lifecycle_event`
+        // contract applied to the seat domain.
+        DomainEvent::Seat(event) => match serde_json::to_string(event) {
+            Ok(json) => EngineService::seat_event(emitter, &json).await,
+            Err(err) => {
+                warn!(%err, "failed to serialize seat event");
+                Ok(())
+            }
+        },
         // Lifecycle events ride one generic signal carrying the
         // JSON-serialized event (same contract as `metrics`/`analyze`
         // methods returning JSON strings).

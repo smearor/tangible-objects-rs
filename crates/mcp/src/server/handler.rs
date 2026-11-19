@@ -46,18 +46,22 @@ const URI_RECORDING: &str = "tangible://recording";
 /// Resource URI for the user-facing message currently shown in the
 /// GUI overlay (`""` when none is set).
 const URI_MESSAGE: &str = "tangible://message";
+/// Resource URI listing the claimed seat sessions with their rosters
+/// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+const URI_SEATS: &str = "tangible://seats";
 
 /// Resource URIs that emit `notifications/resources/updated` - every
 /// resource backed by a [`DomainEvent`]. `URI_MESSAGE` is excluded:
 /// `ShowMessage` broadcasts no event, so a subscription would be
 /// silent; the resource stays readable.
-const SUBSCRIBABLE_URIS: [&str; 6] = [
+const SUBSCRIBABLE_URIS: [&str; 7] = [
     URI_TANGIBLES,
     URI_TOUCH_POINTS,
     URI_SETS,
     URI_PROFILES,
     URI_FIELD_SETS,
     URI_RECORDING,
+    URI_SEATS,
 ];
 
 /// Maps one domain event onto the resource URIs it invalidates -
@@ -76,6 +80,10 @@ fn resource_uris(event: &DomainEvent) -> &'static [&'static str] {
             | EngineEvent::FieldCountChanged { .. },
         ) => &[URI_FIELD_SETS],
         DomainEvent::Set(_) => &[URI_SETS],
+        DomainEvent::Seat(_) => &[URI_SEATS],
+        DomainEvent::Lifecycle(
+            LifecycleEvent::SessionClaimed { .. } | LifecycleEvent::SessionReleased { .. },
+        ) => &[URI_SEATS],
         DomainEvent::Lifecycle(
             LifecycleEvent::ProfileRegistered { .. } | LifecycleEvent::ProfileUnregistered { .. },
         ) => &[URI_PROFILES],
@@ -161,6 +169,11 @@ impl ServerHandler for EngineMcp {
                 "message",
                 "User-facing message currently shown in the GUI overlay",
             ),
+            resource(
+                URI_SEATS,
+                "seats",
+                "Claimed seat sessions with their rosters",
+            ),
         ])))
     }
 
@@ -188,6 +201,7 @@ impl ServerHandler for EngineMcp {
                 URI_FIELD_SETS => json_pretty(&handle.snapshot().field_sets)?,
                 URI_RECORDING => json_pretty(&handle.snapshot().recording)?,
                 URI_MESSAGE => handle.snapshot().message.unwrap_or_default(),
+                URI_SEATS => json_pretty(&handle.seat_sessions())?,
                 uri => {
                     return Err(ErrorData::resource_not_found(
                         format!("unknown resource: {uri}"),

@@ -115,6 +115,24 @@ fn describe(event: &TangibleEvent) -> Option<String> {
         EventKind::RecordingStopped => {
             format!("{} {} frames", event.kind, event.frames?.as_u64())
         }
+        EventKind::SessionClaimed | EventKind::SessionReleased => format!(
+            "{} {name} {}",
+            event.kind,
+            event.owner.as_ref().map(|o| o.as_str()).unwrap_or_default()
+        ),
+        EventKind::SeatAdded
+        | EventKind::SeatMoved
+        | EventKind::SeatRemoved
+        | EventKind::SeatMarkerBound
+        | EventKind::SeatMarkerAbsent => format!(
+            "{} {}",
+            event.kind,
+            event
+                .seat
+                .as_ref()
+                .map(|s| s.name.as_str())
+                .unwrap_or_default()
+        ),
         EventKind::ConfigReloaded => event.kind.to_string(),
         EventKind::Lagged => fl!(
             language_loader(),

@@ -291,6 +291,35 @@ enum EventKind {
 	"""
 	OBJECT_MOVED
 	"""
+	A seat was added to a seat session.
+	"""
+	SEAT_ADDED
+	"""
+	An anchored seat's derived pose changed (marker moved).
+	"""
+	SEAT_MOVED
+	"""
+	A seat was removed from its session.
+	"""
+	SEAT_REMOVED
+	"""
+	A marker tangible bound to a seat (first bind or rebind).
+	"""
+	SEAT_MARKER_BOUND
+	"""
+	A seat's marker tangible stopped being tracked - the seat
+	keeps its last pose.
+	"""
+	SEAT_MARKER_ABSENT
+	"""
+	A seat session was claimed by an application.
+	"""
+	SESSION_CLAIMED
+	"""
+	A seat session was released (explicit or owner cleanup).
+	"""
+	SESSION_RELEASED
+	"""
 	An occupancy field became occupied (debounced placed).
 	"""
 	FIELD_PLACED
@@ -546,6 +575,8 @@ enum FilterMode {
 	"""
 	TANGIBLES_ONLY
 }
+
+scalar Fraction
 
 scalar FrameCount
 
@@ -1313,6 +1344,30 @@ enum RejectionKind {
 	The profile is not owned by the releasing application.
 	"""
 	PROFILE_NOT_OWNED_BY
+	"""
+	The referenced seat session is not claimed.
+	"""
+	SESSION_NOT_FOUND
+	"""
+	The seat session already has a different owner.
+	"""
+	SESSION_ALREADY_OWNED
+	"""
+	The seat session is not owned by the calling application.
+	"""
+	SESSION_NOT_OWNED_BY
+	"""
+	The referenced seat ID is not registered.
+	"""
+	SEAT_NOT_FOUND
+	"""
+	A seat with this name already exists in the session.
+	"""
+	DUPLICATE_SEAT
+	"""
+	The seat's marker profile is not registered.
+	"""
+	MARKER_PROFILE_NOT_FOUND
 }
 
 """
@@ -1327,6 +1382,92 @@ fragments.
 union ReleaseProfileResult = ProfileReleased | RegistrationRejected
 
 scalar RotationRad
+
+"""
+A seat on a tabletop surface: which [`TableSide`] it faces plus
+where along that edge it sits.
+
+A seat is more than a side - users can sit anywhere along an edge
+(two on one long side, off-center), so the offset carries the
+position along the edge axis. `offset` `None` means "assigned to
+the side, a strategy may distribute the item along it";
+`Some(fraction)` pins the item to that edge position
+(`HALF` = centered). Which *user* sits there stays consumer domain.
+
+No `zvariant::Type` impl: `Option<Fraction>` has no D-Bus signature
+(the format knows no nullable) - wire consumers transport a seat as
+a `(TableSide, f64)` pair with `NaN` for an unpinned offset.
+"""
+type Seat {
+	"""
+	The table edge the seat faces.
+	"""
+	side: TableSide!
+	"""
+	Position along the edge axis (`0.0` = edge start, `1.0` = edge
+	end, `0.5` = centered). `None` leaves distribution along the
+	side to the strategy.
+	"""
+	offset: Fraction
+}
+
+scalar SeatId
+
+"""
+Whether a [`crate::TableTopSeat`] is currently anchored by a
+tracked marker tangible.
+"""
+enum SeatMarkerState {
+	"""
+	Marker-backed seat bound to a tracked marker tangible - `pose`
+	follows the tangible every frame.
+	"""
+	ANCHORED
+	"""
+	Marker-backed seat whose marker is not currently tracked -
+	`pose` retains the last anchored pose (absent hysteresis) until
+	the marker returns or the application removes the seat.
+	"""
+	ABSENT
+	"""
+	Seat without a marker - placed explicitly by the application.
+	"""
+	VIRTUAL
+}
+
+scalar SeatName
+
+"""
+A [`Seat`] plus the free radial orientation of the user sitting
+there.
+
+`Seat` alone carries the *organizational* alignment - which edge,
+where along it. `orientation` carries the direction the seated
+user faces as a free angle, not snapped to quarter turns, so a
+seat in a table corner can face diagonally into the surface.
+Placements made through this type set `Rotation::Free(orientation)`
+instead of the edge's `QuarterTurn` - that is what makes corner
+seats usable.
+
+Technical like `Seat`: which *user* sits there stays consumer
+domain. No `zvariant::Type` impl - a `SeatPose` travels D-Bus as a
+`(TableSide, f64, f64)` triple with `NaN` for an unpinned offset
+(see [`Seat`]).
+"""
+type SeatPose {
+	"""
+	Organizational alignment - the table edge plus the position
+	along it.
+	"""
+	seat: Seat!
+	"""
+	Radial orientation the seated user faces, in radians - free
+	angle, not snapped to [`crate::TableSide`]'s quarter turns.
+	"""
+	orientation: RotationRad!
+}
+
+scalar SeatSessionName
 
 scalar SmoothingAlpha
 
@@ -1448,6 +1589,34 @@ enum StreamEvent {
 	"""
 	OBJECT_MOVED
 	"""
+	A seat was added to a seat session.
+	"""
+	SEAT_ADDED
+	"""
+	An anchored seat's derived pose changed (marker moved).
+	"""
+	SEAT_MOVED
+	"""
+	A seat was removed from its session.
+	"""
+	SEAT_REMOVED
+	"""
+	A marker tangible bound to a seat (first bind or rebind).
+	"""
+	SEAT_MARKER_BOUND
+	"""
+	A seat's marker tangible stopped being tracked.
+	"""
+	SEAT_MARKER_ABSENT
+	"""
+	A seat session was claimed by an application.
+	"""
+	SESSION_CLAIMED
+	"""
+	A seat session was released.
+	"""
+	SESSION_RELEASED
+	"""
 	A pattern was registered or replaced at runtime.
 	"""
 	PROFILE_REGISTERED
@@ -1526,6 +1695,91 @@ type SubscriptionRoot {
 }
 
 """
+One of the four edges of a rectangular surface - the technical
+seat vocabulary of tabletop layouts.
+
+A side says *where* a user sits (or where an item is readable from),
+not *who* sits there - player and owner semantics stay in consumer
+crates. The declaration order is clockwise as seen from above:
+`Bottom -> Left -> Top -> Right` walks the edges the way a clock
+hand passes 6 -> 9 -> 12 -> 3, and each step corresponds to a
+`+90` degree (clockwise) reading rotation.
+"""
+enum TableSide {
+	"""
+	Bottom edge - items rotated `Deg0` read correctly here.
+	"""
+	BOTTOM
+	"""
+	Left edge - items rotated `Deg90` clockwise read correctly here.
+	"""
+	LEFT
+	"""
+	Top edge - items rotated `Deg180` read correctly here.
+	"""
+	TOP
+	"""
+	Right edge - items rotated `Deg270` clockwise read correctly here.
+	"""
+	RIGHT
+}
+
+"""
+A physical place at the tabletop inside a [`crate::SeatSession`]
+(TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+
+Marker-backed seats (`marker: Some`) anchor to the tracked tangible
+matching that profile - `pose` is re-derived from it every frame
+and `tangible` carries the bound instance. Virtual seats
+(`marker: None`) keep the application-provided pose. `state`
+reports the anchor's health: an `Absent` seat retains its last
+pose until the marker returns or the application removes the seat.
+
+A seat is a *place*, not a person: who sits there - display name,
+player color, rights - stays in the application's domain.
+"""
+type TableTopSeat {
+	"""
+	Stable seat ID - unique across sessions, never reused.
+	"""
+	id: SeatId!
+	"""
+	Application-facing seat name, unique within its session.
+	"""
+	name: SeatName!
+	"""
+	Session this seat belongs to.
+	"""
+	session: SeatSessionName!
+	"""
+	Application owning the session - mirrors `session.owner` so the
+	Seats card and event payloads carry it without a join.
+	"""
+	owner: Owner!
+	"""
+	Marker profile anchoring this seat - the figure profile whose
+	tracked instances drive `pose`. `None` = virtual seat.
+	"""
+	marker: PatternId
+	"""
+	Currently bound marker tangible instance - `None` while the
+	marker is absent or for virtual seats.
+	"""
+	tangible: TangibleId
+	"""
+	Organizational plus radial pose: table side, edge offset and
+	free-angle orientation. Marker-derived while anchored,
+	application-provided while virtual, last anchored pose while
+	absent.
+	"""
+	pose: SeatPose!
+	"""
+	Marker anchor state.
+	"""
+	state: SeatMarkerState!
+}
+
+"""
 Flattened domain event delivered by the event subscriptions.
 
 `kind` discriminates the payload: `tangible` carries the affected object
@@ -1542,6 +1796,12 @@ type TangibleEvent {
 	Affected tangible for `TANGIBLE_*` and `OBJECT_*` events.
 	"""
 	tangible: TrackedTangible
+	"""
+	Affected seat for `SEAT_*` events - carries the full seat state
+	(id, name, session, owner, marker, bound tangible, pose,
+	anchor state).
+	"""
+	seat: TableTopSeat
 	"""
 	Affected set for `SET_*` and `OBJECT_*` events.
 	"""

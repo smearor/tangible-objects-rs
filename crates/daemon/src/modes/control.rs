@@ -10,6 +10,7 @@ use tangible_objects_model::PinCount;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
+use tangible_objects_model::RegistrationError;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 use tangible_objects_runtime::EngineRuntime;
@@ -423,6 +424,55 @@ pub(crate) fn apply_registration(
                 warn!(%name, "field set not found");
             }
         }
+        ControlCommand::ClaimSeatSession { name, owner, reply } => {
+            let _ = reply.send(runtime.claim_seat_session(name, owner));
+        }
+        ControlCommand::ReleaseSeatSession { name, owner, reply } => {
+            let _ = reply.send(runtime.release_seat_session(name, owner));
+        }
+        ControlCommand::AddSeat(request) => {
+            let request = *request;
+            let result = match request.marker {
+                Some(id) if !engine.patterns().iter().any(|p| p.id == id) => {
+                    warn!(%id, name = %request.name, "seat marker profile not found");
+                    Err(RegistrationError::MarkerProfileNotFound(id))
+                }
+                _ => {
+                    let result = runtime.add_seat(
+                        request.session.clone(),
+                        request.owner,
+                        request.name.clone(),
+                        request.marker,
+                        request.pose,
+                    );
+                    if result.is_ok() {
+                        info!(session = %request.session, name = %request.name, marker = ?request.marker, "seat added");
+                    }
+                    result
+                }
+            };
+            let _ = request.reply.send(result);
+        }
+        ControlCommand::UpdateSeat(request) => {
+            let request = *request;
+            let result = match request.marker {
+                Some(Some(id)) if !engine.patterns().iter().any(|p| p.id == id) => {
+                    warn!(%id, seat = %request.seat, "seat marker profile not found");
+                    Err(RegistrationError::MarkerProfileNotFound(id))
+                }
+                _ => runtime.update_seat(
+                    request.seat,
+                    request.owner,
+                    request.name,
+                    request.marker,
+                    request.pose,
+                ),
+            };
+            let _ = request.reply.send(result);
+        }
+        ControlCommand::RemoveSeat { seat, owner, reply } => {
+            let _ = reply.send(runtime.remove_seat(seat, owner));
+        }
         ControlCommand::UnregisterOwner { owner } => {
             let removed = engine.remove_by_owner(&owner);
             for (id, name) in &removed.patterns {
@@ -450,6 +500,9 @@ pub(crate) fn apply_registration(
             for name in &removed.spells {
                 unpersist("spells.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::SpellUnregistered { name: name.clone() });
+            }
+            for session in runtime.remove_seat_sessions_by_owner(&owner) {
+                info!(%session.name, %owner, "seat session released on owner cleanup");
             }
             runtime.set_field_sets(engine.field_sets().to_vec());
             runtime.set_dead_zones(engine.dead_zones().to_vec());
@@ -512,6 +565,11 @@ pub(crate) fn apply_registration(
         ControlCommand::SetPositionsVisible(visible) => {
             info!(%visible, "positions overlay toggled");
             runtime.set_positions_visible(visible);
+        }
+        #[cfg(feature = "gui")]
+        ControlCommand::SetSeatsVisible(visible) => {
+            info!(%visible, "seat overlay toggled");
+            runtime.set_seats_visible(visible);
         }
         #[cfg(feature = "gui")]
         ControlCommand::SetTouchPassthrough(enabled) => {

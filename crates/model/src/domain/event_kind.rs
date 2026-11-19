@@ -40,6 +40,21 @@ pub enum EventKind {
     ObjectRemoved,
     /// A member tangible's pose changed in an active set (TOS-OBJ-MOV).
     ObjectMoved,
+    /// A seat was added to a seat session.
+    SeatAdded,
+    /// An anchored seat's derived pose changed (marker moved).
+    SeatMoved,
+    /// A seat was removed from its session.
+    SeatRemoved,
+    /// A marker tangible bound to a seat (first bind or rebind).
+    SeatMarkerBound,
+    /// A seat's marker tangible stopped being tracked - the seat
+    /// keeps its last pose.
+    SeatMarkerAbsent,
+    /// A seat session was claimed by an application.
+    SessionClaimed,
+    /// A seat session was released (explicit or owner cleanup).
+    SessionReleased,
     /// An occupancy field became occupied (debounced placed).
     FieldPlaced,
     /// An occupancy field became empty (debounced lifted).
@@ -98,6 +113,13 @@ impl std::fmt::Display for EventKind {
             Self::ObjectAdded => "object_added",
             Self::ObjectRemoved => "object_removed",
             Self::ObjectMoved => "object_moved",
+            Self::SeatAdded => "seat_added",
+            Self::SeatMoved => "seat_moved",
+            Self::SeatRemoved => "seat_removed",
+            Self::SeatMarkerBound => "seat_marker_bound",
+            Self::SeatMarkerAbsent => "seat_marker_absent",
+            Self::SessionClaimed => "session_claimed",
+            Self::SessionReleased => "session_released",
             Self::FieldPlaced => "field_placed",
             Self::FieldLifted => "field_lifted",
             Self::FieldCountChanged => "field_count_changed",

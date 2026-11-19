@@ -26,6 +26,9 @@ cynic::impl_scalar!(crate::PinCount, schema::PinCount);
 cynic::impl_scalar!(crate::SpellName, schema::SpellName);
 cynic::impl_scalar!(crate::RawAxisValue, schema::RawAxisValue);
 cynic::impl_scalar!(crate::RecordLabel, schema::RecordLabel);
+cynic::impl_scalar!(crate::SeatId, schema::SeatId);
+cynic::impl_scalar!(crate::SeatName, schema::SeatName);
+cynic::impl_scalar!(crate::SeatSessionName, schema::SeatSessionName);
 cynic::impl_scalar!(smearor_commons_geometry::RotationRad, schema::RotationRad);
 cynic::impl_scalar!(
     smearor_commons_geometry::SmoothingAlpha,

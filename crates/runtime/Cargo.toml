@@ -21,6 +21,7 @@ tangible-objects-engine.workspace = true
 tangible-objects-model.workspace = true
 smearor-commons-color.workspace = true
 smearor-commons-geometry.workspace = true
+smearor-commons-layout.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 zvariant = { workspace = true, optional = true }

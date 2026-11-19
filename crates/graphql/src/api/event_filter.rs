@@ -130,6 +130,7 @@ mod tests {
             owner: None,
             detail: None,
             skipped: None,
+            seat: None,
         }
     }
 

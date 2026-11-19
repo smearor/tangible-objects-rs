@@ -6,6 +6,7 @@ use tangible_objects_model::DeadZone;
 use tangible_objects_model::FieldSet;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::InputRegionDiagnostics;
+use tangible_objects_model::SeatSession;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::Spell;
 use tangible_objects_model::TangibleSetId;
@@ -42,6 +43,10 @@ pub struct EngineSnapshot {
     pub dead_zones: Vec<DeadZone>,
     /// Registered spells (SPELLS.md).
     pub spells: Vec<Spell>,
+    /// Claimed seat sessions with their rosters
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md) - empty until an
+    /// application claims a session.
+    pub seat_sessions: Vec<SeatSession>,
     /// Accumulated session recognition metrics - uptime, re-ID churn,
     /// match quality, per-slot contact stability.
     pub metrics: SessionMetrics,
@@ -94,6 +99,11 @@ pub struct EngineSnapshot {
     /// feature.
     #[cfg(feature = "gui")]
     pub positions_visible: bool,
+    /// Whether the GUI canvas draws the seat overlay
+    /// (`SetSeatsVisible` command) - only present with the `gui`
+    /// feature.
+    #[cfg(feature = "gui")]
+    pub seats_visible: bool,
     /// Whether touches pass through to the desktop except on GUI
     /// elements (`SetTouchPassthrough` command) - only present with
     /// the `gui` feature.

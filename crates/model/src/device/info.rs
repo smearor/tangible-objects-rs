@@ -5,6 +5,7 @@ use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::UnitsPerMm;
 use smearor_commons_geometry::Vec2;
 
@@ -71,6 +72,21 @@ impl DeviceInfo {
         let width = Millimeters::new((self.x_max? - self.x_min?) / self.x_res?);
         let height = Millimeters::new((self.y_max? - self.y_min?) / self.y_res?);
         Some(Vec2::from_mm(width, height))
+    }
+
+    /// Physical surface bounds in millimeters - `min` at the
+    /// calibrated raw-origin offset (`Calibration::to_mm` does not
+    /// subtract `x_min`), `size` the usable extent. The enclosing
+    /// rectangle marker positions project against when a seat derives
+    /// its organizational alignment (`Seat::from_position`,
+    /// TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md). `None` for an incomplete
+    /// calibration.
+    pub fn surface_bounds(&self) -> Option<Rect<Millimeters>> {
+        let (x_min, x_res, y_min, y_res) = (self.x_min?, self.x_res?, self.y_min?, self.y_res?);
+        Some(Rect::new(
+            Vec2::new(x_min / x_res, y_min / y_res),
+            self.surface_mm()?,
+        ))
     }
 }
 

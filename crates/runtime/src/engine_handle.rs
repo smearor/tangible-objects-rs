@@ -6,6 +6,7 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::error::TrySendError;
 use tokio::sync::watch;
 
+use tangible_objects_model::SeatSession;
 use tangible_objects_model::TangibleSet;
 
 use super::ControlCommand;
@@ -74,6 +75,12 @@ impl EngineHandle {
     /// The configured Tangible Object Set definitions.
     pub fn sets(&self) -> &[TangibleSet] {
         &self.sets
+    }
+
+    /// The claimed seat sessions with their rosters - the latest
+    /// snapshot's view (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    pub fn seat_sessions(&self) -> Vec<SeatSession> {
+        self.snapshot.borrow().seat_sessions.clone()
     }
 
     /// Info of the loaded plus dynamically registered figure profiles.

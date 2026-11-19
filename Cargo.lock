@@ -3426,10 +3426,13 @@ name = "smearor-commons-layout"
 version = "0.1.0"
 source = "git+https://github.com/smearor/smearor-commons.git#0cb80f751a1820e2239644f752aaa6edcee04d13"
 dependencies = [
+ "async-graphql",
+ "schemars",
  "serde",
  "smearor-commons-animation",
  "smearor-commons-geometry",
  "thiserror 2.0.21",
+ "zvariant",
 ]
 
 [[package]]
@@ -3841,6 +3844,7 @@ dependencies = [
  "serde_json",
  "smearor-commons-color",
  "smearor-commons-geometry",
+ "smearor-commons-layout",
  "thiserror 2.0.21",
  "toml 0.8.23",
  "zvariant",
@@ -3854,6 +3858,7 @@ dependencies = [
  "serde",
  "smearor-commons-color",
  "smearor-commons-geometry",
+ "smearor-commons-layout",
  "tangible-objects-engine",
  "tangible-objects-model",
  "tokio",

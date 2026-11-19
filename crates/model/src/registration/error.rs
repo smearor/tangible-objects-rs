@@ -5,6 +5,9 @@ use crate::Owner;
 use crate::PatternId;
 use crate::PatternName;
 use crate::Region;
+use crate::SeatId;
+use crate::SeatName;
+use crate::SeatSessionName;
 use crate::SpellName;
 use thiserror::Error;
 
@@ -52,4 +55,26 @@ pub enum RegistrationError {
     /// owner-less or claimed by a different owner (`releaseProfile`).
     #[error("profile '{0}' is not owned by '{1}'")]
     ProfileNotOwnedBy(PatternName, Owner),
+    /// The referenced seat session is not claimed
+    /// (`claimSeatSession` first, TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    #[error("seat session '{0}' not found")]
+    SessionNotFound(SeatSessionName),
+    /// The seat session already has a different owner - only
+    /// owner-less sessions are claimable (`claimSeatSession`).
+    #[error("seat session '{0}' is already owned by '{1}'")]
+    SessionAlreadyOwned(SeatSessionName, Owner),
+    /// The seat session (or one of its seats) is not owned by the
+    /// calling application - only the owner may release the session
+    /// or mutate its roster.
+    #[error("seat session '{0}' is not owned by '{1}'")]
+    SessionNotOwnedBy(SeatSessionName, Owner),
+    /// The referenced seat ID is not registered in any session.
+    #[error("seat {0} not found")]
+    SeatNotFound(SeatId),
+    /// A seat with this name already exists in the session.
+    #[error("seat '{0}' already exists in the session")]
+    DuplicateSeat(SeatName),
+    /// The marker profile a seat should anchor to is not registered.
+    #[error("marker profile {0} not found")]
+    MarkerProfileNotFound(PatternId),
 }

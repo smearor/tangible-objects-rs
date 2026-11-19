@@ -1,19 +1,24 @@
 use super::engine_event::EngineEvent;
 use super::lifecycle_event::LifecycleEvent;
+use crate::SeatEvent;
 use crate::SetAction;
 
 /// Unified domain event distributed to all interface crates.
 ///
-/// Wraps engine-level events, Tangible Object Set actions and lifecycle
-/// events so subscribers need a single stream. Emission order per frame:
-/// engine events first, then the set actions derived from the new tracked
-/// state; lifecycle events arrive whenever a control command applies.
+/// Wraps engine-level events, Tangible Object Set actions, seat events
+/// and lifecycle events so subscribers need a single stream. Emission
+/// order per frame: engine events first, then the set actions and seat
+/// events derived from the new tracked state; lifecycle events arrive
+/// whenever a control command applies.
 #[derive(Debug, Clone)]
 pub enum DomainEvent {
     /// Engine event: touch point or tangible changes.
     Engine(EngineEvent),
     /// Tangible Object Set action (TOS-ADD/REM/OBJ-*).
     Set(SetAction),
+    /// Seat event: roster or marker-anchor changes
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    Seat(SeatEvent),
     /// Lifecycle event: an applied control command (registration, config
     /// change, recording state).
     Lifecycle(LifecycleEvent),

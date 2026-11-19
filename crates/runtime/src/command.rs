@@ -1,5 +1,6 @@
 use smearor_commons_color::AlphaPercent;
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_layout::SeatPose;
 use std::path::PathBuf;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_model::CompletionConfig;
@@ -21,9 +22,14 @@ use tangible_objects_model::RecordLabel;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
 use tangible_objects_model::RegistrationError;
+use tangible_objects_model::SeatId;
+use tangible_objects_model::SeatName;
+use tangible_objects_model::SeatSession;
+use tangible_objects_model::SeatSessionName;
 use tangible_objects_model::SpellArming;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
+use tangible_objects_model::TableTopSeat;
 use tokio::sync::oneshot;
 
 /// Control command sent by an interface back to the daemon's device loop.
@@ -306,6 +312,96 @@ pub enum ControlCommand {
         /// `<new-name>.toml`. Patterns keep their `PatternId`.
         renames: Vec<(PatternId, PatternName)>,
     },
+    /// Claims or creates a seat session for `owner`
+    /// (`claimSeatSession`, TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md) - the
+    /// seat-domain counterpart of [`Self::ClaimProfile`]: idempotent
+    /// for the same owner, rejected for a foreign one, released with
+    /// all its seats by `UnregisterOwner`/disconnect cleanup.
+    ClaimSeatSession {
+        /// Session to claim - created when no session of this name
+        /// exists.
+        name: SeatSessionName,
+        /// Owning application taking over the session.
+        owner: Owner,
+        /// Receives the claimed session or the typed rejection.
+        reply: oneshot::Sender<Result<SeatSession, RegistrationError>>,
+    },
+    /// Releases a claimed seat session - only the current owner may
+    /// release (`SESSION_NOT_OWNED_BY`). Its seats go with it; each
+    /// emits `SEAT_REMOVED` before `SESSION_RELEASED`.
+    ReleaseSeatSession {
+        /// Session to release.
+        name: SeatSessionName,
+        /// Owner giving up its claim.
+        owner: Owner,
+        /// Receives the released session or the typed rejection.
+        reply: oneshot::Sender<Result<SeatSession, RegistrationError>>,
+    },
+    /// Adds a seat to a claimed session (`addSeat`) - marker-backed
+    /// (`marker: Some`, pose derived once an instance binds) or
+    /// virtual (`marker: None`, application-provided `pose`). The
+    /// device loop validates `marker` against the registered patterns
+    /// (`MARKER_PROFILE_NOT_FOUND`); `owner` must own the session.
+    AddSeat(Box<AddSeatRequest>),
+    /// Mutates a seat (`updateSeat`) - `None` fields keep their
+    /// value; `marker`'s inner `None` clears the marker so the seat
+    /// turns virtual. `pose` overrides the pose - honored for virtual
+    /// seats; a bound marker re-derives it next frame.
+    UpdateSeat(Box<UpdateSeatRequest>),
+    /// Removes a seat from its session (`removeSeat`) - emits
+    /// `SEAT_REMOVED`.
+    RemoveSeat {
+        /// Seat to remove - addressed by its globally unique ID.
+        seat: SeatId,
+        /// Owner removing the seat - must own its session.
+        owner: Owner,
+        /// Receives the removed seat or the typed rejection.
+        reply: oneshot::Sender<Result<TableTopSeat, RegistrationError>>,
+    },
+    /// Show or hide the seat overlay on the GUI canvas - same
+    /// availability as [`Self::SetFieldsVisible`]: headless daemons
+    /// ignore it.
+    SetSeatsVisible(bool),
+}
+
+/// Payload of [`ControlCommand::AddSeat`] - boxed so the command enum
+/// stays small enough for the `TrySendError<ControlCommand>` reply
+/// type.
+#[derive(Debug)]
+pub struct AddSeatRequest {
+    /// Session receiving the seat.
+    pub session: SeatSessionName,
+    /// Owner adding the seat - must own the session.
+    pub owner: Owner,
+    /// Seat name - unique within the session.
+    pub name: SeatName,
+    /// Marker profile anchoring the seat (`None` = virtual seat).
+    pub marker: Option<PatternId>,
+    /// Initial pose - the applied pose for virtual seats, the
+    /// placeholder until the marker binds for marker-backed seats.
+    pub pose: Option<SeatPose>,
+    /// Receives the added seat or the typed rejection.
+    pub reply: oneshot::Sender<Result<TableTopSeat, RegistrationError>>,
+}
+
+/// Payload of [`ControlCommand::UpdateSeat`] - boxed like
+/// [`AddSeatRequest`].
+#[derive(Debug)]
+pub struct UpdateSeatRequest {
+    /// Seat to mutate - addressed by its globally unique ID.
+    pub seat: SeatId,
+    /// Owner mutating the seat - must own its session.
+    pub owner: Owner,
+    /// New seat name - `None` keeps the current one.
+    pub name: Option<SeatName>,
+    /// `None` keeps the marker, `Some(None)` clears it,
+    /// `Some(Some)` rebinds to another profile (validated like
+    /// [`AddSeatRequest::marker`]).
+    pub marker: Option<Option<PatternId>>,
+    /// New pose - `None` keeps the current one.
+    pub pose: Option<SeatPose>,
+    /// Receives the updated seat or the typed rejection.
+    pub reply: oneshot::Sender<Result<TableTopSeat, RegistrationError>>,
 }
 
 impl ControlCommand {
@@ -390,5 +486,96 @@ impl ControlCommand {
             },
             rx,
         )
+    }
+
+    /// Builds a `ClaimSeatSession` command plus the receiver its caller
+    /// awaits for the claimed session or the typed rejection.
+    pub fn claim_seat_session(
+        name: SeatSessionName,
+        owner: Owner,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<SeatSession, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (Self::ClaimSeatSession { name, owner, reply }, rx)
+    }
+
+    /// Builds a `ReleaseSeatSession` command plus the receiver its
+    /// caller awaits for the released session or the typed rejection.
+    pub fn release_seat_session(
+        name: SeatSessionName,
+        owner: Owner,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<SeatSession, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (Self::ReleaseSeatSession { name, owner, reply }, rx)
+    }
+
+    /// Builds an `AddSeat` command plus the receiver its caller awaits
+    /// for the added seat or the typed rejection.
+    pub fn add_seat(
+        session: SeatSessionName,
+        owner: Owner,
+        name: SeatName,
+        marker: Option<PatternId>,
+        pose: Option<SeatPose>,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<TableTopSeat, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (
+            Self::AddSeat(Box::new(AddSeatRequest {
+                session,
+                owner,
+                name,
+                marker,
+                pose,
+                reply,
+            })),
+            rx,
+        )
+    }
+
+    /// Builds an `UpdateSeat` command plus the receiver its caller
+    /// awaits for the updated seat or the typed rejection.
+    pub fn update_seat(
+        seat: SeatId,
+        owner: Owner,
+        name: Option<SeatName>,
+        marker: Option<Option<PatternId>>,
+        pose: Option<SeatPose>,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<TableTopSeat, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (
+            Self::UpdateSeat(Box::new(UpdateSeatRequest {
+                seat,
+                owner,
+                name,
+                marker,
+                pose,
+                reply,
+            })),
+            rx,
+        )
+    }
+
+    /// Builds a `RemoveSeat` command plus the receiver its caller
+    /// awaits for the removed seat or the typed rejection.
+    pub fn remove_seat(
+        seat: SeatId,
+        owner: Owner,
+    ) -> (
+        Self,
+        oneshot::Receiver<Result<TableTopSeat, RegistrationError>>,
+    ) {
+        let (reply, rx) = oneshot::channel();
+        (Self::RemoveSeat { seat, owner, reply }, rx)
     }
 }

@@ -25,6 +25,7 @@ tangible-objects-cli = { path = "crates/cli" }
 # smearor-commons (shared primitives)
 smearor-commons-color = { git = "https://github.com/smearor/smearor-commons.git" }
 smearor-commons-geometry = { git = "https://github.com/smearor/smearor-commons.git" }
+smearor-commons-layout = { git = "https://github.com/smearor/smearor-commons.git" }
 floating-board = { git = "https://github.com/smearor/floating-board-rs.git" }
 # core
 serde = { version = "1.0", features = ["derive"] }

@@ -8,6 +8,7 @@ use tokio::sync::watch;
 #[cfg(feature = "gui")]
 use smearor_commons_color::AlphaPercent;
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_layout::SeatPose;
 use tangible_objects_engine::EngineEvent;
 use tangible_objects_engine::EngineFrame;
 use tangible_objects_engine::LegacyMode;
@@ -24,9 +25,17 @@ use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileFile;
+use tangible_objects_model::RegistrationError;
+use tangible_objects_model::SeatEvent;
+use tangible_objects_model::SeatId;
+use tangible_objects_model::SeatName;
+use tangible_objects_model::SeatSession;
+use tangible_objects_model::SeatSessionName;
+use tangible_objects_model::SeatTracker;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::SetTracker;
 use tangible_objects_model::Spell;
+use tangible_objects_model::TableTopSeat;
 use tangible_objects_model::TangibleSet;
 use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TrackedSet;
@@ -59,6 +68,10 @@ pub struct EngineRuntime {
     /// Tangible Object Set tracker - computes set/object transitions
     /// from each published frame's tracked tangibles.
     set_tracker: SetTracker,
+    /// Seat session registry and marker binder - derives seat poses
+    /// and anchor events from each published frame's tracked
+    /// tangibles (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    seat_tracker: SeatTracker,
     /// Broadcast channel for `DomainEvent`s (engine + set events);
     /// lagging receivers lose the oldest events.
     events: broadcast::Sender<DomainEvent>,
@@ -133,6 +146,10 @@ pub struct EngineRuntime {
     /// (`SetPositionsVisible` command) - only with the `gui` feature.
     #[cfg(feature = "gui")]
     positions_visible: bool,
+    /// Whether the GUI canvas draws the seat overlay
+    /// (`SetSeatsVisible` command) - only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    seats_visible: bool,
     /// Whether touches fall through to the desktop beneath except on
     /// GUI elements (`SetTouchPassthrough` command) - only with the
     /// `gui` feature.
@@ -187,6 +204,7 @@ impl EngineRuntime {
         let profiles = Arc::new(RwLock::new(profiles));
         let runtime = Self {
             set_tracker: SetTracker::new(sets.clone()),
+            seat_tracker: SeatTracker::new(),
             events: events.clone(),
             snapshot: snapshot_tx,
             commands,
@@ -219,6 +237,8 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             positions_visible: false,
             #[cfg(feature = "gui")]
+            seats_visible: false,
+            #[cfg(feature = "gui")]
             touch_passthrough: false,
             filter_mode: FilterMode::default(),
             edge_margin: Millimeters::new(0.0),
@@ -235,8 +255,13 @@ impl EngineRuntime {
 
     /// Sets the device info published in every subsequent snapshot.
     ///
-    /// Call once at session start - the device does not change mid-session.
+    /// Call once at session start - the device does not change
+    /// mid-session. The calibrated millimeter bounds feed the seat
+    /// tracker's marker-position derivation.
     pub fn set_device_info(&mut self, info: DeviceInfo) {
+        if let Some(bounds) = info.surface_bounds() {
+            self.seat_tracker.set_bounds(bounds);
+        }
         self.device = Some(info);
     }
 
@@ -316,10 +341,123 @@ impl EngineRuntime {
         }
     }
 
+    /// Claims or creates a seat session (`ClaimSeatSession` applied) -
+    /// emits `SESSION_CLAIMED` when the session is newly created; an
+    /// idempotent re-claim by the same owner reports nothing new.
+    /// Broadcasts no roster change - a fresh session has no seats.
+    pub fn claim_seat_session(
+        &mut self,
+        name: SeatSessionName,
+        owner: Owner,
+    ) -> Result<SeatSession, RegistrationError> {
+        let (session, created) = self.seat_tracker.claim(name, owner)?;
+        if created {
+            self.emit_lifecycle(LifecycleEvent::SessionClaimed {
+                name: session.name.clone(),
+                owner: session.owner.clone(),
+            });
+        }
+        Ok(session)
+    }
+
+    /// Releases a claimed seat session (`ReleaseSeatSession` applied)
+    /// - each removed seat emits `SEAT_REMOVED` before the session's
+    ///   `SESSION_RELEASED`.
+    pub fn release_seat_session(
+        &mut self,
+        name: SeatSessionName,
+        owner: Owner,
+    ) -> Result<SeatSession, RegistrationError> {
+        let session = self.seat_tracker.release(&name, &owner)?;
+        for seat in &session.seats {
+            self.broadcast(DomainEvent::Seat(SeatEvent::Removed(seat.clone())));
+        }
+        self.emit_lifecycle(LifecycleEvent::SessionReleased {
+            name: session.name.clone(),
+            owner: session.owner.clone(),
+        });
+        Ok(session)
+    }
+
+    /// Adds a seat to a claimed session (`AddSeat` applied) - emits
+    /// `SEAT_ADDED`; marker-backed seats announce their first bind as
+    /// `SEAT_MARKER_BOUND` on a later frame.
+    pub fn add_seat(
+        &mut self,
+        session: SeatSessionName,
+        owner: Owner,
+        name: SeatName,
+        marker: Option<PatternId>,
+        pose: Option<SeatPose>,
+    ) -> Result<TableTopSeat, RegistrationError> {
+        let seat = self
+            .seat_tracker
+            .add_seat(&session, &owner, name, marker, pose)?;
+        self.broadcast(DomainEvent::Seat(SeatEvent::Added(seat.clone())));
+        Ok(seat)
+    }
+
+    /// Mutates a seat (`UpdateSeat` applied) - emits `SEAT_MOVED`
+    /// when the applied pose differs. Marker/state transitions surface
+    /// at the next frame's update (`SEAT_MARKER_BOUND`/
+    /// `SEAT_MARKER_ABSENT`).
+    pub fn update_seat(
+        &mut self,
+        id: SeatId,
+        owner: Owner,
+        name: Option<SeatName>,
+        marker: Option<Option<PatternId>>,
+        pose: Option<SeatPose>,
+    ) -> Result<TableTopSeat, RegistrationError> {
+        let (seat, pose_changed) = self
+            .seat_tracker
+            .update_seat(id, &owner, name, marker, pose)?;
+        if pose_changed {
+            self.broadcast(DomainEvent::Seat(SeatEvent::Moved(seat.clone())));
+        }
+        Ok(seat)
+    }
+
+    /// Removes a seat (`RemoveSeat` applied) - emits `SEAT_REMOVED`.
+    pub fn remove_seat(
+        &mut self,
+        id: SeatId,
+        owner: Owner,
+    ) -> Result<TableTopSeat, RegistrationError> {
+        let seat = self.seat_tracker.remove_seat(id, &owner)?;
+        self.broadcast(DomainEvent::Seat(SeatEvent::Removed(seat.clone())));
+        Ok(seat)
+    }
+
+    /// Drops every seat session owned by `owner` - the
+    /// `UnregisterOwner`/disconnect cleanup. Each removed seat emits
+    /// `SEAT_REMOVED`, each session `SESSION_RELEASED`. Returns the
+    /// released sessions for logging.
+    pub fn remove_seat_sessions_by_owner(&mut self, owner: &Owner) -> Vec<SeatSession> {
+        let removed = self.seat_tracker.remove_by_owner(owner);
+        for session in &removed {
+            for seat in &session.seats {
+                self.broadcast(DomainEvent::Seat(SeatEvent::Removed(seat.clone())));
+            }
+            self.emit_lifecycle(LifecycleEvent::SessionReleased {
+                name: session.name.clone(),
+                owner: session.owner.clone(),
+            });
+        }
+        removed
+    }
+
+    /// The claimed seat sessions with their rosters - the seat
+    /// tracker's live state.
+    pub fn seat_sessions(&self) -> &[SeatSession] {
+        self.seat_tracker.sessions()
+    }
+
     /// Publishes a processed frame: runs the set tracker, updates the
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
+        let seat_events = self.seat_tracker.update(tracked);
         self.dead_zone_filtered = frame.dead_zone_filtered;
         let touches_changed = frame
             .events
@@ -343,6 +481,7 @@ impl EngineRuntime {
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
             spells: self.spells.clone(),
+            seat_sessions: self.seat_tracker.sessions().to_vec(),
             dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
@@ -365,6 +504,8 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             positions_visible: self.positions_visible,
             #[cfg(feature = "gui")]
+            seats_visible: self.seats_visible,
+            #[cfg(feature = "gui")]
             touch_passthrough: self.touch_passthrough,
             filter_mode: self.filter_mode,
             input_region_diagnostics: self.input_region_diagnostics.clone(),
@@ -374,6 +515,9 @@ impl EngineRuntime {
         }
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
+        }
+        for event in seat_events {
+            self.broadcast(DomainEvent::Seat(event));
         }
         // SPELLS.md: completed gesture episodes surface as lifecycle
         // events - every subscription (GraphQL/D-Bus/MCP/TUI) sees
@@ -392,6 +536,7 @@ impl EngineRuntime {
     /// recording) reaches clients even while the device is idle.
     pub fn publish_snapshot(&mut self, touches: Vec<TouchPoint>, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
+        let seat_events = self.seat_tracker.update(tracked);
         self.snapshot.send_replace(EngineSnapshot {
             tracked: tracked.to_vec(),
             touches,
@@ -402,6 +547,7 @@ impl EngineRuntime {
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
             spells: self.spells.clone(),
+            seat_sessions: self.seat_tracker.sessions().to_vec(),
             dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
@@ -424,12 +570,17 @@ impl EngineRuntime {
             #[cfg(feature = "gui")]
             positions_visible: self.positions_visible,
             #[cfg(feature = "gui")]
+            seats_visible: self.seats_visible,
+            #[cfg(feature = "gui")]
             touch_passthrough: self.touch_passthrough,
             filter_mode: self.filter_mode,
             input_region_diagnostics: self.input_region_diagnostics.clone(),
         });
         for action in actions {
             self.broadcast(DomainEvent::Set(action));
+        }
+        for event in seat_events {
+            self.broadcast(DomainEvent::Seat(event));
         }
     }
 
@@ -591,6 +742,20 @@ impl EngineRuntime {
     #[cfg(feature = "gui")]
     pub fn positions_visible(&self) -> bool {
         self.positions_visible
+    }
+
+    /// Sets the seat overlay visibility (`SetSeatsVisible` command).
+    /// Only with the `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn set_seats_visible(&mut self, visible: bool) {
+        self.seats_visible = visible;
+    }
+
+    /// Whether the GUI canvas draws the seat overlay. Only with the
+    /// `gui` feature.
+    #[cfg(feature = "gui")]
+    pub fn seats_visible(&self) -> bool {
+        self.seats_visible
     }
 
     /// Sets whether touches pass through to the desktop except on GUI

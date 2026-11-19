@@ -6,6 +6,7 @@ use crate::FrameCount;
 use crate::Owner;
 use crate::PatternId;
 use crate::PatternName;
+use crate::SeatSessionName;
 use crate::SpellName;
 use crate::StageName;
 use serde::Serialize;
@@ -93,6 +94,25 @@ pub enum LifecycleEvent {
     StageUnregistered {
         /// Removed stage's scope name.
         name: StageName,
+    },
+    /// A seat session was claimed by an application
+    /// (`ClaimSeatSession` applied, TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    /// Emitted on creation only - an idempotent re-claim by the same
+    /// owner reports nothing new.
+    SessionClaimed {
+        /// Claimed session name.
+        name: SeatSessionName,
+        /// Owning application.
+        owner: Owner,
+    },
+    /// A seat session was released - `ReleaseSeatSession`, owner
+    /// cleanup (`UnregisterOwner`) or a disconnect. Its seats went
+    /// with it; each emitted `SEAT_REMOVED` first.
+    SessionReleased {
+        /// Released session name.
+        name: SeatSessionName,
+        /// Owning application at release time.
+        owner: Owner,
     },
     /// The completion configuration changed (`SetCompletion` applied).
     CompletionChanged(CompletionConfig),

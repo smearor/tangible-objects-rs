@@ -56,6 +56,16 @@ impl From<RegistrationError> for RegistrationRejected {
                 (RejectionKind::ProfileAlreadyOwned, None)
             }
             RegistrationError::ProfileNotOwnedBy(_, _) => (RejectionKind::ProfileNotOwnedBy, None),
+            RegistrationError::SessionNotFound(_) => (RejectionKind::SessionNotFound, None),
+            RegistrationError::SessionAlreadyOwned(_, _) => {
+                (RejectionKind::SessionAlreadyOwned, None)
+            }
+            RegistrationError::SessionNotOwnedBy(_, _) => (RejectionKind::SessionNotOwnedBy, None),
+            RegistrationError::SeatNotFound(_) => (RejectionKind::SeatNotFound, None),
+            RegistrationError::DuplicateSeat(_) => (RejectionKind::DuplicateSeat, None),
+            RegistrationError::MarkerProfileNotFound(_) => {
+                (RejectionKind::MarkerProfileNotFound, None)
+            }
         };
         Self {
             reason: error.to_string(),

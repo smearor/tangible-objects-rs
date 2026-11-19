@@ -40,4 +40,16 @@ pub enum RejectionKind {
     ProfileAlreadyOwned,
     /// The profile is not owned by the releasing application.
     ProfileNotOwnedBy,
+    /// The referenced seat session is not claimed.
+    SessionNotFound,
+    /// The seat session already has a different owner.
+    SessionAlreadyOwned,
+    /// The seat session is not owned by the calling application.
+    SessionNotOwnedBy,
+    /// The referenced seat ID is not registered.
+    SeatNotFound,
+    /// A seat with this name already exists in the session.
+    DuplicateSeat,
+    /// The seat's marker profile is not registered.
+    MarkerProfileNotFound,
 }
