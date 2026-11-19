@@ -5,52 +5,77 @@
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::PatternId;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::PatternName;
 <a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::Region;
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::SpellName;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>thiserror::Error;
-<a href=#10 id=10 data-nosnippet>10</a>
-<a href=#11 id=11 data-nosnippet>11</a><span class="doccomment">/// Errors produced by runtime profile and field-set registration
-<a href=#12 id=12 data-nosnippet>12</a>/// (DYNAMIC_PROFILES.md).
-<a href=#13 id=13 data-nosnippet>13</a>///
-<a href=#14 id=14 data-nosnippet>14</a>/// Lives in `model` so the control-command reply channel can carry the
-<a href=#15 id=15 data-nosnippet>15</a>/// typed rejection to interface crates (GraphQL/D-Bus/MCP) instead of a
-<a href=#16 id=16 data-nosnippet>16</a>/// pre-formatted string.
-<a href=#17 id=17 data-nosnippet>17</a></span><span class="attr">#[derive(Debug, Error)]
-<a href=#18 id=18 data-nosnippet>18</a></span><span class="kw">pub enum </span>RegistrationError {
-<a href=#19 id=19 data-nosnippet>19</a>    <span class="doccomment">/// The referenced pattern ID is not registered.
-<a href=#20 id=20 data-nosnippet>20</a>    </span><span class="attr">#[error(<span class="string">"pattern {0} not found"</span>)]
-<a href=#21 id=21 data-nosnippet>21</a>    </span>PatternNotFound(PatternId),
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="doccomment">/// The profile's geometric fingerprint collides with an already
-<a href=#23 id=23 data-nosnippet>23</a>    /// registered pattern - registration is rejected so the new
-<a href=#24 id=24 data-nosnippet>24</a>    /// profile cannot shadow the incumbent.
-<a href=#25 id=25 data-nosnippet>25</a>    </span><span class="attr">#[error(<span class="string">"fingerprint collides with registered profile '{0}'"</span>)]
-<a href=#26 id=26 data-nosnippet>26</a>    </span>FingerprintCollision(PatternName),
-<a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// The field set contains overlapping fields - an occupancy field
-<a href=#28 id=28 data-nosnippet>28</a>    /// must not suppress the same slot twice. Carries the offending pair
-<a href=#29 id=29 data-nosnippet>29</a>    /// and the intersection region so the rejection explains itself in
-<a href=#30 id=30 data-nosnippet>30</a>    /// logs and responses.
-<a href=#31 id=31 data-nosnippet>31</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' has overlapping fields: '{1}' overlaps '{2}' (overlap: {3})"</span>)]
-<a href=#32 id=32 data-nosnippet>32</a>    </span>FieldsOverlap(FieldSetName, FieldName, FieldName, Region),
-<a href=#33 id=33 data-nosnippet>33</a>    <span class="doccomment">/// A field set with this name is already registered.
-<a href=#34 id=34 data-nosnippet>34</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' already registered"</span>)]
-<a href=#35 id=35 data-nosnippet>35</a>    </span>DuplicateFieldSet(FieldSetName),
-<a href=#36 id=36 data-nosnippet>36</a>    <span class="doccomment">/// A dead zone with this name is already registered.
-<a href=#37 id=37 data-nosnippet>37</a>    </span><span class="attr">#[error(<span class="string">"dead zone '{0}' already registered"</span>)]
-<a href=#38 id=38 data-nosnippet>38</a>    </span>DuplicateDeadZone(DeadZoneName),
-<a href=#39 id=39 data-nosnippet>39</a>    <span class="doccomment">/// The spell's exclusive zone overlaps a field - the zone
-<a href=#40 id=40 data-nosnippet>40</a>    /// reserves its area for gestures while the field expects
-<a href=#41 id=41 data-nosnippet>41</a>    /// occupancy (SPELLS.md). Carries the spell and the offending
-<a href=#42 id=42 data-nosnippet>42</a>    /// field so the rejection explains itself in logs and
-<a href=#43 id=43 data-nosnippet>43</a>    /// responses.
-<a href=#44 id=44 data-nosnippet>44</a>    </span><span class="attr">#[error(<span class="string">"spell '{0}' exclusive zone overlaps field '{1}'"</span>)]
-<a href=#45 id=45 data-nosnippet>45</a>    </span>SpellZoneOverlapsField(SpellName, FieldName),
-<a href=#46 id=46 data-nosnippet>46</a>    <span class="doccomment">/// The profile already has a different owner - only owner-less
-<a href=#47 id=47 data-nosnippet>47</a>    /// profiles are claimable (`claimProfile`). Carries the profile
-<a href=#48 id=48 data-nosnippet>48</a>    /// name for logging; the claim itself addresses the profile by ID.
-<a href=#49 id=49 data-nosnippet>49</a>    </span><span class="attr">#[error(<span class="string">"profile '{0}' is already owned by '{1}'"</span>)]
-<a href=#50 id=50 data-nosnippet>50</a>    </span>ProfileAlreadyOwned(PatternName, Owner),
-<a href=#51 id=51 data-nosnippet>51</a>    <span class="doccomment">/// The profile is not owned by the releasing application - either
-<a href=#52 id=52 data-nosnippet>52</a>    /// owner-less or claimed by a different owner (`releaseProfile`).
-<a href=#53 id=53 data-nosnippet>53</a>    </span><span class="attr">#[error(<span class="string">"profile '{0}' is not owned by '{1}'"</span>)]
-<a href=#54 id=54 data-nosnippet>54</a>    </span>ProfileNotOwnedBy(PatternName, Owner),
-<a href=#55 id=55 data-nosnippet>55</a>}
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::SeatId;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">crate</span>::SeatName;
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span><span class="kw">crate</span>::SeatSessionName;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::SpellName;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>thiserror::Error;
+<a href=#13 id=13 data-nosnippet>13</a>
+<a href=#14 id=14 data-nosnippet>14</a><span class="doccomment">/// Errors produced by runtime profile and field-set registration
+<a href=#15 id=15 data-nosnippet>15</a>/// (DYNAMIC_PROFILES.md).
+<a href=#16 id=16 data-nosnippet>16</a>///
+<a href=#17 id=17 data-nosnippet>17</a>/// Lives in `model` so the control-command reply channel can carry the
+<a href=#18 id=18 data-nosnippet>18</a>/// typed rejection to interface crates (GraphQL/D-Bus/MCP) instead of a
+<a href=#19 id=19 data-nosnippet>19</a>/// pre-formatted string.
+<a href=#20 id=20 data-nosnippet>20</a></span><span class="attr">#[derive(Debug, Error)]
+<a href=#21 id=21 data-nosnippet>21</a></span><span class="kw">pub enum </span>RegistrationError {
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="doccomment">/// The referenced pattern ID is not registered.
+<a href=#23 id=23 data-nosnippet>23</a>    </span><span class="attr">#[error(<span class="string">"pattern {0} not found"</span>)]
+<a href=#24 id=24 data-nosnippet>24</a>    </span>PatternNotFound(PatternId),
+<a href=#25 id=25 data-nosnippet>25</a>    <span class="doccomment">/// The profile's geometric fingerprint collides with an already
+<a href=#26 id=26 data-nosnippet>26</a>    /// registered pattern - registration is rejected so the new
+<a href=#27 id=27 data-nosnippet>27</a>    /// profile cannot shadow the incumbent.
+<a href=#28 id=28 data-nosnippet>28</a>    </span><span class="attr">#[error(<span class="string">"fingerprint collides with registered profile '{0}'"</span>)]
+<a href=#29 id=29 data-nosnippet>29</a>    </span>FingerprintCollision(PatternName),
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="doccomment">/// The field set contains overlapping fields - an occupancy field
+<a href=#31 id=31 data-nosnippet>31</a>    /// must not suppress the same slot twice. Carries the offending pair
+<a href=#32 id=32 data-nosnippet>32</a>    /// and the intersection region so the rejection explains itself in
+<a href=#33 id=33 data-nosnippet>33</a>    /// logs and responses.
+<a href=#34 id=34 data-nosnippet>34</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' has overlapping fields: '{1}' overlaps '{2}' (overlap: {3})"</span>)]
+<a href=#35 id=35 data-nosnippet>35</a>    </span>FieldsOverlap(FieldSetName, FieldName, FieldName, Region),
+<a href=#36 id=36 data-nosnippet>36</a>    <span class="doccomment">/// A field set with this name is already registered.
+<a href=#37 id=37 data-nosnippet>37</a>    </span><span class="attr">#[error(<span class="string">"field set '{0}' already registered"</span>)]
+<a href=#38 id=38 data-nosnippet>38</a>    </span>DuplicateFieldSet(FieldSetName),
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="doccomment">/// A dead zone with this name is already registered.
+<a href=#40 id=40 data-nosnippet>40</a>    </span><span class="attr">#[error(<span class="string">"dead zone '{0}' already registered"</span>)]
+<a href=#41 id=41 data-nosnippet>41</a>    </span>DuplicateDeadZone(DeadZoneName),
+<a href=#42 id=42 data-nosnippet>42</a>    <span class="doccomment">/// The spell's exclusive zone overlaps a field - the zone
+<a href=#43 id=43 data-nosnippet>43</a>    /// reserves its area for gestures while the field expects
+<a href=#44 id=44 data-nosnippet>44</a>    /// occupancy (SPELLS.md). Carries the spell and the offending
+<a href=#45 id=45 data-nosnippet>45</a>    /// field so the rejection explains itself in logs and
+<a href=#46 id=46 data-nosnippet>46</a>    /// responses.
+<a href=#47 id=47 data-nosnippet>47</a>    </span><span class="attr">#[error(<span class="string">"spell '{0}' exclusive zone overlaps field '{1}'"</span>)]
+<a href=#48 id=48 data-nosnippet>48</a>    </span>SpellZoneOverlapsField(SpellName, FieldName),
+<a href=#49 id=49 data-nosnippet>49</a>    <span class="doccomment">/// The profile already has a different owner - only owner-less
+<a href=#50 id=50 data-nosnippet>50</a>    /// profiles are claimable (`claimProfile`). Carries the profile
+<a href=#51 id=51 data-nosnippet>51</a>    /// name for logging; the claim itself addresses the profile by ID.
+<a href=#52 id=52 data-nosnippet>52</a>    </span><span class="attr">#[error(<span class="string">"profile '{0}' is already owned by '{1}'"</span>)]
+<a href=#53 id=53 data-nosnippet>53</a>    </span>ProfileAlreadyOwned(PatternName, Owner),
+<a href=#54 id=54 data-nosnippet>54</a>    <span class="doccomment">/// The profile is not owned by the releasing application - either
+<a href=#55 id=55 data-nosnippet>55</a>    /// owner-less or claimed by a different owner (`releaseProfile`).
+<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="attr">#[error(<span class="string">"profile '{0}' is not owned by '{1}'"</span>)]
+<a href=#57 id=57 data-nosnippet>57</a>    </span>ProfileNotOwnedBy(PatternName, Owner),
+<a href=#58 id=58 data-nosnippet>58</a>    <span class="doccomment">/// The referenced seat session is not claimed
+<a href=#59 id=59 data-nosnippet>59</a>    /// (`claimSeatSession` first, TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+<a href=#60 id=60 data-nosnippet>60</a>    </span><span class="attr">#[error(<span class="string">"seat session '{0}' not found"</span>)]
+<a href=#61 id=61 data-nosnippet>61</a>    </span>SessionNotFound(SeatSessionName),
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="doccomment">/// The seat session already has a different owner - only
+<a href=#63 id=63 data-nosnippet>63</a>    /// owner-less sessions are claimable (`claimSeatSession`).
+<a href=#64 id=64 data-nosnippet>64</a>    </span><span class="attr">#[error(<span class="string">"seat session '{0}' is already owned by '{1}'"</span>)]
+<a href=#65 id=65 data-nosnippet>65</a>    </span>SessionAlreadyOwned(SeatSessionName, Owner),
+<a href=#66 id=66 data-nosnippet>66</a>    <span class="doccomment">/// The seat session (or one of its seats) is not owned by the
+<a href=#67 id=67 data-nosnippet>67</a>    /// calling application - only the owner may release the session
+<a href=#68 id=68 data-nosnippet>68</a>    /// or mutate its roster.
+<a href=#69 id=69 data-nosnippet>69</a>    </span><span class="attr">#[error(<span class="string">"seat session '{0}' is not owned by '{1}'"</span>)]
+<a href=#70 id=70 data-nosnippet>70</a>    </span>SessionNotOwnedBy(SeatSessionName, Owner),
+<a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// The referenced seat ID is not registered in any session.
+<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="attr">#[error(<span class="string">"seat {0} not found"</span>)]
+<a href=#73 id=73 data-nosnippet>73</a>    </span>SeatNotFound(SeatId),
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="doccomment">/// A seat with this name already exists in the session.
+<a href=#75 id=75 data-nosnippet>75</a>    </span><span class="attr">#[error(<span class="string">"seat '{0}' already exists in the session"</span>)]
+<a href=#76 id=76 data-nosnippet>76</a>    </span>DuplicateSeat(SeatName),
+<a href=#77 id=77 data-nosnippet>77</a>    <span class="doccomment">/// The marker profile a seat should anchor to is not registered.
+<a href=#78 id=78 data-nosnippet>78</a>    </span><span class="attr">#[error(<span class="string">"marker profile {0} not found"</span>)]
+<a href=#79 id=79 data-nosnippet>79</a>    </span>MarkerProfileNotFound(PatternId),
+<a href=#80 id=80 data-nosnippet>80</a>}
 </code></pre></div></section></main></body></html>
