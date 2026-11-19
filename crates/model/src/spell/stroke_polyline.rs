@@ -4,6 +4,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use smearor_commons_geometry::Millimeters;
+use smearor_commons_geometry::Polyline;
 use smearor_commons_geometry::Vec2;
 
 /// Samples per resampled stroke - enough to keep shape detail,
@@ -32,57 +33,13 @@ impl StrokePolyline {
     /// along its arc length (kills sampling-rate noise; the
     /// $-family recognizers' canonical step).
     pub fn resampled(&self) -> Self {
-        let count = STROKE_SAMPLES;
-        if self.points.len() < 2 {
-            return self.clone();
-        }
-        let total: f64 = self
-            .points
-            .windows(2)
-            .map(|pair| pair[0].distance(&pair[1]).as_f64())
-            .sum();
-        if total < 1e-6 {
-            return self.clone();
-        }
-        let step = total / (count - 1) as f64;
-        let mut out = Vec::with_capacity(count);
-        let mut previous = self.points[0];
-        out.push(previous);
-        let mut walked = 0.0;
-        for point in &self.points[1..] {
-            let mut seg = previous.distance(point).as_f64();
-            while walked + seg >= step && out.len() < count {
-                let t = (step - walked) / seg;
-                let interpolated = Vec2::<Millimeters>::new(
-                    previous.x + (point.x - previous.x) * t,
-                    previous.y + (point.y - previous.y) * t,
-                );
-                out.push(interpolated);
-                previous = interpolated;
-                walked = 0.0;
-                seg = previous.distance(point).as_f64();
-            }
-            walked += seg;
-            previous = *point;
-        }
-        while out.len() < count {
-            out.push(*self.points.last().unwrap_or(&previous));
-        }
-        Self::new(out)
+        Self::new(Polyline::new(self.points.clone()).resampled(STROKE_SAMPLES).into())
     }
 
     /// Translates the stroke so its first point sits at the origin
     /// (position-free matching - a spell is drawable anywhere).
     pub fn translated_to_origin(&self) -> Self {
-        let Some(first) = self.points.first() else {
-            return self.clone();
-        };
-        Self::new(
-            self.points
-                .iter()
-                .map(|p| Vec2::<Millimeters>::new(p.x - first.x, p.y - first.y))
-                .collect(),
-        )
+        Self::new(Polyline::new(self.points.clone()).translated_to_origin().into())
     }
 
     /// Uniformly scales the stroke so its extent (max distance from
