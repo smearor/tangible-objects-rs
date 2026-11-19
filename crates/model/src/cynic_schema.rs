@@ -16,6 +16,7 @@ cynic::impl_scalar!(crate::DeadZoneName, schema::DeadZoneName);
 cynic::impl_scalar!(crate::EventCount, schema::EventCount);
 cynic::impl_scalar!(crate::FieldName, schema::FieldName);
 cynic::impl_scalar!(crate::FieldSetName, schema::FieldSetName);
+cynic::impl_scalar!(smearor_commons_geometry::Fraction, schema::Fraction);
 cynic::impl_scalar!(crate::FrameCount, schema::FrameCount);
 cynic::impl_scalar!(smearor_commons_geometry::Millimeters, schema::Millimeters);
 cynic::impl_scalar!(crate::Owner, schema::Owner);

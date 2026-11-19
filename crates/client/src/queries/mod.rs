@@ -12,6 +12,7 @@ pub(crate) mod metrics;
 pub(crate) mod profile_lookup;
 pub(crate) mod profiles;
 pub(crate) mod recording;
+pub(crate) mod seat_sessions;
 pub(crate) mod sets;
 pub(crate) mod tangibles;
 pub(crate) mod touches;

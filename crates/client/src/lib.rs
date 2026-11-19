@@ -39,6 +39,7 @@ pub use client::GraphQLClient;
 pub use config::ClientConfig;
 pub use endpoint::Endpoint;
 pub use error::ClientError;
+pub use mutations::seats::api::SeatUpdate;
 pub use queries::profiles::api::ProfileQuery;
 pub use subscriptions::events::api::EventStreamQuery;
 /// Model types consumed and returned by the client - re-exported so

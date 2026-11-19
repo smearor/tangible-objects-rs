@@ -47,9 +47,99 @@ pub struct TableTopSeat {
     /// free-angle orientation. Marker-derived while anchored,
     /// application-provided while virtual, last anchored pose while
     /// absent.
+    #[serde(with = "pose_serde")]
+    #[cfg_attr(feature = "mcp", schemars(with = "SeatPose"))]
     pub pose: SeatPose,
     /// Marker anchor state.
     pub state: SeatMarkerState,
+}
+
+/// Serde `with` helpers for [`TableTopSeat::pose`]: the GraphQL wire
+/// spells enum variants SCREAMING_SNAKE (`BOTTOM`) while `TableSide`'s
+/// canonical serde form is lowercase (`bottom`). Decoding through a
+/// wire mirror accepts both spellings; serialization keeps the
+/// canonical lowercase form `SeatPose` already emits.
+mod pose_serde {
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde::Serialize;
+    use serde::Serializer;
+    use smearor_commons_geometry::Fraction;
+    use smearor_commons_geometry::RotationRad;
+    use smearor_commons_layout::Seat;
+    use smearor_commons_layout::SeatPose;
+    use smearor_commons_layout::TableSide;
+
+    /// `Seat` wire mirror - `side` decodes through [`WireSide`].
+    #[derive(Deserialize)]
+    struct WireSeat {
+        /// Table edge.
+        side: WireSide,
+        /// Position along the edge axis.
+        offset: Option<Fraction>,
+    }
+
+    /// `SeatPose` wire mirror.
+    #[derive(Deserialize)]
+    struct WirePose {
+        /// Organizational alignment.
+        seat: WireSeat,
+        /// Radial orientation.
+        orientation: RotationRad,
+    }
+
+    /// `TableSide` accepting its GraphQL (`BOTTOM`) and canonical
+    /// serde (`bottom`) spellings.
+    #[derive(Deserialize)]
+    #[serde(rename_all = "lowercase")]
+    enum WireSide {
+        /// Bottom edge.
+        #[serde(alias = "BOTTOM")]
+        Bottom,
+        /// Left edge.
+        #[serde(alias = "LEFT")]
+        Left,
+        /// Top edge.
+        #[serde(alias = "TOP")]
+        Top,
+        /// Right edge.
+        #[serde(alias = "RIGHT")]
+        Right,
+    }
+
+    impl From<WireSide> for TableSide {
+        fn from(side: WireSide) -> Self {
+            match side {
+                WireSide::Bottom => Self::Bottom,
+                WireSide::Left => Self::Left,
+                WireSide::Top => Self::Top,
+                WireSide::Right => Self::Right,
+            }
+        }
+    }
+
+    /// Serializes through `SeatPose`'s own impl - canonical lowercase.
+    pub(super) fn serialize<S: Serializer>(
+        pose: &SeatPose,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        pose.serialize(serializer)
+    }
+
+    /// Deserializes through the wire mirror - accepts `BOTTOM` and
+    /// `bottom` spellings of `TableSide`.
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<SeatPose, D::Error> {
+        let wire = WirePose::deserialize(deserializer)?;
+        Ok(SeatPose::new(
+            Seat {
+                side: wire.seat.side.into(),
+                offset: wire.seat.offset,
+            },
+            wire.orientation,
+        ))
+    }
 }
 
 #[cfg(feature = "cynic")]
