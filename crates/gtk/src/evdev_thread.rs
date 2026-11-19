@@ -120,6 +120,7 @@ pub fn evdev_thread(
         fields_visible,
         ruler_visible,
         positions_visible,
+        seats_visible,
         filter_mode,
         touch_passthrough,
     ) = state
@@ -133,6 +134,7 @@ pub fn evdev_thread(
                 s.fields_visible,
                 s.ruler_visible,
                 s.positions_visible,
+                s.seats_visible,
                 s.filter_mode,
                 s.touch_passthrough,
             )
@@ -161,6 +163,7 @@ pub fn evdev_thread(
     runtime.set_fields_visible(fields_visible);
     runtime.set_ruler_visible(ruler_visible);
     runtime.set_positions_visible(positions_visible);
+    runtime.set_seats_visible(seats_visible);
     runtime.set_filter_mode(filter_mode);
     runtime.set_touch_passthrough(touch_passthrough);
     (hooks.spawn_interfaces)(&handle);
@@ -242,6 +245,8 @@ pub fn evdev_thread(
                 s.ruler_visible = runtime.ruler_visible();
                 s.grid_visible = runtime.grid_visible();
                 s.positions_visible = runtime.positions_visible();
+                s.seats_visible = runtime.seats_visible();
+                s.seat_sessions = handle.seat_sessions();
                 s.touch_passthrough = runtime.touch_passthrough();
                 runtime.set_input_region_diagnostics(s.input_region_diagnostics.clone());
                 s.filter_mode = runtime.filter_mode();
@@ -352,6 +357,8 @@ pub fn evdev_thread(
                     s.ruler_visible = runtime.ruler_visible();
                     s.grid_visible = runtime.grid_visible();
                     s.positions_visible = runtime.positions_visible();
+                    s.seats_visible = runtime.seats_visible();
+                    s.seat_sessions = handle.seat_sessions();
                     s.touch_passthrough = runtime.touch_passthrough();
                     runtime.set_input_region_diagnostics(s.input_region_diagnostics.clone());
                     s.filter_mode = runtime.filter_mode();

@@ -196,6 +196,11 @@ struct Cli {
     /// `set_positions_visible` toggles it afterwards
     #[arg(long)]
     positions_visible: bool,
+    /// Draw the seat overlay on the GUI canvas (--gui);
+    /// `set_seats_visible` toggles it afterwards
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md)
+    #[arg(long)]
+    seats_visible: bool,
     /// Let touch events pass through the GTK window to the desktop
     /// beneath, except where GUI elements are hit (--gui, Wayland
     /// only); `set_touch_passthrough` toggles it afterwards
@@ -344,6 +349,7 @@ fn main() -> Result<()> {
                 ruler_visible: cli.ruler_visible,
                 grid_visible: cli.grid_visible,
                 positions_visible: cli.positions_visible,
+                seats_visible: cli.seats_visible,
                 touch_passthrough: cli.touch_passthrough,
                 filter_mode: cli.filter_mode.unwrap_or_default(),
             },

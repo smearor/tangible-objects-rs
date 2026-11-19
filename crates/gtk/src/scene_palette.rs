@@ -30,6 +30,11 @@ palette_definition! {
         Field => "field",
         /// Field name label.
         FieldLabel => "field-label",
+        /// Seat marker fill/outline for seats without a profile color
+        /// (virtual or profile-less seats).
+        Seat => "seat",
+        /// Seat name label.
+        SeatLabel => "seat-label",
         /// Ruler strip background.
         RulerBg => "ruler-bg",
         /// Ruler ticks and mm labels.
@@ -65,6 +70,8 @@ pub static SCENE: LazyLock<Palette<SceneColor, f64>> = LazyLock::new(|| {
     palette.insert(SceneColor::EdgeMargin, Color::<f64>::new(1.0, 0.35, 0.2));
     palette.insert(SceneColor::Field, Color::<f64>::new(0.2, 0.8, 1.0));
     palette.insert(SceneColor::FieldLabel, Color::<f64>::new(0.55, 0.9, 1.0));
+    palette.insert(SceneColor::Seat, Color::<f64>::new(0.9, 0.7, 0.3));
+    palette.insert(SceneColor::SeatLabel, Color::<f64>::new(1.0, 0.85, 0.5));
     palette.insert(SceneColor::RulerBg, Color::<f64>::new(0.04, 0.04, 0.06));
     palette.insert(SceneColor::Ruler, Color::<f64>::new(0.9, 0.9, 0.9));
     palette.insert(SceneColor::Label, Color::<f64>::new(0.85, 0.85, 0.85));

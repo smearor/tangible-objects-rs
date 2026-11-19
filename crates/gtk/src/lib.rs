@@ -31,6 +31,7 @@ mod passthrough;
 mod pattern_style;
 mod profiles_card;
 mod scene_palette;
+mod seats_card;
 mod shared_state;
 mod touches_card;
 mod training_card;
@@ -256,6 +257,12 @@ pub fn run_gui(
                 dead_zones_card::create_dead_zones_card(&state_app),
                 fl!(language_loader(), "card-dead-zones-title"),
                 CardAnchor::BottomLeft,
+            ),
+            (
+                "seats",
+                seats_card::create_seats_card(&state_app),
+                fl!(language_loader(), "card-seats-title"),
+                CardAnchor::CenterRight,
             ),
         ] {
             let _ = board.add_card_with_id(

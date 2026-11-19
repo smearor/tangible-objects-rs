@@ -27,6 +27,7 @@ use tangible_objects_model::InputRegionDiagnostics;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileInfo;
+use tangible_objects_model::SeatSession;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
@@ -145,6 +146,13 @@ pub struct SharedState {
     /// Whether the positions overlay is drawn
     /// (`SetPositionsVisible`/`--positions-visible`).
     pub positions_visible: bool,
+    /// Whether the seat overlay is drawn
+    /// (`SetSeatsVisible`/`--seats-visible`,
+    /// TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    pub seats_visible: bool,
+    /// Claimed seat sessions with their rosters - the seat overlay's
+    /// and seats card's data.
+    pub seat_sessions: Vec<SeatSession>,
     /// Whether touches pass through to the desktop except on GUI
     /// elements (`SetTouchPassthrough`/`--touch-passthrough`).
     pub touch_passthrough: bool,
@@ -272,6 +280,8 @@ impl SharedState {
             ruler_visible: options.ruler_visible,
             grid_visible: options.grid_visible,
             positions_visible: options.positions_visible,
+            seats_visible: options.seats_visible,
+            seat_sessions: Vec::new(),
             touch_passthrough: options.touch_passthrough,
             input_region_diagnostics: InputRegionDiagnostics::default(),
             event_counts: BTreeMap::new(),

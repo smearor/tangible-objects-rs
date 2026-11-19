@@ -41,6 +41,9 @@ pub struct GuiOptions {
     /// Whether the positions overlay starts drawn
     /// (`SetPositionsVisible` commands toggle afterwards).
     pub positions_visible: bool,
+    /// Whether the seat overlay starts drawn (`SetSeatsVisible`
+    /// commands toggle afterwards; TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    pub seats_visible: bool,
     /// Whether touches pass through the window to the desktop except
     /// on GUI elements (`SetTouchPassthrough` commands toggle
     /// afterwards; Wayland only).

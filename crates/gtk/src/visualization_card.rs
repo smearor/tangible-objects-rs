@@ -85,6 +85,11 @@ pub fn create_visualization_card(
         |s| s.positions_visible,
         ControlCommand::SetPositionsVisible,
     );
+    add_overlay_toggle(
+        &fl!(language_loader(), "toggle-seats"),
+        |s| s.seats_visible,
+        ControlCommand::SetSeatsVisible,
+    );
 
     // Render-mode cycler - GUI-local: touch points, physical shape,
     // or both (GUI.md tangible render modes).

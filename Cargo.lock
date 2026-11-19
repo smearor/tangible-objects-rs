@@ -3808,6 +3808,7 @@ dependencies = [
  "serde",
  "smearor-commons-color",
  "smearor-commons-geometry",
+ "smearor-commons-layout",
  "tangible-objects-engine",
  "tangible-objects-model",
  "tangible-objects-runtime",

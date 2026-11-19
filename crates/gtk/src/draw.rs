@@ -8,11 +8,15 @@ use std::time::Instant;
 use i18n_embed_fl::fl;
 use smearor_commons_color::Alpha;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Fraction;
 use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::RotationRad;
 use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
+use smearor_commons_layout::Seat;
+use smearor_commons_layout::TableSide;
 use tangible_objects_model::Calibration;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DisplayRotation;
@@ -21,6 +25,8 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternMatch;
 use tangible_objects_model::PhysicalShape;
 use tangible_objects_model::Region;
+use tangible_objects_model::SeatMarkerState;
+use tangible_objects_model::SeatSession;
 use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchSet;
@@ -132,6 +138,26 @@ pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<Shared
     }
     if s.grid_visible {
         draw_grid(cr, &cal, &to_screen);
+    }
+    if s.seats_visible {
+        let bounds = s
+            .device_info
+            .as_ref()
+            .and_then(|info| info.surface_bounds())
+            .unwrap_or_else(|| {
+                Rect::new(
+                    Vec2::<Millimeters>::new(0.0, 0.0),
+                    Vec2::new(cal.width_mm().as_f64(), cal.height_mm().as_f64()),
+                )
+            });
+        draw_seats(
+            cr,
+            &s.seat_sessions,
+            (&s.tracked).into(),
+            &s.pattern_styles,
+            bounds,
+            &to_screen,
+        );
     }
 
     if mode == GuiMode::Training {
@@ -382,6 +408,104 @@ fn field_screen_region(set: &FieldSet, field: &tangible_objects_model::Field) ->
         y_min: Millimeters::new(y + field.region.y_min.as_f64() * height),
         x_max: Millimeters::new(x + field.region.x_max.as_f64() * width),
         y_max: Millimeters::new(y + field.region.y_max.as_f64() * height),
+    }
+}
+
+/// The seat's anchor point on the surface edge in millimeters - the
+/// inverse of `Seat::from_position`: `side` picks the edge, `offset`
+/// (`HALF` when unpinned) the fraction along it. Used for virtual
+/// and absent seats, whose organizational pose is all that remains.
+fn seat_edge_position(seat: &Seat, bounds: &Rect<Millimeters>) -> Vec2<Millimeters> {
+    let offset = seat.offset.unwrap_or(Fraction::HALF).as_f64();
+    let (min, size) = (bounds.min, bounds.size);
+    match seat.side {
+        TableSide::Bottom => Vec2::new(min.x + size.x * offset, min.y + size.y),
+        TableSide::Left => Vec2::new(min.x, min.y + size.y * offset),
+        TableSide::Top => Vec2::new(min.x + size.x * offset, min.y),
+        TableSide::Right => Vec2::new(min.x + size.x, min.y + size.y * offset),
+    }
+}
+
+/// Seat overlay (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md): a ring plus a
+/// gaze indicator per declared seat. Anchored seats inherit their
+/// marker profile's color (`match_color` - the same chain the figure
+/// visuals use); virtual seats get the neutral `Seat` slot. `Absent`
+/// seats render dimmed at the edge point of their retained pose -
+/// the marker is gone, the claim is not.
+fn draw_seats(
+    cr: &cairo::Context,
+    sessions: &[SeatSession],
+    tracked: TrackedSet<'_>,
+    styles: &[PatternStyle],
+    bounds: Rect<Millimeters>,
+    to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
+) {
+    const RING_RADIUS: f64 = 22.0;
+    const INDICATOR_MM: f64 = 16.0;
+
+    for session in sessions {
+        for seat in &session.seats {
+            let color = seat
+                .marker
+                .map(|id| match_color(styles, id))
+                .unwrap_or_else(|| SceneColor::Seat.color());
+            let (center_mm, alpha) = match seat.state {
+                SeatMarkerState::Anchored => (
+                    seat.tangible
+                        .and_then(|id| tracked.iter().find(|t| t.id == id))
+                        .map(|t| t.center)
+                        .unwrap_or_else(|| seat_edge_position(&seat.pose.seat, &bounds)),
+                    0.9,
+                ),
+                SeatMarkerState::Absent => (seat_edge_position(&seat.pose.seat, &bounds), 0.3),
+                SeatMarkerState::Virtual => (seat_edge_position(&seat.pose.seat, &bounds), 0.7),
+            };
+            let center = to_screen(&center_mm);
+
+            color.apply_alpha(cr, alpha * 0.25);
+            cr.arc(
+                center.x,
+                center.y,
+                RING_RADIUS,
+                0.0,
+                2.0 * std::f64::consts::PI,
+            );
+            let _ = cr.fill();
+            color.apply_alpha(cr, alpha);
+            cr.set_line_width(2.5);
+            cr.new_sub_path();
+            cr.arc(
+                center.x,
+                center.y,
+                RING_RADIUS,
+                0.0,
+                2.0 * std::f64::consts::PI,
+            );
+            let _ = cr.stroke();
+
+            // Gaze indicator: the marker's free radial orientation,
+            // drawn in surface space so the display rotation maps it
+            // like every other overlay line.
+            let orientation = seat.pose.orientation.as_f64();
+            let gaze_mm = center_mm
+                + Vec2::new(
+                    orientation.cos() * INDICATOR_MM,
+                    orientation.sin() * INDICATOR_MM,
+                );
+            let gaze = to_screen(&gaze_mm);
+            cr.new_sub_path();
+            cr.move_to(center.x, center.y);
+            cr.line_to(gaze.x, gaze.y);
+            let _ = cr.stroke();
+
+            cr.set_font_size(14.0);
+            let name = seat.name.as_str();
+            match cr.text_extents(name) {
+                Ok(ext) => cr.move_to(center.x - ext.width() / 2.0, center.y + RING_RADIUS + 18.0),
+                Err(_) => cr.move_to(center.x, center.y + RING_RADIUS + 18.0),
+            }
+            let _ = cr.show_text(name);
+        }
     }
 }
 
