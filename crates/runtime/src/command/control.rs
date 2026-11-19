@@ -1,3 +1,6 @@
+use crate::AddSeatRequest;
+use crate::UpdateSeatRequest;
+
 use smearor_commons_color::AlphaPercent;
 use smearor_commons_geometry::Millimeters;
 use smearor_commons_layout::SeatPose;
@@ -362,46 +365,6 @@ pub enum ControlCommand {
     /// availability as [`Self::SetFieldsVisible`]: headless daemons
     /// ignore it.
     SetSeatsVisible(bool),
-}
-
-/// Payload of [`ControlCommand::AddSeat`] - boxed so the command enum
-/// stays small enough for the `TrySendError<ControlCommand>` reply
-/// type.
-#[derive(Debug)]
-pub struct AddSeatRequest {
-    /// Session receiving the seat.
-    pub session: SeatSessionName,
-    /// Owner adding the seat - must own the session.
-    pub owner: Owner,
-    /// Seat name - unique within the session.
-    pub name: SeatName,
-    /// Marker profile anchoring the seat (`None` = virtual seat).
-    pub marker: Option<PatternId>,
-    /// Initial pose - the applied pose for virtual seats, the
-    /// placeholder until the marker binds for marker-backed seats.
-    pub pose: Option<SeatPose>,
-    /// Receives the added seat or the typed rejection.
-    pub reply: oneshot::Sender<Result<TableTopSeat, RegistrationError>>,
-}
-
-/// Payload of [`ControlCommand::UpdateSeat`] - boxed like
-/// [`AddSeatRequest`].
-#[derive(Debug)]
-pub struct UpdateSeatRequest {
-    /// Seat to mutate - addressed by its globally unique ID.
-    pub seat: SeatId,
-    /// Owner mutating the seat - must own its session.
-    pub owner: Owner,
-    /// New seat name - `None` keeps the current one.
-    pub name: Option<SeatName>,
-    /// `None` keeps the marker, `Some(None)` clears it,
-    /// `Some(Some)` rebinds to another profile (validated like
-    /// [`AddSeatRequest::marker`]).
-    pub marker: Option<Option<PatternId>>,
-    /// New pose - `None` keeps the current one.
-    pub pose: Option<SeatPose>,
-    /// Receives the updated seat or the typed rejection.
-    pub reply: oneshot::Sender<Result<TableTopSeat, RegistrationError>>,
 }
 
 impl ControlCommand {

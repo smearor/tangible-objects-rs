@@ -13,7 +13,9 @@ mod engine_runtime;
 mod snapshot;
 mod training_state;
 
+pub use command::AddSeatRequest;
 pub use command::ControlCommand;
+pub use command::UpdateSeatRequest;
 pub use engine_handle::EngineHandle;
 pub use engine_runtime::COMMAND_CHANNEL_CAPACITY;
 pub use engine_runtime::EVENT_CHANNEL_CAPACITY;
