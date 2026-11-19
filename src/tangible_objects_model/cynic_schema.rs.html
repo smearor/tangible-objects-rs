@@ -16,32 +16,33 @@
 <a href=#16 id=16 data-nosnippet>16</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::EventCount, schema::EventCount);
 <a href=#17 id=17 data-nosnippet>17</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::FieldName, schema::FieldName);
 <a href=#18 id=18 data-nosnippet>18</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::FieldSetName, schema::FieldSetName);
-<a href=#19 id=19 data-nosnippet>19</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::FrameCount, schema::FrameCount);
-<a href=#20 id=20 data-nosnippet>20</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::Millimeters, schema::Millimeters);
-<a href=#21 id=21 data-nosnippet>21</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::Owner, schema::Owner);
-<a href=#22 id=22 data-nosnippet>22</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PatternId, schema::PatternId);
-<a href=#23 id=23 data-nosnippet>23</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PatternName, schema::PatternName);
-<a href=#24 id=24 data-nosnippet>24</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PatternTolerance, schema::PatternTolerance);
-<a href=#25 id=25 data-nosnippet>25</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PinCount, schema::PinCount);
-<a href=#26 id=26 data-nosnippet>26</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SpellName, schema::SpellName);
-<a href=#27 id=27 data-nosnippet>27</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::RawAxisValue, schema::RawAxisValue);
-<a href=#28 id=28 data-nosnippet>28</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::RecordLabel, schema::RecordLabel);
-<a href=#29 id=29 data-nosnippet>29</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SeatId, schema::SeatId);
-<a href=#30 id=30 data-nosnippet>30</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SeatName, schema::SeatName);
-<a href=#31 id=31 data-nosnippet>31</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SeatSessionName, schema::SeatSessionName);
-<a href=#32 id=32 data-nosnippet>32</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::RotationRad, schema::RotationRad);
-<a href=#33 id=33 data-nosnippet>33</a><span class="macro">cynic::impl_scalar!</span>(
-<a href=#34 id=34 data-nosnippet>34</a>    smearor_commons_geometry::SmoothingAlpha,
-<a href=#35 id=35 data-nosnippet>35</a>    schema::SmoothingAlpha
-<a href=#36 id=36 data-nosnippet>36</a>);
-<a href=#37 id=37 data-nosnippet>37</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::StageName, schema::StageName);
-<a href=#38 id=38 data-nosnippet>38</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TangibleId, schema::TangibleId);
-<a href=#39 id=39 data-nosnippet>39</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TangibleSetId, schema::TangibleSetId);
-<a href=#40 id=40 data-nosnippet>40</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TouchPointSlot, schema::TouchPointSlot);
-<a href=#41 id=41 data-nosnippet>41</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TrackingId, schema::TrackingId);
-<a href=#42 id=42 data-nosnippet>42</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::UnitsPerMm, schema::UnitsPerMm);
-<a href=#43 id=43 data-nosnippet>43</a><span class="comment">// `JSON` passthrough fields (`metrics`, `analyze*`) select as
-<a href=#44 id=44 data-nosnippet>44</a>// `serde_json::Value` - the response still decodes into the typed
-<a href=#45 id=45 data-nosnippet>45</a>// reports through the model's `Deserialize`.
-<a href=#46 id=46 data-nosnippet>46</a></span><span class="macro">cynic::impl_scalar!</span>(serde_json::Value, schema::JSON);
+<a href=#19 id=19 data-nosnippet>19</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::Fraction, schema::Fraction);
+<a href=#20 id=20 data-nosnippet>20</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::FrameCount, schema::FrameCount);
+<a href=#21 id=21 data-nosnippet>21</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::Millimeters, schema::Millimeters);
+<a href=#22 id=22 data-nosnippet>22</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::Owner, schema::Owner);
+<a href=#23 id=23 data-nosnippet>23</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PatternId, schema::PatternId);
+<a href=#24 id=24 data-nosnippet>24</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PatternName, schema::PatternName);
+<a href=#25 id=25 data-nosnippet>25</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PatternTolerance, schema::PatternTolerance);
+<a href=#26 id=26 data-nosnippet>26</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::PinCount, schema::PinCount);
+<a href=#27 id=27 data-nosnippet>27</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SpellName, schema::SpellName);
+<a href=#28 id=28 data-nosnippet>28</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::RawAxisValue, schema::RawAxisValue);
+<a href=#29 id=29 data-nosnippet>29</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::RecordLabel, schema::RecordLabel);
+<a href=#30 id=30 data-nosnippet>30</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SeatId, schema::SeatId);
+<a href=#31 id=31 data-nosnippet>31</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SeatName, schema::SeatName);
+<a href=#32 id=32 data-nosnippet>32</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::SeatSessionName, schema::SeatSessionName);
+<a href=#33 id=33 data-nosnippet>33</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::RotationRad, schema::RotationRad);
+<a href=#34 id=34 data-nosnippet>34</a><span class="macro">cynic::impl_scalar!</span>(
+<a href=#35 id=35 data-nosnippet>35</a>    smearor_commons_geometry::SmoothingAlpha,
+<a href=#36 id=36 data-nosnippet>36</a>    schema::SmoothingAlpha
+<a href=#37 id=37 data-nosnippet>37</a>);
+<a href=#38 id=38 data-nosnippet>38</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::StageName, schema::StageName);
+<a href=#39 id=39 data-nosnippet>39</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TangibleId, schema::TangibleId);
+<a href=#40 id=40 data-nosnippet>40</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TangibleSetId, schema::TangibleSetId);
+<a href=#41 id=41 data-nosnippet>41</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TouchPointSlot, schema::TouchPointSlot);
+<a href=#42 id=42 data-nosnippet>42</a><span class="macro">cynic::impl_scalar!</span>(<span class="kw">crate</span>::TrackingId, schema::TrackingId);
+<a href=#43 id=43 data-nosnippet>43</a><span class="macro">cynic::impl_scalar!</span>(smearor_commons_geometry::UnitsPerMm, schema::UnitsPerMm);
+<a href=#44 id=44 data-nosnippet>44</a><span class="comment">// `JSON` passthrough fields (`metrics`, `analyze*`) select as
+<a href=#45 id=45 data-nosnippet>45</a>// `serde_json::Value` - the response still decodes into the typed
+<a href=#46 id=46 data-nosnippet>46</a>// reports through the model's `Deserialize`.
+<a href=#47 id=47 data-nosnippet>47</a></span><span class="macro">cynic::impl_scalar!</span>(serde_json::Value, schema::JSON);
 </code></pre></div></section></main></body></html>

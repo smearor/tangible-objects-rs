@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ClientError"],"struct":["ClientConfig","Endpoint","EventStreamQuery","GraphQLClient","ProfileQuery"]};
+window.SIDEBAR_ITEMS = {"enum":["ClientError"],"struct":["ClientConfig","Endpoint","EventStreamQuery","GraphQLClient","ProfileQuery","SeatUpdate"]};
