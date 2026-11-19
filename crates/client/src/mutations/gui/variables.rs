@@ -76,6 +76,14 @@ pub(crate) struct SetPositionsVisibleVariables {
     pub visible: bool,
 }
 
+/// Variables of `setSeatsVisible`.
+#[derive(QueryVariables)]
+#[cynic(schema_module = "tangible_objects_model::schema")]
+pub(crate) struct SetSeatsVisibleVariables {
+    /// `true` draws the seat overlay.
+    pub visible: bool,
+}
+
 /// Variables of `setTouchPassthrough`.
 #[derive(QueryVariables)]
 #[cynic(schema_module = "tangible_objects_model::schema")]

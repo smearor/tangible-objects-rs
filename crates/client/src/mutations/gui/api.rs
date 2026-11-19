@@ -13,6 +13,7 @@ use crate::mutations::gui::mutation::SetGridVisible;
 use crate::mutations::gui::mutation::SetGuiVisible;
 use crate::mutations::gui::mutation::SetPositionsVisible;
 use crate::mutations::gui::mutation::SetRulerVisible;
+use crate::mutations::gui::mutation::SetSeatsVisible;
 use crate::mutations::gui::mutation::SetTouchPassthrough;
 use crate::mutations::gui::variables::SetBackgroundAlphaVariables;
 use crate::mutations::gui::variables::SetDeadZonesVisibleVariables;
@@ -23,6 +24,7 @@ use crate::mutations::gui::variables::SetGridVisibleVariables;
 use crate::mutations::gui::variables::SetGuiVisibleVariables;
 use crate::mutations::gui::variables::SetPositionsVisibleVariables;
 use crate::mutations::gui::variables::SetRulerVisibleVariables;
+use crate::mutations::gui::variables::SetSeatsVisibleVariables;
 use crate::mutations::gui::variables::SetTouchPassthroughVariables;
 
 impl GraphQLClient {
@@ -118,6 +120,16 @@ impl GraphQLClient {
         self.call_mutation::<SetPositionsVisible, _, _>(
             "setPositionsVisible",
             SetPositionsVisibleVariables { visible },
+        )
+        .await
+    }
+
+    /// Shows or hides the seat overlay on the daemon's GUI canvas
+    /// (`setSeatsVisible`) - ignored by headless daemons.
+    pub async fn set_seats_visible(&self, visible: bool) -> Result<bool, ClientError> {
+        self.call_mutation::<SetSeatsVisible, _, _>(
+            "setSeatsVisible",
+            SetSeatsVisibleVariables { visible },
         )
         .await
     }

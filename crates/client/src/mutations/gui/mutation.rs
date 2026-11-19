@@ -10,6 +10,7 @@ use crate::mutations::gui::variables::SetGridVisibleVariablesFields;
 use crate::mutations::gui::variables::SetGuiVisibleVariablesFields;
 use crate::mutations::gui::variables::SetPositionsVisibleVariablesFields;
 use crate::mutations::gui::variables::SetRulerVisibleVariablesFields;
+use crate::mutations::gui::variables::SetSeatsVisibleVariablesFields;
 use crate::mutations::gui::variables::SetTouchPassthroughVariablesFields;
 use cynic::QueryFragment;
 
@@ -155,6 +156,22 @@ pub(crate) struct SetPositionsVisible {
     #[cynic(rename = "setPositionsVisible")]
     #[arguments(visible: $visible)]
     set_positions_visible: bool,
+}
+
+/// Root-field wrapper for `setSeatsVisible`.
+#[allow(dead_code)]
+#[derive(QueryFragment)]
+#[cynic(
+    graphql_type = "MutationRoot",
+    schema_path = "../graphql/schema.graphql",
+    schema_module = "tangible_objects_model::schema",
+    variables = "SetSeatsVisibleVariables"
+)]
+pub(crate) struct SetSeatsVisible {
+    /// `setSeatsVisible` field.
+    #[cynic(rename = "setSeatsVisible")]
+    #[arguments(visible: $visible)]
+    set_seats_visible: bool,
 }
 
 /// Root-field wrapper for `setTouchPassthrough`.
