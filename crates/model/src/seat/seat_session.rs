@@ -1,6 +1,8 @@
 use crate::Owner;
 use crate::SeatSessionName;
 use crate::TableTopSeat;
+#[cfg(feature = "cynic")]
+use crate::schema;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -16,6 +18,16 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::SimpleObject))]
 #[cfg_attr(feature = "mcp", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "cynic", derive(cynic::QueryFragment))]
+#[cfg_attr(
+    feature = "cynic",
+    cynic(
+        schema_path = "../graphql/schema.graphql",
+        graphql_type = "SeatSession",
+        no_deserialize,
+        rename_all = "camelCase"
+    )
+)]
 pub struct SeatSession {
     /// Session name - unique across the daemon, addresses the session
     /// on all interfaces.

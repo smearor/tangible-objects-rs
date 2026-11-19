@@ -1,3 +1,41 @@
+"""
+Input for `addSeat`.
+"""
+input AddSeatInput {
+	"""
+	Session receiving the seat - must exist and be owned by the
+	mutating owner.
+	"""
+	session: SeatSessionName!
+	"""
+	Seat name - unique within the session.
+	"""
+	name: SeatName!
+	"""
+	Marker profile anchoring the seat - `null` creates a virtual
+	seat (`pose` is then its applied pose; `null` pose falls back
+	to the session-default pose).
+	"""
+	marker: PatternId
+	"""
+	Initial pose - the applied pose for virtual seats, the
+	placeholder until the marker binds for marker-backed seats.
+	"""
+	pose: SeatPoseInput
+}
+
+"""
+`addSeat` result union - the applied outcome either added the
+seat to the session's roster or carries the typed rejection
+(`SESSION_NOT_FOUND`, `SESSION_NOT_OWNED_BY`, `DUPLICATE_SEAT`,
+`MARKER_PROFILE_NOT_FOUND`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union AddSeatResult = SeatAdded | RegistrationRejected
+
 scalar AffinityFactor
 
 """
@@ -30,6 +68,17 @@ members - client crates model the wire shape with their own cynic
 fragments.
 """
 union ClaimProfileResult = ProfileClaimed | RegistrationRejected
+
+"""
+`claimSeatSession` result union - the applied outcome either
+claimed (or created) the session for the owner or carries the
+typed rejection (`SESSION_ALREADY_OWNED`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union ClaimSeatSessionResult = SeatSessionClaimed | RegistrationRejected
 
 """
 Configuration of missing-pin completion (TRACKING_STABILIZATION.md).
@@ -742,6 +791,45 @@ type MutationRoot {
 	"""
 	releaseProfile(id: PatternId!, owner: Owner!, disable: Boolean): ReleaseProfileResult!
 	"""
+	Claims or creates a seat session for `owner`
+	(TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md) - the seat-domain
+	counterpart of `claimProfile`: re-claiming is idempotent for
+	the same owner, a foreign claim is rejected
+	(`SESSION_ALREADY_OWNED`), and `unregisterOwner`/disconnect
+	cleanup releases the session with all its seats.
+	"""
+	claimSeatSession(name: SeatSessionName!, owner: Owner!): ClaimSeatSessionResult!
+	"""
+	Releases `owner`'s claim on a seat session - its seats are
+	removed with it (each emits `SEAT_REMOVED` before
+	`SESSION_RELEASED`). Rejected when `owner` does not hold the
+	claim (`SESSION_NOT_OWNED_BY`).
+	"""
+	releaseSeatSession(name: SeatSessionName!, owner: Owner!): ReleaseSeatSessionResult!
+	"""
+	Adds a seat to a claimed session - marker-backed
+	(`marker` set, pose derived once an instance binds) or virtual
+	(`marker: null`, `pose` applied). `owner` must own the
+	session.
+	"""
+	addSeat(input: AddSeatInput!, owner: Owner!): AddSeatResult!
+	"""
+	Mutates a seat addressed by its globally unique ID - `null`
+	input fields keep their value, `clearMarker` turns the seat
+	virtual. `owner` must own the seat's session.
+	"""
+	updateSeat(id: SeatId!, input: UpdateSeatInput!, owner: Owner!): UpdateSeatResult!
+	"""
+	Removes a seat from its session - emits `SEAT_REMOVED`.
+	`owner` must own the seat's session.
+	"""
+	removeSeat(id: SeatId!, owner: Owner!): RemoveSeatResult!
+	"""
+	Shows or hides the seat overlay on the GUI canvas - ignored on
+	headless daemons.
+	"""
+	setSeatsVisible(visible: Boolean!): Boolean!
+	"""
 	Removes a dynamically registered pattern by ID.
 	"""
 	unregisterPattern(id: PatternId!): Boolean!
@@ -1021,6 +1109,12 @@ type QueryRoot {
 	contacts are dropped at ingest.
 	"""
 	deadZones: [DeadZone!]!
+	"""
+	Claimed seat sessions with their rosters
+	(TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md) - `session` filters to one
+	named session, `null` returns all.
+	"""
+	seatSessions(session: SeatSessionName): [SeatSession!]!
 	"""
 	Contacts dropped by dead-zone filtering on the last processed
 	frame - the ingest-level suppression count.
@@ -1381,6 +1475,28 @@ fragments.
 """
 union ReleaseProfileResult = ProfileReleased | RegistrationRejected
 
+"""
+`releaseSeatSession` result union - the applied outcome either
+released the session (its seats went with it) or carries the
+typed rejection (`SESSION_NOT_FOUND`, `SESSION_NOT_OWNED_BY`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union ReleaseSeatSessionResult = SeatSessionReleased | RegistrationRejected
+
+"""
+`removeSeat` result union - the applied outcome either removed
+the seat from its session or carries the typed rejection
+(`SEAT_NOT_FOUND`, `SESSION_NOT_OWNED_BY`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union RemoveSeatResult = SeatRemoved | RegistrationRejected
+
 scalar RotationRad
 
 """
@@ -1411,7 +1527,46 @@ type Seat {
 	offset: Fraction
 }
 
+"""
+`addSeat` applied - carries the created seat with its assigned
+`SeatId` so the client can address it for `updateSeat`/`removeSeat`.
+"""
+type SeatAdded {
+	"""
+	The added seat.
+	"""
+	seat: TableTopSeat!
+}
+
 scalar SeatId
+
+"""
+A seat on a tabletop surface: which [`TableSide`] it faces plus
+where along that edge it sits.
+
+A seat is more than a side - users can sit anywhere along an edge
+(two on one long side, off-center), so the offset carries the
+position along the edge axis. `offset` `None` means "assigned to
+the side, a strategy may distribute the item along it";
+`Some(fraction)` pins the item to that edge position
+(`HALF` = centered). Which *user* sits there stays consumer domain.
+
+No `zvariant::Type` impl: `Option<Fraction>` has no D-Bus signature
+(the format knows no nullable) - wire consumers transport a seat as
+a `(TableSide, f64)` pair with `NaN` for an unpinned offset.
+"""
+input SeatInput {
+	"""
+	The table edge the seat faces.
+	"""
+	side: TableSide!
+	"""
+	Position along the edge axis (`0.0` = edge start, `1.0` = edge
+	end, `0.5` = centered). `None` leaves distribution along the
+	side to the strategy.
+	"""
+	offset: Fraction
+}
 
 """
 Whether a [`crate::TableTopSeat`] is currently anchored by a
@@ -1467,7 +1622,110 @@ type SeatPose {
 	orientation: RotationRad!
 }
 
+"""
+A [`Seat`] plus the free radial orientation of the user sitting
+there.
+
+`Seat` alone carries the *organizational* alignment - which edge,
+where along it. `orientation` carries the direction the seated
+user faces as a free angle, not snapped to quarter turns, so a
+seat in a table corner can face diagonally into the surface.
+Placements made through this type set `Rotation::Free(orientation)`
+instead of the edge's `QuarterTurn` - that is what makes corner
+seats usable.
+
+Technical like `Seat`: which *user* sits there stays consumer
+domain. No `zvariant::Type` impl - a `SeatPose` travels D-Bus as a
+`(TableSide, f64, f64)` triple with `NaN` for an unpinned offset
+(see [`Seat`]).
+"""
+input SeatPoseInput {
+	"""
+	Organizational alignment - the table edge plus the position
+	along it.
+	"""
+	seat: SeatInput!
+	"""
+	Radial orientation the seated user faces, in radians - free
+	angle, not snapped to [`crate::TableSide`]'s quarter turns.
+	"""
+	orientation: RotationRad!
+}
+
+"""
+`removeSeat` applied - carries the removed seat's last state so
+the client can confirm what left the roster.
+"""
+type SeatRemoved {
+	"""
+	The removed seat.
+	"""
+	seat: TableTopSeat!
+}
+
+"""
+An application's seat roster at the tabletop
+(TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+
+Claimed by exactly one owner - claim/release semantics mirror
+profile claims (`ClaimProfile`/`ReleaseProfile`): re-claiming is
+idempotent for the same owner, a foreign claim is rejected, and
+`UnregisterOwner`/disconnect cleanup releases the session together
+with all its seats.
+"""
+type SeatSession {
+	"""
+	Session name - unique across the daemon, addresses the session
+	on all interfaces.
+	"""
+	name: SeatSessionName!
+	"""
+	Application owning the session - only the owner may mutate its
+	roster.
+	"""
+	owner: Owner!
+	"""
+	The session's seats in insertion order.
+	"""
+	seats: [TableTopSeat!]!
+}
+
+"""
+`claimSeatSession` applied - carries the claimed session (name,
+owner, roster) so the client mirrors it without a follow-up query.
+"""
+type SeatSessionClaimed {
+	"""
+	The claimed session - empty roster until `addSeat` calls fill it.
+	"""
+	session: SeatSession!
+}
+
 scalar SeatSessionName
+
+"""
+`releaseSeatSession` applied - carries the released session with
+the roster that went down with it, so the client can drop its
+local seat state in one step.
+"""
+type SeatSessionReleased {
+	"""
+	The released session including its final roster.
+	"""
+	session: SeatSession!
+}
+
+"""
+`updateSeat` applied - carries the seat's state after the
+mutation so the client sees the effective name/marker/pose in one
+reply.
+"""
+type SeatUpdated {
+	"""
+	The seat after the update.
+	"""
+	seat: TableTopSeat!
+}
 
 scalar SmoothingAlpha
 
@@ -1966,6 +2224,43 @@ type TrackedTangible {
 scalar TrackingId
 
 scalar UnitsPerMm
+
+"""
+Input for `updateSeat` - `null` fields keep their current value.
+"""
+input UpdateSeatInput {
+	"""
+	New seat name - `null` keeps the current one.
+	"""
+	name: SeatName
+	"""
+	Rebinds the seat to another marker profile - `null` keeps the
+	current marker unless `clearMarker` is set.
+	"""
+	marker: PatternId
+	"""
+	Clears the marker binding so the seat turns virtual - wins
+	over `marker` when both are passed.
+	"""
+	clearMarker: Boolean
+	"""
+	New pose - `null` keeps the current one. Honored for virtual
+	seats; a bound marker re-derives the pose on the next frame.
+	"""
+	pose: SeatPoseInput
+}
+
+"""
+`updateSeat` result union - the applied outcome either mutated
+the seat or carries the typed rejection (`SEAT_NOT_FOUND`,
+`SESSION_NOT_OWNED_BY`, `DUPLICATE_SEAT`,
+`MARKER_PROFILE_NOT_FOUND`).
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union UpdateSeatResult = SeatUpdated | RegistrationRejected
 
 """
 Window anchor of a [`crate::FieldSet`]: the top-left corner of the

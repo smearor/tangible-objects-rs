@@ -21,6 +21,9 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::PatternTolerance;
 use tangible_objects_model::RecordLabel;
+use tangible_objects_model::SeatId;
+use tangible_objects_model::SeatName;
+use tangible_objects_model::SeatSessionName;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
 use tangible_objects_model::TangibleId;
@@ -401,6 +404,125 @@ impl EngineService {
         #[zbus(header)] header: Header<'_>,
     ) -> fdo::Result<u32> {
         api::pattern::release_profile(self, id, owner, disable, &header).await
+    }
+
+    /// Claimed seat sessions with their rosters - the JSON-serialized
+    /// `SeatSession` array (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    async fn seat_sessions(&self) -> fdo::Result<String> {
+        api::seats::seat_sessions(self).await
+    }
+
+    /// Claims or creates a seat session - an empty `owner` defaults to
+    /// the caller's unique bus name (disconnect cleanup comes with
+    /// it). Re-claiming is idempotent for the same owner.
+    async fn claim_seat_session(
+        &self,
+        name: SeatSessionName,
+        owner: Owner,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<()> {
+        api::seats::claim_seat_session(self, name, owner, &header).await
+    }
+
+    /// Releases `owner`'s claim on a seat session - its seats are
+    /// removed with it. An empty `owner` defaults to the caller's
+    /// unique bus name.
+    async fn release_seat_session(
+        &self,
+        name: SeatSessionName,
+        owner: Owner,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<()> {
+        api::seats::release_seat_session(self, name, owner, &header).await
+    }
+
+    /// Adds a seat to a claimed session and returns its seat ID -
+    /// marker-backed (`has_marker` + `marker` pattern) or virtual
+    /// (`has_marker` false, `has_pose` pose applied). `side` indexes
+    /// `TableSide::ALL` order (0 bottom, 1 left, 2 top, 3 right), a
+    /// NaN `offset` means the edge center, `orientation` is radians.
+    /// An empty `owner` defaults to the caller's unique bus name.
+    #[allow(clippy::too_many_arguments)]
+    async fn add_seat(
+        &self,
+        session: SeatSessionName,
+        owner: Owner,
+        name: SeatName,
+        has_marker: bool,
+        marker: PatternId,
+        has_pose: bool,
+        side: u32,
+        offset: f64,
+        orientation: f64,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<u32> {
+        api::seats::add_seat(
+            self,
+            session,
+            owner,
+            name,
+            has_marker,
+            marker,
+            has_pose,
+            side,
+            offset,
+            orientation,
+            &header,
+        )
+        .await
+    }
+
+    /// Mutates a seat and returns its ID - an empty `name` keeps the
+    /// current one, `marker_action` is 0 keep / 1 rebind to `marker` /
+    /// 2 clear (virtual seat), `has_pose` applies a new pose
+    /// (`side`/`offset`/`orientation` encoded like `add_seat`). An
+    /// empty `owner` defaults to the caller's unique bus name.
+    #[allow(clippy::too_many_arguments)]
+    async fn update_seat(
+        &self,
+        seat: SeatId,
+        owner: Owner,
+        name: SeatName,
+        marker_action: u32,
+        marker: PatternId,
+        has_pose: bool,
+        side: u32,
+        offset: f64,
+        orientation: f64,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<u32> {
+        api::seats::update_seat(
+            self,
+            seat,
+            owner,
+            name,
+            marker_action,
+            marker,
+            has_pose,
+            side,
+            offset,
+            orientation,
+            &header,
+        )
+        .await
+    }
+
+    /// Removes a seat from its session - `owner` must own the seat's
+    /// session; an empty `owner` defaults to the caller's unique bus
+    /// name.
+    async fn remove_seat(
+        &self,
+        seat: SeatId,
+        owner: Owner,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<u32> {
+        api::seats::remove_seat(self, seat, owner, &header).await
+    }
+
+    /// Shows or hides the seat overlay on the GUI canvas - ignored on
+    /// headless daemons.
+    async fn set_seats_visible(&self, visible: bool) -> fdo::Result<()> {
+        api::seats::set_seats_visible(self, visible).await
     }
 
     /// Replaces a registered pattern's geometry while keeping its ID.

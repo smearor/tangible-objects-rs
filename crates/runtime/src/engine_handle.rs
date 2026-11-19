@@ -7,6 +7,7 @@ use tokio::sync::mpsc::error::TrySendError;
 use tokio::sync::watch;
 
 use tangible_objects_model::SeatSession;
+use tangible_objects_model::SeatTracker;
 use tangible_objects_model::TangibleSet;
 
 use super::ControlCommand;
@@ -33,6 +34,10 @@ pub struct EngineHandle {
     /// Profile list shared with the runtime - dynamic registrations are
     /// published through it.
     profiles: Arc<RwLock<Vec<ProfileInfo>>>,
+    /// Seat-session registry shared with the runtime - session
+    /// claims and roster changes are visible to interface readers
+    /// between frames (the `profiles` channel's seat counterpart).
+    seat_tracker: Arc<RwLock<SeatTracker>>,
 }
 
 impl EngineHandle {
@@ -44,6 +49,7 @@ impl EngineHandle {
         commands: mpsc::Sender<ControlCommand>,
         sets: Arc<Vec<TangibleSet>>,
         profiles: Arc<RwLock<Vec<ProfileInfo>>>,
+        seat_tracker: Arc<RwLock<SeatTracker>>,
     ) -> Self {
         Self {
             events,
@@ -51,6 +57,7 @@ impl EngineHandle {
             commands,
             sets,
             profiles,
+            seat_tracker,
         }
     }
 
@@ -77,10 +84,14 @@ impl EngineHandle {
         &self.sets
     }
 
-    /// The claimed seat sessions with their rosters - the latest
-    /// snapshot's view (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    /// The claimed seat sessions with their rosters - reads the live
+    /// registry so claim/roster changes are visible between frames
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
     pub fn seat_sessions(&self) -> Vec<SeatSession> {
-        self.snapshot.borrow().seat_sessions.clone()
+        self.seat_tracker
+            .read()
+            .map(|tracker| tracker.sessions().to_vec())
+            .unwrap_or_default()
     }
 
     /// Info of the loaded plus dynamically registered figure profiles.

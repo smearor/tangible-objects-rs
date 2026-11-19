@@ -71,6 +71,7 @@ mod tests {
     use tangible_objects_engine::EngineFrame;
     use tangible_objects_model::ContactCount;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
+    use tangible_objects_model::DeviceInfo;
     use tangible_objects_model::FilterMode;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::PatternId;
@@ -94,6 +95,52 @@ mod tests {
             spawn_stability: DEFAULT_SPAWN_STABILITY,
             frames_since_match: FrameCount::new(0),
         }]
+    }
+
+    fn frame(events: Vec<EngineEvent>) -> EngineFrame {
+        EngineFrame {
+            matches: Vec::new(),
+            touches: Vec::new(),
+            events,
+            candidates: Vec::new(),
+            ran_generic: true,
+            candidates_tested: 0.into(),
+            dead_zone_filtered: ContactCount::default(),
+            spell_matches: Vec::new(),
+            gesture_slots: SlotSet::default(),
+            consumed_slots: SlotSet::default(),
+        }
+    }
+
+    /// Applies the next control command the way the daemon's device
+    /// loop does - mutations wait on the command's reply oneshot, so
+    /// the test drains the channel while the GraphQL call is pending.
+    async fn apply_next_command(runtime: &mut EngineRuntime) {
+        for _ in 0..200 {
+            match runtime.try_recv_command() {
+                Ok(ControlCommand::ClaimSeatSession { name, owner, reply }) => {
+                    let _ = reply.send(runtime.claim_seat_session(name, owner));
+                    return;
+                }
+                Ok(ControlCommand::ReleaseSeatSession { name, owner, reply }) => {
+                    let _ = reply.send(runtime.release_seat_session(name, owner));
+                    return;
+                }
+                Ok(ControlCommand::AddSeat(request)) => {
+                    let request = *request;
+                    let _ = request.reply.send(runtime.add_seat(
+                        request.session,
+                        request.owner,
+                        request.name,
+                        request.marker,
+                        request.pose,
+                    ));
+                    return;
+                }
+                Ok(_) | Err(_) => tokio::time::sleep(std::time::Duration::from_millis(2)).await,
+            }
+        }
+        panic!("no control command arrived within the drain window");
     }
 
     #[tokio::test]
@@ -231,5 +278,123 @@ mod tests {
         let data = response.data.into_json().expect("data as json");
         assert_eq!(data["eventStream"]["kind"], "PROFILE_REGISTERED");
         assert_eq!(data["eventStream"]["name"], "fig");
+    }
+
+    /// Claim -> addSeat -> marker binds -> seatSessions query ->
+    /// releaseSeatSession - the interface roundtrip from
+    /// TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md's phase-2 exit criteria.
+    #[tokio::test]
+    async fn seat_session_roundtrip_claim_add_query_release() {
+        let (mut runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
+        runtime.set_device_info(DeviceInfo {
+            x_res: Some(1.0.into()),
+            y_res: Some(1.0.into()),
+            x_min: Some(0.0.into()),
+            x_max: Some(400.0.into()),
+            y_min: Some(0.0.into()),
+            y_max: Some(300.0.into()),
+            ..Default::default()
+        });
+        let schema = build_schema(handle);
+
+        // The mutation parks on the command's reply oneshot - drain the
+        // control channel like the device loop while it is pending.
+        let claim = {
+            let schema = schema.clone();
+            tokio::spawn(async move {
+                schema
+                    .execute(
+                        r#"mutation {
+                            claimSeatSession(name: "game", owner: "app") {
+                                __typename
+                                ... on SeatSessionClaimed { session { name owner } }
+                                ... on RegistrationRejected { kind }
+                            }
+                        }"#,
+                    )
+                    .await
+            })
+        };
+        apply_next_command(&mut runtime).await;
+        let result = claim.await.expect("claim task");
+        assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+        let data = result.data.into_json().expect("data as json");
+        assert_eq!(data["claimSeatSession"]["__typename"], "SeatSessionClaimed");
+
+        // Marker-backed seat (profile 1) - marker validation against
+        // registered patterns lives in the daemon arm, the runtime
+        // applies whatever profile ID arrives.
+        let add = {
+            let schema = schema.clone();
+            tokio::spawn(async move {
+                schema
+                    .execute(
+                        r#"mutation {
+                            addSeat(
+                                input: { session: "game", name: "seat-1", marker: 1 }
+                                owner: "app"
+                            ) {
+                                __typename
+                                ... on SeatAdded { seat { name state } }
+                                ... on RegistrationRejected { kind }
+                            }
+                        }"#,
+                    )
+                    .await
+            })
+        };
+        apply_next_command(&mut runtime).await;
+        let result = add.await.expect("add task");
+        assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+        let data = result.data.into_json().expect("data as json");
+        assert_eq!(data["addSeat"]["__typename"], "SeatAdded");
+        assert_eq!(data["addSeat"]["seat"]["state"], "ABSENT");
+
+        // A tracked marker instance binds on the next published frame
+        // and the pose derives from its center/rotation.
+        runtime.publish(&frame(Vec::new()), (&tracked()).into());
+
+        // The query serves the live registry - no extra publish needed.
+        let result = schema
+            .execute(
+                r#"{ seatSessions { name owner seats { name state tangible pose { orientation } } } }"#,
+            )
+            .await;
+        assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+        let data = result.data.into_json().expect("data as json");
+        assert_eq!(data["seatSessions"][0]["name"], "game");
+        assert_eq!(data["seatSessions"][0]["seats"][0]["name"], "seat-1");
+        assert_eq!(data["seatSessions"][0]["seats"][0]["state"], "ANCHORED");
+        assert_eq!(data["seatSessions"][0]["seats"][0]["tangible"], 7);
+
+        // Release removes the session and its roster.
+        let release = {
+            let schema = schema.clone();
+            tokio::spawn(async move {
+                schema
+                    .execute(
+                        r#"mutation {
+                            releaseSeatSession(name: "game", owner: "app") {
+                                __typename
+                                ... on SeatSessionReleased { session { name } }
+                                ... on RegistrationRejected { kind }
+                            }
+                        }"#,
+                    )
+                    .await
+            })
+        };
+        apply_next_command(&mut runtime).await;
+        let result = release.await.expect("release task");
+        assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+        let data = result.data.into_json().expect("data as json");
+        assert_eq!(
+            data["releaseSeatSession"]["__typename"],
+            "SeatSessionReleased"
+        );
+
+        let result = schema.execute("{ seatSessions { name } }").await;
+        let data = result.data.into_json().expect("data as json");
+        assert_eq!(data["seatSessions"].as_array().map(Vec::len), Some(0));
     }
 }

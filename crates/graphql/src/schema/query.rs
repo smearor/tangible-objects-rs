@@ -15,6 +15,8 @@ use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::ProfileLookup;
+use tangible_objects_model::SeatSession;
+use tangible_objects_model::SeatSessionName;
 use tangible_objects_model::SessionMetrics;
 use tangible_objects_model::TangibleSetState;
 use tangible_objects_model::TouchPoint;
@@ -141,6 +143,21 @@ impl QueryRoot {
     /// contacts are dropped at ingest.
     async fn dead_zones(&self, ctx: &Context<'_>) -> Result<Vec<DeadZone>> {
         Ok(ctx.data::<EngineHandle>()?.snapshot().dead_zones)
+    }
+
+    /// Claimed seat sessions with their rosters
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md) - `session` filters to one
+    /// named session, `null` returns all.
+    async fn seat_sessions(
+        &self,
+        ctx: &Context<'_>,
+        session: Option<SeatSessionName>,
+    ) -> Result<Vec<SeatSession>> {
+        let sessions = ctx.data::<EngineHandle>()?.seat_sessions();
+        Ok(match session {
+            Some(name) => sessions.into_iter().filter(|s| s.name == name).collect(),
+            None => sessions,
+        })
     }
 
     /// Contacts dropped by dead-zone filtering on the last processed

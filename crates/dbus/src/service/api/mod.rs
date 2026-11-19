@@ -15,6 +15,7 @@ pub(crate) mod owner;
 pub(crate) mod pattern;
 pub(crate) mod profiles;
 pub(crate) mod recording;
+pub(crate) mod seats;
 pub(crate) mod sets;
 pub(crate) mod spell;
 pub(crate) mod stage;

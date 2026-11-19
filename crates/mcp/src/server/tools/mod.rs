@@ -15,6 +15,7 @@ mod owner;
 mod pattern;
 mod profiles;
 mod recording;
+mod seats;
 mod spell;
 mod stage;
 mod tangibles;

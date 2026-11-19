@@ -4,7 +4,9 @@ use async_graphql::Context;
 use async_graphql::Error;
 use async_graphql::Object;
 use async_graphql::Result;
+use tangible_objects_model::AddSeatResult;
 use tangible_objects_model::ClaimProfileResult;
+use tangible_objects_model::ClaimSeatSessionResult;
 use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeadZoneName;
@@ -29,17 +31,29 @@ use tangible_objects_model::RegisterSpellResult;
 use tangible_objects_model::Registration;
 use tangible_objects_model::RegistrationApplied;
 use tangible_objects_model::ReleaseProfileResult;
+use tangible_objects_model::ReleaseSeatSessionResult;
+use tangible_objects_model::RemoveSeatResult;
+use tangible_objects_model::SeatAdded;
+use tangible_objects_model::SeatId;
+use tangible_objects_model::SeatRemoved;
+use tangible_objects_model::SeatSessionClaimed;
+use tangible_objects_model::SeatSessionName;
+use tangible_objects_model::SeatSessionReleased;
+use tangible_objects_model::SeatUpdated;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::SpellRegistered;
 use tangible_objects_model::StageName;
+use tangible_objects_model::UpdateSeatResult;
 use tangible_objects_runtime::ControlCommand;
 use tangible_objects_runtime::EngineHandle;
 
+use crate::schema::input::AddSeatInput;
 use crate::schema::input::RegisterDeadZoneInput;
 use crate::schema::input::RegisterFieldSetInput;
 use crate::schema::input::RegisterPatternInput;
 use crate::schema::input::RegisterSpellInput;
+use crate::schema::input::UpdateSeatInput;
 
 /// Control operations forwarded to the daemon's device loop.
 pub struct MutationRoot;
@@ -382,6 +396,136 @@ impl MutationRoot {
             Ok(Err(error)) => Ok(ReleaseProfileResult::Rejected(error.into())),
             Err(_) => Err(Error::new("device loop closed the release reply")),
         }
+    }
+
+    /// Claims or creates a seat session for `owner`
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md) - the seat-domain
+    /// counterpart of `claimProfile`: re-claiming is idempotent for
+    /// the same owner, a foreign claim is rejected
+    /// (`SESSION_ALREADY_OWNED`), and `unregisterOwner`/disconnect
+    /// cleanup releases the session with all its seats.
+    async fn claim_seat_session(
+        &self,
+        ctx: &Context<'_>,
+        name: SeatSessionName,
+        owner: Owner,
+    ) -> Result<ClaimSeatSessionResult> {
+        let (command, rx) = ControlCommand::claim_seat_session(name, owner);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(session)) => Ok(ClaimSeatSessionResult::Claimed(SeatSessionClaimed {
+                session,
+            })),
+            Ok(Err(error)) => Ok(ClaimSeatSessionResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the claim reply")),
+        }
+    }
+
+    /// Releases `owner`'s claim on a seat session - its seats are
+    /// removed with it (each emits `SEAT_REMOVED` before
+    /// `SESSION_RELEASED`). Rejected when `owner` does not hold the
+    /// claim (`SESSION_NOT_OWNED_BY`).
+    async fn release_seat_session(
+        &self,
+        ctx: &Context<'_>,
+        name: SeatSessionName,
+        owner: Owner,
+    ) -> Result<ReleaseSeatSessionResult> {
+        let (command, rx) = ControlCommand::release_seat_session(name, owner);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(session)) => Ok(ReleaseSeatSessionResult::Released(SeatSessionReleased {
+                session,
+            })),
+            Ok(Err(error)) => Ok(ReleaseSeatSessionResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the release reply")),
+        }
+    }
+
+    /// Adds a seat to a claimed session - marker-backed
+    /// (`marker` set, pose derived once an instance binds) or virtual
+    /// (`marker: null`, `pose` applied). `owner` must own the
+    /// session.
+    async fn add_seat(
+        &self,
+        ctx: &Context<'_>,
+        input: AddSeatInput,
+        owner: Owner,
+    ) -> Result<AddSeatResult> {
+        let (command, rx) =
+            ControlCommand::add_seat(input.session, owner, input.name, input.marker, input.pose);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(seat)) => Ok(AddSeatResult::Added(SeatAdded { seat })),
+            Ok(Err(error)) => Ok(AddSeatResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the add-seat reply")),
+        }
+    }
+
+    /// Mutates a seat addressed by its globally unique ID - `null`
+    /// input fields keep their value, `clearMarker` turns the seat
+    /// virtual. `owner` must own the seat's session.
+    async fn update_seat(
+        &self,
+        ctx: &Context<'_>,
+        id: SeatId,
+        input: UpdateSeatInput,
+        owner: Owner,
+    ) -> Result<UpdateSeatResult> {
+        let marker = if input.clear_marker.unwrap_or(false) {
+            Some(None)
+        } else {
+            input.marker.map(Some)
+        };
+        let (command, rx) = ControlCommand::update_seat(id, owner, input.name, marker, input.pose);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(seat)) => Ok(UpdateSeatResult::Updated(SeatUpdated { seat })),
+            Ok(Err(error)) => Ok(UpdateSeatResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the update-seat reply")),
+        }
+    }
+
+    /// Removes a seat from its session - emits `SEAT_REMOVED`.
+    /// `owner` must own the seat's session.
+    async fn remove_seat(
+        &self,
+        ctx: &Context<'_>,
+        id: SeatId,
+        owner: Owner,
+    ) -> Result<RemoveSeatResult> {
+        let (command, rx) = ControlCommand::remove_seat(id, owner);
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(seat)) => Ok(RemoveSeatResult::Removed(SeatRemoved { seat })),
+            Ok(Err(error)) => Ok(RemoveSeatResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the remove-seat reply")),
+        }
+    }
+
+    /// Shows or hides the seat overlay on the GUI canvas - ignored on
+    /// headless daemons.
+    async fn set_seats_visible(&self, ctx: &Context<'_>, visible: bool) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::SetSeatsVisible(visible))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
     }
 
     /// Removes a dynamically registered pattern by ID.

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use std::sync::RwLock;
+use std::sync::RwLockReadGuard;
+use std::sync::RwLockWriteGuard;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -70,8 +72,10 @@ pub struct EngineRuntime {
     set_tracker: SetTracker,
     /// Seat session registry and marker binder - derives seat poses
     /// and anchor events from each published frame's tracked
-    /// tangibles (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
-    seat_tracker: SeatTracker,
+    /// tangibles. Shared with the handle like `profiles`: session
+    /// claims and roster changes must be visible to interface readers
+    /// between frames (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md).
+    seat_tracker: Arc<RwLock<SeatTracker>>,
     /// Broadcast channel for `DomainEvent`s (engine + set events);
     /// lagging receivers lose the oldest events.
     events: broadcast::Sender<DomainEvent>,
@@ -202,9 +206,10 @@ impl EngineRuntime {
         let (snapshot_tx, snapshot_rx) = watch::channel(EngineSnapshot::default());
         let (command_tx, commands) = mpsc::channel(command_capacity);
         let profiles = Arc::new(RwLock::new(profiles));
+        let seat_tracker = Arc::new(RwLock::new(SeatTracker::new()));
         let runtime = Self {
             set_tracker: SetTracker::new(sets.clone()),
-            seat_tracker: SeatTracker::new(),
+            seat_tracker: seat_tracker.clone(),
             events: events.clone(),
             snapshot: snapshot_tx,
             commands,
@@ -249,7 +254,14 @@ impl EngineRuntime {
             input_region_diagnostics: InputRegionDiagnostics::default(),
             training: None,
         };
-        let handle = EngineHandle::new(events, snapshot_rx, command_tx, Arc::new(sets), profiles);
+        let handle = EngineHandle::new(
+            events,
+            snapshot_rx,
+            command_tx,
+            Arc::new(sets),
+            profiles,
+            seat_tracker,
+        );
         (runtime, handle)
     }
 
@@ -260,7 +272,7 @@ impl EngineRuntime {
     /// tracker's marker-position derivation.
     pub fn set_device_info(&mut self, info: DeviceInfo) {
         if let Some(bounds) = info.surface_bounds() {
-            self.seat_tracker.set_bounds(bounds);
+            self.seats_mut().set_bounds(bounds);
         }
         self.device = Some(info);
     }
@@ -350,7 +362,7 @@ impl EngineRuntime {
         name: SeatSessionName,
         owner: Owner,
     ) -> Result<SeatSession, RegistrationError> {
-        let (session, created) = self.seat_tracker.claim(name, owner)?;
+        let (session, created) = self.seats_mut().claim(name, owner)?;
         if created {
             self.emit_lifecycle(LifecycleEvent::SessionClaimed {
                 name: session.name.clone(),
@@ -368,7 +380,7 @@ impl EngineRuntime {
         name: SeatSessionName,
         owner: Owner,
     ) -> Result<SeatSession, RegistrationError> {
-        let session = self.seat_tracker.release(&name, &owner)?;
+        let session = self.seats_mut().release(&name, &owner)?;
         for seat in &session.seats {
             self.broadcast(DomainEvent::Seat(SeatEvent::Removed(seat.clone())));
         }
@@ -391,7 +403,7 @@ impl EngineRuntime {
         pose: Option<SeatPose>,
     ) -> Result<TableTopSeat, RegistrationError> {
         let seat = self
-            .seat_tracker
+            .seats_mut()
             .add_seat(&session, &owner, name, marker, pose)?;
         self.broadcast(DomainEvent::Seat(SeatEvent::Added(seat.clone())));
         Ok(seat)
@@ -410,7 +422,7 @@ impl EngineRuntime {
         pose: Option<SeatPose>,
     ) -> Result<TableTopSeat, RegistrationError> {
         let (seat, pose_changed) = self
-            .seat_tracker
+            .seats_mut()
             .update_seat(id, &owner, name, marker, pose)?;
         if pose_changed {
             self.broadcast(DomainEvent::Seat(SeatEvent::Moved(seat.clone())));
@@ -424,7 +436,7 @@ impl EngineRuntime {
         id: SeatId,
         owner: Owner,
     ) -> Result<TableTopSeat, RegistrationError> {
-        let seat = self.seat_tracker.remove_seat(id, &owner)?;
+        let seat = self.seats_mut().remove_seat(id, &owner)?;
         self.broadcast(DomainEvent::Seat(SeatEvent::Removed(seat.clone())));
         Ok(seat)
     }
@@ -434,7 +446,7 @@ impl EngineRuntime {
     /// `SEAT_REMOVED`, each session `SESSION_RELEASED`. Returns the
     /// released sessions for logging.
     pub fn remove_seat_sessions_by_owner(&mut self, owner: &Owner) -> Vec<SeatSession> {
-        let removed = self.seat_tracker.remove_by_owner(owner);
+        let removed = self.seats_mut().remove_by_owner(owner);
         for session in &removed {
             for seat in &session.seats {
                 self.broadcast(DomainEvent::Seat(SeatEvent::Removed(seat.clone())));
@@ -447,17 +459,31 @@ impl EngineRuntime {
         removed
     }
 
-    /// The claimed seat sessions with their rosters - the seat
-    /// tracker's live state.
-    pub fn seat_sessions(&self) -> &[SeatSession] {
-        self.seat_tracker.sessions()
+    /// The claimed seat sessions with their rosters - a snapshot of
+    /// the seat tracker's live state.
+    pub fn seat_sessions(&self) -> Vec<SeatSession> {
+        self.seats().sessions().to_vec()
+    }
+
+    /// Read access to the shared seat registry - recovers a poisoned
+    /// lock (`PoisonError::into_inner`): a panic mid-mutation leaves
+    /// the roster usable, matching the `profiles` channel's
+    /// best-effort reads.
+    fn seats(&self) -> RwLockReadGuard<'_, SeatTracker> {
+        self.seat_tracker.read().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Exclusive access to the shared seat registry - see
+    /// [`Self::seats`] for the poisoning policy.
+    fn seats_mut(&self) -> RwLockWriteGuard<'_, SeatTracker> {
+        self.seat_tracker.write().unwrap_or_else(|e| e.into_inner())
     }
 
     /// Publishes a processed frame: runs the set tracker, updates the
     /// snapshot and broadcasts engine events followed by set actions.
     pub fn publish(&mut self, frame: &EngineFrame, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
-        let seat_events = self.seat_tracker.update(tracked);
+        let seat_events = self.seats_mut().update(tracked);
         self.dead_zone_filtered = frame.dead_zone_filtered;
         let touches_changed = frame
             .events
@@ -481,7 +507,7 @@ impl EngineRuntime {
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
             spells: self.spells.clone(),
-            seat_sessions: self.seat_tracker.sessions().to_vec(),
+            seat_sessions: self.seats().sessions().to_vec(),
             dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
@@ -536,7 +562,7 @@ impl EngineRuntime {
     /// recording) reaches clients even while the device is idle.
     pub fn publish_snapshot(&mut self, touches: Vec<TouchPoint>, tracked: TrackedSet<'_>) {
         let actions = self.set_tracker.update(tracked);
-        let seat_events = self.seat_tracker.update(tracked);
+        let seat_events = self.seats_mut().update(tracked);
         self.snapshot.send_replace(EngineSnapshot {
             tracked: tracked.to_vec(),
             touches,
@@ -547,7 +573,7 @@ impl EngineRuntime {
             field_sets: self.field_sets.clone(),
             dead_zones: self.dead_zones.clone(),
             spells: self.spells.clone(),
-            seat_sessions: self.seat_tracker.sessions().to_vec(),
+            seat_sessions: self.seats().sessions().to_vec(),
             dead_zone_filtered: self.dead_zone_filtered,
             metrics: self.metrics.clone(),
             message: self.message.clone(),
@@ -883,9 +909,15 @@ mod tests {
     use tangible_objects_engine::EngineFrame;
     use tangible_objects_model::ContactCount;
     use tangible_objects_model::DEFAULT_SPAWN_STABILITY;
+    use tangible_objects_model::DeviceInfo;
     use tangible_objects_model::FrameCount;
     use tangible_objects_model::LifecycleEvent;
+    use tangible_objects_model::Owner;
     use tangible_objects_model::PatternId;
+    use tangible_objects_model::SeatEvent;
+    use tangible_objects_model::SeatMarkerState;
+    use tangible_objects_model::SeatName;
+    use tangible_objects_model::SeatSessionName;
     use tangible_objects_model::SetAction;
     use tangible_objects_model::SlotSet;
     use tangible_objects_model::SpellMatched;
@@ -896,12 +928,21 @@ mod tests {
     use tangible_objects_model::TrackedTangible;
 
     fn tangible(id: u32, pattern: u32) -> TrackedTangible {
+        tangible_at(id, pattern, Vec2::ZERO, 0.0)
+    }
+
+    fn tangible_at(
+        id: u32,
+        pattern: u32,
+        center: Vec2<Millimeters>,
+        rotation: f64,
+    ) -> TrackedTangible {
         TrackedTangible {
             id: TangibleId::new(id),
             pattern_id: PatternId::new(pattern),
             pattern_name: format!("fig-{pattern}").into(),
-            center: Vec2::ZERO,
-            rotation_rad: RotationRad::new(0.0),
+            center,
+            rotation_rad: RotationRad::new(rotation),
             pending: false,
             pending_frames: FrameCount::new(0),
             spawn_stability: DEFAULT_SPAWN_STABILITY,
@@ -1031,5 +1072,89 @@ mod tests {
         runtime.publish(&frame(Vec::new()), (&tracked).into());
 
         assert!(receiver.try_recv().is_err());
+    }
+
+    /// Claim -> AddSeat -> marker binds on the next frame -> snapshot
+    /// shows the anchored seat -> release removes everything - the
+    /// roundtrip every interface drives through its resolver
+    /// (TANGIBLE_OBJECTS_TABLE_TOP_SEAT.md phase-2 exit criterion).
+    #[test]
+    fn seat_session_roundtrip_claim_add_bind_release() {
+        let (mut runtime, handle) = EngineRuntime::new(Vec::new(), Vec::new());
+        let mut receiver = handle.subscribe();
+        runtime.set_device_info(DeviceInfo {
+            x_res: Some(1.0.into()),
+            y_res: Some(1.0.into()),
+            x_min: Some(0.0.into()),
+            x_max: Some(400.0.into()),
+            y_min: Some(0.0.into()),
+            y_max: Some(300.0.into()),
+            ..Default::default()
+        });
+        let owner = Owner::new("app");
+        let session = SeatSessionName::new("game");
+
+        runtime
+            .claim_seat_session(session.clone(), owner.clone())
+            .expect("claim");
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(DomainEvent::Lifecycle(
+                LifecycleEvent::SessionClaimed { .. }
+            ))
+        ));
+
+        let seat = runtime
+            .add_seat(
+                session.clone(),
+                owner.clone(),
+                SeatName::new("seat-1"),
+                Some(PatternId::new(1)),
+                None,
+            )
+            .expect("add_seat");
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(DomainEvent::Seat(SeatEvent::Added(_)))
+        ));
+
+        // A tracked marker instance binds and derives the pose on the
+        // next published frame.
+        runtime.publish(
+            &frame(Vec::new()),
+            (&[tangible_at(
+                7,
+                1,
+                Vec2::new(200.0, 290.0),
+                std::f64::consts::FRAC_PI_2,
+            )])
+                .into(),
+        );
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(DomainEvent::Seat(SeatEvent::MarkerBound(_)))
+        ));
+        let snapshot = handle.snapshot();
+        assert_eq!(snapshot.seat_sessions.len(), 1);
+        let bound = &snapshot.seat_sessions[0].seats[0];
+        assert_eq!(bound.state, SeatMarkerState::Anchored);
+        assert_eq!(bound.tangible, Some(TangibleId::new(7)));
+
+        // Release removes the roster and closes the session.
+        runtime
+            .release_seat_session(session, owner)
+            .expect("release");
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(DomainEvent::Seat(SeatEvent::Removed(_)))
+        ));
+        assert!(matches!(
+            receiver.try_recv(),
+            Ok(DomainEvent::Lifecycle(
+                LifecycleEvent::SessionReleased { .. }
+            ))
+        ));
+        assert!(handle.seat_sessions().is_empty());
+        let _ = seat;
     }
 }
