@@ -7,6 +7,7 @@ pub(crate) mod completion;
 pub(crate) mod dead_zones;
 pub(crate) mod device;
 pub(crate) mod field_sets;
+pub(crate) mod filter;
 pub(crate) mod message;
 pub(crate) mod metrics;
 pub(crate) mod profile_lookup;
