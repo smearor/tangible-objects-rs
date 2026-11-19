@@ -3,6 +3,7 @@
 //! input objects, variables and fragments live in one file per type.
 
 pub(crate) mod completion;
+pub(crate) mod dead_zone;
 pub(crate) mod field_set;
 pub(crate) mod filter;
 pub(crate) mod gui;
