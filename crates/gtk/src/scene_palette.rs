@@ -60,29 +60,29 @@ palette_definition! {
 
 /// The scene palette - all slots filled at first use.
 pub static SCENE: LazyLock<Palette<SceneColor, f64>> = LazyLock::new(|| {
-    let mut palette = Palette::new();
-    palette.insert(SceneColor::Error, Color::<f64>::new(1.0, 0.3, 0.3));
-    palette.insert(SceneColor::Message, Color::<f64>::new(1.0, 0.9, 0.2));
-    palette.insert(SceneColor::Notice, Color::<f64>::new(0.8, 0.8, 0.8));
-    palette.insert(SceneColor::Grid, Color::<f64>::new(0.8, 0.8, 0.8));
-    palette.insert(SceneColor::DeadZone, Color::<f64>::new(1.0, 0.3, 0.25));
-    palette.insert(SceneColor::DeadZoneLabel, Color::<f64>::new(1.0, 0.55, 0.5));
-    palette.insert(SceneColor::EdgeMargin, Color::<f64>::new(1.0, 0.35, 0.2));
-    palette.insert(SceneColor::Field, Color::<f64>::new(0.2, 0.8, 1.0));
-    palette.insert(SceneColor::FieldLabel, Color::<f64>::new(0.55, 0.9, 1.0));
-    palette.insert(SceneColor::Seat, Color::<f64>::new(0.9, 0.7, 0.3));
-    palette.insert(SceneColor::SeatLabel, Color::<f64>::new(1.0, 0.85, 0.5));
-    palette.insert(SceneColor::RulerBg, Color::<f64>::new(0.04, 0.04, 0.06));
-    palette.insert(SceneColor::Ruler, Color::<f64>::new(0.9, 0.9, 0.9));
-    palette.insert(SceneColor::Label, Color::<f64>::new(0.85, 0.85, 0.85));
-    palette.insert(SceneColor::EmptyState, Color::<f64>::new(0.6, 0.6, 0.6));
-    palette.insert(SceneColor::TouchLine, Color::<f64>::new(0.4, 0.7, 1.0));
-    palette.insert(SceneColor::TouchStable, Color::<f64>::new(0.3, 0.9, 0.4));
-    palette.insert(SceneColor::TouchUnstable, Color::<f64>::new(0.5, 0.7, 1.0));
-    palette.insert(SceneColor::CoordText, Color::<f64>::new(0.7, 0.7, 0.7));
-    palette.insert(SceneColor::TouchDim, Color::<f64>::new(0.4, 0.4, 0.4));
-    palette.insert(SceneColor::White, Color::<f64>::WHITE);
-    palette
+    Palette::<SceneColor, f64>::builder()
+        .color(SceneColor::Error, Color::<f64>::new(1.0, 0.3, 0.3))
+        .color(SceneColor::Message, Color::<f64>::new(1.0, 0.9, 0.2))
+        .color(SceneColor::Notice, Color::<f64>::new(0.8, 0.8, 0.8))
+        .color(SceneColor::Grid, Color::<f64>::new(0.8, 0.8, 0.8))
+        .color(SceneColor::DeadZone, Color::<f64>::new(1.0, 0.3, 0.25))
+        .color(SceneColor::DeadZoneLabel, Color::<f64>::new(1.0, 0.55, 0.5))
+        .color(SceneColor::EdgeMargin, Color::<f64>::new(1.0, 0.35, 0.2))
+        .color(SceneColor::Field, Color::<f64>::new(0.2, 0.8, 1.0))
+        .color(SceneColor::FieldLabel, Color::<f64>::new(0.55, 0.9, 1.0))
+        .color(SceneColor::Seat, Color::<f64>::new(0.9, 0.7, 0.3))
+        .color(SceneColor::SeatLabel, Color::<f64>::new(1.0, 0.85, 0.5))
+        .color(SceneColor::RulerBg, Color::<f64>::new(0.04, 0.04, 0.06))
+        .color(SceneColor::Ruler, Color::<f64>::new(0.9, 0.9, 0.9))
+        .color(SceneColor::Label, Color::<f64>::new(0.85, 0.85, 0.85))
+        .color(SceneColor::EmptyState, Color::<f64>::new(0.6, 0.6, 0.6))
+        .color(SceneColor::TouchLine, Color::<f64>::new(0.4, 0.7, 1.0))
+        .color(SceneColor::TouchStable, Color::<f64>::new(0.3, 0.9, 0.4))
+        .color(SceneColor::TouchUnstable, Color::<f64>::new(0.5, 0.7, 1.0))
+        .color(SceneColor::CoordText, Color::<f64>::new(0.7, 0.7, 0.7))
+        .color(SceneColor::TouchDim, Color::<f64>::new(0.4, 0.4, 0.4))
+        .color(SceneColor::White, Color::<f64>::WHITE)
+        .build()
 });
 
 /// Per-figure accent colors - stable hash over the pattern ID.
