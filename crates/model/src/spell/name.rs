@@ -3,6 +3,8 @@
 
 use serde::Deserialize;
 use serde::Serialize;
+use std::convert::Infallible;
+use std::str::FromStr;
 
 /// Human-readable spell name - the lookup key like `PatternName` /
 /// `DeadZoneName`.
@@ -31,6 +33,15 @@ impl std::fmt::Display for SpellName {
 impl From<String> for SpellName {
     fn from(name: String) -> Self {
         Self::new(name)
+    }
+}
+
+impl FromStr for SpellName {
+    type Err = Infallible;
+
+    /// Wraps any string as a spell name (CLI argument form).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 

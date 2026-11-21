@@ -41,6 +41,7 @@ use tangible_objects_model::SeatSessionName;
 use tangible_objects_model::SeatSessionReleased;
 use tangible_objects_model::SeatUpdated;
 use tangible_objects_model::Spell;
+use tangible_objects_model::SpellArming;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::SpellRegistered;
 use tangible_objects_model::StageName;
@@ -53,6 +54,7 @@ use crate::schema::input::RegisterDeadZoneInput;
 use crate::schema::input::RegisterFieldSetInput;
 use crate::schema::input::RegisterPatternInput;
 use crate::schema::input::RegisterSpellInput;
+use crate::schema::input::SpellArmingInput;
 use crate::schema::input::UpdateSeatInput;
 
 /// Control operations forwarded to the daemon's device loop.
@@ -110,6 +112,29 @@ impl MutationRoot {
     async fn train_profile(&self, ctx: &Context<'_>, name: PatternName) -> Result<bool> {
         ctx.data::<EngineHandle>()?
             .send_command(ControlCommand::TrainProfile(name))
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Starts a spell training session (SPELLS.md's
+    /// learn-by-repetition): the next 3 completed gesture episodes
+    /// become the trained spell's template strokes and corridor; the
+    /// finished spell registers persistently. `arming` selects the
+    /// finished spell's trigger - `null` = `free`.
+    async fn train_spell(
+        &self,
+        ctx: &Context<'_>,
+        name: SpellName,
+        arming: Option<SpellArmingInput>,
+    ) -> Result<bool> {
+        let arming = arming
+            .as_ref()
+            .map(SpellArming::try_from)
+            .transpose()?
+            .unwrap_or(SpellArming::Free);
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::TrainSpell { name, arming })
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

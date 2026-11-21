@@ -114,6 +114,16 @@ impl EngineService {
         api::training::train_profile(self, name).await
     }
 
+    /// Starts a spell training session (SPELLS.md's
+    /// learn-by-repetition): the next completed gesture episodes
+    /// become the trained spell's template and corridor; the finished
+    /// spell registers persistently. `arming_toml` is the `[arming]`
+    /// table's TOML (e.g. `type = "five-finger-tap"`); an empty
+    /// string means `free`.
+    async fn train_spell(&self, name: SpellName, arming_toml: &str) -> fdo::Result<()> {
+        api::training::train_spell(self, name, arming_toml).await
+    }
+
     /// Starts a recording session writing `<base_path>.jsonl` +
     /// `<base_path>.evtest`; an empty `label` records unlabeled.
     async fn start_recording(&self, base_path: &str, label: RecordLabel) -> fdo::Result<()> {

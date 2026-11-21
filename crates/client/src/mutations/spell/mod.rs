@@ -3,4 +3,5 @@
 
 pub(crate) mod api;
 pub(crate) mod register;
+pub(crate) mod train;
 pub(crate) mod unregister;

@@ -11,6 +11,7 @@ mod message;
 mod metrics;
 mod profiles;
 mod record;
+mod spells;
 mod stages;
 mod status;
 mod tangibles;
@@ -35,6 +36,7 @@ pub async fn run(client: &GraphQLClient, cli: &Cli) -> Result<(), ClientError> {
         Command::Profiles(args) => profiles::profiles(client, cli, args).await?,
         Command::FieldSets(args) => field_sets::field_sets(client, cli, args).await?,
         Command::Stages(args) => stages::stages(client, args).await?,
+        Command::Spells(args) => spells::spells(client, cli, args).await?,
         Command::Filter(args) => filter::filter(client, args).await?,
         Command::Completion(args) => completion::completion(client, cli, args).await?,
         Command::Record(args) => record::record(client, cli, args).await?,

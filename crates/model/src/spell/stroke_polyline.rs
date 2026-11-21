@@ -33,13 +33,21 @@ impl StrokePolyline {
     /// along its arc length (kills sampling-rate noise; the
     /// $-family recognizers' canonical step).
     pub fn resampled(&self) -> Self {
-        Self::new(Polyline::new(self.points.clone()).resampled(STROKE_SAMPLES).into())
+        Self::new(
+            Polyline::new(self.points.clone())
+                .resampled(STROKE_SAMPLES)
+                .into(),
+        )
     }
 
     /// Translates the stroke so its first point sits at the origin
     /// (position-free matching - a spell is drawable anywhere).
     pub fn translated_to_origin(&self) -> Self {
-        Self::new(Polyline::new(self.points.clone()).translated_to_origin().into())
+        Self::new(
+            Polyline::new(self.points.clone())
+                .translated_to_origin()
+                .into(),
+        )
     }
 
     /// Uniformly scales the stroke so its extent (max distance from

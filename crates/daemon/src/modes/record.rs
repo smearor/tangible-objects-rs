@@ -151,6 +151,9 @@ pub fn run_record(
                 ControlCommand::TrainProfile(name) => {
                     warn!(%name, "remote training command - not yet wired");
                 }
+                ControlCommand::TrainSpell { name, .. } => {
+                    warn!(%name, "spell training command - not supported in record mode");
+                }
                 ControlCommand::StartRecording { .. } => {
                     warn!("already recording - StartRecording ignored");
                 }

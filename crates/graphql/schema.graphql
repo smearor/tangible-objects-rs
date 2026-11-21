@@ -678,6 +678,14 @@ type MutationRoot {
 	"""
 	trainProfile(name: PatternName!): Boolean!
 	"""
+	Starts a spell training session (SPELLS.md's
+	learn-by-repetition): the next 3 completed gesture episodes
+	become the trained spell's template strokes and corridor; the
+	finished spell registers persistently. `arming` selects the
+	finished spell's trigger - `null` = `free`.
+	"""
+	trainSpell(name: SpellName!, arming: SpellArmingInput): Boolean!
+	"""
 	Starts a recording session writing `<base_path>.jsonl` +
 	`<base_path>.evtest`, optionally labeled.
 	"""

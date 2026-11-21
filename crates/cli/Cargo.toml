@@ -19,3 +19,4 @@ tabled.workspace = true
 tangible-objects-client.workspace = true
 tangible-objects-model.workspace = true
 tokio.workspace = true
+toml.workspace = true

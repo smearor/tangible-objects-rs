@@ -10,6 +10,7 @@ use miette::Result;
 use tangible_objects_engine::Engine;
 use tangible_objects_engine::LegacyMode;
 use tangible_objects_engine::Pipeline;
+use tangible_objects_engine::SPELL_TRAINING_REPETITIONS;
 use tangible_objects_engine::TouchDevice;
 use tangible_objects_engine::VirtualTouchscreen;
 use tangible_objects_model::CompletionMode;
@@ -196,6 +197,12 @@ pub fn run_filter(
                     runtime.start_training(&name);
                     runtime.set_message(Some(format!(
                         "Training '{name}': place the figure and hold still"
+                    )));
+                }
+                ControlCommand::TrainSpell { name, arming } => {
+                    engine.start_spell_training(name.clone(), arming);
+                    runtime.set_message(Some(format!(
+                        "Spell training '{name}': draw the gesture {SPELL_TRAINING_REPETITIONS}x"
                     )));
                 }
                 ControlCommand::StartRecording { base_path, label } => {

@@ -9,6 +9,7 @@ mod message;
 mod metrics;
 mod profiles;
 mod record;
+mod spells;
 mod stages;
 mod watch;
 
@@ -28,6 +29,8 @@ pub use profiles::ProfilesArgs;
 pub use profiles::ProfilesCommand;
 pub use record::RecordArgs;
 pub use record::RecordCommand;
+pub use spells::SpellsArgs;
+pub use spells::SpellsCommand;
 pub use stages::StagesArgs;
 pub use stages::StagesCommand;
 pub use watch::WatchArgs;
@@ -69,6 +72,8 @@ pub enum Command {
     FieldSets(FieldSetsArgs),
     /// Pipeline stage operations.
     Stages(StagesArgs),
+    /// Multi-finger spell operations.
+    Spells(SpellsArgs),
     /// Switch the suppression policy.
     Filter(FilterArgs),
     /// Completion configuration.

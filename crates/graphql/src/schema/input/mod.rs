@@ -18,4 +18,5 @@ pub(crate) use register_dead_zone_input::RegisterDeadZoneInput;
 pub(crate) use register_field_set_input::RegisterFieldSetInput;
 pub(crate) use register_pattern_input::RegisterPatternInput;
 pub(crate) use register_spell_input::RegisterSpellInput;
+pub(crate) use spell_arming_input::SpellArmingInput;
 pub(crate) use update_seat_input::UpdateSeatInput;
