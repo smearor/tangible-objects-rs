@@ -60,29 +60,29 @@
 <a href=#60 id=60 data-nosnippet>60</a>
 <a href=#61 id=61 data-nosnippet>61</a><span class="doccomment">/// The scene palette - all slots filled at first use.
 <a href=#62 id=62 data-nosnippet>62</a></span><span class="kw">pub static </span>SCENE: LazyLock&lt;Palette&lt;SceneColor, f64&gt;&gt; = LazyLock::new(|| {
-<a href=#63 id=63 data-nosnippet>63</a>    <span class="kw">let </span><span class="kw-2">mut </span>palette = Palette::new();
-<a href=#64 id=64 data-nosnippet>64</a>    palette.insert(SceneColor::Error, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.3</span>, <span class="number">0.3</span>));
-<a href=#65 id=65 data-nosnippet>65</a>    palette.insert(SceneColor::Message, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.9</span>, <span class="number">0.2</span>));
-<a href=#66 id=66 data-nosnippet>66</a>    palette.insert(SceneColor::Notice, Color::&lt;f64&gt;::new(<span class="number">0.8</span>, <span class="number">0.8</span>, <span class="number">0.8</span>));
-<a href=#67 id=67 data-nosnippet>67</a>    palette.insert(SceneColor::Grid, Color::&lt;f64&gt;::new(<span class="number">0.8</span>, <span class="number">0.8</span>, <span class="number">0.8</span>));
-<a href=#68 id=68 data-nosnippet>68</a>    palette.insert(SceneColor::DeadZone, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.3</span>, <span class="number">0.25</span>));
-<a href=#69 id=69 data-nosnippet>69</a>    palette.insert(SceneColor::DeadZoneLabel, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.55</span>, <span class="number">0.5</span>));
-<a href=#70 id=70 data-nosnippet>70</a>    palette.insert(SceneColor::EdgeMargin, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.35</span>, <span class="number">0.2</span>));
-<a href=#71 id=71 data-nosnippet>71</a>    palette.insert(SceneColor::Field, Color::&lt;f64&gt;::new(<span class="number">0.2</span>, <span class="number">0.8</span>, <span class="number">1.0</span>));
-<a href=#72 id=72 data-nosnippet>72</a>    palette.insert(SceneColor::FieldLabel, Color::&lt;f64&gt;::new(<span class="number">0.55</span>, <span class="number">0.9</span>, <span class="number">1.0</span>));
-<a href=#73 id=73 data-nosnippet>73</a>    palette.insert(SceneColor::Seat, Color::&lt;f64&gt;::new(<span class="number">0.9</span>, <span class="number">0.7</span>, <span class="number">0.3</span>));
-<a href=#74 id=74 data-nosnippet>74</a>    palette.insert(SceneColor::SeatLabel, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.85</span>, <span class="number">0.5</span>));
-<a href=#75 id=75 data-nosnippet>75</a>    palette.insert(SceneColor::RulerBg, Color::&lt;f64&gt;::new(<span class="number">0.04</span>, <span class="number">0.04</span>, <span class="number">0.06</span>));
-<a href=#76 id=76 data-nosnippet>76</a>    palette.insert(SceneColor::Ruler, Color::&lt;f64&gt;::new(<span class="number">0.9</span>, <span class="number">0.9</span>, <span class="number">0.9</span>));
-<a href=#77 id=77 data-nosnippet>77</a>    palette.insert(SceneColor::Label, Color::&lt;f64&gt;::new(<span class="number">0.85</span>, <span class="number">0.85</span>, <span class="number">0.85</span>));
-<a href=#78 id=78 data-nosnippet>78</a>    palette.insert(SceneColor::EmptyState, Color::&lt;f64&gt;::new(<span class="number">0.6</span>, <span class="number">0.6</span>, <span class="number">0.6</span>));
-<a href=#79 id=79 data-nosnippet>79</a>    palette.insert(SceneColor::TouchLine, Color::&lt;f64&gt;::new(<span class="number">0.4</span>, <span class="number">0.7</span>, <span class="number">1.0</span>));
-<a href=#80 id=80 data-nosnippet>80</a>    palette.insert(SceneColor::TouchStable, Color::&lt;f64&gt;::new(<span class="number">0.3</span>, <span class="number">0.9</span>, <span class="number">0.4</span>));
-<a href=#81 id=81 data-nosnippet>81</a>    palette.insert(SceneColor::TouchUnstable, Color::&lt;f64&gt;::new(<span class="number">0.5</span>, <span class="number">0.7</span>, <span class="number">1.0</span>));
-<a href=#82 id=82 data-nosnippet>82</a>    palette.insert(SceneColor::CoordText, Color::&lt;f64&gt;::new(<span class="number">0.7</span>, <span class="number">0.7</span>, <span class="number">0.7</span>));
-<a href=#83 id=83 data-nosnippet>83</a>    palette.insert(SceneColor::TouchDim, Color::&lt;f64&gt;::new(<span class="number">0.4</span>, <span class="number">0.4</span>, <span class="number">0.4</span>));
-<a href=#84 id=84 data-nosnippet>84</a>    palette.insert(SceneColor::White, Color::&lt;f64&gt;::WHITE);
-<a href=#85 id=85 data-nosnippet>85</a>    palette
+<a href=#63 id=63 data-nosnippet>63</a>    Palette::&lt;SceneColor, f64&gt;::builder()
+<a href=#64 id=64 data-nosnippet>64</a>        .color(SceneColor::Error, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.3</span>, <span class="number">0.3</span>))
+<a href=#65 id=65 data-nosnippet>65</a>        .color(SceneColor::Message, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.9</span>, <span class="number">0.2</span>))
+<a href=#66 id=66 data-nosnippet>66</a>        .color(SceneColor::Notice, Color::&lt;f64&gt;::new(<span class="number">0.8</span>, <span class="number">0.8</span>, <span class="number">0.8</span>))
+<a href=#67 id=67 data-nosnippet>67</a>        .color(SceneColor::Grid, Color::&lt;f64&gt;::new(<span class="number">0.8</span>, <span class="number">0.8</span>, <span class="number">0.8</span>))
+<a href=#68 id=68 data-nosnippet>68</a>        .color(SceneColor::DeadZone, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.3</span>, <span class="number">0.25</span>))
+<a href=#69 id=69 data-nosnippet>69</a>        .color(SceneColor::DeadZoneLabel, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.55</span>, <span class="number">0.5</span>))
+<a href=#70 id=70 data-nosnippet>70</a>        .color(SceneColor::EdgeMargin, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.35</span>, <span class="number">0.2</span>))
+<a href=#71 id=71 data-nosnippet>71</a>        .color(SceneColor::Field, Color::&lt;f64&gt;::new(<span class="number">0.2</span>, <span class="number">0.8</span>, <span class="number">1.0</span>))
+<a href=#72 id=72 data-nosnippet>72</a>        .color(SceneColor::FieldLabel, Color::&lt;f64&gt;::new(<span class="number">0.55</span>, <span class="number">0.9</span>, <span class="number">1.0</span>))
+<a href=#73 id=73 data-nosnippet>73</a>        .color(SceneColor::Seat, Color::&lt;f64&gt;::new(<span class="number">0.9</span>, <span class="number">0.7</span>, <span class="number">0.3</span>))
+<a href=#74 id=74 data-nosnippet>74</a>        .color(SceneColor::SeatLabel, Color::&lt;f64&gt;::new(<span class="number">1.0</span>, <span class="number">0.85</span>, <span class="number">0.5</span>))
+<a href=#75 id=75 data-nosnippet>75</a>        .color(SceneColor::RulerBg, Color::&lt;f64&gt;::new(<span class="number">0.04</span>, <span class="number">0.04</span>, <span class="number">0.06</span>))
+<a href=#76 id=76 data-nosnippet>76</a>        .color(SceneColor::Ruler, Color::&lt;f64&gt;::new(<span class="number">0.9</span>, <span class="number">0.9</span>, <span class="number">0.9</span>))
+<a href=#77 id=77 data-nosnippet>77</a>        .color(SceneColor::Label, Color::&lt;f64&gt;::new(<span class="number">0.85</span>, <span class="number">0.85</span>, <span class="number">0.85</span>))
+<a href=#78 id=78 data-nosnippet>78</a>        .color(SceneColor::EmptyState, Color::&lt;f64&gt;::new(<span class="number">0.6</span>, <span class="number">0.6</span>, <span class="number">0.6</span>))
+<a href=#79 id=79 data-nosnippet>79</a>        .color(SceneColor::TouchLine, Color::&lt;f64&gt;::new(<span class="number">0.4</span>, <span class="number">0.7</span>, <span class="number">1.0</span>))
+<a href=#80 id=80 data-nosnippet>80</a>        .color(SceneColor::TouchStable, Color::&lt;f64&gt;::new(<span class="number">0.3</span>, <span class="number">0.9</span>, <span class="number">0.4</span>))
+<a href=#81 id=81 data-nosnippet>81</a>        .color(SceneColor::TouchUnstable, Color::&lt;f64&gt;::new(<span class="number">0.5</span>, <span class="number">0.7</span>, <span class="number">1.0</span>))
+<a href=#82 id=82 data-nosnippet>82</a>        .color(SceneColor::CoordText, Color::&lt;f64&gt;::new(<span class="number">0.7</span>, <span class="number">0.7</span>, <span class="number">0.7</span>))
+<a href=#83 id=83 data-nosnippet>83</a>        .color(SceneColor::TouchDim, Color::&lt;f64&gt;::new(<span class="number">0.4</span>, <span class="number">0.4</span>, <span class="number">0.4</span>))
+<a href=#84 id=84 data-nosnippet>84</a>        .color(SceneColor::White, Color::&lt;f64&gt;::WHITE)
+<a href=#85 id=85 data-nosnippet>85</a>        .build()
 <a href=#86 id=86 data-nosnippet>86</a>});
 <a href=#87 id=87 data-nosnippet>87</a>
 <a href=#88 id=88 data-nosnippet>88</a><span class="doccomment">/// Per-figure accent colors - stable hash over the pattern ID.

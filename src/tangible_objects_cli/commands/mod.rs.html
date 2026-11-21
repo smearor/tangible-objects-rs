@@ -11,36 +11,38 @@
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">mod </span>metrics;
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">mod </span>profiles;
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">mod </span>record;
-<a href=#14 id=14 data-nosnippet>14</a><span class="kw">mod </span>stages;
-<a href=#15 id=15 data-nosnippet>15</a><span class="kw">mod </span>status;
-<a href=#16 id=16 data-nosnippet>16</a><span class="kw">mod </span>tangibles;
-<a href=#17 id=17 data-nosnippet>17</a><span class="kw">mod </span>touches;
-<a href=#18 id=18 data-nosnippet>18</a><span class="kw">mod </span>watch;
-<a href=#19 id=19 data-nosnippet>19</a>
-<a href=#20 id=20 data-nosnippet>20</a><span class="kw">use </span>tangible_objects_client::ClientError;
-<a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span>tangible_objects_client::GraphQLClient;
-<a href=#22 id=22 data-nosnippet>22</a>
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span><span class="kw">crate</span>::args::Cli;
-<a href=#24 id=24 data-nosnippet>24</a><span class="kw">use </span><span class="kw">crate</span>::args::Command;
-<a href=#25 id=25 data-nosnippet>25</a>
-<a href=#26 id=26 data-nosnippet>26</a><span class="doccomment">/// Dispatches the parsed command onto the client.
-<a href=#27 id=27 data-nosnippet>27</a></span><span class="kw">pub async fn </span>run(client: <span class="kw-2">&amp;</span>GraphQLClient, cli: <span class="kw-2">&amp;</span>Cli) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
-<a href=#28 id=28 data-nosnippet>28</a>    <span class="kw">match </span><span class="kw-2">&amp;</span>cli.command {
-<a href=#29 id=29 data-nosnippet>29</a>        Command::Devices =&gt; devices::devices(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#30 id=30 data-nosnippet>30</a>        Command::Status =&gt; status::status(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#31 id=31 data-nosnippet>31</a>        Command::Metrics(args) =&gt; metrics::metrics(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#32 id=32 data-nosnippet>32</a>        Command::Message(args) =&gt; message::message(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#33 id=33 data-nosnippet>33</a>        Command::Tangibles =&gt; tangibles::tangibles(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#34 id=34 data-nosnippet>34</a>        Command::Touches =&gt; touches::touches(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#35 id=35 data-nosnippet>35</a>        Command::Profiles(args) =&gt; profiles::profiles(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#36 id=36 data-nosnippet>36</a>        Command::FieldSets(args) =&gt; field_sets::field_sets(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#37 id=37 data-nosnippet>37</a>        Command::Stages(args) =&gt; stages::stages(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#38 id=38 data-nosnippet>38</a>        Command::Filter(args) =&gt; filter::filter(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#39 id=39 data-nosnippet>39</a>        Command::Completion(args) =&gt; completion::completion(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#40 id=40 data-nosnippet>40</a>        Command::Record(args) =&gt; record::record(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#41 id=41 data-nosnippet>41</a>        Command::Analyze(args) =&gt; analyze::analyze(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#42 id=42 data-nosnippet>42</a>        Command::Watch(args) =&gt; watch::watch(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
-<a href=#43 id=43 data-nosnippet>43</a>    }
-<a href=#44 id=44 data-nosnippet>44</a>    <span class="prelude-val">Ok</span>(())
-<a href=#45 id=45 data-nosnippet>45</a>}
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">mod </span>spells;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">mod </span>stages;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">mod </span>status;
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">mod </span>tangibles;
+<a href=#18 id=18 data-nosnippet>18</a><span class="kw">mod </span>touches;
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">mod </span>watch;
+<a href=#20 id=20 data-nosnippet>20</a>
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span>tangible_objects_client::ClientError;
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span>tangible_objects_client::GraphQLClient;
+<a href=#23 id=23 data-nosnippet>23</a>
+<a href=#24 id=24 data-nosnippet>24</a><span class="kw">use </span><span class="kw">crate</span>::args::Cli;
+<a href=#25 id=25 data-nosnippet>25</a><span class="kw">use </span><span class="kw">crate</span>::args::Command;
+<a href=#26 id=26 data-nosnippet>26</a>
+<a href=#27 id=27 data-nosnippet>27</a><span class="doccomment">/// Dispatches the parsed command onto the client.
+<a href=#28 id=28 data-nosnippet>28</a></span><span class="kw">pub async fn </span>run(client: <span class="kw-2">&amp;</span>GraphQLClient, cli: <span class="kw-2">&amp;</span>Cli) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="kw">match </span><span class="kw-2">&amp;</span>cli.command {
+<a href=#30 id=30 data-nosnippet>30</a>        Command::Devices =&gt; devices::devices(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#31 id=31 data-nosnippet>31</a>        Command::Status =&gt; status::status(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#32 id=32 data-nosnippet>32</a>        Command::Metrics(args) =&gt; metrics::metrics(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#33 id=33 data-nosnippet>33</a>        Command::Message(args) =&gt; message::message(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#34 id=34 data-nosnippet>34</a>        Command::Tangibles =&gt; tangibles::tangibles(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#35 id=35 data-nosnippet>35</a>        Command::Touches =&gt; touches::touches(client, cli).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#36 id=36 data-nosnippet>36</a>        Command::Profiles(args) =&gt; profiles::profiles(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#37 id=37 data-nosnippet>37</a>        Command::FieldSets(args) =&gt; field_sets::field_sets(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#38 id=38 data-nosnippet>38</a>        Command::Stages(args) =&gt; stages::stages(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#39 id=39 data-nosnippet>39</a>        Command::Spells(args) =&gt; spells::spells(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#40 id=40 data-nosnippet>40</a>        Command::Filter(args) =&gt; filter::filter(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#41 id=41 data-nosnippet>41</a>        Command::Completion(args) =&gt; completion::completion(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#42 id=42 data-nosnippet>42</a>        Command::Record(args) =&gt; record::record(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#43 id=43 data-nosnippet>43</a>        Command::Analyze(args) =&gt; analyze::analyze(client, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#44 id=44 data-nosnippet>44</a>        Command::Watch(args) =&gt; watch::watch(client, cli, args).<span class="kw">await</span><span class="question-mark">?</span>,
+<a href=#45 id=45 data-nosnippet>45</a>    }
+<a href=#46 id=46 data-nosnippet>46</a>    <span class="prelude-val">Ok</span>(())
+<a href=#47 id=47 data-nosnippet>47</a>}
 </code></pre></div></section></main></body></html>

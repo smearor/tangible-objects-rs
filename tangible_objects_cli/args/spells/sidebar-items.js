@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SpellsCommand"],"struct":["SpellsArgs"]};
