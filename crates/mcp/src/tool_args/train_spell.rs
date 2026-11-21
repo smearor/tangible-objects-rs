@@ -11,7 +11,6 @@ pub struct TrainSpellArgs {
     pub name: SpellName,
     /// Arming the finished spell carries - the `[arming]` table as
     /// TOML (e.g. `type = "five-finger-tap"` or
-    /// `type = "start-spot"` + `[arming.region]`); `null`/empty =
-    /// `free`.
+    /// `type = "start-spot"` + `[region]`); `null`/empty = `free`.
     pub arming: Option<String>,
 }
