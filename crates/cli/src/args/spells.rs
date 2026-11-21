@@ -4,6 +4,7 @@ use clap::Subcommand;
 use std::path::PathBuf;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
+use tangible_objects_model::SpellArming;
 use tangible_objects_model::SpellName;
 
 /// `spells` subcommands.
@@ -40,9 +41,9 @@ pub enum SpellsCommand {
         name: SpellName,
         /// Arming the finished spell carries - the `[arming]` table
         /// as TOML (e.g. 'type = "five-finger-tap"' or
-        /// 'type = "start-spot"' plus `[arming.region]`);
+        /// 'type = "start-spot"' plus `[region]`);
         /// defaults to `free`.
         #[arg(long)]
-        arming: Option<String>,
+        arming: Option<SpellArming>,
     },
 }

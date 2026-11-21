@@ -27,12 +27,9 @@ pub(crate) async fn train_spell(
     name: SpellName,
     arming_toml: &str,
 ) -> fdo::Result<()> {
-    let arming = if arming_toml.is_empty() {
-        SpellArming::Free
-    } else {
-        toml::from_str::<SpellArming>(arming_toml)
-            .map_err(|e| fdo::Error::InvalidArgs(format!("invalid arming TOML: {e}")))?
-    };
+    let arming = arming_toml
+        .parse::<SpellArming>()
+        .map_err(|e| fdo::Error::InvalidArgs(format!("invalid arming TOML: {e}")))?;
     service
         .handle
         .send_command(ControlCommand::TrainSpell { name, arming })

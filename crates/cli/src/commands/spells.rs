@@ -7,7 +7,6 @@ use tangible_objects_client::ClientError;
 use tangible_objects_client::GraphQLClient;
 use tangible_objects_model::RegisterSpellResult;
 use tangible_objects_model::Spell;
-use tangible_objects_model::SpellArming;
 
 use crate::args::Cli;
 use crate::args::SpellsArgs;
@@ -42,7 +41,6 @@ pub(crate) async fn spells(
             client.unregister_spell(name).await?;
         }
         SpellsCommand::Train { name, arming } => {
-            let arming = parse_arming(arming.as_deref())?;
             client.train_spell(name, arming.as_ref()).await?;
         }
     }
@@ -53,14 +51,4 @@ pub(crate) async fn spells(
 fn load_spell(file: &Path) -> Result<Spell, ClientError> {
     Spell::load(file)
         .map_err(|e| ClientError::Protocol(format!("spell load {}: {e}", file.display())))
-}
-
-/// Parses the optional `--arming` TOML table (`None`/empty = `free`).
-fn parse_arming(arming: Option<&str>) -> Result<Option<SpellArming>, ClientError> {
-    match arming {
-        None | Some("") => Ok(None),
-        Some(toml_str) => toml::from_str::<SpellArming>(toml_str)
-            .map(Some)
-            .map_err(|e| ClientError::Protocol(format!("invalid arming TOML: {e}"))),
-    }
 }

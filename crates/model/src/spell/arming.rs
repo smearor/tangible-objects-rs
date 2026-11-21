@@ -4,6 +4,7 @@
 
 use serde::Deserialize;
 use serde::Serialize;
+use std::str::FromStr;
 
 use crate::PatternName;
 use crate::Region;
@@ -48,4 +49,19 @@ pub enum SpellArming {
     /// prefix-gated defer-and-replay (SPELLS.md's pinch/rotate
     /// caveat applies).
     Free,
+}
+
+impl FromStr for SpellArming {
+    type Err = toml::de::Error;
+
+    /// Parses the `[arming]` TOML table - `type = "<kebab-kind>"`
+    /// plus the fields the armed variants carry (e.g.
+    /// `type = "start-spot"` + `[region]`). An empty string yields
+    /// [`SpellArming::Free`].
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Ok(Self::Free);
+        }
+        toml::from_str(s)
+    }
 }

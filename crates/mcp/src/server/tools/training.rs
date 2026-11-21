@@ -40,12 +40,12 @@ impl EngineMcp {
         &self,
         Parameters(args): Parameters<TrainSpellArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let arming = match args.arming.as_deref() {
-            None | Some("") => SpellArming::Free,
-            Some(toml_str) => toml::from_str::<SpellArming>(toml_str).map_err(|e| {
-                ErrorData::invalid_params(format!("invalid arming TOML: {e}"), None)
-            })?,
-        };
+        let arming = args
+            .arming
+            .as_deref()
+            .unwrap_or_default()
+            .parse::<SpellArming>()
+            .map_err(|e| ErrorData::invalid_params(format!("invalid arming TOML: {e}"), None))?;
         self.handle
             .send_command(ControlCommand::TrainSpell {
                 name: args.name.clone(),
