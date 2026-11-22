@@ -11,8 +11,8 @@ pub struct Trajectory {
     /// Ordered stroke points, decimated by the tracker's sample
     /// step.
     pub points: Vec<Vec2<Millimeters>>,
-    /// Cumulative path length in millimeters.
-    pub path_length: f64,
+    /// Cumulative path length.
+    pub path_length: Millimeters,
 }
 
 impl Trajectory {

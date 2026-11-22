@@ -332,18 +332,9 @@ impl SharedState {
                 .card_footprints
                 .iter()
                 .filter(|card| card.visible)
-                .any(|card| point_in_card(px, card))
+                .any(|card| card.contains(px))
         });
     }
-}
-
-/// Whether `px` lies inside the card's rotated footprint rect - the
-/// point is transformed into the card's local frame (relative to its
-/// center, un-rotated) and tested against the scaled natural size.
-fn point_in_card(px: Vec2<Pixels>, card: &CardFootprint) -> bool {
-    let size = card.natural.to_f64() * f64::from(card.scale);
-    let local = (px - card.position).rotated(-card.rotation.to_rotation_rad());
-    local.x.abs() <= size.x / 2.0 && local.y.abs() <= size.y / 2.0
 }
 
 /// Whether the shared state's mode runs the detection engine on

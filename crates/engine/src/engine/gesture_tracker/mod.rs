@@ -28,7 +28,7 @@ use tangible_objects_model::FieldSet;
 use tangible_objects_model::HandName;
 use tangible_objects_model::HandProfile;
 use tangible_objects_model::PatternName;
-use tangible_objects_model::Region;
+use tangible_objects_model::PointSet;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellArming;
@@ -40,17 +40,22 @@ use tangible_objects_model::TouchPoint;
 use tangible_objects_model::TouchPointSlot;
 use tangible_objects_model::TrackedTangible;
 
+mod episode;
+mod pending_tap;
+
 use super::Trajectory;
 use crate::engine::spell_training::SpellTraining;
+use episode::Episode;
+use pending_tap::PendingTap;
 
 /// Minimum stroke path length for a slot to count as a gesture
-/// candidate (mm) - below it a contact is a rest or a normal touch
+/// candidate - below it a contact is a rest or a normal touch
 /// (SPELLS.md's temporal discriminator).
-const MIN_STROKE_PATH_MM: f64 = 20.0;
+const MIN_STROKE_PATH: Millimeters = Millimeters::new(20.0);
 
-/// Minimum distance between appended trajectory samples (mm) -
+/// Minimum distance between appended trajectory samples -
 /// dedupes the position stream so the polyline stays sparse.
-const SAMPLE_STEP_MM: f64 = 2.0;
+const SAMPLE_STEP: Millimeters = Millimeters::new(2.0);
 
 /// Maximum spread between the five contacts' down events for a
 /// five-finger tap to count as simultaneous (SPELLS.md).
@@ -64,45 +69,6 @@ const TAP_LATCH: Duration = Duration::from_secs(10);
 
 /// Number of simultaneous contacts forming a five-finger tap.
 const TAP_CONTACTS: usize = 5;
-
-/// A five-finger tap in flight: the simultaneous contact group's
-/// down timestamp plus each slot's position at tap time - the
-/// positions become the handprint constellation once the tap
-/// completes (SPELLS.md's per-user spells).
-struct PendingTap {
-    /// Earliest contact's down timestamp - the tap must fully lift
-    /// within [`TAP_TOTAL`] of it.
-    started: Instant,
-    /// Slot and down position per tap contact.
-    contacts: Vec<(TouchPointSlot, Vec2<Millimeters>)>,
-}
-
-/// Whether an episode satisfied a spell's arming condition - the
-/// `Listening -> Armed` transition's per-episode evaluation.
-struct Episode<'a> {
-    /// Completed strokes of the episode with their slots - the
-    /// slots identify what a matched spell consumed.
-    strokes: &'a [(TouchPointSlot, Vec<Vec2<Millimeters>>)],
-    /// The episode's very first contact point - `start-spot` checks
-    /// this against its region.
-    first_point: Option<Vec2<Millimeters>>,
-    /// `five-finger-tap` latch active during the episode.
-    five_tap_armed: bool,
-    /// The hand the tap latch identified - a `five-finger-tap` spell
-    /// naming a `hand` only arms when the tap's constellation
-    /// matched that handprint (per-user spells, SPELLS.md).
-    armed_hand: Option<HandName>,
-}
-
-impl Episode<'_> {
-    /// Stroke points without slot identity - the matcher input.
-    fn polylines(&self) -> Vec<Vec<Vec2<Millimeters>>> {
-        self.strokes
-            .iter()
-            .map(|(_, points)| points.clone())
-            .collect()
-    }
-}
 
 /// Accumulates per-slot stroke trajectories and recognizes spells
 /// once a gesture episode completes.
@@ -316,7 +282,7 @@ impl GestureTracker {
             .collect();
         for slot in lifted {
             if let Some(traj) = self.trajectories.remove(&slot)
-                && traj.path_length >= MIN_STROKE_PATH_MM
+                && traj.path_length >= MIN_STROKE_PATH
             {
                 self.completed.push((slot, traj.points));
             }
@@ -328,9 +294,9 @@ impl GestureTracker {
                 traj.points.push(touch.pos);
                 continue;
             };
-            let step = last.distance(&touch.pos).as_f64();
-            if step >= SAMPLE_STEP_MM {
-                traj.path_length += step;
+            let step = last.distance(&touch.pos);
+            if step >= SAMPLE_STEP {
+                traj.path_length = traj.path_length + step;
                 traj.points.push(touch.pos);
             }
         }
@@ -432,7 +398,10 @@ impl GestureTracker {
         }
 
         if let Some(tap) = &self.pending_tap {
-            let all_lifted = tap.contacts.iter().all(|(slot, _)| !live.contains(slot));
+            let all_lifted = tap
+                .contacts
+                .iter()
+                .all(|contact| !live.contains(&contact.slot));
             let expired = now.duration_since(tap.started) > TAP_TOTAL;
             if all_lifted || expired {
                 if all_lifted && !expired {
@@ -440,11 +409,11 @@ impl GestureTracker {
                     // per-user `five-finger-tap` spells only arm for
                     // the handprint it matched.
                     let points: Vec<Vec2<Millimeters>> =
-                        tap.contacts.iter().map(|(_, pos)| *pos).collect();
+                        tap.contacts.iter().map(|contact| contact.pos).collect();
                     self.armed_hand = self
                         .hands
                         .iter()
-                        .find(|hand| hand.matches(&points))
+                        .find(|hand| hand.matches(PointSet::new(&points)))
                         .map(|hand| hand.name.clone());
                     self.five_tap_armed_until = Some(now + TAP_LATCH);
                 }
@@ -463,15 +432,10 @@ impl GestureTracker {
         if recent.len() >= TAP_CONTACTS {
             recent.sort_by_key(|(at, _)| *at);
             let earliest = recent.first().map(|(at, _)| *at).unwrap_or(now);
-            let contacts: Vec<(TouchPointSlot, Vec2<Millimeters>)> = recent
+            let contacts: Vec<TouchPoint> = recent
                 .iter()
                 .take(TAP_CONTACTS)
-                .filter_map(|(_, slot)| {
-                    touches
-                        .iter()
-                        .find(|touch| touch.slot == *slot)
-                        .map(|touch| (*slot, touch.pos))
-                })
+                .filter_map(|(_, slot)| touches.iter().find(|touch| touch.slot == *slot).cloned())
                 .collect();
             self.pending_tap = Some(PendingTap {
                 started: earliest,
@@ -494,7 +458,7 @@ impl GestureTracker {
         let mut matched = None;
         for id in lifted {
             if let Some((pattern, traj)) = self.chords.remove(&id)
-                && traj.path_length >= MIN_STROKE_PATH_MM
+                && traj.path_length >= MIN_STROKE_PATH
             {
                 matched = self.dispatch_chord(&pattern, &traj.points).or(matched);
             }
@@ -523,9 +487,9 @@ impl GestureTracker {
                 traj.points.push(tangible.center);
                 continue;
             };
-            let step = last.distance(&tangible.center).as_f64();
-            if step >= SAMPLE_STEP_MM {
-                traj.path_length += step;
+            let step = last.distance(&tangible.center);
+            if step >= SAMPLE_STEP {
+                traj.path_length = traj.path_length + step;
                 traj.points.push(tangible.center);
             }
         }
@@ -538,9 +502,7 @@ impl GestureTracker {
     fn episode_armed(&self, spell: &Spell, episode: &Episode<'_>) -> bool {
         match &spell.arming {
             SpellArming::Free => true,
-            SpellArming::ExclusiveZone { region } => {
-                all_points_inside(&episode.polylines(), region)
-            }
+            SpellArming::ExclusiveZone { region } => episode.all_points_inside(region),
             SpellArming::StartSpot { region } => episode
                 .first_point
                 .is_some_and(|point| region.contains(&point)),
@@ -634,14 +596,6 @@ impl GestureTracker {
             score,
         })
     }
-}
-
-/// `exclusive-zone` arming: every stroke point must lie inside the
-/// region - leaving the zone fails the episode.
-fn all_points_inside(strokes: &[Vec<Vec2<Millimeters>>], region: &Region) -> bool {
-    strokes
-        .iter()
-        .all(|stroke| stroke.iter().all(|point| region.contains(point)))
 }
 
 #[cfg(test)]

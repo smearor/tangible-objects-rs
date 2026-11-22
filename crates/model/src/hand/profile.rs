@@ -63,11 +63,11 @@ impl HandProfile {
         }
     }
 
-    /// Whether `points` is this hand's constellation: same point
-    /// count and every pairwise distance within `tolerance` of the
-    /// fingerprint (per-index, like the pattern matcher).
-    pub fn matches(&self, points: &[Vec2<Millimeters>]) -> bool {
-        PointSet::new(points)
+    /// Whether `constellation` is this hand's constellation: same
+    /// point count and every pairwise distance within `tolerance`
+    /// of the fingerprint (per-index, like the pattern matcher).
+    pub fn matches(&self, constellation: PointSet<'_>) -> bool {
+        constellation
             .distances()
             .max_deviation(&self.sorted_sides)
             .as_millimeters()
@@ -139,7 +139,7 @@ mod tests {
             .iter()
             .map(|point| *point + Vec2::new(200.0, 100.0))
             .collect();
-        assert!(hand.matches(&shifted));
+        assert!(hand.matches((&shifted).into()));
     }
 
     #[test]
@@ -150,13 +150,13 @@ mod tests {
             .iter()
             .map(|point| Vec2::new(point.x * 0.4, point.y * 0.4))
             .collect();
-        assert!(!hand.matches(&tiny));
+        assert!(!hand.matches((&tiny).into()));
     }
 
     #[test]
     fn wrong_point_count_rejects() {
         let hand = HandProfile::from_points("alice", &hand_points(), Millimeters::new(8.0));
-        assert!(!hand.matches(&hand_points()[..4]));
+        assert!(!hand.matches((&hand_points()[..4]).into()));
     }
 
     #[test]

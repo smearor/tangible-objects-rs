@@ -15,9 +15,9 @@ use tangible_objects_model::StrokePolyline;
 /// (SPELLS.md).
 pub const SPELL_TRAINING_REPETITIONS: usize = 3;
 
-/// Floor under a suggested corridor in millimeters - training jitter
-/// alone never produces a corridor tighter than this.
-const MIN_TRAINED_CORRIDOR_MM: f64 = 5.0;
+/// Floor under a suggested corridor - training jitter alone never
+/// produces a corridor tighter than this.
+const MIN_TRAINED_CORRIDOR: Millimeters = Millimeters::new(5.0);
 
 /// Margin over the worst repetition-vs-template score - the
 /// suggestion should accept the next close-enough repetition, not
@@ -99,10 +99,9 @@ impl SpellTraining {
         let worst = self.episodes[1..]
             .iter()
             .filter_map(|episode| probe.try_match(episode))
-            .map(|score| score.as_f64())
-            .fold(0.0_f64, f64::max);
+            .fold(Millimeters::ZERO, Millimeters::max);
         Spell {
-            corridor: Millimeters::new((worst * CORRIDOR_MARGIN).max(MIN_TRAINED_CORRIDOR_MM)),
+            corridor: (worst * CORRIDOR_MARGIN).max(MIN_TRAINED_CORRIDOR),
             ..probe
         }
     }
