@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["kind","pattern","region"]};
+window.SIDEBAR_ITEMS = {"struct":["hand","kind","pattern","region"]};

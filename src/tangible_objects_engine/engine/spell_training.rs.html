@@ -15,9 +15,9 @@
 <a href=#15 id=15 data-nosnippet>15</a>/// (SPELLS.md).
 <a href=#16 id=16 data-nosnippet>16</a></span><span class="kw">pub const </span>SPELL_TRAINING_REPETITIONS: usize = <span class="number">3</span>;
 <a href=#17 id=17 data-nosnippet>17</a>
-<a href=#18 id=18 data-nosnippet>18</a><span class="doccomment">/// Floor under a suggested corridor in millimeters - training jitter
-<a href=#19 id=19 data-nosnippet>19</a>/// alone never produces a corridor tighter than this.
-<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">const </span>MIN_TRAINED_CORRIDOR_MM: f64 = <span class="number">5.0</span>;
+<a href=#18 id=18 data-nosnippet>18</a><span class="doccomment">/// Floor under a suggested corridor - training jitter alone never
+<a href=#19 id=19 data-nosnippet>19</a>/// produces a corridor tighter than this.
+<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">const </span>MIN_TRAINED_CORRIDOR: Millimeters = Millimeters::new(<span class="number">5.0</span>);
 <a href=#21 id=21 data-nosnippet>21</a>
 <a href=#22 id=22 data-nosnippet>22</a><span class="doccomment">/// Margin over the worst repetition-vs-template score - the
 <a href=#23 id=23 data-nosnippet>23</a>/// suggestion should accept the next close-enough repetition, not
@@ -51,54 +51,59 @@
 <a href=#51 id=51 data-nosnippet>51</a>        }
 <a href=#52 id=52 data-nosnippet>52</a>    }
 <a href=#53 id=53 data-nosnippet>53</a>
-<a href=#54 id=54 data-nosnippet>54</a>    <span class="doccomment">/// Captures one completed episode - the per-finger stroke
-<a href=#55 id=55 data-nosnippet>55</a>    /// polylines in surface millimeters. Returns the finished
-<a href=#56 id=56 data-nosnippet>56</a>    /// [`Spell`] once `SPELL_TRAINING_REPETITIONS` consistent
-<a href=#57 id=57 data-nosnippet>57</a>    /// episodes landed; mismatched finger counts are skipped so the
-<a href=#58 id=58 data-nosnippet>58</a>    /// user can retry a flubbed repetition without restarting.
-<a href=#59 id=59 data-nosnippet>59</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>capture(<span class="kw-2">&amp;mut </span><span class="self">self</span>, strokes: Vec&lt;Vec&lt;Vec2&lt;Millimeters&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Spell&gt; {
-<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">if </span>strokes.is_empty()
-<a href=#61 id=61 data-nosnippet>61</a>            || <span class="self">self
-<a href=#62 id=62 data-nosnippet>62</a>                </span>.episodes
-<a href=#63 id=63 data-nosnippet>63</a>                .first()
-<a href=#64 id=64 data-nosnippet>64</a>                .is_some_and(|first| first.len() != strokes.len())
-<a href=#65 id=65 data-nosnippet>65</a>        {
-<a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
-<a href=#67 id=67 data-nosnippet>67</a>        }
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="self">self</span>.episodes.push(strokes);
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">if </span><span class="self">self</span>.episodes.len() &lt; SPELL_TRAINING_REPETITIONS {
-<a href=#70 id=70 data-nosnippet>70</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
-<a href=#71 id=71 data-nosnippet>71</a>        }
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="prelude-val">Some</span>(<span class="self">self</span>.finish())
-<a href=#73 id=73 data-nosnippet>73</a>    }
-<a href=#74 id=74 data-nosnippet>74</a>
-<a href=#75 id=75 data-nosnippet>75</a>    <span class="doccomment">/// Template = first episode; corridor = worst
-<a href=#76 id=76 data-nosnippet>76</a>    /// repetition-vs-template match score scaled by
-<a href=#77 id=77 data-nosnippet>77</a>    /// `CORRIDOR_MARGIN` and floored - the same normalized-Fréchet
-<a href=#78 id=78 data-nosnippet>78</a>    /// metric `try_match` will apply at runtime.
-<a href=#79 id=79 data-nosnippet>79</a>    </span><span class="kw">fn </span>finish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Spell {
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>template = <span class="kw-2">&amp;</span><span class="self">self</span>.episodes[<span class="number">0</span>];
-<a href=#81 id=81 data-nosnippet>81</a>        <span class="kw">let </span>probe = Spell {
-<a href=#82 id=82 data-nosnippet>82</a>            name: <span class="self">self</span>.name.clone(),
-<a href=#83 id=83 data-nosnippet>83</a>            fingers: FingerCount::new(template.len()),
-<a href=#84 id=84 data-nosnippet>84</a>            corridor: Millimeters::new(f64::INFINITY),
-<a href=#85 id=85 data-nosnippet>85</a>            scale_invariant: <span class="bool-val">true</span>,
-<a href=#86 id=86 data-nosnippet>86</a>            enabled: <span class="bool-val">true</span>,
-<a href=#87 id=87 data-nosnippet>87</a>            strokes: template
-<a href=#88 id=88 data-nosnippet>88</a>                .iter()
-<a href=#89 id=89 data-nosnippet>89</a>                .map(|points| StrokePolyline::new(points.clone()))
-<a href=#90 id=90 data-nosnippet>90</a>                .collect(),
-<a href=#91 id=91 data-nosnippet>91</a>            arming: <span class="self">self</span>.arming.clone(),
-<a href=#92 id=92 data-nosnippet>92</a>        };
-<a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">let </span>worst = <span class="self">self</span>.episodes[<span class="number">1</span>..]
-<a href=#94 id=94 data-nosnippet>94</a>            .iter()
-<a href=#95 id=95 data-nosnippet>95</a>            .filter_map(|episode| probe.try_match(episode))
-<a href=#96 id=96 data-nosnippet>96</a>            .map(|score| score.as_f64())
-<a href=#97 id=97 data-nosnippet>97</a>            .fold(<span class="number">0.0_f64</span>, f64::max);
-<a href=#98 id=98 data-nosnippet>98</a>        Spell {
-<a href=#99 id=99 data-nosnippet>99</a>            corridor: Millimeters::new((worst * CORRIDOR_MARGIN).max(MIN_TRAINED_CORRIDOR_MM)),
-<a href=#100 id=100 data-nosnippet>100</a>            ..probe
-<a href=#101 id=101 data-nosnippet>101</a>        }
-<a href=#102 id=102 data-nosnippet>102</a>    }
-<a href=#103 id=103 data-nosnippet>103</a>}
+<a href=#54 id=54 data-nosnippet>54</a>    <span class="doccomment">/// Repetitions captured so far - the GUI training card's
+<a href=#55 id=55 data-nosnippet>55</a>    /// progress display.
+<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>captured(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+<a href=#57 id=57 data-nosnippet>57</a>        <span class="self">self</span>.episodes.len()
+<a href=#58 id=58 data-nosnippet>58</a>    }
+<a href=#59 id=59 data-nosnippet>59</a>
+<a href=#60 id=60 data-nosnippet>60</a>    <span class="doccomment">/// Captures one completed episode - the per-finger stroke
+<a href=#61 id=61 data-nosnippet>61</a>    /// polylines in surface millimeters. Returns the finished
+<a href=#62 id=62 data-nosnippet>62</a>    /// [`Spell`] once `SPELL_TRAINING_REPETITIONS` consistent
+<a href=#63 id=63 data-nosnippet>63</a>    /// episodes landed; mismatched finger counts are skipped so the
+<a href=#64 id=64 data-nosnippet>64</a>    /// user can retry a flubbed repetition without restarting.
+<a href=#65 id=65 data-nosnippet>65</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>capture(<span class="kw-2">&amp;mut </span><span class="self">self</span>, strokes: Vec&lt;Vec&lt;Vec2&lt;Millimeters&gt;&gt;&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Spell&gt; {
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">if </span>strokes.is_empty()
+<a href=#67 id=67 data-nosnippet>67</a>            || <span class="self">self
+<a href=#68 id=68 data-nosnippet>68</a>                </span>.episodes
+<a href=#69 id=69 data-nosnippet>69</a>                .first()
+<a href=#70 id=70 data-nosnippet>70</a>                .is_some_and(|first| first.len() != strokes.len())
+<a href=#71 id=71 data-nosnippet>71</a>        {
+<a href=#72 id=72 data-nosnippet>72</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#73 id=73 data-nosnippet>73</a>        }
+<a href=#74 id=74 data-nosnippet>74</a>        <span class="self">self</span>.episodes.push(strokes);
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">if </span><span class="self">self</span>.episodes.len() &lt; SPELL_TRAINING_REPETITIONS {
+<a href=#76 id=76 data-nosnippet>76</a>            <span class="kw">return </span><span class="prelude-val">None</span>;
+<a href=#77 id=77 data-nosnippet>77</a>        }
+<a href=#78 id=78 data-nosnippet>78</a>        <span class="prelude-val">Some</span>(<span class="self">self</span>.finish())
+<a href=#79 id=79 data-nosnippet>79</a>    }
+<a href=#80 id=80 data-nosnippet>80</a>
+<a href=#81 id=81 data-nosnippet>81</a>    <span class="doccomment">/// Template = first episode; corridor = worst
+<a href=#82 id=82 data-nosnippet>82</a>    /// repetition-vs-template match score scaled by
+<a href=#83 id=83 data-nosnippet>83</a>    /// `CORRIDOR_MARGIN` and floored - the same normalized-Fréchet
+<a href=#84 id=84 data-nosnippet>84</a>    /// metric `try_match` will apply at runtime.
+<a href=#85 id=85 data-nosnippet>85</a>    </span><span class="kw">fn </span>finish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Spell {
+<a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>template = <span class="kw-2">&amp;</span><span class="self">self</span>.episodes[<span class="number">0</span>];
+<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>probe = Spell {
+<a href=#88 id=88 data-nosnippet>88</a>            name: <span class="self">self</span>.name.clone(),
+<a href=#89 id=89 data-nosnippet>89</a>            fingers: FingerCount::new(template.len()),
+<a href=#90 id=90 data-nosnippet>90</a>            corridor: Millimeters::new(f64::INFINITY),
+<a href=#91 id=91 data-nosnippet>91</a>            scale_invariant: <span class="bool-val">true</span>,
+<a href=#92 id=92 data-nosnippet>92</a>            enabled: <span class="bool-val">true</span>,
+<a href=#93 id=93 data-nosnippet>93</a>            strokes: template
+<a href=#94 id=94 data-nosnippet>94</a>                .iter()
+<a href=#95 id=95 data-nosnippet>95</a>                .map(|points| StrokePolyline::new(points.clone()))
+<a href=#96 id=96 data-nosnippet>96</a>                .collect(),
+<a href=#97 id=97 data-nosnippet>97</a>            arming: <span class="self">self</span>.arming.clone(),
+<a href=#98 id=98 data-nosnippet>98</a>        };
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span>worst = <span class="self">self</span>.episodes[<span class="number">1</span>..]
+<a href=#100 id=100 data-nosnippet>100</a>            .iter()
+<a href=#101 id=101 data-nosnippet>101</a>            .filter_map(|episode| probe.try_match(episode))
+<a href=#102 id=102 data-nosnippet>102</a>            .fold(Millimeters::ZERO, Millimeters::max);
+<a href=#103 id=103 data-nosnippet>103</a>        Spell {
+<a href=#104 id=104 data-nosnippet>104</a>            corridor: (worst * CORRIDOR_MARGIN).max(MIN_TRAINED_CORRIDOR),
+<a href=#105 id=105 data-nosnippet>105</a>            ..probe
+<a href=#106 id=106 data-nosnippet>106</a>        }
+<a href=#107 id=107 data-nosnippet>107</a>    }
+<a href=#108 id=108 data-nosnippet>108</a>}
 </code></pre></div></section></main></body></html>

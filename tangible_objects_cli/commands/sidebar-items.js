@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["run"],"mod":["analyze","completion","devices","field_sets","filter","message","metrics","profiles","record","spells","stages","status","tangibles","touches","watch"]};
+window.SIDEBAR_ITEMS = {"fn":["run"],"mod":["analyze","completion","devices","field_sets","filter","hands","message","metrics","profiles","record","spells","stages","status","tangibles","touches","watch"]};

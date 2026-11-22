@@ -147,7 +147,7 @@
 <a href=#147 id=147 data-nosnippet>147</a>        }
 <a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>count = s.touches.len();
 <a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">match </span>s.mode {
-<a href=#150 id=150 data-nosnippet>150</a>            GuiMode::Live =&gt; {
+<a href=#150 id=150 data-nosnippet>150</a>            GuiMode::Live | GuiMode::SpellTraining =&gt; {
 <a href=#151 id=151 data-nosnippet>151</a>                status.set_label(<span class="kw-2">&amp;</span><span class="macro">fl!</span>(language_loader(), <span class="string">"train-hint"</span>));
 <a href=#152 id=152 data-nosnippet>152</a>            }
 <a href=#153 id=153 data-nosnippet>153</a>            GuiMode::Training =&gt; {
@@ -235,7 +235,7 @@
 <a href=#235 id=235 data-nosnippet>235</a>            GuiMode::Training =&gt; {
 <a href=#236 id=236 data-nosnippet>236</a>                add_training_card(<span class="kw-2">&amp;</span>board_tick, <span class="kw-2">&amp;</span>state_tick, <span class="kw-2">&amp;</span>profiles_dir_tick, <span class="kw-2">&amp;</span>last);
 <a href=#237 id=237 data-nosnippet>237</a>            }
-<a href=#238 id=238 data-nosnippet>238</a>            GuiMode::Live =&gt; {
+<a href=#238 id=238 data-nosnippet>238</a>            GuiMode::Live | GuiMode::SpellTraining =&gt; {
 <a href=#239 id=239 data-nosnippet>239</a>                <span class="kw">if let </span><span class="prelude-val">Ok</span>(card) = board_tick.card(<span class="kw-2">&amp;</span>card_id) {
 <a href=#240 id=240 data-nosnippet>240</a>                    <span class="comment">// Stash the pose so re-adding restores it; the
 <a href=#241 id=241 data-nosnippet>241</a>                    // periodic layout save skips absent cards anyway.
