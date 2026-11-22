@@ -64,3 +64,16 @@ pub struct CardFootprint {
     /// landed when `extents` reads zero.
     pub first_rectangle: Option<Rect<Pixels, i32>>,
 }
+
+impl CardFootprint {
+    /// Whether `point` lies inside the card's intended coverage: the
+    /// point is transformed into the card's local frame (relative to
+    /// its center, un-rotated) and tested against the scaled natural
+    /// size. This is the *should-be* rect - compare `rendered` for
+    /// what the layout actually draws.
+    pub fn contains(&self, point: Vec2<Pixels>) -> bool {
+        let size = self.natural.to_f64() * f64::from(self.scale);
+        let local = (point - self.position).rotated(-self.rotation.to_rotation_rad());
+        local.x.abs() <= size.x / 2.0 && local.y.abs() <= size.y / 2.0
+    }
+}
