@@ -17,6 +17,9 @@ use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FieldSetRegistered;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::HandName;
+use tangible_objects_model::HandProfile;
+use tangible_objects_model::HandProfileRegistered;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
@@ -26,6 +29,7 @@ use tangible_objects_model::ProfileFile;
 use tangible_objects_model::RecordLabel;
 use tangible_objects_model::RegisterDeadZoneResult;
 use tangible_objects_model::RegisterFieldSetResult;
+use tangible_objects_model::RegisterHandProfileResult;
 use tangible_objects_model::RegisterPatternResult;
 use tangible_objects_model::RegisterSpellResult;
 use tangible_objects_model::Registration;
@@ -52,6 +56,7 @@ use tangible_objects_runtime::EngineHandle;
 use crate::schema::input::AddSeatInput;
 use crate::schema::input::RegisterDeadZoneInput;
 use crate::schema::input::RegisterFieldSetInput;
+use crate::schema::input::RegisterHandProfileInput;
 use crate::schema::input::RegisterPatternInput;
 use crate::schema::input::RegisterSpellInput;
 use crate::schema::input::SpellArmingInput;
@@ -689,6 +694,49 @@ impl MutationRoot {
     async fn unregister_spell(&self, ctx: &Context<'_>, name: SpellName) -> Result<bool> {
         ctx.data::<EngineHandle>()?
             .send_command(ControlCommand::UnregisterSpell { name })
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        Ok(true)
+    }
+
+    /// Registers a handprint at runtime (SPELLS.md's per-user
+    /// spells): a named contact constellation a `five-finger-tap`
+    /// arming can require. `lifetime: persistent` writes it to
+    /// `hands.d` so it reloads on daemon start.
+    async fn register_hand_profile(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterHandProfileInput,
+        owner: Option<Owner>,
+        lifetime: Option<Lifetime>,
+    ) -> Result<RegisterHandProfileResult> {
+        let hand = HandProfile::try_from(&input)?;
+        let name = hand.name.clone();
+        let (command, rx) = ControlCommand::register(
+            Registration::HandProfile(hand),
+            owner,
+            lifetime.unwrap_or_default(),
+        );
+        ctx.data::<EngineHandle>()?
+            .send_command(command)
+            .await
+            .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
+        match rx.await {
+            Ok(Ok(RegistrationApplied::HandProfile)) => Ok(RegisterHandProfileResult::Registered(
+                HandProfileRegistered { name },
+            )),
+            Ok(Ok(_)) => Err(Error::new(
+                "device loop returned a mismatched registration result",
+            )),
+            Ok(Err(error)) => Ok(RegisterHandProfileResult::Rejected(error.into())),
+            Err(_) => Err(Error::new("device loop closed the registration reply")),
+        }
+    }
+
+    /// Removes a registered handprint by name.
+    async fn unregister_hand_profile(&self, ctx: &Context<'_>, name: HandName) -> Result<bool> {
+        ctx.data::<EngineHandle>()?
+            .send_command(ControlCommand::UnregisterHandProfile { name })
             .await
             .map_err(|_| Error::new("control channel closed: device loop is not running"))?;
         Ok(true)

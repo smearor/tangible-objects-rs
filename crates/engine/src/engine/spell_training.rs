@@ -51,6 +51,12 @@ impl SpellTraining {
         }
     }
 
+    /// Repetitions captured so far - the GUI training card's
+    /// progress display.
+    pub(crate) fn captured(&self) -> usize {
+        self.episodes.len()
+    }
+
     /// Captures one completed episode - the per-finger stroke
     /// polylines in surface millimeters. Returns the finished
     /// [`Spell`] once `SPELL_TRAINING_REPETITIONS` consistent

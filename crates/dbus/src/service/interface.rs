@@ -16,6 +16,7 @@ use tangible_objects_model::AffinityFactor;
 use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::HandName;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
@@ -598,6 +599,25 @@ impl EngineService {
     /// Removes a registered spell by name.
     async fn unregister_spell(&self, name: SpellName) -> fdo::Result<()> {
         api::spell::unregister_spell(self, name).await
+    }
+
+    /// Registers a handprint from a TOML string (same shape as
+    /// `hands.d` files: `name`, `tolerance`, `points` -
+    /// SPELLS.md's per-user spells, bound via `five-finger-tap`
+    /// arming).
+    async fn register_hand_profile(
+        &self,
+        toml_str: &str,
+        owner: Owner,
+        persistent: bool,
+        #[zbus(header)] header: Header<'_>,
+    ) -> fdo::Result<()> {
+        api::hand::register_hand_profile(self, toml_str, owner, persistent, &header).await
+    }
+
+    /// Removes a registered handprint by name.
+    async fn unregister_hand_profile(&self, name: HandName) -> fdo::Result<()> {
+        api::hand::unregister_hand_profile(self, name).await
     }
 
     /// Blacklists a circular spot on the surface (`x`/`y` mm): contacts

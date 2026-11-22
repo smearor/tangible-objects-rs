@@ -12,6 +12,7 @@ use tangible_objects_model::CompletionConfig;
 use tangible_objects_model::DeadZone;
 use tangible_objects_model::DeviceRegistry;
 use tangible_objects_model::FieldSet;
+use tangible_objects_model::HandProfile;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::ProfileFile;
 use tangible_objects_model::Spell;
@@ -179,6 +180,24 @@ pub fn load_spells() -> Vec<Spell> {
         spells.extend(stored);
     }
     spells
+}
+
+/// Loads the startup handprints from the runtime store (`hands.d/`
+/// under the config directory - `Lifetime::Persistent` registrations
+/// reload with the daemon, SPELLS.md's per-user spells). Invalid
+/// files are reported and skipped.
+pub fn load_hands() -> Vec<HandProfile> {
+    let mut hands = Vec::new();
+    if let Some(store) = runtime_store_dir("hands.d")
+        && store.is_dir()
+    {
+        let (stored, errors) = HandProfile::load_dir(&store);
+        for (file, error) in &errors {
+            warn!(file = %file.display(), %error, "hand profile could not be loaded");
+        }
+        hands.extend(stored);
+    }
+    hands
 }
 
 /// Loads occupancy field sets from a file or directory (`--fields`).

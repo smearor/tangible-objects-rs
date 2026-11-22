@@ -9,6 +9,7 @@ pub(crate) mod device;
 pub(crate) mod field_set;
 pub(crate) mod filter;
 pub(crate) mod gui;
+pub(crate) mod hand;
 pub(crate) mod message;
 pub(crate) mod metrics;
 pub(crate) mod owner;

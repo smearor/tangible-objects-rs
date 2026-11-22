@@ -11,8 +11,10 @@ use serde::Serialize;
 
 use super::FingerCount;
 use super::SpellArming;
+use super::SpellDiagnostics;
 use super::SpellName;
 use super::StrokePolyline;
+use super::StrokeScore;
 
 /// Reference extent scale-normalized strokes are matched at.
 pub const REFERENCE_EXTENT_MM: f64 = 60.0;
@@ -80,6 +82,15 @@ impl Spell {
     /// `trajectories` are live stroke polylines in surface
     /// millimeters. A score ≤ `corridor` is a match.
     pub fn try_match(&self, trajectories: &[Vec<Vec2<Millimeters>>]) -> Option<Millimeters> {
+        self.diagnostics(trajectories).map(|diag| diag.score)
+    }
+
+    /// Same evaluation as [`Self::try_match`], retaining the winning
+    /// assignment's per-stroke deviations for SPELLS.md's debug view.
+    /// `None` under the same conditions (disabled spell, finger-count
+    /// mismatch); the returned `matched` flag reports the corridor
+    /// verdict so near-misses surface how far they were off.
+    pub fn diagnostics(&self, trajectories: &[Vec<Vec2<Millimeters>>]) -> Option<SpellDiagnostics> {
         if !self.enabled || trajectories.len() != self.fingers.as_usize() {
             return None;
         }
@@ -104,19 +115,33 @@ impl Spell {
         // k! assignments - tiny for k <= 5 fingers.
         let mut perm: Vec<usize> = (0..templates.len()).collect();
         let mut best = f64::INFINITY;
+        let mut best_strokes = Vec::new();
         permute(&mut perm, 0, &mut |p| {
-            let score = p
+            let scores: Vec<StrokeScore> = p
                 .iter()
                 .enumerate()
-                .map(|(finger, &stroke_index)| {
-                    normalized[finger]
-                        .frechet(&templates[stroke_index])
-                        .as_f64()
+                .map(|(finger, &stroke_index)| StrokeScore {
+                    template: stroke_index,
+                    score: normalized[finger].frechet(&templates[stroke_index]),
                 })
+                .collect();
+            let score = scores
+                .iter()
+                .map(|stroke| stroke.score.as_f64())
                 .fold(0.0_f64, f64::max);
-            best = best.min(score);
+            if score < best {
+                best = score;
+                best_strokes = scores;
+            }
         });
-        Some(Millimeters::new(best))
+        let score = Millimeters::new(best);
+        Some(SpellDiagnostics {
+            name: self.name.clone(),
+            corridor: self.corridor,
+            score,
+            matched: score.as_f64() <= self.corridor.as_f64(),
+            strokes: best_strokes,
+        })
     }
 }
 

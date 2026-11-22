@@ -42,6 +42,7 @@ pub use setup::list_devices;
 pub use setup::load_completion;
 pub use setup::load_dead_zones;
 pub use setup::load_field_sets;
+pub use setup::load_hands;
 pub use setup::load_patterns;
 pub use setup::load_spells;
 pub use setup::resolve_device;

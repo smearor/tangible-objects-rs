@@ -16,4 +16,7 @@ pub enum RegistrationApplied {
     DeadZone,
     /// A spell registered - the name was already known by the caller.
     Spell,
+    /// A handprint registered - the name was already known by the
+    /// caller.
+    HandProfile,
 }

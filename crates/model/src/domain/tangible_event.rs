@@ -210,6 +210,8 @@ impl From<&LifecycleEvent> for TangibleEvent {
             LifecycleEvent::SpellRegistered { .. } => EventKind::SpellRegistered,
             LifecycleEvent::SpellUnregistered { .. } => EventKind::SpellUnregistered,
             LifecycleEvent::SpellMatched { .. } => EventKind::SpellMatched,
+            LifecycleEvent::HandProfileRegistered { .. } => EventKind::HandProfileRegistered,
+            LifecycleEvent::HandProfileUnregistered { .. } => EventKind::HandProfileUnregistered,
             LifecycleEvent::StageRegistered { .. } => EventKind::StageRegistered,
             LifecycleEvent::StageUnregistered { .. } => EventKind::StageUnregistered,
             LifecycleEvent::SessionClaimed { .. } => EventKind::SessionClaimed,
@@ -252,6 +254,13 @@ impl From<&LifecycleEvent> for TangibleEvent {
                 event_out.owner = owner.clone();
             }
             LifecycleEvent::SpellUnregistered { name } => {
+                event_out.name = Some(name.to_string());
+            }
+            LifecycleEvent::HandProfileRegistered { name, owner } => {
+                event_out.name = Some(name.to_string());
+                event_out.owner = owner.clone();
+            }
+            LifecycleEvent::HandProfileUnregistered { name } => {
                 event_out.name = Some(name.to_string());
             }
             LifecycleEvent::SpellMatched {

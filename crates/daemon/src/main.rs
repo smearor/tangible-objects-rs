@@ -253,6 +253,7 @@ fn main() -> Result<()> {
             zones: cli.zone.clone(),
             dead_zones: modes::load_dead_zones(),
             spells: modes::load_spells(),
+            hands: modes::load_hands(),
             import_slots: !cli.no_import_slots,
         })
     };

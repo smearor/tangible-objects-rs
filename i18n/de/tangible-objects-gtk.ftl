@@ -1,6 +1,7 @@
 # GTK - control bar
 mode-live = Modus: Live
 mode-training = Modus: Training
+mode-spell-training = Modus: Spells
 figure-name-placeholder = Figurenname...
 save-profile = Profil speichern
 
@@ -53,6 +54,16 @@ card-field-sets-title = Feld-Sets
 card-device-title = Gerät
 card-parameters-title = Parameter
 card-training-title = Training
+card-spell-training-title = Spell-Training
+spell-name-placeholder = Spell-Name...
+spell-arming-region-placeholder = x_min,y_min,x_max,y_max mm
+spell-arming-pattern-placeholder = Pattern-Name (leer = beliebig)
+spell-arming-hand-placeholder = Hand-Name (leer = beliebige Hand)
+spell-arming-none-placeholder = Kein Parameter nötig
+spell-train-start = Spell-Training starten
+spell-train-hint = Name + Arming wählen, dann starten und Geste zeichnen
+spell-train-progress = { $captured }/{ $total } erfasst - Geste erneut zeichnen
+spell-train-done = Trainiert - Spell persistent registriert
 col-name = Name
 col-owner = Besitzer
 col-enabled = Aktiv

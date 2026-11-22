@@ -7,6 +7,7 @@ mod completion;
 mod devices;
 mod field_sets;
 mod filter;
+mod hands;
 mod message;
 mod metrics;
 mod profiles;
@@ -37,6 +38,7 @@ pub async fn run(client: &GraphQLClient, cli: &Cli) -> Result<(), ClientError> {
         Command::FieldSets(args) => field_sets::field_sets(client, cli, args).await?,
         Command::Stages(args) => stages::stages(client, args).await?,
         Command::Spells(args) => spells::spells(client, cli, args).await?,
+        Command::Hands(args) => hands::hands(client, cli, args).await?,
         Command::Filter(args) => filter::filter(client, args).await?,
         Command::Completion(args) => completion::completion(client, cli, args).await?,
         Command::Record(args) => record::record(client, cli, args).await?,

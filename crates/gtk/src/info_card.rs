@@ -38,16 +38,17 @@ pub fn create_info_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
     mode_btn.connect_clicked(move |b| {
         let label = match state_mode.lock() {
             Ok(mut s) => {
-                s.mode = if s.mode == GuiMode::Live {
-                    GuiMode::Training
-                } else {
-                    GuiMode::Live
+                s.mode = match s.mode {
+                    GuiMode::Live => GuiMode::Training,
+                    GuiMode::Training => GuiMode::SpellTraining,
+                    GuiMode::SpellTraining => GuiMode::Live,
                 };
                 s.stable_frames = 0;
                 s.stable = false;
                 match s.mode {
                     GuiMode::Live => fl!(language_loader(), "mode-live"),
                     GuiMode::Training => fl!(language_loader(), "mode-training"),
+                    GuiMode::SpellTraining => fl!(language_loader(), "mode-spell-training"),
                 }
             }
             Err(_) => return,
@@ -73,6 +74,7 @@ pub fn create_info_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         mode_btn.set_label(&match s.mode {
             GuiMode::Live => fl!(language_loader(), "mode-live"),
             GuiMode::Training => fl!(language_loader(), "mode-training"),
+            GuiMode::SpellTraining => fl!(language_loader(), "mode-spell-training"),
         });
         touches_value.set_label(&s.touches.len().to_string());
         figures_value.set_label(&s.matches.len().to_string());

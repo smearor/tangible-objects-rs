@@ -18,6 +18,8 @@ use tangible_objects_model::FieldSetCount;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FigureColor;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::HandName;
+use tangible_objects_model::HandProfile;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternBuf;
 use tangible_objects_model::PatternId;
@@ -35,6 +37,7 @@ use tangible_objects_model::RegistrationError;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellArming;
+use tangible_objects_model::SpellDiagnostics;
 use tangible_objects_model::SpellMatched;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::StageName;
@@ -116,6 +119,9 @@ pub struct Engine {
     dead_zone_owners: HashMap<DeadZoneName, Option<Owner>>,
     /// Owner per dynamically registered spell, keyed by spell name.
     spell_owners: HashMap<SpellName, Option<Owner>>,
+    /// Owner per dynamically registered handprint, keyed by hand
+    /// name.
+    hand_owners: HashMap<HandName, Option<Owner>>,
     /// Touches dropped by dead-zone filtering on the last processed
     /// frame - the ingest-level suppression counter.
     dead_zone_filtered: ContactCount,
@@ -178,6 +184,7 @@ impl Engine {
             dead_zones: DeadZones::default(),
             dead_zone_owners: HashMap::new(),
             spell_owners: HashMap::new(),
+            hand_owners: HashMap::new(),
             dead_zone_filtered: ContactCount::default(),
             edge_filtered: ContactCount::default(),
             incoming_contacts: ContactCount::default(),
@@ -247,6 +254,30 @@ impl Engine {
         self.spell_owners.get(name).and_then(Option::as_ref)
     }
 
+    /// Replaces the handprint set (`hands.d` load path).
+    pub fn set_hands(&mut self, hands: Vec<HandProfile>) {
+        self.gestures.set_hands(hands);
+    }
+
+    /// Registers a handprint at runtime
+    /// (`Register`/`Registration::HandProfile`, SPELLS.md's per-user
+    /// spells).
+    pub fn add_hand(&mut self, hand: HandProfile, owner: Option<Owner>) {
+        self.hand_owners.insert(hand.name.clone(), owner);
+        self.gestures.add_hand(hand);
+    }
+
+    /// Unregisters a handprint - `false` when unknown.
+    pub fn remove_hand(&mut self, name: &HandName) -> bool {
+        self.hand_owners.remove(name);
+        self.gestures.remove_hand(name)
+    }
+
+    /// The registered handprints.
+    pub fn hands(&self) -> &[HandProfile] {
+        self.gestures.hands()
+    }
+
     /// The registered spells.
     pub fn spells(&self) -> &[Spell] {
         self.gestures.spells()
@@ -255,6 +286,20 @@ impl Engine {
     /// Live gesture trajectories per slot (debug overlay source).
     pub fn gesture_trajectories(&self) -> &HashMap<TouchPointSlot, Trajectory> {
         self.gestures.trajectories()
+    }
+
+    /// Last dispatched episode's match evaluation - the best
+    /// candidate's per-stroke Fréchet scores vs corridor
+    /// (SPELLS.md's debug view).
+    pub fn spell_diagnostics(&self) -> Option<&SpellDiagnostics> {
+        self.gestures.spell_diagnostics()
+    }
+
+    /// Repetitions the armed spell-training session captured -
+    /// `None` while no `TrainSpell` is armed (SPELLS.md's training
+    /// progress).
+    pub fn spell_training_progress(&self) -> Option<usize> {
+        self.gestures.training_progress()
     }
 
     /// Slots inside an armed gesture episode - the spell
@@ -647,12 +692,22 @@ impl Engine {
         for name in &spell_names {
             self.remove_spell(name);
         }
+        let hand_names: Vec<HandName> = self
+            .hand_owners
+            .iter()
+            .filter(|(_, o)| o.as_ref() == Some(owner))
+            .map(|(name, _)| name.clone())
+            .collect();
+        for name in &hand_names {
+            self.remove_hand(name);
+        }
         RemovedRegistrations {
             patterns,
             released_patterns,
             field_sets: set_names,
             dead_zones: zone_names,
             spells: spell_names,
+            hands: hand_names,
         }
     }
 
@@ -878,9 +933,10 @@ impl Engine {
         touches.retain(|touch| !self.dead_zones.contains(&touch.pos));
         self.dead_zone_filtered = (before_dead_zones - touches.len()).into();
         self.smooth_touches(&mut touches);
+        let now = std::time::Instant::now();
         let spell_matches: Vec<SpellMatched> = self
             .gestures
-            .observe_frame(&touches, self.tracker.active().0, std::time::Instant::now())
+            .observe_frame(&touches, self.tracker.active().0, now, self.fields.sets())
             .into_iter()
             .collect();
         // Compared before matching (SKIP_UNCHANGED.md): the generic pass
@@ -925,6 +981,21 @@ impl Engine {
                     .iter()
                     .enumerate()
                     .filter(|(_, touch)| zones.iter().any(|z| z.contains(&touch.pos)))
+                    .map(|(index, _)| index),
+            );
+        }
+        // SPELLS.md's slot tracking: while an episode is armed, its
+        // gesture slots leave the matching pool too - a moving finger
+        // constellation must not spawn a phantom tangible (covers
+        // start-spot and five-finger-tap episodes; exclusive zones
+        // already reserve their whole area above).
+        let gesture = self.gestures.gesture_slots(now);
+        if !gesture.is_empty() {
+            reserved.extend(
+                touches
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, touch)| gesture.contains(&touch.slot))
                     .map(|(index, _)| index),
             );
         }

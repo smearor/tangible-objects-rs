@@ -28,6 +28,7 @@ pub(crate) fn persist_registration(registration: &Registration) {
         Registration::FieldSet(_) => "fields.d",
         Registration::DeadZone(_) => "dead_zones.d",
         Registration::Spell(_) => "spells.d",
+        Registration::HandProfile(_) => "hands.d",
     }) else {
         return;
     };
@@ -62,6 +63,11 @@ pub(crate) fn persist_registration(registration: &Registration) {
             spell.name.as_str().to_string(),
             std::fs::create_dir_all(&store)
                 .and_then(|_| spell.save(&store.join(format!("{}.toml", spell.name)))),
+        ),
+        Registration::HandProfile(hand) => (
+            hand.name.as_str().to_string(),
+            std::fs::create_dir_all(&store)
+                .and_then(|_| hand.save(&store.join(format!("{}.toml", hand.name)))),
         ),
     };
     match result {

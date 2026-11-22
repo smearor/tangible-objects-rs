@@ -2,6 +2,7 @@
 //! arming trigger, a wire DTO of [`SpellArming`].
 
 use cynic::InputObject;
+use tangible_objects_model::HandName;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::SpellArming;
 
@@ -26,6 +27,9 @@ pub(crate) struct SpellArmingInput {
     /// Wand pattern for `TangibleChord` arming; `None` = any
     /// tangible.
     pattern: Option<PatternName>,
+    /// Handprint for `FiveFingerTap` arming; `None` = any
+    /// whole-hand tap arms the spell.
+    hand: Option<HandName>,
 }
 
 impl From<&SpellArming> for SpellArmingInput {
@@ -36,26 +40,31 @@ impl From<&SpellArming> for SpellArmingInput {
                 kind: SpellArmingKind::Free,
                 region: None,
                 pattern: None,
+                hand: None,
             },
             SpellArming::ExclusiveZone { region } => Self {
                 kind: SpellArmingKind::ExclusiveZone,
                 region: Some(region.into()),
                 pattern: None,
+                hand: None,
             },
             SpellArming::StartSpot { region } => Self {
                 kind: SpellArmingKind::StartSpot,
                 region: Some(region.into()),
                 pattern: None,
+                hand: None,
             },
-            SpellArming::FiveFingerTap => Self {
+            SpellArming::FiveFingerTap { hand } => Self {
                 kind: SpellArmingKind::FiveFingerTap,
                 region: None,
                 pattern: None,
+                hand: hand.clone(),
             },
             SpellArming::TangibleChord { pattern } => Self {
                 kind: SpellArmingKind::TangibleChord,
                 region: None,
                 pattern: pattern.clone(),
+                hand: None,
             },
         }
     }

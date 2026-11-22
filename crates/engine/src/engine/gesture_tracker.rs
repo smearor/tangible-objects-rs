@@ -24,11 +24,15 @@ use std::time::Instant;
 
 use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Vec2;
+use tangible_objects_model::FieldSet;
+use tangible_objects_model::HandName;
+use tangible_objects_model::HandProfile;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::Region;
 use tangible_objects_model::SlotSet;
 use tangible_objects_model::Spell;
 use tangible_objects_model::SpellArming;
+use tangible_objects_model::SpellDiagnostics;
 use tangible_objects_model::SpellMatched;
 use tangible_objects_model::SpellName;
 use tangible_objects_model::TangibleId;
@@ -61,6 +65,18 @@ const TAP_LATCH: Duration = Duration::from_secs(10);
 /// Number of simultaneous contacts forming a five-finger tap.
 const TAP_CONTACTS: usize = 5;
 
+/// A five-finger tap in flight: the simultaneous contact group's
+/// down timestamp plus each slot's position at tap time - the
+/// positions become the handprint constellation once the tap
+/// completes (SPELLS.md's per-user spells).
+struct PendingTap {
+    /// Earliest contact's down timestamp - the tap must fully lift
+    /// within [`TAP_TOTAL`] of it.
+    started: Instant,
+    /// Slot and down position per tap contact.
+    contacts: Vec<(TouchPointSlot, Vec2<Millimeters>)>,
+}
+
 /// Whether an episode satisfied a spell's arming condition - the
 /// `Listening -> Armed` transition's per-episode evaluation.
 struct Episode<'a> {
@@ -72,6 +88,10 @@ struct Episode<'a> {
     first_point: Option<Vec2<Millimeters>>,
     /// `five-finger-tap` latch active during the episode.
     five_tap_armed: bool,
+    /// The hand the tap latch identified - a `five-finger-tap` spell
+    /// naming a `hand` only arms when the tap's constellation
+    /// matched that handprint (per-user spells, SPELLS.md).
+    armed_hand: Option<HandName>,
 }
 
 impl Episode<'_> {
@@ -95,6 +115,10 @@ impl Episode<'_> {
 pub struct GestureTracker {
     /// Registered spells to match completed strokes against.
     spells: Vec<Spell>,
+    /// Registered handprints - `five-finger-tap` spells naming a
+    /// `hand` only arm when the tap's constellation matched that
+    /// profile (per-user spells, SPELLS.md).
+    hands: Vec<HandProfile>,
     /// Live stroke per slot - exists while the contact is down.
     trajectories: HashMap<TouchPointSlot, Trajectory>,
     /// Strokes completed during the current episode (slot lifted
@@ -105,10 +129,15 @@ pub struct GestureTracker {
     episode_first: Option<Vec2<Millimeters>>,
     /// Down timestamp per live slot - five-finger-tap detection.
     down_at: HashMap<TouchPointSlot, Instant>,
-    /// Candidate tap: earliest down time plus the contact group.
-    pending_tap: Option<(Instant, HashSet<TouchPointSlot>)>,
+    /// Candidate tap: the simultaneous contact group waiting for a
+    /// full lift within [`TAP_TOTAL`].
+    pending_tap: Option<PendingTap>,
     /// `five-finger-tap` latch deadline - armed while in the future.
     five_tap_armed_until: Option<Instant>,
+    /// The hand the latched tap matched - `None` while unlatched or
+    /// when no registered handprint matched (unidentified hands
+    /// still arm `hand: None` spells).
+    armed_hand: Option<HandName>,
     /// Slots consumed by the last dispatched spell - the boundary
     /// drops their withheld events instead of replaying them.
     consumed: SlotSet,
@@ -121,6 +150,17 @@ pub struct GestureTracker {
     /// Center trajectory per wand tangible, keyed by tangible ID -
     /// only tangibles whose pattern backs a `tangible-chord` spell.
     chords: HashMap<TangibleId, (PatternName, Trajectory)>,
+    /// Slots whose first contact landed inside an enabled field -
+    /// SPELLS.md's field exclusion: such strokes are never gesture
+    /// candidates, so they join neither trajectories, episodes nor
+    /// five-finger taps. The block holds for the contact's lifetime
+    /// even when it later leaves the field.
+    field_blocked: HashSet<TouchPointSlot>,
+    /// Best candidate's match evaluation of the last dispatched
+    /// episode - SPELLS.md's debug view (per-stroke Fréchet vs
+    /// corridor plus the finger assignment), retained for near
+    /// misses too.
+    diagnostics: Option<SpellDiagnostics>,
 }
 
 impl GestureTracker {
@@ -150,6 +190,30 @@ impl GestureTracker {
     /// The registered spells.
     pub fn spells(&self) -> &[Spell] {
         &self.spells
+    }
+
+    /// Replaces the handprint set (`hands.d` load path).
+    pub fn set_hands(&mut self, hands: Vec<HandProfile>) {
+        self.hands = hands;
+    }
+
+    /// Registers a handprint at runtime
+    /// (`Registration::HandProfile`).
+    pub fn add_hand(&mut self, hand: HandProfile) {
+        self.hands.retain(|h| h.name != hand.name);
+        self.hands.push(hand);
+    }
+
+    /// Unregisters a handprint by name - `false` when unknown.
+    pub fn remove_hand(&mut self, name: &HandName) -> bool {
+        let before = self.hands.len();
+        self.hands.retain(|h| &h.name != name);
+        self.hands.len() != before
+    }
+
+    /// The registered handprints.
+    pub fn hands(&self) -> &[HandProfile] {
+        &self.hands
     }
 
     /// Live trajectories for the debug overlay.
@@ -194,25 +258,56 @@ impl GestureTracker {
             SpellArming::StartSpot { region } => self
                 .episode_first
                 .is_some_and(|point| region.contains(&point)),
-            SpellArming::FiveFingerTap => self.five_tap_armed(now),
+            SpellArming::FiveFingerTap { hand } => {
+                self.five_tap_armed(now) && self.hand_satisfied(hand)
+            }
         })
+    }
+
+    /// Whether the latched tap's identified hand satisfies a spell's
+    /// `hand` binding - `None` accepts any tap (identified or not).
+    fn hand_satisfied(&self, required: &Option<HandName>) -> bool {
+        required
+            .as_ref()
+            .is_none_or(|required| self.armed_hand.as_ref() == Some(required))
     }
 
     /// Feeds one frame's contacts and tracked tangibles: records
     /// five-finger taps, accumulates wand trajectories, appends
     /// positions for live slots, completes lifted slots, and
     /// dispatches when an episode closes (all gesture contacts or
-    /// the wand lifted). `now` is injected for testability.
+    /// the wand lifted). `now` is injected for testability;
+    /// `field_sets` carries the registered fields so a stroke
+    /// starting inside an enabled one is never a gesture candidate
+    /// (SPELLS.md's field exclusion).
     pub fn observe_frame(
         &mut self,
         touches: &[TouchPoint],
         tracked: &[TrackedTangible],
         now: Instant,
+        field_sets: &[FieldSet],
     ) -> Option<SpellMatched> {
-        self.track_five_tap(touches, now);
+        let live: HashSet<TouchPointSlot> = touches.iter().map(|t| t.slot).collect();
+        self.field_blocked.retain(|slot| live.contains(slot));
+        for touch in touches {
+            if !self.trajectories.contains_key(&touch.slot)
+                && !self.field_blocked.contains(&touch.slot)
+                && field_sets
+                    .iter()
+                    .any(|set| set.enabled && set.contains_point(&touch.pos))
+            {
+                self.field_blocked.insert(touch.slot);
+            }
+        }
+        let eligible: Vec<TouchPoint> = touches
+            .iter()
+            .filter(|touch| !self.field_blocked.contains(&touch.slot))
+            .cloned()
+            .collect();
+
+        self.track_five_tap(&eligible, now);
         let chord_match = self.track_chords(tracked);
 
-        let live: HashSet<TouchPointSlot> = touches.iter().map(|t| t.slot).collect();
         let lifted: Vec<TouchPointSlot> = self
             .trajectories
             .keys()
@@ -227,7 +322,7 @@ impl GestureTracker {
             }
         }
 
-        for touch in touches {
+        for touch in &eligible {
             let traj = self.trajectories.entry(touch.slot).or_default();
             let Some(last) = traj.points.last() else {
                 traj.points.push(touch.pos);
@@ -240,7 +335,7 @@ impl GestureTracker {
             }
         }
         if self.episode_first.is_none() {
-            self.episode_first = touches.first().map(|t| t.pos);
+            self.episode_first = eligible.first().map(|t| t.pos);
         }
 
         // Dispatch: the touch episode closes when every gesture slot
@@ -259,9 +354,11 @@ impl GestureTracker {
                 strokes: &strokes,
                 first_point,
                 five_tap_armed: self.five_tap_armed(now),
+                armed_hand: self.armed_hand.clone(),
             };
             if episode.five_tap_armed {
                 self.five_tap_armed_until = None;
+                self.armed_hand = None;
             }
             // A training session consumes the episode instead of
             // matching it - the strokes become template repetitions
@@ -298,6 +395,20 @@ impl GestureTracker {
         self.training.is_some()
     }
 
+    /// Repetitions the active training session captured - `None`
+    /// while no `TrainSpell` session is armed.
+    pub fn training_progress(&self) -> Option<usize> {
+        self.training.as_ref().map(|training| training.captured())
+    }
+
+    /// Match evaluation of the last dispatched episode - the best
+    /// candidate's per-stroke scores and corridor verdict
+    /// (SPELLS.md's debug view). `None` until an episode evaluated
+    /// at least one armed spell.
+    pub fn spell_diagnostics(&self) -> Option<&SpellDiagnostics> {
+        self.diagnostics.as_ref()
+    }
+
     /// The finished trained spell, once - `None` until the
     /// repetition count landed.
     pub fn take_trained_spell(&mut self) -> Option<Spell> {
@@ -320,11 +431,21 @@ impl GestureTracker {
             self.down_at.entry(touch.slot).or_insert(now);
         }
 
-        if let Some((started, group)) = &self.pending_tap {
-            let all_lifted = group.iter().all(|slot| !live.contains(slot));
-            let expired = now.duration_since(*started) > TAP_TOTAL;
+        if let Some(tap) = &self.pending_tap {
+            let all_lifted = tap.contacts.iter().all(|(slot, _)| !live.contains(slot));
+            let expired = now.duration_since(tap.started) > TAP_TOTAL;
             if all_lifted || expired {
                 if all_lifted && !expired {
+                    // The tap's constellation identifies the hand -
+                    // per-user `five-finger-tap` spells only arm for
+                    // the handprint it matched.
+                    let points: Vec<Vec2<Millimeters>> =
+                        tap.contacts.iter().map(|(_, pos)| *pos).collect();
+                    self.armed_hand = self
+                        .hands
+                        .iter()
+                        .find(|hand| hand.matches(&points))
+                        .map(|hand| hand.name.clone());
                     self.five_tap_armed_until = Some(now + TAP_LATCH);
                 }
                 self.pending_tap = None;
@@ -342,12 +463,20 @@ impl GestureTracker {
         if recent.len() >= TAP_CONTACTS {
             recent.sort_by_key(|(at, _)| *at);
             let earliest = recent.first().map(|(at, _)| *at).unwrap_or(now);
-            let group: HashSet<TouchPointSlot> = recent
+            let contacts: Vec<(TouchPointSlot, Vec2<Millimeters>)> = recent
                 .iter()
                 .take(TAP_CONTACTS)
-                .map(|(_, slot)| *slot)
+                .filter_map(|(_, slot)| {
+                    touches
+                        .iter()
+                        .find(|touch| touch.slot == *slot)
+                        .map(|touch| (*slot, touch.pos))
+                })
                 .collect();
-            self.pending_tap = Some((earliest, group));
+            self.pending_tap = Some(PendingTap {
+                started: earliest,
+                contacts,
+            });
         }
     }
 
@@ -415,7 +544,12 @@ impl GestureTracker {
             SpellArming::StartSpot { region } => episode
                 .first_point
                 .is_some_and(|point| region.contains(&point)),
-            SpellArming::FiveFingerTap => episode.five_tap_armed,
+            SpellArming::FiveFingerTap { hand } => {
+                episode.five_tap_armed
+                    && hand
+                        .as_ref()
+                        .is_none_or(|required| episode.armed_hand.as_ref() == Some(required))
+            }
             SpellArming::TangibleChord { .. } => false,
         }
     }
@@ -428,17 +562,27 @@ impl GestureTracker {
     fn dispatch(&mut self, episode: &Episode<'_>) -> Option<SpellMatched> {
         let polylines = episode.polylines();
         let mut best: Option<(&Spell, Millimeters)> = None;
+        // The debug view keeps the closest candidate's diagnostics -
+        // a miss still reports how far each stroke was off.
+        let mut closest: Option<SpellDiagnostics> = None;
         for spell in &self.spells {
             if !self.episode_armed(spell, episode) {
                 continue;
             }
-            let Some(score) = spell.try_match(&polylines) else {
+            let Some(diag) = spell.diagnostics(&polylines) else {
                 continue;
             };
-            if score <= spell.corridor && best.is_none_or(|(_, best_score)| score < best_score) {
-                best = Some((spell, score));
+            if diag.matched && best.is_none_or(|(_, best_score)| diag.score < best_score) {
+                best = Some((spell, diag.score));
+            }
+            if closest
+                .as_ref()
+                .is_none_or(|current| diag.score < current.score)
+            {
+                closest = Some(diag);
             }
         }
+        self.diagnostics = closest;
         let (spell, score) = best?;
         self.consumed = episode.strokes.iter().map(|(slot, _)| *slot).collect();
         Some(SpellMatched {
@@ -452,12 +596,13 @@ impl GestureTracker {
     /// stroke, matched against every `tangible-chord` spell naming
     /// the tangible's pattern.
     fn dispatch_chord(
-        &self,
+        &mut self,
         pattern: &PatternName,
         points: &[Vec2<Millimeters>],
     ) -> Option<SpellMatched> {
         let strokes = [points.to_vec()];
         let mut best: Option<(&Spell, Millimeters)> = None;
+        let mut closest: Option<SpellDiagnostics> = None;
         for spell in &self.spells {
             let armed = match &spell.arming {
                 SpellArming::TangibleChord { pattern: p } => {
@@ -468,13 +613,20 @@ impl GestureTracker {
             if !armed {
                 continue;
             }
-            let Some(score) = spell.try_match(&strokes) else {
+            let Some(diag) = spell.diagnostics(&strokes) else {
                 continue;
             };
-            if score <= spell.corridor && best.is_none_or(|(_, best_score)| score < best_score) {
-                best = Some((spell, score));
+            if diag.matched && best.is_none_or(|(_, best_score)| diag.score < best_score) {
+                best = Some((spell, diag.score));
+            }
+            if closest
+                .as_ref()
+                .is_none_or(|current| diag.score < current.score)
+            {
+                closest = Some(diag);
             }
         }
+        self.diagnostics = closest;
         let (spell, score) = best?;
         Some(SpellMatched {
             name: spell.name.clone(),
@@ -501,6 +653,8 @@ mod tests {
     use std::time::Instant;
     use tangible_objects_model::FingerCount;
     use tangible_objects_model::FrameCount;
+    use tangible_objects_model::HandName;
+    use tangible_objects_model::HandProfile;
     use tangible_objects_model::PatternId;
     use tangible_objects_model::PatternName;
     use tangible_objects_model::Region;
@@ -544,6 +698,16 @@ mod tests {
         offset: (f64, f64),
         now: Instant,
     ) -> Option<SpellMatched> {
+        draw_v_in_fields(tracker, offset, now, &[])
+    }
+
+    /// [`draw_v`] variant carrying the registered field sets.
+    fn draw_v_in_fields(
+        tracker: &mut GestureTracker,
+        offset: (f64, f64),
+        now: Instant,
+        field_sets: &[tangible_objects_model::FieldSet],
+    ) -> Option<SpellMatched> {
         let arm: Vec<(f64, f64)> = (0..=10)
             .map(|i| (offset.0 + i as f64 * 5.0, offset.1 + i as f64 * 7.0))
             .collect();
@@ -556,9 +720,25 @@ mod tests {
             })
             .collect();
         for (x, y) in arm.iter().chain(leg.iter()) {
-            tracker.observe_frame(&[touch(0, *x, *y)], &[], now);
+            tracker.observe_frame(&[touch(0, *x, *y)], &[], now, field_sets);
         }
-        tracker.observe_frame(&[], &[], now)
+        tracker.observe_frame(&[], &[], now, field_sets)
+    }
+
+    /// A single-field set covering `region` - `enabled` toggles the
+    /// set's participation (SPELLS.md's field exclusion tests).
+    fn field_set(region: Region, enabled: bool) -> tangible_objects_model::FieldSet {
+        tangible_objects_model::FieldSet {
+            name: tangible_objects_model::FieldSetName::new("board"),
+            window: None,
+            stability: FrameCount::new(2),
+            fields: vec![tangible_objects_model::Field {
+                name: tangible_objects_model::FieldName::new("a1"),
+                region,
+            }],
+            suppress: false,
+            enabled,
+        }
     }
 
     #[test]
@@ -602,9 +782,9 @@ mod tests {
         let mut tracker = GestureTracker::new();
         tracker.add_spell(v_spell(SpellArming::Free));
         let now = Instant::now();
-        tracker.observe_frame(&[touch(0, 10.0, 10.0)], &[], now);
-        tracker.observe_frame(&[touch(0, 12.0, 10.0)], &[], now);
-        assert!(tracker.observe_frame(&[], &[], now).is_none());
+        tracker.observe_frame(&[touch(0, 10.0, 10.0)], &[], now, &[]);
+        tracker.observe_frame(&[touch(0, 12.0, 10.0)], &[], now, &[]);
+        assert!(tracker.observe_frame(&[], &[], now, &[]).is_none());
     }
 
     #[test]
@@ -613,9 +793,9 @@ mod tests {
         tracker.add_spell(v_spell(SpellArming::Free));
         let now = Instant::now();
         for i in 0..=10 {
-            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 8.0, 10.0)], &[], now);
+            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 8.0, 10.0)], &[], now, &[]);
         }
-        assert!(tracker.observe_frame(&[], &[], now).is_none());
+        assert!(tracker.observe_frame(&[], &[], now, &[]).is_none());
     }
 
     #[test]
@@ -630,7 +810,7 @@ mod tests {
         tracker.add_spell(v_spell(SpellArming::ExclusiveZone { region: zone }));
         let now = Instant::now();
         for i in 0..=10 {
-            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 5.0, 10.0)], &[], now);
+            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 5.0, 10.0)], &[], now, &[]);
         }
         // Zone-armed episode: every episode slot is withheld.
         assert!(tracker.gesture_slots(now).contains(&0.into()));
@@ -642,7 +822,7 @@ mod tests {
         tracker.add_spell(v_spell(SpellArming::Free));
         let now = Instant::now();
         for i in 0..=10 {
-            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 5.0, 10.0)], &[], now);
+            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 5.0, 10.0)], &[], now, &[]);
         }
         // `free` never suppresses - a normal drag passes through.
         assert!(tracker.gesture_slots(now).is_empty());
@@ -698,7 +878,7 @@ mod tests {
     #[test]
     fn five_finger_tap_arms_the_next_episode() {
         let mut tracker = GestureTracker::new();
-        tracker.add_spell(v_spell(SpellArming::FiveFingerTap));
+        tracker.add_spell(v_spell(SpellArming::FiveFingerTap { hand: None }));
         let now = Instant::now();
 
         // The unarmed V must not match.
@@ -709,9 +889,68 @@ mod tests {
         let five: Vec<TouchPoint> = (0..5)
             .map(|i| touch(i, 300.0 + i as f64 * 10.0, 300.0))
             .collect();
-        tracker.observe_frame(&five, &[], now);
-        tracker.observe_frame(&[], &[], now + std::time::Duration::from_millis(80));
+        tracker.observe_frame(&five, &[], now, &[]);
+        tracker.observe_frame(&[], &[], now + std::time::Duration::from_millis(80), &[]);
         // Next episode armed - drawn with a single finger.
+        assert!(
+            draw_v(
+                &mut tracker,
+                (100.0, 100.0),
+                now + std::time::Duration::from_millis(100),
+            )
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn five_finger_tap_identifies_the_hand() {
+        // Alice's splayed five-finger constellation - the same one
+        // `HandProfile`'s model tests use.
+        let alice_points: Vec<Vec2<Millimeters>> = vec![
+            Vec2::new(0.0, 40.0),
+            Vec2::new(35.0, 15.0),
+            Vec2::new(65.0, 0.0),
+            Vec2::new(95.0, 20.0),
+            Vec2::new(110.0, 55.0),
+        ];
+        let mut tracker = GestureTracker::new();
+        tracker.add_hand(HandProfile::from_points(
+            "alice",
+            &alice_points,
+            Millimeters::new(8.0),
+        ));
+        tracker.add_spell(v_spell(SpellArming::FiveFingerTap {
+            hand: Some(HandName::new("alice")),
+        }));
+        let now = Instant::now();
+        let tap = |points: &[Vec2<Millimeters>]| -> Vec<TouchPoint> {
+            points
+                .iter()
+                .enumerate()
+                .map(|(i, pos)| touch(i as u32, pos.x + 200.0, pos.y + 200.0))
+                .collect()
+        };
+
+        // A constellation that is not Alice's never arms the spell.
+        let stranger: Vec<Vec2<Millimeters>> = alice_points
+            .iter()
+            .map(|pos| Vec2::new(pos.x * 0.4, pos.y * 0.4))
+            .collect();
+        tracker.observe_frame(&tap(&stranger), &[], now, &[]);
+        tracker.observe_frame(&[], &[], now + std::time::Duration::from_millis(80), &[]);
+        assert!(
+            draw_v(
+                &mut tracker,
+                (100.0, 100.0),
+                now + std::time::Duration::from_millis(100),
+            )
+            .is_none()
+        );
+
+        // Alice's tap arms her spell - the episode itself may use
+        // fewer fingers.
+        tracker.observe_frame(&tap(&alice_points), &[], now, &[]);
+        tracker.observe_frame(&[], &[], now + std::time::Duration::from_millis(80), &[]);
         assert!(
             draw_v(
                 &mut tracker,
@@ -749,13 +988,56 @@ mod tests {
             .collect();
         points.extend((0..=10).map(|i| (150.0 + i as f64 * 5.0, 170.0 - i as f64 * 7.0)));
         for (x, y) in &points {
-            tracker.observe_frame(&[], &[wand(*x, *y)], now);
+            tracker.observe_frame(&[], &[wand(*x, *y)], now, &[]);
         }
         // Lift the wand - completes the spell.
         let matched = tracker
-            .observe_frame(&[], &[], now)
+            .observe_frame(&[], &[], now, &[])
             .expect("wand V should match");
         assert_eq!(matched.name.as_str(), "V");
+    }
+
+    #[test]
+    fn field_blocks_strokes_starting_inside() {
+        let region = Region {
+            x_min: Millimeters::new(0.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(150.0),
+            y_max: Millimeters::new(150.0),
+        };
+        let fields = vec![field_set(region, true)];
+        let mut tracker = GestureTracker::new();
+        tracker.add_spell(v_spell(SpellArming::Free));
+        let now = Instant::now();
+        // A stroke whose first contact lands inside an enabled field
+        // is never a gesture candidate.
+        assert!(draw_v_in_fields(&mut tracker, (10.0, 10.0), now, &fields).is_none());
+        // A disabled field set does not exclude strokes.
+        let disabled = vec![field_set(region, false)];
+        assert!(draw_v_in_fields(&mut tracker, (10.0, 10.0), now, &disabled).is_some());
+        // Strokes starting outside the field still match.
+        assert!(draw_v_in_fields(&mut tracker, (200.0, 200.0), now, &fields).is_some());
+    }
+
+    #[test]
+    fn field_block_holds_for_the_contacts_lifetime() {
+        let region = Region {
+            x_min: Millimeters::new(0.0),
+            y_min: Millimeters::new(0.0),
+            x_max: Millimeters::new(50.0),
+            y_max: Millimeters::new(50.0),
+        };
+        let fields = vec![field_set(region, true)];
+        let mut tracker = GestureTracker::new();
+        tracker.add_spell(v_spell(SpellArming::Free));
+        let now = Instant::now();
+        // Down inside the field, then drag far outside it - the
+        // stroke stays blocked for the contact's whole lifetime.
+        tracker.observe_frame(&[touch(0, 10.0, 10.0)], &[], now, &fields);
+        for i in 1..=20 {
+            tracker.observe_frame(&[touch(0, 10.0 + i as f64 * 10.0, 10.0)], &[], now, &fields);
+        }
+        assert!(tracker.observe_frame(&[], &[], now, &fields).is_none());
     }
 
     #[test]

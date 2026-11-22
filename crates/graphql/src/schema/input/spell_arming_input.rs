@@ -3,6 +3,7 @@
 
 use async_graphql::Error;
 use async_graphql::Result;
+use tangible_objects_model::HandName;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::Region;
 use tangible_objects_model::SpellArming;
@@ -35,6 +36,9 @@ pub(crate) struct SpellArmingInput {
     /// Tangible pattern for `TANGIBLE_CHORD` arming; `null` = any
     /// tangible may act as the wand.
     pattern: Option<PatternName>,
+    /// Handprint name for `FIVE_FINGER_TAP` arming; `null` = any
+    /// whole-hand tap arms the spell.
+    hand: Option<HandName>,
 }
 
 impl TryFrom<&SpellArmingInput> for SpellArming {
@@ -55,7 +59,9 @@ impl TryFrom<&SpellArmingInput> for SpellArming {
             SpellArmingKind::Free => Ok(SpellArming::Free),
             SpellArmingKind::ExclusiveZone => Ok(SpellArming::ExclusiveZone { region: region()? }),
             SpellArmingKind::StartSpot => Ok(SpellArming::StartSpot { region: region()? }),
-            SpellArmingKind::FiveFingerTap => Ok(SpellArming::FiveFingerTap),
+            SpellArmingKind::FiveFingerTap => Ok(SpellArming::FiveFingerTap {
+                hand: input.hand.clone(),
+            }),
             SpellArmingKind::TangibleChord => Ok(SpellArming::TangibleChord {
                 pattern: input.pattern.clone(),
             }),

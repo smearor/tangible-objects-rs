@@ -79,6 +79,10 @@ pub enum EventKind {
     SpellUnregistered,
     /// A gesture matched a spell.
     SpellMatched,
+    /// A handprint was registered.
+    HandProfileRegistered,
+    /// A handprint was removed.
+    HandProfileUnregistered,
     /// A scoped tangible stage was created on the pipeline.
     StageRegistered,
     /// A scoped tangible stage was removed.
@@ -132,6 +136,8 @@ impl std::fmt::Display for EventKind {
             Self::SpellRegistered => "spell_registered",
             Self::SpellUnregistered => "spell_unregistered",
             Self::SpellMatched => "spell_matched",
+            Self::HandProfileRegistered => "hand_profile_registered",
+            Self::HandProfileUnregistered => "hand_profile_unregistered",
             Self::StageRegistered => "stage_registered",
             Self::StageUnregistered => "stage_unregistered",
             Self::CompletionChanged => "completion_changed",

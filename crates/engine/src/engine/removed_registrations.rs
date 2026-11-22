@@ -4,6 +4,7 @@
 
 use tangible_objects_model::DeadZoneName;
 use tangible_objects_model::FieldSetName;
+use tangible_objects_model::HandName;
 use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_model::SpellName;
@@ -24,4 +25,6 @@ pub struct RemovedRegistrations {
     pub dead_zones: Vec<DeadZoneName>,
     /// Removed spells by name.
     pub spells: Vec<SpellName>,
+    /// Removed handprints by name.
+    pub hands: Vec<HandName>,
 }

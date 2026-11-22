@@ -29,6 +29,7 @@ use tangible_objects_model::PatternName;
 use tangible_objects_model::ProfileInfo;
 use tangible_objects_model::SeatSession;
 use tangible_objects_model::SessionMetrics;
+use tangible_objects_model::SpellDiagnostics;
 use tangible_objects_model::SpellMatched;
 use tangible_objects_model::TangibleRenderMode;
 use tangible_objects_model::TouchPoint;
@@ -112,6 +113,15 @@ pub struct SharedState {
     pub trajectories: Vec<Vec<Vec2<Millimeters>>>,
     /// Most recent spell match and when it fired - the match flash.
     pub last_spell: Option<(SpellMatched, Instant)>,
+    /// Match evaluation of the last dispatched gesture episode -
+    /// per-stroke Fréchet scores vs the spell's corridor plus the
+    /// finger assignment (SPELLS.md's debug view). Retained for near
+    /// misses so a rejected gesture shows how far it was off.
+    pub spell_diagnostics: Option<SpellDiagnostics>,
+    /// Repetitions an active spell training has captured - `None`
+    /// while no `TrainSpell` session is armed (SPELLS.md's
+    /// learn-by-repetition progress for the spell-training card).
+    pub spell_training_progress: Option<usize>,
     /// Contacts dropped by dead-zone filtering on the last frame.
     pub dead_zone_filtered: ContactCount,
     /// Registered field sets (snapshot `field_sets` count).
@@ -267,6 +277,8 @@ impl SharedState {
             spells_visible: options.spells_visible,
             trajectories: Vec::new(),
             last_spell: None,
+            spell_diagnostics: None,
+            spell_training_progress: None,
             dead_zone_filtered: ContactCount::default(),
             field_set_count: FieldSetCount::default(),
             field_count: FieldCount::default(),
@@ -334,10 +346,13 @@ fn point_in_card(px: Vec2<Pixels>, card: &CardFootprint) -> bool {
     local.x.abs() <= size.x / 2.0 && local.y.abs() <= size.y / 2.0
 }
 
-/// Whether the shared state is in live mode.
-pub fn mode_is_live(state: &Arc<Mutex<SharedState>>) -> bool {
+/// Whether the shared state's mode runs the detection engine on
+/// frames. `Live` and `SpellTraining` both do - spell training feeds
+/// its episodes from `process_inner`; only `Training` (profile
+/// capture) bypasses the engine for its stability window.
+pub fn mode_runs_engine(state: &Arc<Mutex<SharedState>>) -> bool {
     state
         .lock()
-        .map(|s| s.mode == GuiMode::Live)
+        .map(|s| matches!(s.mode, GuiMode::Live | GuiMode::SpellTraining))
         .unwrap_or(true)
 }

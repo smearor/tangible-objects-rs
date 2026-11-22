@@ -106,6 +106,8 @@ fn describe(event: &TangibleEvent) -> Option<String> {
         | EventKind::SpellRegistered
         | EventKind::SpellUnregistered
         | EventKind::SpellMatched
+        | EventKind::HandProfileRegistered
+        | EventKind::HandProfileUnregistered
         | EventKind::StageRegistered
         | EventKind::StageUnregistered => format!("{} {name}", event.kind),
         EventKind::CompletionChanged | EventKind::FilterModeChanged => {

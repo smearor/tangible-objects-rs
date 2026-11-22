@@ -30,7 +30,7 @@ use crate::calibration_source::CalibrationSource;
 use crate::field_set_row::FieldSetRow;
 use crate::language_loader;
 use crate::shared_state::SharedState;
-use crate::shared_state::mode_is_live;
+use crate::shared_state::mode_runs_engine;
 use i18n_embed_fl::fl;
 use tracing::error;
 use tracing::info;
@@ -142,6 +142,8 @@ pub fn evdev_thread(
         .unwrap_or_default();
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
+    engine.set_spells(config.spells);
+    engine.set_hands(config.hands);
     engine.set_completion(config.completion);
 
     // Event hub for interface crates (GraphQL/D-Bus/MCP) - the GUI runs
@@ -236,6 +238,8 @@ pub fn evdev_thread(
                     .values()
                     .map(|traj| traj.points.clone())
                     .collect();
+                s.spell_diagnostics = engine.spell_diagnostics().cloned();
+                s.spell_training_progress = engine.spell_training_progress();
                 s.edge_margin = engine.edge_margin();
                 s.edge_margin_visible = runtime.edge_margin_visible();
                 s.fields_visible = runtime.fields_visible();
@@ -301,7 +305,7 @@ pub fn evdev_thread(
             // The engine builds its own touch state from every event —
             // feeding it only SYN_REPORTs leaves that state empty and no
             // figure ever matches.
-            let frame = if mode_is_live(&state) {
+            let frame = if mode_runs_engine(&state) {
                 if recording.is_some() {
                     engine.process_with_diagnostics(&raw)
                 } else {
@@ -344,6 +348,8 @@ pub fn evdev_thread(
                         .values()
                         .map(|traj| traj.points.clone())
                         .collect();
+                    s.spell_diagnostics = engine.spell_diagnostics().cloned();
+                    s.spell_training_progress = engine.spell_training_progress();
                     if let Some(matched) = frame.spell_matches.first() {
                         s.last_spell = Some((matched.clone(), std::time::Instant::now()));
                     }

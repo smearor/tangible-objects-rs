@@ -1,3 +1,4 @@
+use smearor_commons_geometry::Millimeters;
 use smearor_commons_geometry::Vec2;
 use std::path::Path;
 use std::path::PathBuf;
@@ -92,6 +93,19 @@ impl FieldSet {
             None => Vec2::new(touch.pos.x, touch.pos.y),
         };
         field.region.contains(&local)
+    }
+
+    /// Whether `point` lies inside any of the set's fields - same
+    /// coordinate-space rules as [`Self::field_contains`] without
+    /// singling out a field (SPELLS.md's field exclusion).
+    pub fn contains_point(&self, point: &Vec2<Millimeters>) -> bool {
+        let local = match &self.window {
+            Some(anchor) => anchor.to_local(point),
+            None => *point,
+        };
+        self.fields
+            .iter()
+            .any(|field| field.region.contains(&local))
     }
 
     /// Whether all fields are mutually disjoint (no overlapping cells).

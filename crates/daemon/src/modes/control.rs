@@ -253,6 +253,16 @@ pub(crate) fn apply_registration(
                         }
                     }
                 }
+                Registration::HandProfile(ref hand) => {
+                    let name = hand.name.clone();
+                    engine.add_hand(hand.clone(), owner.clone());
+                    info!(%name, ?owner, %lifetime, "hand profile registered");
+                    runtime.emit_lifecycle(LifecycleEvent::HandProfileRegistered {
+                        name: name.clone(),
+                        owner: owner.clone(),
+                    });
+                    Ok(RegistrationApplied::HandProfile)
+                }
             };
             if result.is_ok() && lifetime == Lifetime::Persistent {
                 persist_registration(&registration);
@@ -375,6 +385,16 @@ pub(crate) fn apply_registration(
                 info!(%name, "spell removed");
             } else {
                 warn!(%name, "spell not found");
+            }
+        }
+        ControlCommand::UnregisterHandProfile { name } => {
+            if engine.remove_hand(&name) {
+                unpersist("hands.d", name.as_str());
+                runtime
+                    .emit_lifecycle(LifecycleEvent::HandProfileUnregistered { name: name.clone() });
+                info!(%name, "hand profile removed");
+            } else {
+                warn!(%name, "hand profile not found");
             }
         }
         ControlCommand::SetProfileEnabled { id, enabled } => {
@@ -500,6 +520,11 @@ pub(crate) fn apply_registration(
             for name in &removed.spells {
                 unpersist("spells.d", name.as_str());
                 runtime.emit_lifecycle(LifecycleEvent::SpellUnregistered { name: name.clone() });
+            }
+            for name in &removed.hands {
+                unpersist("hands.d", name.as_str());
+                runtime
+                    .emit_lifecycle(LifecycleEvent::HandProfileUnregistered { name: name.clone() });
             }
             for session in runtime.remove_seat_sessions_by_owner(&owner) {
                 info!(%session.name, %owner, "seat session released on owner cleanup");

@@ -1,6 +1,7 @@
 use crate::CompletionConfig;
 use crate::DeadZone;
 use crate::FieldSet;
+use crate::HandProfile;
 use crate::Region;
 use crate::Spell;
 use smearor_commons_geometry::Millimeters;
@@ -26,6 +27,10 @@ pub struct DetectionConfig {
     pub import_slots: bool,
     /// Startup spell set (`spells.d/` runtime-store reload, SPELLS.md).
     pub spells: Vec<Spell>,
+    /// Startup handprint set (`hands.d/` runtime-store reload) -
+    /// the hands `five-finger-tap` arming can bind spells to
+    /// (per-user spells, SPELLS.md).
+    pub hands: Vec<HandProfile>,
 }
 
 impl Default for DetectionConfig {
@@ -38,6 +43,7 @@ impl Default for DetectionConfig {
             dead_zones: Vec::new(),
             import_slots: true,
             spells: Vec::new(),
+            hands: Vec::new(),
         }
     }
 }

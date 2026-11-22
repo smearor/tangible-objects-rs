@@ -33,6 +33,7 @@ mod profiles_card;
 mod scene_palette;
 mod seats_card;
 mod shared_state;
+mod spell_training_card;
 mod touches_card;
 mod training_card;
 mod visualization_card;
@@ -316,6 +317,13 @@ pub fn run_gui(
                 .find(|card| card.id == CardId::new("training"))
                 .cloned()
         });
+        let spell_training_placement = layout.as_ref().and_then(|layout| {
+            layout
+                .cards
+                .iter()
+                .find(|card| card.id == CardId::new("spell-training"))
+                .cloned()
+        });
         card_layout::wire_layout(&board, layout);
         training_card::wire_training_card(
             &board,
@@ -323,6 +331,7 @@ pub fn run_gui(
             &profiles_dir_app,
             training_placement,
         );
+        spell_training_card::wire_spell_training_card(&board, &state_app, spell_training_placement);
 
         // Initially only the menu is open (GUI.md): every other card
         // starts hidden and is opened via the menu's toggle list.

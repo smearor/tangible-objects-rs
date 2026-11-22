@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::str::FromStr;
 
+use crate::HandName;
 use crate::PatternName;
 use crate::Region;
 
@@ -36,7 +37,13 @@ pub enum SpellArming {
     /// A brief whole-hand tap (~5 simultaneous contacts inside a
     /// tight time window) arms a short window; the gesture itself
     /// may use fewer fingers.
-    FiveFingerTap,
+    FiveFingerTap {
+        /// The handprint this tap must match - `Some` binds the
+        /// spell to a registered [`crate::HandProfile`] (SPELLS.md's
+        /// per-user spells); `None` accepts any whole-hand tap.
+        #[serde(default)]
+        hand: Option<HandName>,
+    },
     /// A registered tangible acts as the wand - armed while the
     /// tangible is tracked, its center pose is the stroke, lift
     /// completes the spell.

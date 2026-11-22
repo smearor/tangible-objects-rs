@@ -417,6 +417,14 @@ enum EventKind {
 	"""
 	SPELL_MATCHED
 	"""
+	A handprint was registered.
+	"""
+	HAND_PROFILE_REGISTERED
+	"""
+	A handprint was removed.
+	"""
+	HAND_PROFILE_UNREGISTERED
+	"""
 	A scoped tangible stage was created on the pipeline.
 	"""
 	STAGE_REGISTERED
@@ -628,6 +636,18 @@ enum FilterMode {
 scalar Fraction
 
 scalar FrameCount
+
+scalar HandName
+
+"""
+`registerHandProfile` applied - the handprint was registered.
+"""
+type HandProfileRegistered {
+	"""
+	Name of the registered handprint.
+	"""
+	name: HandName!
+}
 
 """
 A scalar that can represent any JSON value.
@@ -873,6 +893,17 @@ type MutationRoot {
 	Removes a registered spell by name.
 	"""
 	unregisterSpell(name: SpellName!): Boolean!
+	"""
+	Registers a handprint at runtime (SPELLS.md's per-user
+	spells): a named contact constellation a `five-finger-tap`
+	arming can require. `lifetime: persistent` writes it to
+	`hands.d` so it reloads on daemon start.
+	"""
+	registerHandProfile(input: RegisterHandProfileInput!, owner: Owner, lifetime: Lifetime): RegisterHandProfileResult!
+	"""
+	Removes a registered handprint by name.
+	"""
+	unregisterHandProfile(name: HandName!): Boolean!
 	"""
 	Removes a dead zone by name.
 	"""
@@ -1296,6 +1327,38 @@ members - client crates model the wire shape with their own cynic
 fragments.
 """
 union RegisterFieldSetResult = FieldSetRegistered | RegistrationRejected
+
+"""
+Input for `registerHandProfile`: a named five-contact
+constellation a `five-finger-tap` arming can bind spells to.
+"""
+input RegisterHandProfileInput {
+	"""
+	Hand name (identity for unregister and the runtime store -
+	e.g. the user's name).
+	"""
+	name: HandName!
+	"""
+	Max per-distance deviation in millimeters; `null` = 10 mm.
+	"""
+	tolerance: Millimeters
+	"""
+	The recorded contact constellation - flat `[x0, y0, x1, y1,
+	...]` pairs in millimeters (same shape as
+	`registerPattern.points`).
+	"""
+	points: [Millimeters!]!
+}
+
+"""
+`registerHandProfile` result union - the applied outcome either
+registered the handprint or carries the typed rejection.
+
+No serde derive: GraphQL unions serialize as `__typename`-tagged
+members - client crates model the wire shape with their own cynic
+fragments.
+"""
+union RegisterHandProfileResult = HandProfileRegistered | RegistrationRejected
 
 """
 Input for `registerPattern`: a figure defined by its pin positions.
@@ -1755,6 +1818,11 @@ input SpellArmingInput {
 	tangible may act as the wand.
 	"""
 	pattern: PatternName
+	"""
+	Handprint name for `FIVE_FINGER_TAP` arming; `null` = any
+	whole-hand tap arms the spell.
+	"""
+	hand: HandName
 }
 
 """

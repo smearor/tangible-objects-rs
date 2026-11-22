@@ -74,6 +74,19 @@ pub enum LifecycleEvent {
         /// Removed spell name.
         name: SpellName,
     },
+    /// A handprint was registered (`Registration::HandProfile`,
+    /// SPELLS.md's per-user spells).
+    HandProfileRegistered {
+        /// Registered handprint name.
+        name: crate::HandName,
+        /// Owning application, when bound to one.
+        owner: Option<Owner>,
+    },
+    /// A handprint was removed (unregister or owner cleanup).
+    HandProfileUnregistered {
+        /// Removed handprint name.
+        name: crate::HandName,
+    },
     /// A gesture completed inside a spell's corridor (SPELLS.md).
     SpellMatched {
         /// The matched spell.

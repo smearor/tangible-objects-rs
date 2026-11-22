@@ -83,6 +83,7 @@ pub fn run_filter(
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
     engine.set_spells(config.spells);
+    engine.set_hands(config.hands);
     engine.set_completion(config.completion);
 
     let mut virtual_device = VirtualTouchscreen::create(device.inner()).into_diagnostic()?;

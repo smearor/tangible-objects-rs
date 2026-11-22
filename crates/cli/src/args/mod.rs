@@ -5,6 +5,7 @@ mod analyze;
 mod completion;
 mod field_sets;
 mod filter;
+mod hands;
 mod message;
 mod metrics;
 mod profiles;
@@ -22,6 +23,8 @@ pub use completion::CompletionArgs;
 pub use field_sets::FieldSetsArgs;
 pub use field_sets::FieldSetsCommand;
 pub use filter::FilterArgs;
+pub use hands::HandsArgs;
+pub use hands::HandsCommand;
 pub use message::MessageArgs;
 pub use metrics::MetricsArgs;
 pub use metrics::MetricsCommand;
@@ -74,6 +77,8 @@ pub enum Command {
     Stages(StagesArgs),
     /// Multi-finger spell operations.
     Spells(SpellsArgs),
+    /// Hand profile operations (per-user spells).
+    Hands(HandsArgs),
     /// Switch the suppression policy.
     Filter(FilterArgs),
     /// Completion configuration.

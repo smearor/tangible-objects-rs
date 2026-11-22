@@ -118,7 +118,13 @@ pub fn draw_scene(cr: &cairo::Context, size: Size<i32>, state: &Arc<Mutex<Shared
     };
 
     if s.spells_visible {
-        draw_spells(cr, &s.trajectories, s.last_spell.as_ref(), &to_screen);
+        draw_spells(
+            cr,
+            &s.trajectories,
+            s.last_spell.as_ref(),
+            s.spell_diagnostics.as_ref(),
+            &to_screen,
+        );
     }
     if s.dead_zones_visible {
         // Unfiltered contacts: `s.touches` is the ingest-filtered set,
@@ -195,6 +201,7 @@ fn draw_spells(
     cr: &cairo::Context,
     trajectories: &[Vec<Vec2<Millimeters>>],
     last_spell: Option<&(SpellMatched, Instant)>,
+    diagnostics: Option<&tangible_objects_model::SpellDiagnostics>,
     to_screen: &impl Fn(&Vec2<Millimeters>) -> Vec2<Pixels>,
 ) {
     // Live trajectories: cyan-ish strokes, newest points brightest.
@@ -218,6 +225,11 @@ fn draw_spells(
             let _ = cr.fill();
         }
     }
+
+    // Match diagnostics stay up while the overlay is on - a near
+    // miss is exactly what the debug view is for, so they precede
+    // the flash's early exits.
+    draw_spell_diagnostics(cr, diagnostics);
 
     // Match flash: spell name at the gesture centroid, fading out
     // over ~1.5 s.
@@ -245,6 +257,47 @@ fn draw_spells(
     if let Ok(ext) = cr.text_extents(matched.name.as_str()) {
         cr.move_to(center.x - ext.width() / 2.0, center.y);
         let _ = cr.show_text(matched.name.as_str());
+    }
+}
+
+/// Match-evaluation readout (SPELLS.md's debug view): the last
+/// evaluated spell, its score vs corridor verdict and the winning
+/// assignment's per-stroke deviations. Top-left block - kept after
+/// the episode ends so a near-miss stays inspectable.
+fn draw_spell_diagnostics(
+    cr: &cairo::Context,
+    diagnostics: Option<&tangible_objects_model::SpellDiagnostics>,
+) {
+    let Some(diag) = diagnostics else {
+        return;
+    };
+    let verdict_color = if diag.matched {
+        SceneColor::TouchStable.color()
+    } else {
+        SceneColor::TouchUnstable.color()
+    };
+    cr.set_font_size(16.0);
+    let verdict = if diag.matched { "matched" } else { "miss" };
+    let header = format!(
+        "spell \"{}\"  {:.1} / {:.1} mm  {}",
+        diag.name.as_str(),
+        diag.score.as_f64(),
+        diag.corridor.as_f64(),
+        verdict
+    );
+    verdict_color.apply_alpha(cr, 0.9);
+    cr.move_to(20.0, 116.0);
+    let _ = cr.show_text(&header);
+    cr.set_font_size(14.0);
+    for (index, stroke) in diag.strokes.iter().enumerate() {
+        let line = format!(
+            "stroke {} -> template {}   {:.1} mm",
+            index,
+            stroke.template,
+            stroke.score.as_f64()
+        );
+        cr.move_to(20.0, 116.0 + (index + 1) as f64 * 20.0);
+        let _ = cr.show_text(&line);
     }
 }
 

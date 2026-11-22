@@ -147,7 +147,7 @@ pub fn create_training_card(
         }
         let count = s.touches.len();
         match s.mode {
-            GuiMode::Live => {
+            GuiMode::Live | GuiMode::SpellTraining => {
                 status.set_label(&fl!(language_loader(), "train-hint"));
             }
             GuiMode::Training => {
@@ -235,7 +235,7 @@ pub fn wire_training_card(
             GuiMode::Training => {
                 add_training_card(&board_tick, &state_tick, &profiles_dir_tick, &last);
             }
-            GuiMode::Live => {
+            GuiMode::Live | GuiMode::SpellTraining => {
                 if let Ok(card) = board_tick.card(&card_id) {
                     // Stash the pose so re-adding restores it; the
                     // periodic layout save skips absent cards anyway.

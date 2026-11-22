@@ -115,6 +115,7 @@ impl EngineMcp {
         router.merge(Self::field_set_router());
         router.merge(Self::filter_router());
         router.merge(Self::gui_router());
+        router.merge(Self::hand_router());
         router.merge(Self::metrics_router());
         router.merge(Self::message_router());
         router.merge(Self::owner_router());

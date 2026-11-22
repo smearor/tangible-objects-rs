@@ -1,5 +1,6 @@
 use crate::DeadZone;
 use crate::FieldSet;
+use crate::HandProfile;
 use crate::ProfileFile;
 use crate::Spell;
 
@@ -20,4 +21,7 @@ pub enum Registration {
     /// A dead zone - a blacklisted surface position suppressing ghost
     /// contacts at ingest.
     DeadZone(DeadZone),
+    /// A handprint - the five-contact constellation `five-finger-tap`
+    /// arming binds spells to (per-user spells, SPELLS.md).
+    HandProfile(HandProfile),
 }

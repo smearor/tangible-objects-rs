@@ -13,6 +13,7 @@ use tangible_objects_model::FieldSetName;
 use tangible_objects_model::FigureColor;
 use tangible_objects_model::FilterMode;
 use tangible_objects_model::FrameCount;
+use tangible_objects_model::HandName;
 use tangible_objects_model::Lifetime;
 use tangible_objects_model::Owner;
 use tangible_objects_model::PatternId;
@@ -224,6 +225,13 @@ pub enum ControlCommand {
     UnregisterSpell {
         /// Spell to remove.
         name: SpellName,
+    },
+    /// Remove a registered handprint by name
+    /// (`Registration::HandProfile` undo, SPELLS.md's per-user
+    /// spells).
+    UnregisterHandProfile {
+        /// Handprint to remove.
+        name: HandName,
     },
     /// Remove every pattern, field set and dead zone owned by `owner` -
     /// used for explicit app cleanup and D-Bus disconnect handling.

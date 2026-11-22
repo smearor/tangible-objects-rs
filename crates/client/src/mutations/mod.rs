@@ -7,6 +7,7 @@ pub(crate) mod dead_zone;
 pub(crate) mod field_set;
 pub(crate) mod filter;
 pub(crate) mod gui;
+pub(crate) mod hand;
 pub(crate) mod message;
 pub(crate) mod metrics;
 pub(crate) mod pattern;

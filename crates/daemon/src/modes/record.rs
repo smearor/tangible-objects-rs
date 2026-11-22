@@ -77,6 +77,7 @@ pub fn run_record(
     engine.set_fields(config.fields);
     engine.set_dead_zones(config.dead_zones);
     engine.set_spells(config.spells);
+    engine.set_hands(config.hands);
     engine.set_completion(config.completion);
 
     let mut session = RecordingSession::start(
