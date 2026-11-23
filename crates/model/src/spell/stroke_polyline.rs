@@ -95,9 +95,9 @@ impl StrokePolyline {
         // Rolling rows - O(n*m) time, O(m) space.
         let mut prev = vec![f64::INFINITY; m];
         let mut cur = vec![f64::INFINITY; m];
-        for i in 0..n {
+        for (i, point) in self.points.iter().enumerate() {
             for (j, o) in other.points.iter().enumerate() {
-                let d = self.points[i].distance(o).as_f64();
+                let d = point.distance(o).as_f64();
                 cur[j] = if i == 0 && j == 0 {
                     d
                 } else {
