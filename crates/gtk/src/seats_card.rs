@@ -21,6 +21,7 @@ use smearor_commons_layout::TableSide;
 use tangible_objects_model::SeatId;
 use tangible_objects_model::SeatMarkerState;
 
+use crate::folded_badge::count_badge;
 use crate::language_loader;
 use crate::shared_state::SharedState;
 
@@ -47,8 +48,12 @@ struct SeatRow {
 /// Builds the seats-card content: a `Seat name | Owner | Profile name |
 /// Table side | Fraction | Rotation` grid refreshed from
 /// [`SharedState`] every 100 ms. Rows rebuild only when the seat set
-/// changes; the pose cells update in place.
-pub fn create_seats_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
+/// changes; the pose cells update in place. The folded-content badge
+/// shows `anchored/total` seats alongside the card body. The card
+/// uses `DragHandle::WholeCardFolded` (configured in `lib.rs`):
+/// folded, the whole badge drags; unfolded, the header strip drags
+/// and a tap unfolds via `unfold_on_click`.
+pub fn create_seats_card(state: &Arc<Mutex<SharedState>>) -> (GtkBox, GtkBox) {
     let grid = Grid::new();
     grid.set_column_spacing(10);
     grid.set_row_spacing(4);
@@ -69,6 +74,14 @@ pub fn create_seats_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         grid.attach(&label, column as i32, 0, 1, 1);
     }
 
+    let (badge, badge_count) = count_badge(
+        "system-users-symbolic",
+        &fl!(language_loader(), "card-seats-title"),
+    );
+    // Thumb-sized translucent FAB (`.badge-fab` in `lib.rs`'s
+    // stylesheet) instead of a plain folded button.
+    badge.add_css_class("badge-fab");
+
     let rows: Rc<RefCell<Vec<SeatRow>>> = Rc::new(RefCell::new(Vec::new()));
     let state_tick = state.clone();
     let rows_tick = rows.clone();
@@ -86,6 +99,13 @@ pub fn create_seats_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             .iter()
             .flat_map(|session| session.seats.iter())
             .collect::<Vec<_>>();
+        // The badge counts seats whose marker anchors the pose -
+        // `Absent` seats keep a last pose but nobody sits there.
+        let anchored = seats
+            .iter()
+            .filter(|seat| seat.state != SeatMarkerState::Absent)
+            .count();
+        badge_count.set_label(&format!("{anchored} / {}", seats.len()));
         let mut rows = rows_tick.borrow_mut();
         if rows
             .iter()
@@ -178,5 +198,5 @@ pub fn create_seats_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
 
     let body = GtkBox::new(Orientation::Vertical, 6);
     body.append(&grid);
-    body
+    (body, badge)
 }

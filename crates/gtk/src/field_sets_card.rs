@@ -23,6 +23,7 @@ use i18n_embed_fl::fl;
 use tangible_objects_model::FieldSetName;
 use tangible_objects_runtime::ControlCommand;
 
+use crate::folded_badge::count_badge;
 use crate::language_loader;
 use crate::shared_state::SharedState;
 use crate::shared_state::send_command;
@@ -51,8 +52,9 @@ struct FieldSetRowWidgets {
 /// Builds the field-sets-card content: a `Name | Owner | Enabled |
 /// Fields` grid refreshed from [`SharedState`] every 100 ms. Rows
 /// rebuild only when the registered sets change; the volatile cells
-/// (enabled flag) update in place.
-pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
+/// (enabled flag) update in place. The folded-content badge shows
+/// `occupied/total` fields alongside the card body.
+pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> (GtkBox, GtkBox) {
     let grid = Grid::new();
     grid.set_column_spacing(10);
     grid.set_row_spacing(4);
@@ -71,6 +73,11 @@ pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
         grid.attach(&label, column as i32, 0, 1, 1);
     }
 
+    let (badge, badge_count) = count_badge(
+        "view-grid-symbolic",
+        &fl!(language_loader(), "card-field-sets-title"),
+    );
+
     let rows: Rc<RefCell<Vec<FieldSetRowWidgets>>> = Rc::new(RefCell::new(Vec::new()));
     let state_tick = state.clone();
     let rows_tick = rows.clone();
@@ -81,6 +88,7 @@ pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
             Ok(s) => s,
             Err(_) => return ControlFlow::Continue,
         };
+        badge_count.set_label(&format!("{} / {}", s.occupied_fields.0, s.field_count.0));
         let mut rows = rows_tick.borrow_mut();
         if rows
             .iter()
@@ -169,5 +177,5 @@ pub fn create_field_sets_card(state: &Arc<Mutex<SharedState>>) -> GtkBox {
 
     let body = GtkBox::new(Orientation::Vertical, 0);
     body.append(&grid);
-    body
+    (body, badge)
 }

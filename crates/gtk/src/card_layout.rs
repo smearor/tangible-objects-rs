@@ -10,13 +10,17 @@ use std::time::Duration;
 
 use floating_board::BoardLayout;
 use floating_board::Card;
-use floating_board::CardPosition;
+use floating_board::CardId;
 use floating_board::FloatingBoard;
 use gtk4::Orientation;
 use gtk4::glib::ControlFlow;
 use gtk4::prelude::*;
-use smearor_commons_geometry::Vec2;
+use smearor_commons_geometry::Distance;
+use smearor_commons_geometry::Pixels;
+use smearor_commons_layout::FlowLayout;
 use tracing::warn;
+
+use crate::margin_layout::MarginLayout;
 
 /// Layout file name inside the `tangible-objects` config dir.
 const LAYOUT_FILE: &str = "gui-cards.toml";
@@ -24,6 +28,19 @@ const LAYOUT_FILE: &str = "gui-cards.toml";
 const EDGE_MARGIN: f64 = 100.0;
 /// Gap between neighboring cards in the default row arrangement.
 const CARD_GAP: f64 = 24.0;
+
+/// The tidy-up strategy shared by the default arrangement and the
+/// menu's Arrange action: [`FlowLayout`] rows wrapped to fit, inside
+/// bounds inset by [`EDGE_MARGIN`].
+pub(crate) fn arrange_strategy() -> MarginLayout {
+    MarginLayout::new(
+        FlowLayout::<Pixels> {
+            gap: Distance::new(CARD_GAP),
+            ..Default::default()
+        },
+        Pixels::new(EDGE_MARGIN),
+    )
+}
 /// Debounce window for writing `layout_snapshot()` back - card
 /// gestures emit `geometry-changed` continuously while dragging.
 const SAVE_DEBOUNCE: Duration = Duration::from_millis(500);
@@ -96,7 +113,15 @@ pub(crate) fn wire_layout(board: &FloatingBoard, layout: Option<BoardLayout>) {
         }
         match &layout {
             Some(layout) => board_apply.restore_layout(layout),
-            None => arrange_default(&board_apply),
+            // No saved layout: flow every card (hidden ones included -
+            // the menu opens them later at their arranged spot).
+            None => {
+                let ids: Vec<CardId> = board_apply.cards().iter().map(|card| card.id()).collect();
+                if let Err(error) = board_apply.apply_layout(&arrange_strategy(), Some(&ids), false)
+                {
+                    warn!(%error, "default card arrangement does not fit");
+                }
+            }
         }
         ControlFlow::Break
     });
@@ -114,28 +139,6 @@ pub(crate) fn wire_layout(board: &FloatingBoard, layout: Option<BoardLayout>) {
         }
         ControlFlow::Continue
     });
-}
-
-/// The default layout for first runs: cards side by side starting at
-/// (`EDGE_MARGIN`, `EDGE_MARGIN`), wrapping to a new row whenever the
-/// next card would leave the board's right margin.
-fn arrange_default(board: &FloatingBoard) {
-    let board_w = f64::from(board.width());
-    let mut x = EDGE_MARGIN;
-    let mut y = EDGE_MARGIN;
-    let mut row_h = 0.0_f64;
-    for card in board.cards() {
-        let (w, h) = card_extent(&card);
-        if x > EDGE_MARGIN && x + w > board_w - EDGE_MARGIN {
-            x = EDGE_MARGIN;
-            y += row_h + CARD_GAP;
-            row_h = 0.0;
-        }
-        // `CardGeometry.position` is the card's center point.
-        card.set_position(CardPosition::new(Vec2::new(x + w / 2.0, y + h / 2.0)));
-        x += w + CARD_GAP;
-        row_h = row_h.max(h);
-    }
 }
 
 /// A card's occupied extent: the rotated footprint when allocated,

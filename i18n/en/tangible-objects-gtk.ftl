@@ -47,6 +47,7 @@ background-alpha = Alpha: { $percent }%
 
 # GTK - cards
 card-menu-title = Menu
+menu-arrange = Arrange cards
 card-visualization-title = Visualization
 card-filter-title = Filter mode
 card-profiles-title = Profiles

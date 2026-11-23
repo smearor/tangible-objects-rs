@@ -30,6 +30,7 @@ use tangible_objects_model::PatternId;
 use tangible_objects_model::PatternName;
 use tangible_objects_runtime::ControlCommand;
 
+use crate::folded_badge::count_badge;
 use crate::language_loader;
 use crate::shared_state::SharedState;
 use crate::shared_state::send_command;
@@ -65,11 +66,12 @@ struct ProfileRow {
 /// Builds the profiles-card content: a `Name | Owner | Enabled |
 /// Position` grid refreshed from [`SharedState`] every 100 ms. Rows
 /// rebuild only when the registered set changes; the volatile cells
-/// (enabled flag, live position) update in place.
+/// (enabled flag, live position) update in place. The folded-content
+/// badge shows `enabled/registered` profiles alongside the card body.
 pub fn create_profiles_card(
     state: &Arc<Mutex<SharedState>>,
     profiles_dir: Option<PathBuf>,
-) -> GtkBox {
+) -> (GtkBox, GtkBox) {
     let grid = Grid::new();
     grid.set_column_spacing(10);
     grid.set_row_spacing(4);
@@ -90,6 +92,11 @@ pub fn create_profiles_card(
         grid.attach(&label, column as i32, 0, 1, 1);
     }
 
+    let (badge, badge_count) = count_badge(
+        "applications-games-symbolic",
+        &fl!(language_loader(), "card-profiles-title"),
+    );
+
     let rows: Rc<RefCell<Vec<ProfileRow>>> = Rc::new(RefCell::new(Vec::new()));
     let state_tick = state.clone();
     let rows_tick = rows.clone();
@@ -100,6 +107,8 @@ pub fn create_profiles_card(
             Ok(s) => s,
             Err(_) => return ControlFlow::Continue,
         };
+        let enabled = s.profiles.iter().filter(|profile| profile.enabled).count();
+        badge_count.set_label(&format!("{enabled} / {}", s.profiles.len()));
         let mut rows = rows_tick.borrow_mut();
         if rows
             .iter()
@@ -285,5 +294,5 @@ pub fn create_profiles_card(
     let body = GtkBox::new(Orientation::Vertical, 6);
     body.append(&grid);
     body.append(&save);
-    body
+    (body, badge)
 }

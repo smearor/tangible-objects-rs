@@ -19,11 +19,13 @@ mod evdev_thread;
 mod field_set_row;
 mod field_sets_card;
 mod filter_card;
+mod folded_badge;
 mod gui_hooks;
 mod gui_mode;
 mod gui_options;
 mod i18n;
 mod info_card;
+mod margin_layout;
 mod menu_card;
 mod metrics_card;
 mod parameters_card;
@@ -47,6 +49,10 @@ use floating_board::CardAnchor;
 use floating_board::CardCloseAction;
 use floating_board::CardConfig;
 use floating_board::CardId;
+use floating_board::ChromeElement;
+use floating_board::ChromeSlot;
+use floating_board::ChromeStyle;
+use floating_board::DragHandle;
 use floating_board::FloatingBoard;
 use gtk4::Application;
 use gtk4::ApplicationWindow;
@@ -88,6 +94,29 @@ pub use shared_state::SharedState;
 /// to hit on a touchscreen.
 pub(crate) const CARD_CONTENT_PADDING: Pixels = Pixels::new(20.0);
 
+/// The chrome slot list every card shares, modeled on the
+/// floating-board demo: the rotate steppers flank the title bar ends
+/// (counter-clockwise leading, clockwise trailing), title and window
+/// buttons sit inline between them, resize and rotate grips stay
+/// corner affordances. `closable` controls the close button - the
+/// menu card and the mode-bound training card omit it.
+pub(crate) fn card_chrome(closable: bool) -> Vec<ChromeSlot> {
+    let mut slots = vec![
+        ChromeSlot::inline_start(ChromeElement::RotateCounterClockwise),
+        ChromeSlot::inline(ChromeElement::Title),
+        ChromeSlot::inline(ChromeElement::Minimize),
+    ];
+    if closable {
+        slots.push(ChromeSlot::inline(ChromeElement::Close));
+    }
+    slots.extend([
+        ChromeSlot::inline_end(ChromeElement::RotateClockwise),
+        ChromeSlot::inline(ChromeElement::ResizeGrip),
+        ChromeSlot::inline(ChromeElement::RotateGrip),
+    ]);
+    slots
+}
+
 /// Fullscreen GTK visualization with control bar and evdev-driven
 /// drawing. `patterns` is pre-loaded by the daemon (`load_patterns`);
 /// `visible` carries the initial window state (`--gui` shows by
@@ -101,6 +130,12 @@ pub fn run_gui(
     options: GuiOptions,
     hooks: GuiHooks,
 ) {
+    // libadwaita must initialize before the first adw widget is built -
+    // every card renders `ChromeStyle::Adwaita`.
+    if let Err(error) = floating_board::adw::init() {
+        warn!(%error, "libadwaita init failed - card chrome renders unstyled");
+    }
+
     let state = SharedState::new(&options);
 
     // Spawn evdev thread - the in-process engine loop.
@@ -172,11 +207,15 @@ pub fn run_gui(
         let board = FloatingBoard::new(&overlay);
         let info_body = info_card::create_info_card(&state_app);
         // The profiles card's Save button needs the `--profiles`
-        // source dir - built before the uniform card loop.
-        let profiles_body = profiles_card::create_profiles_card(
+        // source dir - built before the uniform card loop. The data
+        // cards below also build their folded-content count badges.
+        let (profiles_body, profiles_badge) = profiles_card::create_profiles_card(
             &state_app,
             profiles_dir_app.clone().map(PathBuf::from),
         );
+        let (field_sets_body, field_sets_badge) =
+            field_sets_card::create_field_sets_card(&state_app);
+        let (seats_body, seats_badge) = seats_card::create_seats_card(&state_app);
         let _ = board.add_card_with_id(
             "info",
             &info_body,
@@ -191,10 +230,14 @@ pub fn run_gui(
                 rotate_grip: true,
                 closable: true,
                 close_action: CardCloseAction::Hide,
+                unfold_on_click: true,
+                drag_handle: DragHandle::WholeCardFolded,
+                chrome_style: ChromeStyle::Adwaita,
+                chrome: Some(card_chrome(true)),
                 ..Default::default()
             },
         );
-        for (id, body, title, anchor) in [
+        for (id, body, title, anchor, folded) in [
             (
                 "visualization",
                 visualization_card::create_visualization_card(
@@ -204,66 +247,70 @@ pub fn run_gui(
                 ),
                 fl!(language_loader(), "card-visualization-title"),
                 CardAnchor::TopLeft,
+                None,
             ),
             (
                 "filter",
                 filter_card::create_filter_card(&state_app),
                 fl!(language_loader(), "card-filter-title"),
                 CardAnchor::CenterLeft,
+                None,
             ),
             (
                 "device",
                 device_card::create_device_card(&state_app, &device_path_app),
                 fl!(language_loader(), "card-device-title"),
                 CardAnchor::BottomCenter,
+                None,
             ),
             (
                 "parameters",
                 parameters_card::create_parameters_card(&state_app),
                 fl!(language_loader(), "card-parameters-title"),
                 CardAnchor::BottomRight,
+                None,
             ),
             (
                 "touches",
                 touches_card::create_touches_card(&state_app),
                 fl!(language_loader(), "card-touches-title"),
                 CardAnchor::BottomCenter,
+                None,
             ),
             (
                 "calibration",
                 calibration_card::create_calibration_card(&state_app),
                 fl!(language_loader(), "card-calibration-title"),
                 CardAnchor::Center,
+                None,
             ),
             (
                 "metrics",
                 metrics_card::create_metrics_card(&state_app),
                 fl!(language_loader(), "card-metrics-title"),
                 CardAnchor::CenterRight,
+                None,
             ),
             (
                 "profiles",
                 profiles_body,
                 fl!(language_loader(), "card-profiles-title"),
                 CardAnchor::CenterRight,
+                Some(profiles_badge),
             ),
             (
                 "field-sets",
-                field_sets_card::create_field_sets_card(&state_app),
+                field_sets_body,
                 fl!(language_loader(), "card-field-sets-title"),
                 CardAnchor::TopCenter,
+                Some(field_sets_badge),
             ),
             (
                 "dead-zones",
                 dead_zones_card::create_dead_zones_card(&state_app),
                 fl!(language_loader(), "card-dead-zones-title"),
                 CardAnchor::BottomLeft,
-            ),
-            (
-                "seats",
-                seats_card::create_seats_card(&state_app),
-                fl!(language_loader(), "card-seats-title"),
-                CardAnchor::CenterRight,
+                None,
             ),
         ] {
             let _ = board.add_card_with_id(
@@ -281,14 +328,49 @@ pub fn run_gui(
                     // X hides the card (not remove) - the menu re-opens it.
                     closable: true,
                     close_action: CardCloseAction::Hide,
+                    folded_content: folded.as_ref().map(|badge| badge.clone().upcast()),
+                    unfold_on_click: true,
+                    drag_handle: DragHandle::WholeCardFolded,
+                    chrome_style: ChromeStyle::Adwaita,
+                    chrome: Some(card_chrome(true)),
                     ..Default::default()
                 },
             );
         }
 
+        // The seats card lives outside the uniform loop: its folded
+        // badge doubles as a draggable FAB (`WholeCardFolded` - the
+        // whole folded surface drags, the unfolded card keeps its
+        // header drag; `unfold_on_click` taps it open again). Its
+        // content is display-only, nothing inside competes for
+        // gestures.
+        let _ = board.add_card_with_id(
+            "seats",
+            &seats_body,
+            CardConfig {
+                title: Some(fl!(language_loader(), "card-seats-title")),
+                position: CardAnchor::CenterRight,
+                anchor_margin: Pixels::new(100.0),
+                bounds_mode: BoundsMode::Contained,
+                content_padding: CARD_CONTENT_PADDING,
+                foldable: true,
+                resizable: true,
+                rotate_grip: true,
+                closable: true,
+                close_action: CardCloseAction::Hide,
+                folded_content: Some(seats_badge.clone().upcast()),
+                unfold_on_click: true,
+                drag_handle: DragHandle::WholeCardFolded,
+                chrome_style: ChromeStyle::Adwaita,
+                chrome: Some(card_chrome(true)),
+                ..Default::default()
+            },
+        );
+
         // Main-menu card: always-open root listing every other card -
         // the only card that cannot be closed (`closable: false`).
-        let menu_body = menu_card::create_menu_card(&board);
+        // Folded, it collapses to a round burger-menu FAB.
+        let (menu_body, menu_fab) = menu_card::create_menu_card(&board);
         let _ = board.add_card_with_id(
             menu_card::MENU_CARD_ID,
             &menu_body,
@@ -299,8 +381,13 @@ pub fn run_gui(
                 bounds_mode: BoundsMode::Contained,
                 content_padding: CARD_CONTENT_PADDING,
                 foldable: true,
+                folded_content: Some(menu_fab.clone().upcast()),
+                unfold_on_click: true,
+                drag_handle: DragHandle::WholeCardFolded,
                 resizable: true,
                 rotate_grip: true,
+                chrome_style: ChromeStyle::Adwaita,
+                chrome: Some(card_chrome(false)),
                 ..Default::default()
             },
         );
@@ -440,7 +527,16 @@ pub fn run_gui(
         // default, covering the translucent cairo fill. Only the
         // window *background* is cleared; contents stay opaque.
         let provider = gtk4::CssProvider::new();
-        provider.load_from_string("window { background-color: transparent; }");
+        // `.round-button` turns the menu card's folded-content FAB into
+        // a circle (same recipe as the floating-board demo). `.badge-fab`
+        // is the thumb-sized variant for count badges: translucent
+        // enough to keep the table scene readable underneath.
+        provider.load_from_string(
+            "window { background-color: transparent; } \
+             .round-button { border-radius: 50%; min-width: 46px; min-height: 46px; padding: 0; border: 1px solid alpha(@theme_fg_color, 0.8); background-color: alpha(@theme_bg_color, 0.5); } \
+             .badge-fab { border-radius: 50%; min-width: 92px; min-height: 92px; padding: 0; \
+             border: 2px solid alpha(@theme_fg_color, 0.8); background-color: alpha(@theme_bg_color, 0.5); }",
+        );
         if let Some(display) = Display::default() {
             gtk4::style_context_add_provider_for_display(
                 &display,

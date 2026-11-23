@@ -16,6 +16,7 @@ use floating_board::CardConfig;
 use floating_board::CardId;
 use floating_board::CardPalette;
 use floating_board::CardPlacement;
+use floating_board::ChromeStyle;
 use floating_board::FloatingBoard;
 use smearor_commons_color::Color;
 use smearor_commons_geometry::Pixels;
@@ -275,9 +276,12 @@ fn add_training_card(
             bounds_mode: BoundsMode::Contained,
             content_padding: crate::CARD_CONTENT_PADDING,
             foldable: true,
+            unfold_on_click: true,
             resizable: true,
             rotate_grip: true,
             palette: Some(training_palette()),
+            chrome_style: ChromeStyle::Adwaita,
+            chrome: Some(crate::card_chrome(false)),
             ..Default::default()
         },
     );
